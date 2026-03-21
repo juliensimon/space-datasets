@@ -32,12 +32,13 @@ SHELL_NAMES = {
 }
 
 # Operational altitude bands per shell [min, max] in km
+# Synced from starlink-viz src/lib/config.ts SHELL_ALT_BANDS
 SHELL_ALT_BANDS = {
-    0: (310, 340),
-    1: (325, 355),
-    2: (540, 560),
-    3: (555, 575),
-    4: (545, 570),
+    0: (460, 570),   # 33° — not yet launched, wide band
+    1: (460, 570),   # 43° — Gen1 at 480-490 + 540-560 km
+    2: (460, 570),   # 53° — Gen1 at 480-490 + 540-560 km
+    3: (460, 910),   # 70° — wide range, some at ~880-900 km
+    4: (460, 600),   # 97.6° — observed 550-590 km
 }
 
 
@@ -59,6 +60,65 @@ def get_shell_id(inc: float) -> int:
     if inc < 80:
         return 3
     return 4
+
+
+def classify_status(
+    alt: float, inc: float, ecc: float,
+    epoch_age_hours: float, mm_dot: float,
+) -> str:
+    """Single-snapshot status classification.
+
+    Without altitude history, we use mean_motion_dot (orbital decay rate)
+    as a proxy for raising vs deorbiting:
+      mm_dot > 0  →  orbit shrinking (natural drag or active deorbit)
+      mm_dot < 0  →  orbit growing (active raising via thrust)
+
+    Starlink deployment: satellites are inserted at a parking orbit
+    (often ~300-530km) then raise to their operational altitude using
+    ion thrusters. Shells 1-2 (33°/43°) operate at ~330-350km but are
+    deployed at ~490-530km and lower down. All other shells raise up.
+    """
+    shell_id = get_shell_id(inc)
+    band = SHELL_ALT_BANDS.get(shell_id, (0, 0))
+    min_alt, max_alt = band
+
+    # Decayed: very low or stale epoch + low altitude
+    if alt < 150:
+        return "decayed"
+    if epoch_age_hours > 336 and alt < 250:  # 14 days stale + low
+        return "decayed"
+
+    # Anomalous: high eccentricity
+    if ecc > 0.005:
+        return "anomalous"
+
+    # Operational: within shell altitude band
+    if min_alt <= alt <= max_alt:
+        return "operational"
+
+    # Above the band — in parking/drift orbit, lowering to operational alt
+    # (common for Shells 1-2 which operate at ~330-350km but deploy at ~490-530km)
+    if alt > max_alt:
+        # mm_dot > 0 means orbit shrinking → actively lowering to operational alt
+        if mm_dot > 0:
+            return "raising"
+        # mm_dot ~ 0 or slightly negative: just deployed, not yet maneuvering
+        return "raising"
+
+    # Below the band — raising or deorbiting?
+    if alt < min_alt:
+        # mm_dot < 0 means orbit is growing = raising
+        if mm_dot < -0.0001:
+            return "raising"
+        # Actively deorbiting: strong positive mm_dot or very low altitude
+        if mm_dot > 0.01 or alt < 300:
+            return "deorbiting"
+        # Close to band (within 20km), unclear direction
+        if alt >= min_alt - 20:
+            return "raising"
+        return "raising"  # below band, assume still raising
+
+    return "unknown"
 
 
 def is_isl_capable(inc: float, launch_year: int) -> bool:
@@ -106,8 +166,10 @@ def main():
         launch_year = int(intl[:4]) if intl and intl[:4].isdigit() else 0
 
         shell_id = get_shell_id(inc)
-        band = SHELL_ALT_BANDS.get(shell_id, (0, 0))
-        is_operational = band[0] <= alt <= band[1]
+        mm_dot = r["MEAN_MOTION_DOT"]
+        epoch_age_hours = (now - epoch).total_seconds() / 3600
+
+        status = classify_status(alt, inc, ecc, epoch_age_hours, mm_dot)
 
         rows.append({
             "norad_id": norad_id,
@@ -117,12 +179,12 @@ def main():
             "raan": round(r["RA_OF_ASC_NODE"], 4),
             "eccentricity": ecc,
             "mean_motion": mm,
-            "mean_motion_dot": r["MEAN_MOTION_DOT"],
+            "mean_motion_dot": mm_dot,
             "altitude_km": round(alt, 2),
             "launch_year": launch_year,
             "shell_id": shell_id,
             "shell_name": SHELL_NAMES.get(shell_id, "Unknown"),
-            "status": "operational" if is_operational else "unknown",
+            "status": status,
             "is_isl_capable": is_isl_capable(inc, launch_year),
         })
 
