@@ -208,12 +208,13 @@ def main():
         daily_rows.append({
             "date": today,
             "shell_id": int(sid),
+            "shell_name": SHELL_NAMES.get(int(sid), "Unknown"),
             "total_count": len(shell),
             "operational_count": int((shell["status"] == "operational").sum()),
             "raising_count": int((shell["status"] == "raising").sum()),
             "deorbiting_count": int((shell["status"] == "deorbiting").sum()),
             "isl_operational_count": int(shell["is_isl_capable"].sum()),
-            "new_launches": 0,  # can't compute from single snapshot
+            "new_launches": 0,
         })
     df_today = pd.DataFrame(daily_rows)
 
@@ -221,11 +222,6 @@ def main():
         tmp_dir = Path(tmp)
         data_dir = tmp_dir / "data"
         data_dir.mkdir()
-
-        df_latest.to_parquet(
-            data_dir / "latest_satellites.parquet",
-            index=False, engine="pyarrow", compression="zstd",
-        )
 
         # Download existing daily_snapshots and append today
         daily_path = data_dir / "daily_snapshots.parquet"
