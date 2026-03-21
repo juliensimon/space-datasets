@@ -201,7 +201,7 @@ def main():
     df_latest["epoch_ts"] = df_latest["epoch_utc"].astype("int64") // 10**9
 
     # Build daily_snapshots: per-shell aggregates for today
-    today = now.strftime("%Y-%m-%d")
+    today = pd.Timestamp(now.strftime("%Y-%m-%d"))
     daily_rows = []
     for sid in sorted(df_latest["shell_id"].unique()):
         shell = df_latest[df_latest["shell_id"] == sid]
@@ -238,6 +238,7 @@ def main():
             if daily_path.exists():
                 df_existing = pd.read_parquet(daily_path)
                 # Remove any existing rows for today (idempotent re-runs)
+                df_existing["date"] = pd.to_datetime(df_existing["date"])
                 df_existing = df_existing[df_existing["date"] != today]
                 df_daily = pd.concat([df_existing, df_today], ignore_index=True)
                 print(f"  daily_snapshots: appended {today} ({len(df_daily):,} total rows)")
