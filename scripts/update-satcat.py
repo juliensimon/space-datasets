@@ -46,15 +46,39 @@ def main():
     })
 
     with tempfile.TemporaryDirectory() as tmp:
-        out = Path(tmp) / "satcat.parquet"
+        tmp = Path(tmp)
+        data_dir = tmp / "data"
+        data_dir.mkdir()
+
+        out = data_dir / "satcat.parquet"
         df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        (tmp / "README.md").write_text(f"""---
+license: mit
+tags: [space, satellite, norad, celestrak]
+size_categories: [10K<n<100K]
+---
+
+# NORAD SATCAT
+
+![Update SATCAT](https://github.com/juliensimon/space-datasets/actions/workflows/update-satcat.yml/badge.svg)
+![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.satcat&label=updated&color=brightgreen)
+
+Complete NORAD Satellite Catalog from [CelesTrak](https://celestrak.org/pub/satcat.csv). {len(df):,} objects. Updated daily.
+
+## Usage
+
+```python
+from datasets import load_dataset
+ds = load_dataset("juliensimon/space-track-satcat", split="train")
+```
+""")
+
         print("Uploading to HF...")
         subprocess.run(
-            ["hf", "upload", HF_REPO, str(out), "data/satcat.parquet",
-             "--repo-type", "dataset"],
+            ["hf", "upload", HF_REPO, str(tmp), ".", "--repo-type", "dataset"],
             check=True,
         )
 

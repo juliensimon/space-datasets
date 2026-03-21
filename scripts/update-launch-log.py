@@ -43,12 +43,41 @@ def main():
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_dir = Path(tmp)
-        df.to_parquet(tmp_dir / "launches.parquet", index=False, engine="pyarrow", compression="zstd")
-        sites.to_parquet(tmp_dir / "sites.parquet", index=False, engine="pyarrow", compression="zstd")
+        data_dir = tmp_dir / "data"
+        data_dir.mkdir()
+        df.to_parquet(data_dir / "launches.parquet", index=False, engine="pyarrow", compression="zstd")
+        sites.to_parquet(data_dir / "sites.parquet", index=False, engine="pyarrow", compression="zstd")
+
+        (tmp_dir / "README.md").write_text(f"""---
+license: mit
+tags: [space, launches, rockets, gcat]
+configs:
+  - config_name: launches
+    data_files: data/launches.parquet
+  - config_name: sites
+    data_files: data/sites.parquet
+size_categories: [10K<n<100K]
+---
+
+# Space Launch Log
+
+![Update Launch Log](https://github.com/juliensimon/space-datasets/actions/workflows/update-launch-log.yml/badge.svg)
+![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['launch-log']&label=updated&color=brightgreen)
+
+Global launch history from [GCAT](https://planet4589.org/space/gcat/). {len(df):,} launches, {len(sites):,} sites. Updated weekly.
+
+## Usage
+
+```python
+from datasets import load_dataset
+launches = load_dataset("juliensimon/space-launch-log", "launches", split="train")
+sites = load_dataset("juliensimon/space-launch-log", "sites", split="train")
+```
+""")
 
         print("Uploading to HF...")
         subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp_dir), "data", "--repo-type", "dataset"],
+            ["hf", "upload", HF_REPO, str(tmp_dir), ".", "--repo-type", "dataset"],
             check=True,
         )
 

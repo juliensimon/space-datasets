@@ -136,21 +136,41 @@ def main():
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_dir = Path(tmp)
+        data_dir = tmp_dir / "data"
+        data_dir.mkdir()
 
         df_latest.to_parquet(
-            tmp_dir / "latest_satellites.parquet",
+            data_dir / "latest_satellites.parquet",
             index=False, engine="pyarrow", compression="zstd",
         )
 
         active = len(df_latest[df_latest["status"] == "operational"])
         print(f"  {active:,} operational, {len(df_latest):,} total")
 
-        print("Uploading latest_satellites to HF...")
+        (tmp_dir / "README.md").write_text(f"""---
+license: mit
+tags: [space, starlink, satellite, tle, celestrak]
+size_categories: [1K<n<10K]
+---
+
+# Starlink Fleet Data
+
+![Update Starlink Fleet](https://github.com/juliensimon/space-datasets/actions/workflows/update-starlink.yml/badge.svg)
+![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.starlink&label=updated&color=brightgreen)
+
+Latest Starlink constellation snapshot from [CelesTrak](https://celestrak.org/). {len(df_latest):,} satellites ({active:,} operational). Updated daily.
+
+## Usage
+
+```python
+from datasets import load_dataset
+ds = load_dataset("juliensimon/starlink-fleet-data", split="train")
+```
+""")
+
+        print("Uploading to HF...")
         subprocess.run(
-            ["hf", "upload", HF_REPO,
-             str(tmp_dir / "latest_satellites.parquet"),
-             "data/latest_satellites.parquet",
-             "--repo-type", "dataset"],
+            ["hf", "upload", HF_REPO, str(tmp_dir), ".", "--repo-type", "dataset"],
             check=True,
         )
 

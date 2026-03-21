@@ -119,6 +119,8 @@ def scrape_insider() -> list[dict]:
             stations.append({"name": name, "status": status})
 
     print(f"  {len(stations)} stations")
+    if len(stations) < 50:
+        raise RuntimeError(f"Only {len(stations)} stations scraped — site may have changed format")
     return stations
 
 
@@ -163,34 +165,34 @@ def fetch_fcc_stations() -> list[dict]:
         print("  WARNING: FCC zip is corrupted")
         return []
 
-    # Parse main.dat — find SpaceX SES (Satellite Earth Station) filings
-    # Schema: filing_key[0], filing_state[1], callsign[2], file_number[3],
-    #         subsystem_code[4], status_code[5], ..., description[40], address_key[41]
-    main_rows = _parse_ibfs_file(zf, "main.dat")
-    addr_rows = _parse_ibfs_file(zf, "address.dat")
+    with zf:
+        # Parse main.dat — find SpaceX SES (Satellite Earth Station) filings
+        # Schema: filing_key[0], filing_state[1], callsign[2], file_number[3],
+        #         subsystem_code[4], status_code[5], ..., description[40], address_key[41]
+        main_rows = _parse_ibfs_file(zf, "main.dat")
+        addr_rows = _parse_ibfs_file(zf, "address.dat")
 
-    spacex_addr_keys = set()
-    for r in addr_rows:
-        if len(r) > 2 and ("spacex" in r[2].lower() or "space exploration" in r[2].lower()):
-            spacex_addr_keys.add(r[0])
+        spacex_addr_keys = set()
+        for r in addr_rows:
+            if len(r) > 2 and ("spacex" in r[2].lower() or "space exploration" in r[2].lower()):
+                spacex_addr_keys.add(r[0])
 
-    filing_status: dict[str, str] = {}
-    for r in main_rows:
-        if len(r) > 41 and r[4] == "SES":
-            addr_key = r[41]
-            desc = r[40] if len(r) > 40 else ""
-            if (addr_key in spacex_addr_keys
-                    or "spacex" in desc.lower()
-                    or "space exploration" in desc.lower()):
-                filing_status[r[0]] = r[5].strip()
+        filing_status: dict[str, str] = {}
+        for r in main_rows:
+            if len(r) > 41 and r[4] == "SES":
+                addr_key = r[41]
+                desc = r[40] if len(r) > 40 else ""
+                if (addr_key in spacex_addr_keys
+                        or "spacex" in desc.lower()
+                        or "space exploration" in desc.lower()):
+                    filing_status[r[0]] = r[5].strip()
 
-    # Parse site.dat — extract coordinates
-    # Schema: site_key[0], filing_key[1], site_name[2], site_desc[3],
-    #         contact[4], address[5], ?, city[7], county[8], state[9], zip[10],
-    #         phone[11], elevation[12], lat_deg[13], lat_min[14], lat_sec[15],
-    #         lat_hemi[16], lon_deg[17], lon_min[18], lon_sec[19], lon_hemi[20]
-    site_rows = _parse_ibfs_file(zf, "site.dat")
-    zf.close()
+        # Parse site.dat — extract coordinates
+        # Schema: site_key[0], filing_key[1], site_name[2], site_desc[3],
+        #         contact[4], address[5], ?, city[7], county[8], state[9], zip[10],
+        #         phone[11], elevation[12], lat_deg[13], lat_min[14], lat_sec[15],
+        #         lat_hemi[16], lon_deg[17], lon_min[18], lon_sec[19], lon_hemi[20]
+        site_rows = _parse_ibfs_file(zf, "site.dat")
 
     # Dedup by normalized city name, prefer operational status
     city_stations: dict[str, dict] = {}
@@ -260,6 +262,9 @@ size_categories:
 ---
 
 # Starlink Ground Stations & Points of Presence
+
+![Update Ground Stations](https://github.com/juliensimon/space-datasets/actions/workflows/update-ground-stations.yml/badge.svg)
+![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['ground-stations']&label=updated&color=brightgreen)
 
 Starlink ground infrastructure data: gateway earth stations and internet Points of Presence (PoPs).
 
@@ -419,17 +424,7 @@ def main():
 
         print("\nUploading to HF...")
         subprocess.run(
-            ["hf", "upload", HF_REPO, str(gw_path), "data/gateways.parquet",
-             "--repo-type", "dataset"],
-            check=True,
-        )
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(pop_path), "data/pops.parquet",
-             "--repo-type", "dataset"],
-            check=True,
-        )
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(readme_path), "README.md",
+            ["hf", "upload", HF_REPO, str(tmp), ".",
              "--repo-type", "dataset"],
             check=True,
         )
