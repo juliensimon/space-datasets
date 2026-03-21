@@ -1,0 +1,6 @@
+pandas>=2.0
+pyarrow>=14.0
+requests>=2.31
+huggingface_hub[hf_xet]>=0.28
+beautifulsoup4>=4.12
+lxml>=5.0

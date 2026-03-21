@@ -34,8 +34,8 @@ SHELL_NAMES = {
 # Operational altitude bands per shell [min, max] in km
 # Synced from starlink-viz src/lib/config.ts SHELL_ALT_BANDS
 SHELL_ALT_BANDS = {
-    0: (460, 570),   # 33° — not yet launched, wide band
-    1: (460, 570),   # 43° — Gen1 at 480-490 + 540-560 km
+    0: (460, 570),   # 33° — Gen2, deploying at ~480-530 km, target 328 km (will lower)
+    1: (460, 570),   # 43° — Gen2, deploying at ~480-530 km, target 340 km (will lower)
     2: (460, 570),   # 53° — Gen1 at 480-490 + 540-560 km
     3: (460, 910),   # 70° — wide range, some at ~880-900 km
     4: (460, 600),   # 97.6° — observed 550-590 km
@@ -134,6 +134,164 @@ def is_isl_capable(inc: float, launch_year: int) -> bool:
     if shell == 0:
         return launch_year >= 2024
     return False
+
+
+def generate_readme(df_latest: pd.DataFrame, df_daily: pd.DataFrame, active: int) -> str:
+    """Generate a comprehensive README.md for the HF dataset."""
+    total = len(df_latest)
+    daily_rows = len(df_daily)
+    date_range_start = df_daily["date"].min().strftime("%Y-%m-%d") if len(df_daily) > 0 else "N/A"
+    date_range_end = df_daily["date"].max().strftime("%Y-%m-%d") if len(df_daily) > 0 else "N/A"
+
+    raising = int((df_latest["status"] == "raising").sum())
+    deorbiting = int((df_latest["status"] == "deorbiting").sum())
+    decayed = int((df_latest["status"] == "decayed").sum())
+    isl_count = int(df_latest["is_isl_capable"].sum())
+
+    return f"""---
+license: cc-by-4.0
+size_categories:
+  - 100K<n<1M
+task_categories:
+  - time-series-forecasting
+  - tabular-classification
+tags:
+  - space
+  - starlink
+  - satellites
+  - orbital-mechanics
+  - tle
+  - spacex
+  - constellation
+configs:
+  - config_name: daily_snapshots
+    data_files: data/daily_snapshots.parquet
+---
+
+# Starlink Fleet Data
+
+![Update Starlink Fleet](https://github.com/juliensimon/space-datasets/actions/workflows/update-starlink.yml/badge.svg)
+![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.starlink&label=updated&color=brightgreen)
+
+Daily health snapshots of the SpaceX Starlink constellation, derived from
+[CelesTrak](https://celestrak.org/) GP (General Perturbations) data.
+Currently tracking **{total:,}** satellites (**{active:,}** operational,
+**{raising:,}** raising, **{deorbiting:,}** deorbiting, **{isl_count:,}** ISL-capable).
+
+## Dataset description
+
+This dataset tracks the Starlink constellation's health over time through
+**daily aggregate snapshots per orbital shell**. Each day, the pipeline fetches
+the latest TLE/GP data from CelesTrak, classifies every satellite's operational
+status using orbital mechanics heuristics, and appends per-shell summary
+statistics to a growing time series.
+
+The `daily_snapshots` config contains historical daily aggregates — one row per
+shell per day — enabling trend analysis of constellation growth, shell fill
+rates, deployment cadence, and ISL (inter-satellite laser link) rollout.
+
+## Config: `daily_snapshots`
+
+Historical daily aggregates per orbital shell. Currently **{daily_rows:,}** rows
+spanning {date_range_start} to {date_range_end}.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `date` | datetime | Snapshot date (UTC) |
+| `shell_id` | int | Shell identifier (0-4) |
+| `shell_name` | string | Human-readable shell name, e.g. "Shell 3 (53deg / 550km)" |
+| `total_count` | int | Total satellites in this shell |
+| `operational_count` | int | Satellites at operational altitude |
+| `raising_count` | int | Satellites actively raising orbit |
+| `deorbiting_count` | int | Satellites deorbiting |
+| `isl_operational_count` | int | ISL-capable satellites in this shell |
+| `new_launches` | int | New launches detected this day (reserved) |
+
+### Usage
+
+```python
+from datasets import load_dataset
+
+ds = load_dataset("juliensimon/starlink-fleet-data", "daily_snapshots", split="train")
+df = ds.to_pandas()
+
+# Constellation growth over time
+growth = df.groupby("date")["operational_count"].sum()
+print(growth.tail(10))
+
+# Per-shell fill rates
+latest = df[df["date"] == df["date"].max()]
+for _, row in latest.iterrows():
+    print(f"{{row['shell_name']}}: {{row['operational_count']}} / {{row['total_count']}}")
+```
+
+## Status classification
+
+Each satellite is classified into one of six statuses based on its orbital
+parameters and a single-snapshot heuristic:
+
+| Status | Criteria |
+|--------|----------|
+| **operational** | Altitude within the shell's operational band |
+| **raising** | Below or above operational band, orbit changing toward target |
+| **deorbiting** | Below operational band with strong positive mean motion derivative (orbit shrinking) or very low altitude (<300 km) |
+| **decayed** | Altitude below 150 km, or stale epoch (>14 days) with altitude below 250 km |
+| **anomalous** | Eccentricity > 0.005 (unusual for Starlink's near-circular orbits) |
+| **unknown** | Does not match any classification rule |
+
+The classifier uses `mean_motion_dot` (first derivative of mean motion) as a
+proxy for orbital maneuvering direction: positive values indicate orbit decay
+(shrinking), negative values indicate active thrust (raising).
+
+## Shell assignment
+
+Satellites are assigned to shells by inclination:
+
+| Shell | Inclination | Target altitude | Inclination range |
+|-------|-------------|-----------------|-------------------|
+| Shell 1 (33deg) | 33.0deg | 328 km | < 38deg |
+| Shell 2 (43deg) | 43.0deg | 340 km | 38deg - 48deg |
+| Shell 3 (53deg) | 53.0deg | 550 km | 48deg - 60deg |
+| Shell 4 (70deg) | 70.0deg | 570 km | 60deg - 80deg |
+| Shell 5 (97.6deg) | 97.6deg | 560 km | > 80deg |
+
+## Update frequency
+
+Updated **daily at 08:00 UTC** via GitHub Actions. Each run fetches the current
+CelesTrak GP snapshot, classifies all satellites, and appends the day's
+per-shell aggregates to `daily_snapshots.parquet`. Re-runs on the same day are
+idempotent (existing rows for that date are replaced).
+
+## Data source
+
+All orbital data comes from [CelesTrak](https://celestrak.org/) GP data
+(NORAD/18th Space Defense Squadron). Only objects with names matching
+`STARLINK-*` are included (Starshield, debris, and unidentified objects are
+excluded).
+
+## Related datasets
+
+- [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) — 232M historical TLEs (1959-present)
+- [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) — NORAD satellite catalog
+- [space-launch-log](https://huggingface.co/datasets/juliensimon/space-launch-log) — Global launch history from GCAT
+- [starlink-ground-stations](https://huggingface.co/datasets/juliensimon/starlink-ground-stations) — Starlink gateway and PoP locations
+
+## Pipeline
+
+Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
+
+## Citation
+
+```bibtex
+@dataset{{starlink_fleet_data,
+  author = {{Simon, Julien}},
+  title = {{Starlink Fleet Data: Daily Constellation Health Snapshots}},
+  year = {{2026}},
+  publisher = {{Hugging Face}},
+  url = {{https://huggingface.co/datasets/juliensimon/starlink-fleet-data}}
+}}
+```
+"""
 
 
 def main():
@@ -250,26 +408,7 @@ def main():
         active = len(df_latest[df_latest["status"] == "operational"])
         print(f"  {active:,} operational, {len(df_latest):,} total")
 
-        (tmp_dir / "README.md").write_text(f"""---
-license: mit
-tags: [space, starlink, satellite, tle, celestrak]
-size_categories: [1K<n<10K]
----
-
-# Starlink Fleet Data
-
-![Update Starlink Fleet](https://github.com/juliensimon/space-datasets/actions/workflows/update-starlink.yml/badge.svg)
-![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.starlink&label=updated&color=brightgreen)
-
-Latest Starlink constellation snapshot from [CelesTrak](https://celestrak.org/). {len(df_latest):,} satellites ({active:,} operational). Updated daily.
-
-## Usage
-
-```python
-from datasets import load_dataset
-ds = load_dataset("juliensimon/starlink-fleet-data", split="train")
-```
-""")
+        (tmp_dir / "README.md").write_text(generate_readme(df_latest, df_daily, active))
 
         print("Uploading to HF...")
         subprocess.run(

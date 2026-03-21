@@ -1,0 +1,7 @@
+data/tle-archive/
+*.parquet
+__pycache__/
+*.pyc
+.env
+# Intentionally tracked:
+# data/ground-stations-cache.json
