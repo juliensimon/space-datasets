@@ -152,7 +152,12 @@ def main():
             continue
 
         norad_id = r["NORAD_CAT_ID"]
-        epoch = datetime.fromisoformat(r["EPOCH"].replace("Z", "+00:00"))
+        epoch_str = r["EPOCH"]
+        if epoch_str.endswith("Z"):
+            epoch_str = epoch_str[:-1] + "+00:00"
+        epoch = datetime.fromisoformat(epoch_str)
+        if epoch.tzinfo is None:
+            epoch = epoch.replace(tzinfo=timezone.utc)
         inc = r["INCLINATION"]
         ecc = r["ECCENTRICITY"]
         mm = r["MEAN_MOTION"]
