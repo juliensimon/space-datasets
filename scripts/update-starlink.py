@@ -102,9 +102,8 @@ def main():
             continue
 
         intl = r.get("OBJECT_ID", "")
-        launch_year = int("20" + intl[:2]) if intl and intl[:2].isdigit() else 0
-        if launch_year > 2100:
-            launch_year -= 100
+        # OBJECT_ID is COSPAR format: "2024-123A" (4-digit year)
+        launch_year = int(intl[:4]) if intl and intl[:4].isdigit() else 0
 
         shell_id = get_shell_id(inc)
         band = SHELL_ALT_BANDS.get(shell_id, (0, 0))
