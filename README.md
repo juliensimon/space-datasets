@@ -40,14 +40,8 @@ python scripts/update-launch-log.py
 python scripts/update-starlink.py
 ```
 
-## Bulk ingestion scripts
+## Bulk ingestion
 
-These scripts are for one-time or yearly data loads, not automated pipelines:
+`build-tle-archive.py` builds the TLE history dataset from Space-Track yearly bulk zip exports (232M records). Run manually when new yearly exports are available.
 
-| Script | Purpose |
-|--------|---------|
-| `build-tle-archive.py` | Build TLE history from Space-Track yearly bulk zip exports (232M records) |
-| `ingest-bulk-zip.ts` | Ingest Starlink TLEs from bulk zips into SQLite fleet database |
-| `backfill-spacetrack.ts` | Backfill Starlink TLEs via Space-Track GP_History API |
-| `export-dataset.py` | Export SQLite fleet database to Parquet for HF upload |
-| `check-data-quality.ts` | Validate fleet database before upload |
+Starlink fleet ingestion scripts (`ingest-bulk-zip.ts`, `backfill-spacetrack.ts`, `export-dataset.py`) live in the [starlink-viz](https://github.com/juliensimon/starlink-viz) repo as they depend on its classification library.
