@@ -5,6 +5,7 @@ Automated pipelines that keep space-related datasets on Hugging Face up to date.
 ![Update SATCAT](https://github.com/juliensimon/space-datasets/actions/workflows/update-satcat.yml/badge.svg)
 ![Update Launch Log](https://github.com/juliensimon/space-datasets/actions/workflows/update-launch-log.yml/badge.svg)
 ![Update Starlink Fleet](https://github.com/juliensimon/space-datasets/actions/workflows/update-starlink.yml/badge.svg)
+![Update Ground Stations](https://github.com/juliensimon/space-datasets/actions/workflows/update-ground-stations.yml/badge.svg)
 
 ## Datasets
 
@@ -14,6 +15,7 @@ Automated pipelines that keep space-related datasets on Hugging Face up to date.
 | [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) | ![SATCAT](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.satcat&label=updated&color=brightgreen) | Daily 06:00 UTC | CelesTrak | 68k objects |
 | [space-launch-log](https://huggingface.co/datasets/juliensimon/space-launch-log) | ![Launches](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['launch-log']&label=updated&color=brightgreen) | Weekly Mon 07:00 UTC | GCAT | 75k launches + 708 sites |
 | [starlink-fleet-data](https://huggingface.co/datasets/juliensimon/starlink-fleet-data) | ![Starlink](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.starlink&label=updated&color=brightgreen) | Daily 08:00 UTC | CelesTrak | 21.4M TLEs, 10k satellites |
+| [starlink-ground-stations](https://huggingface.co/datasets/juliensimon/starlink-ground-stations) | ![Ground Stations](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['ground-stations']&label=updated&color=brightgreen) | Daily 09:00 UTC | Starlink Insider + FCC IBFS | 350+ gateways, 14 PoPs |
 
 ## How it works
 
@@ -38,6 +40,9 @@ python scripts/update-launch-log.py
 
 # Update Starlink latest satellites
 python scripts/update-starlink.py
+
+# Update ground stations & PoPs
+python scripts/update-ground-stations.py
 ```
 
 ## Bulk ingestion
