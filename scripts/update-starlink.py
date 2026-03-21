@@ -200,6 +200,23 @@ def main():
     df_latest = df.sort_values("epoch_utc").drop_duplicates("norad_id", keep="last")
     df_latest["epoch_ts"] = df_latest["epoch_utc"].astype("int64") // 10**9
 
+    # Build daily_snapshots: per-shell aggregates for today
+    today = now.strftime("%Y-%m-%d")
+    daily_rows = []
+    for sid in sorted(df_latest["shell_id"].unique()):
+        shell = df_latest[df_latest["shell_id"] == sid]
+        daily_rows.append({
+            "date": today,
+            "shell_id": int(sid),
+            "total_count": len(shell),
+            "operational_count": int((shell["status"] == "operational").sum()),
+            "raising_count": int((shell["status"] == "raising").sum()),
+            "deorbiting_count": int((shell["status"] == "deorbiting").sum()),
+            "isl_operational_count": int(shell["is_isl_capable"].sum()),
+            "new_launches": 0,  # can't compute from single snapshot
+        })
+    df_today = pd.DataFrame(daily_rows)
+
     with tempfile.TemporaryDirectory() as tmp:
         tmp_dir = Path(tmp)
         data_dir = tmp_dir / "data"
@@ -209,6 +226,29 @@ def main():
             data_dir / "latest_satellites.parquet",
             index=False, engine="pyarrow", compression="zstd",
         )
+
+        # Download existing daily_snapshots and append today
+        daily_path = data_dir / "daily_snapshots.parquet"
+        try:
+            subprocess.run(
+                ["hf", "download", HF_REPO, "data/daily_snapshots.parquet",
+                 "--repo-type", "dataset", "--local-dir", str(tmp_dir)],
+                check=True, capture_output=True, timeout=30,
+            )
+            if daily_path.exists():
+                df_existing = pd.read_parquet(daily_path)
+                # Remove any existing rows for today (idempotent re-runs)
+                df_existing = df_existing[df_existing["date"] != today]
+                df_daily = pd.concat([df_existing, df_today], ignore_index=True)
+                print(f"  daily_snapshots: appended {today} ({len(df_daily):,} total rows)")
+            else:
+                df_daily = df_today
+                print(f"  daily_snapshots: created with {today}")
+        except Exception as e:
+            print(f"  daily_snapshots: could not fetch existing ({e}), starting fresh")
+            df_daily = df_today
+
+        df_daily.to_parquet(daily_path, index=False, engine="pyarrow", compression="zstd")
 
         active = len(df_latest[df_latest["status"] == "operational"])
         print(f"  {active:,} operational, {len(df_latest):,} total")
