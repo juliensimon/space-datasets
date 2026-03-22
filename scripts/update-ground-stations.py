@@ -315,9 +315,25 @@ pops = load_dataset("juliensimon/starlink-ground-stations", "pops", split="train
 operational = gateways.filter(lambda x: x["status"] == "operational")
 ```
 
+## Data sources
+
+- [Starlink Insider](https://starlinkinsider.com/starlink-gateway-locations/) — community-maintained list of Starlink gateway locations with operational status
+- [FCC IBFS](ftp://ftp.fcc.gov/pub/Bureaus/International/databases/) — bulk extract of International Bureau Filing System earth station license data (SpaceX SES filings with DMS coordinates)
+- [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) — geocoding for stations without coordinates
+
 ## Update schedule
 
 Daily at 09:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-datasets).
+
+## Related datasets
+
+- [starlink-fleet-data](https://huggingface.co/datasets/juliensimon/starlink-fleet-data) — Daily Starlink constellation health snapshots
+- [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) — NORAD satellite catalog
+- [space-launch-log](https://huggingface.co/datasets/juliensimon/space-launch-log) — Global launch history from GCAT
+
+## Pipeline
+
+Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
 ## License
 
