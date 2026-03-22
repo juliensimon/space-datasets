@@ -55,25 +55,133 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        # Compute stats for README
+        n_payload = int((df["object_type"] == "PAY").sum())
+        n_debris = int((df["object_type"] == "DEB").sum())
+        n_rocket = int((df["object_type"] == "R/B").sum())
+        n_active = int(df["ops_status"].isin(["+", "P", "B", "S", "X"]).sum())
+        n_decayed = int(df["decay_date"].notna().sum())
+        n_owners = df["owner"].nunique()
+
         (tmp / "README.md").write_text(f"""---
 license: mit
-tags: [space, satellite, norad, celestrak]
-size_categories: [10K<n<100K]
+task_categories:
+  - tabular-classification
+tags:
+  - space
+  - satellite
+  - norad
+  - celestrak
+  - orbital-mechanics
+size_categories:
+  - 10K<n<100K
 ---
 
-# NORAD SATCAT
+# NORAD Satellite Catalog (SATCAT)
 
 ![Update SATCAT](https://github.com/juliensimon/space-datasets/actions/workflows/update-satcat.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.satcat&label=updated&color=brightgreen)
 
-Complete NORAD Satellite Catalog from [CelesTrak](https://celestrak.org/pub/satcat.csv). {len(df):,} objects. Updated daily.
+Complete NORAD Satellite Catalog from [CelesTrak](https://celestrak.org/), tracking every
+object cataloged by the 18th Space Defense Squadron since 1957. Currently **{len(df):,}**
+objects ({n_payload:,} payloads, {n_debris:,} debris, {n_rocket:,} rocket bodies).
+
+## Dataset description
+
+The SATCAT (Satellite Catalog) is the authoritative registry of all artificial objects
+in Earth orbit and beyond — active satellites, defunct spacecraft, rocket bodies, and
+debris. Each entry includes launch metadata, orbital parameters, operational status,
+and physical characteristics. This dataset mirrors the full catalog daily from CelesTrak.
+
+## Schema
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `object_name` | string | Official name (e.g. "STARLINK-1234", "ISS (ZARYA)") |
+| `intl_designator` | string | International designator / COSPAR ID (e.g. "2024-123A") |
+| `norad_id` | int32 | NORAD catalog number (unique identifier) |
+| `object_type` | string | `PAY` (payload), `R/B` (rocket body), `DEB` (debris), `UNK` (unknown) |
+| `ops_status` | string | Operational status code (see below) |
+| `owner` | string | Owner/operator country or organization code |
+| `launch_date` | datetime | Launch date (UTC) |
+| `launch_site` | string | Launch site code (e.g. "AFETR", "TYMSC") |
+| `decay_date` | datetime | Reentry/decay date, if applicable |
+| `period_min` | float | Orbital period in minutes |
+| `inclination` | float | Orbital inclination in degrees |
+| `apogee_km` | float | Apogee altitude in km |
+| `perigee_km` | float | Perigee altitude in km |
+| `rcs_m2` | float | Radar cross-section in m² |
+| `data_status` | string | Data quality/status flag |
+| `orbit_center` | string | Central body (e.g. "EA" for Earth) |
+| `orbit_type` | string | Orbit classification |
+
+### Operational status codes
+
+| Code | Meaning |
+|------|---------|
+| `+` | Operational |
+| `-` | Non-operational |
+| `P` | Partially operational |
+| `B` | Backup/standby |
+| `S` | Spare |
+| `X` | Extended mission |
+| `D` | Decayed |
+| `?` | Unknown |
+
+## Quick stats
+
+- **{len(df):,}** cataloged objects
+- **{n_payload:,}** payloads, **{n_debris:,}** debris fragments, **{n_rocket:,}** rocket bodies
+- **{n_decayed:,}** objects have decayed/reentered
+- **{n_owners}** distinct owner codes
 
 ## Usage
 
 ```python
 from datasets import load_dataset
+
 ds = load_dataset("juliensimon/space-track-satcat", split="train")
+df = ds.to_pandas()
+
+# Active payloads only
+active = df[(df["object_type"] == "PAY") & (df["ops_status"] == "+")]
+print(f"{{len(active):,}} active payloads")
+
+# Launches per year
+df["year"] = df["launch_date"].dt.year
+launches_by_year = df.groupby("year")["norad_id"].count()
+
+# Objects by owner
+top_owners = df["owner"].value_counts().head(10)
+
+# LEO vs GEO
+leo = df[(df["perigee_km"] < 2000) & (df["perigee_km"] > 0)]
+geo = df[(df["perigee_km"] > 35000) & (df["apogee_km"] < 36500)]
 ```
+
+## Data source
+
+All data comes from [CelesTrak](https://celestrak.org/pub/satcat.csv), which mirrors
+the official US Space Command SATCAT. CelesTrak is maintained by Dr. T.S. Kelso and
+is the standard public source for space situational awareness data.
+
+## Update schedule
+
+Daily at 06:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-datasets).
+
+## Related datasets
+
+- [starlink-fleet-data](https://huggingface.co/datasets/juliensimon/starlink-fleet-data) — Daily Starlink constellation health snapshots
+- [space-launch-log](https://huggingface.co/datasets/juliensimon/space-launch-log) — Global launch history from GCAT
+- [starlink-ground-stations](https://huggingface.co/datasets/juliensimon/starlink-ground-stations) — Starlink gateway and PoP locations
+
+## Pipeline
+
+Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
+
+## License
+
+MIT
 """)
 
         print("Uploading to HF...")
