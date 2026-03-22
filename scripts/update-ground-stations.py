@@ -15,6 +15,7 @@ merged in with their FCC license status. Stations not in either source are dropp
 
 import io
 import json
+import os
 import re
 import subprocess
 import sys
@@ -25,6 +26,8 @@ from pathlib import Path
 
 import pandas as pd
 import requests
+
+from validate import check_dataset
 
 INSIDER_URL = "https://starlinkinsider.com/starlink-gateway-locations/"
 FCC_FTP_URL = "ftp://ftp.fcc.gov/pub/Bureaus/International/databases/IBFS.zip"
@@ -402,6 +405,10 @@ def main():
     gw_df = pd.DataFrame(gw_records, columns=["name", "lat", "lon", "status"])
     pop_df = pd.DataFrame(POPS, columns=["code", "city", "country", "lat", "lon"])
 
+    check_dataset(gw_df, "ground-stations", min_rows=50,
+        expected_columns=["name", "lat", "lon", "status"],
+        critical_columns=["lat", "lon"])
+
     n_operational = len(gw_df[gw_df["status"] == "operational"])
     n_planned = len(gw_df[gw_df["status"] == "planned"])
     print(f"\nGateways: {len(gw_df)} ({n_operational} operational, {n_planned} planned)")
@@ -429,6 +436,9 @@ def main():
             check=True,
         )
 
+    if os.environ.get("GITHUB_OUTPUT"):
+        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+            f.write(f"rows={len(gw_df)}\n")
     print("Done.")
 
 

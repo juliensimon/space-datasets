@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """Fetch GCAT launch log and sites, upload to HF."""
 
+import os
 import subprocess
 import tempfile
 from pathlib import Path
 
 import pandas as pd
+
+from validate import check_dataset
 
 
 LAUNCH_URL = "https://planet4589.org/space/gcat/tsv/launch/launch.tsv"
@@ -40,6 +43,13 @@ def main():
     sites["longitude"] = pd.to_numeric(sites["longitude"], errors="coerce")
     sites["latitude"] = pd.to_numeric(sites["latitude"], errors="coerce")
     print(f"  {len(sites):,} sites")
+
+    check_dataset(df, "launches", min_rows=70000,
+        expected_columns=["launch_tag", "launch_date", "lv_type", "launch_site"],
+        critical_columns=["launch_tag"])
+    check_dataset(sites, "sites", min_rows=600,
+        expected_columns=["site", "name", "longitude", "latitude"],
+        critical_columns=["longitude", "latitude"])
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_dir = Path(tmp)
@@ -81,6 +91,9 @@ sites = load_dataset("juliensimon/space-launch-log", "sites", split="train")
             check=True,
         )
 
+    if os.environ.get("GITHUB_OUTPUT"):
+        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+            f.write(f"rows={len(df)}\n")
     print("Done.")
 
 

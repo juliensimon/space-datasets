@@ -10,10 +10,20 @@ STATUS_FILE = Path(__file__).parent.parent / "status.json"
 
 def main():
     key = sys.argv[1]
+    rows = None
+    if "--rows" in sys.argv:
+        idx = sys.argv.index("--rows")
+        rows = int(sys.argv[idx + 1])
+
     status = json.loads(STATUS_FILE.read_text()) if STATUS_FILE.exists() else {}
     status[key] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    if rows is not None:
+        status.setdefault("_rows", {})[key] = rows
+
     STATUS_FILE.write_text(json.dumps(status, indent=2) + "\n")
-    print(f"Updated status[{key}] = {status[key]}")
+    print(f"Updated status[{key}] = {status[key]}"
+          + (f" ({rows:,} rows)" if rows else ""))
 
 if __name__ == "__main__":
     main()

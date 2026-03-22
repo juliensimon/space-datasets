@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Fetch NORAD SATCAT from CelesTrak and upload to HF."""
 
+import os
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
 import pandas as pd
+
+from validate import check_dataset
 
 
 SATCAT_URL = "https://celestrak.org/pub/satcat.csv"
@@ -45,6 +48,11 @@ def main():
         "ORBIT_TYPE": "orbit_type",
     })
 
+    check_dataset(df, "satcat", min_rows=60000,
+        expected_columns=["object_name", "norad_id", "object_type", "launch_date",
+                          "inclination", "apogee_km", "perigee_km"],
+        critical_columns=["norad_id", "object_name"])
+
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         data_dir = tmp / "data"
@@ -82,6 +90,9 @@ ds = load_dataset("juliensimon/space-track-satcat", split="train")
             check=True,
         )
 
+    if os.environ.get("GITHUB_OUTPUT"):
+        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+            f.write(f"rows={len(df)}\n")
     print("Done.")
 
 

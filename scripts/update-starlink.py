@@ -8,6 +8,7 @@ the starlink-viz repo.
 """
 
 import math
+import os
 import subprocess
 import tempfile
 from datetime import datetime, timezone
@@ -15,6 +16,8 @@ from pathlib import Path
 
 import pandas as pd
 import requests
+
+from validate import check_dataset
 
 
 CELESTRAK_URL = "https://celestrak.org/NORAD/elements/gp.php?GROUP=starlink&FORMAT=json"
@@ -130,6 +133,11 @@ def main():
     df = pd.DataFrame(rows)
     print(f"  {len(df):,} Starlink satellites processed")
 
+    check_dataset(df, "starlink", min_rows=5000,
+        expected_columns=["norad_id", "name", "altitude_km", "shell_id",
+                          "inclination", "status"],
+        critical_columns=["norad_id", "altitude_km"])
+
     # Build latest_satellites
     df_latest = df.sort_values("epoch_utc").drop_duplicates("norad_id", keep="last")
     df_latest["epoch_ts"] = df_latest["epoch_utc"].astype("int64") // 10**9
@@ -174,6 +182,9 @@ ds = load_dataset("juliensimon/starlink-fleet-data", split="train")
             check=True,
         )
 
+    if os.environ.get("GITHUB_OUTPUT"):
+        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+            f.write(f"rows={len(df_latest)}\n")
     print("Done.")
 
 
