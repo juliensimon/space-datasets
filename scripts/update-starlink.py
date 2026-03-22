@@ -410,9 +410,19 @@ def main():
 
         (tmp_dir / "README.md").write_text(generate_readme(df_latest, df_daily, active))
 
+        raising = int((df_latest["status"] == "raising").sum())
+        deorbiting = int((df_latest["status"] == "deorbiting").sum())
+
         print("Uploading to HF...")
+        commit_msg = (
+            f"Update Starlink fleet: {len(df_latest):,} satellites "
+            f"({active:,} operational, {raising:,} raising, "
+            f"{deorbiting:,} deorbiting)"
+        )
         subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp_dir), ".", "--repo-type", "dataset"],
+            ["hf", "upload", HF_REPO, str(tmp_dir), ".",
+             "--repo-type", "dataset",
+             "--commit-message", commit_msg],
             check=True,
         )
 

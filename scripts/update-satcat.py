@@ -77,8 +77,11 @@ ds = load_dataset("juliensimon/space-track-satcat", split="train")
 """)
 
         print("Uploading to HF...")
+        commit_msg = f"Update SATCAT: {len(df):,} objects"
         subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".", "--repo-type", "dataset"],
+            ["hf", "upload", HF_REPO, str(tmp), ".",
+             "--repo-type", "dataset",
+             "--commit-message", commit_msg],
             check=True,
         )
 

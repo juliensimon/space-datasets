@@ -423,9 +423,15 @@ def main():
         readme_path.write_text(build_readme(len(gw_df), n_operational, n_planned))
 
         print("\nUploading to HF...")
+        commit_msg = (
+            f"Update ground stations: {len(gw_df)} gateways "
+            f"({n_operational} operational, {n_planned} planned), "
+            f"{len(pop_df)} PoPs"
+        )
         subprocess.run(
             ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset"],
+             "--repo-type", "dataset",
+             "--commit-message", commit_msg],
             check=True,
         )
 

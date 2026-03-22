@@ -76,8 +76,11 @@ sites = load_dataset("juliensimon/space-launch-log", "sites", split="train")
 """)
 
         print("Uploading to HF...")
+        commit_msg = f"Update launch log: {len(df):,} launches, {len(sites):,} sites"
         subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp_dir), ".", "--repo-type", "dataset"],
+            ["hf", "upload", HF_REPO, str(tmp_dir), ".",
+             "--repo-type", "dataset",
+             "--commit-message", commit_msg],
             check=True,
         )
 
