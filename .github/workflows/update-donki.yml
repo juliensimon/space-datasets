@@ -1,0 +1,31 @@
+name: Update DONKI Events
+on:
+  schedule:
+    - cron: '0 14 * * *'  # daily at 14:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    environment: HF
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pandas pyarrow requests huggingface_hub[hf_xet]
+      - run: python scripts/update-donki.py
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      - name: Update status
+        run: python scripts/update-status.py donki
+      - name: Push status
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add status.json
+          git diff --cached --quiet || (git commit -m "status: donki updated $(date -u +%Y-%m-%d)" && git pull --rebase && git push)
