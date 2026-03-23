@@ -72,7 +72,7 @@ def main():
         n_owners = df["owner"].nunique()
 
         (tmp / "README.md").write_text(f"""---
-license: mit
+license: cc-by-4.0
 task_categories:
   - tabular-classification
 tags:

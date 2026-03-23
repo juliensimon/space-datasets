@@ -242,7 +242,7 @@ def fetch_fcc_stations() -> list[dict]:
 
 def build_readme(n_gateways: int, n_operational: int, n_planned: int) -> str:
     return f"""---
-license: mit
+license: cc-by-4.0
 task_categories:
   - tabular-classification
 tags:

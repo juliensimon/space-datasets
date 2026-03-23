@@ -67,7 +67,7 @@ def main():
         n_site_types = sites["type"].nunique() if "type" in sites.columns else 0
 
         (tmp_dir / "README.md").write_text(f"""---
-license: mit
+license: cc-by-4.0
 task_categories:
   - tabular-classification
   - time-series-forecasting
