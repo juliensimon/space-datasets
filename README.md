@@ -9,6 +9,8 @@ Automated pipelines that keep space-related datasets on Hugging Face up to date.
 ![Update NEO Close Approaches](https://github.com/juliensimon/space-datasets/actions/workflows/update-neo.yml/badge.svg)
 ![Update Space Weather](https://github.com/juliensimon/space-datasets/actions/workflows/update-space-weather.yml/badge.svg)
 ![Update Solar Flares](https://github.com/juliensimon/space-datasets/actions/workflows/update-solar-flares.yml/badge.svg)
+![Update Dst Index](https://github.com/juliensimon/space-datasets/actions/workflows/update-dst-index.yml/badge.svg)
+![Update DONKI Events](https://github.com/juliensimon/space-datasets/actions/workflows/update-donki.yml/badge.svg)
 
 ## Datasets
 
@@ -22,6 +24,8 @@ Automated pipelines that keep space-related datasets on Hugging Face up to date.
 | [neo-close-approaches](https://huggingface.co/datasets/juliensimon/neo-close-approaches) | ![NEO](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.neo&label=updated&color=brightgreen) | Daily 10:00 UTC | NASA JPL CNEOS | ~35K close approaches |
 | [space-weather-indices](https://huggingface.co/datasets/juliensimon/space-weather-indices) | ![Space Weather](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['space-weather']&label=updated&color=brightgreen) | Daily 11:00 UTC | CelesTrak / NOAA SWPC | Daily indices since 1957 |
 | [solar-flare-events](https://huggingface.co/datasets/juliensimon/solar-flare-events) | ![Solar Flares](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['solar-flares']&label=updated&color=brightgreen) | Daily 12:00 UTC | NCEI GOES-16 + SWPC | ~16K flare events (2017+) |
+| [dst-index](https://huggingface.co/datasets/juliensimon/dst-index) | ![Dst](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['dst-index']&label=updated&color=brightgreen) | Daily 13:00 UTC | WDC Kyoto | ~600K hourly readings (1957+) |
+| [donki-space-weather-events](https://huggingface.co/datasets/juliensimon/donki-space-weather-events) | ![DONKI](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.donki&label=updated&color=brightgreen) | Daily 14:00 UTC | NASA CCMC DONKI | CMEs, storms, shocks (2010+) |
 
 ## How it works
 
@@ -59,6 +63,12 @@ python scripts/update-space-weather.py
 # Update solar flare events (requires netCDF4)
 pip install netCDF4
 python scripts/update-solar-flares.py
+
+# Update Dst geomagnetic index
+python scripts/update-dst-index.py
+
+# Update DONKI space weather events
+python scripts/update-donki.py
 ```
 
 ## Bulk ingestion
