@@ -237,7 +237,7 @@ def main():
         print(f"  {size_mb:.1f} MB parquet")
 
         (tmp / "README.md").write_text(f"""---
-license: mit
+license: cc-by-4.0
 task_categories:
   - tabular-classification
   - time-series-forecasting
