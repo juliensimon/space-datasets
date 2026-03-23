@@ -58,15 +58,36 @@ def main():
         df.to_parquet(data_dir / "launches.parquet", index=False, engine="pyarrow", compression="zstd")
         sites.to_parquet(data_dir / "sites.parquet", index=False, engine="pyarrow", compression="zstd")
 
+        # Compute stats for README
+        n_orbital = int(df["category"].str.strip().eq("O").sum()) if "category" in df.columns else 0
+        n_suborbital = int(df["category"].str.strip().eq("S").sum()) if "category" in df.columns else 0
+        n_agencies = df["agency"].nunique()
+        first_year = df["launch_date"].str[:4].min() if "launch_date" in df.columns else "1957"
+        latest_year = df["launch_date"].str[:4].max() if "launch_date" in df.columns else "2026"
+        n_site_types = sites["type"].nunique() if "type" in sites.columns else 0
+
         (tmp_dir / "README.md").write_text(f"""---
 license: mit
-tags: [space, launches, rockets, gcat]
+task_categories:
+  - tabular-classification
+  - time-series-forecasting
+tags:
+  - space
+  - launches
+  - rockets
+  - gcat
+  - orbital-mechanics
 configs:
   - config_name: launches
-    data_files: data/launches.parquet
+    data_files:
+      - split: train
+        path: data/launches.parquet
   - config_name: sites
-    data_files: data/sites.parquet
-size_categories: [10K<n<100K]
+    data_files:
+      - split: train
+        path: data/sites.parquet
+size_categories:
+  - 10K<n<100K
 ---
 
 # Space Launch Log
@@ -74,20 +95,138 @@ size_categories: [10K<n<100K]
 ![Update Launch Log](https://github.com/juliensimon/space-datasets/actions/workflows/update-launch-log.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['launch-log']&label=updated&color=brightgreen)
 
-Global launch history from [GCAT](https://planet4589.org/space/gcat/). {len(df):,} launches, {len(sites):,} sites. Updated weekly.
+Complete global launch history from [GCAT](https://planet4589.org/space/gcat/)
+(General Catalog of Artificial Space Objects), maintained by Jonathan McDowell.
+Currently **{len(df):,}** launches ({n_orbital:,} orbital, {n_suborbital:,} suborbital)
+from **{len(sites):,}** sites, spanning {first_year}–{latest_year}.
+
+## Configs
+
+### `launches` — {len(df):,} launch records
+
+Every known launch attempt — orbital, suborbital, and failed — from {first_year} to present.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `launch_tag` | string | Unique GCAT launch identifier |
+| `launch_jd` | float | Launch time as Julian Date |
+| `launch_date` | string | Launch date (ISO-ish format) |
+| `lv_type` | string | Launch vehicle type (e.g. "Falcon 9") |
+| `variant` | string | Vehicle variant |
+| `flight_id` | string | Flight identifier |
+| `flight` | string | Flight number |
+| `mission` | string | Mission name |
+| `flight_code` | string | Flight code |
+| `platform` | string | Launch platform |
+| `launch_site` | string | Launch site code |
+| `launch_pad` | string | Launch pad identifier |
+| `ascent_site` | string | Ascent site (if different from launch) |
+| `ascent_pad` | string | Ascent pad |
+| `apogee` | float | Apogee altitude in km |
+| `apogee_flag` | string | Apogee qualifier flag |
+| `range` | float | Range in km |
+| `range_flag` | string | Range qualifier flag |
+| `destination` | string | Target orbit/destination |
+| `orbital_payload` | string | Whether payload reached orbit |
+| `agency` | string | Responsible agency/operator |
+| `launch_code` | string | Launch outcome code |
+| `fail_code` | string | Failure details (if applicable) |
+| `group` | string | Launch group |
+| `category` | string | `O` (orbital), `S` (suborbital), etc. |
+| `lt_cite` | string | Launch time citation |
+| `cite` | string | General citation |
+| `notes` | string | Additional notes |
+
+### `sites` — {len(sites):,} launch sites
+
+Launch facilities, pads, and test ranges worldwide.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `site` | string | Site identifier |
+| `code` | string | Short code |
+| `ucode` | string | Unicode code |
+| `type` | string | Site type |
+| `state_code` | string | Country/state code |
+| `start` | string | First operational date |
+| `stop` | string | Last operational date |
+| `short_name` | string | Short name |
+| `name` | string | Full name |
+| `location` | string | Geographic location description |
+| `longitude` | float | Longitude (WGS-84) |
+| `latitude` | float | Latitude (WGS-84) |
+| `error` | string | Position error estimate |
+| `parent` | string | Parent site (for pads within complexes) |
+| `short_ename` | string | Short English name |
+| `ename` | string | Full English name |
+| `group` | string | Site group |
+| `uname` | string | Unicode name |
+
+## Quick stats
+
+- **{len(df):,}** launches ({n_orbital:,} orbital, {n_suborbital:,} suborbital)
+- **{n_agencies}** distinct agencies/operators
+- **{len(sites):,}** launch sites
+- Coverage: **{first_year}–{latest_year}**
 
 ## Usage
 
 ```python
 from datasets import load_dataset
+
 launches = load_dataset("juliensimon/space-launch-log", "launches", split="train")
 sites = load_dataset("juliensimon/space-launch-log", "sites", split="train")
+
+df = launches.to_pandas()
+
+# Launches per year
+df["year"] = df["launch_date"].str[:4]
+print(df["year"].value_counts().sort_index().tail(10))
+
+# Most-used launch vehicles
+print(df["lv_type"].value_counts().head(10))
+
+# Orbital launches only
+orbital = df[df["category"].str.strip() == "O"]
+
+# Join with site coordinates
+sites_df = sites.to_pandas()
+df_geo = df.merge(sites_df[["code", "latitude", "longitude"]],
+                  left_on="launch_site", right_on="code", how="left")
 ```
+
+## Data source
+
+[GCAT](https://planet4589.org/space/gcat/) (General Catalog of Artificial Space Objects)
+by Jonathan McDowell, Harvard-Smithsonian Center for Astrophysics. GCAT is the most
+comprehensive public catalog of space launches and is widely used in the spaceflight
+research community.
+
+## Update schedule
+
+Weekly on Mondays at 07:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-datasets).
+
+## Related datasets
+
+- [starlink-fleet-data](https://huggingface.co/datasets/juliensimon/starlink-fleet-data) — Daily Starlink constellation health snapshots
+- [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) — NORAD satellite catalog
+- [starlink-ground-stations](https://huggingface.co/datasets/juliensimon/starlink-ground-stations) — Starlink gateway and PoP locations
+
+## Pipeline
+
+Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
+
+## License
+
+MIT
 """)
 
         print("Uploading to HF...")
+        commit_msg = f"Update launch log: {len(df):,} launches, {len(sites):,} sites"
         subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp_dir), ".", "--repo-type", "dataset"],
+            ["hf", "upload", HF_REPO, str(tmp_dir), ".",
+             "--repo-type", "dataset",
+             "--commit-message", commit_msg],
             check=True,
         )
 

@@ -9,6 +9,9 @@ from pathlib import Path
 STATUS_FILE = Path(__file__).parent.parent / "status.json"
 
 def main():
+    if len(sys.argv) < 2:
+        print("Usage: python update-status.py <key>", file=sys.stderr)
+        sys.exit(1)
     key = sys.argv[1]
     rows = None
     if "--rows" in sys.argv:
