@@ -3,13 +3,14 @@
   "satcat": "2026-03-23",
   "launch-log": "2026-03-23",
   "starlink": "2026-03-23",
-  "ground-stations": "2026-03-22",
+  "ground-stations": "2026-03-23",
   "neo": "2026-03-23",
   "solar-flares": "2026-03-23",
   "space-weather": "2026-03-23",
   "_rows": {
     "satcat": 68153,
     "starlink": 9885,
-    "launch-log": 75729
+    "launch-log": 75729,
+    "ground-stations": 303
   }
 }
