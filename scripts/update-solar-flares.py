@@ -331,6 +331,19 @@ Daily at 12:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-dat
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
+## Citation
+
+```bibtex
+@dataset{{solar_flares,
+  author = {{Simon, Julien}},
+  title = {{Solar Flares}},
+  year = {{2026}},
+  publisher = {{Hugging Face}},
+  url = {{https://huggingface.co/datasets/juliensimon/solar-flares}},
+  note = {{Based on NOAA/SWPC GOES X-ray flux data}}
+}}
+```
+
 ## License
 
 [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)

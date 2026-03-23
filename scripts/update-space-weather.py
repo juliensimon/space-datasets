@@ -206,6 +206,19 @@ Daily at 11:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-dat
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
+## Citation
+
+```bibtex
+@dataset{{space_weather,
+  author = {{Simon, Julien}},
+  title = {{Space Weather Indices}},
+  year = {{2026}},
+  publisher = {{Hugging Face}},
+  url = {{https://huggingface.co/datasets/juliensimon/space-weather}},
+  note = {{Based on NOAA/SWPC space weather data}}
+}}
+```
+
 ## License
 
 [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)

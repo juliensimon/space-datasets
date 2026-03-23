@@ -291,7 +291,8 @@ Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-d
   title = {{Starlink Fleet Data: Daily Constellation Health Snapshots}},
   year = {{2026}},
   publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/starlink-fleet-data}}
+  url = {{https://huggingface.co/datasets/juliensimon/starlink-fleet-data}},
+  note = {{Based on NORAD/18th Space Defense Squadron GP data via CelesTrak (Dr. T.S. Kelso)}}
 }}
 ```
 """

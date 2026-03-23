@@ -187,6 +187,19 @@ Daily at 06:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-dat
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
+## Citation
+
+```bibtex
+@dataset{{space_track_satcat,
+  author = {{Simon, Julien}},
+  title = {{NORAD Satellite Catalog (SATCAT)}},
+  year = {{2026}},
+  publisher = {{Hugging Face}},
+  url = {{https://huggingface.co/datasets/juliensimon/space-track-satcat}},
+  note = {{Based on NORAD/18th Space Defense Squadron data via CelesTrak (Dr. T.S. Kelso)}}
+}}
+```
+
 ## License
 
 [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)

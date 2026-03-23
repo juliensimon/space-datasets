@@ -66,3 +66,34 @@ python scripts/update-solar-flares.py
 `build-tle-archive.py` builds the TLE history dataset from Space-Track yearly bulk zip exports (232M records). Run manually when new yearly exports are available.
 
 Starlink fleet ingestion scripts (`ingest-bulk-zip.ts`, `backfill-spacetrack.ts`, `export-dataset.py`) live in the [starlink-viz](https://github.com/juliensimon/starlink-viz) repo as they depend on its classification library.
+
+## Citation
+
+If you use these datasets, please cite:
+
+```bibtex
+@dataset{space_datasets,
+  author = {Simon, Julien},
+  title = {Space Datasets: Automated Space Data Pipelines for Hugging Face},
+  year = {2026},
+  publisher = {Hugging Face},
+  url = {https://github.com/juliensimon/space-datasets}
+}
+```
+
+### Data sources
+
+These datasets are built from the following public sources — please cite them as appropriate:
+
+| Dataset | Original source |
+|---------|----------------|
+| SATCAT, Starlink Fleet, Space Weather | [CelesTrak](https://celestrak.org/) (Dr. T.S. Kelso), NORAD/18th Space Defense Squadron |
+| TLE History | [Space-Track.org](https://www.space-track.org/), 18th Space Defense Squadron |
+| Launch Log | [GCAT](https://planet4589.org/space/gcat/) (Jonathan McDowell, Harvard-Smithsonian CfA) |
+| Ground Stations | [Starlink Insider](https://starlinkinsider.com/), [FCC IBFS](https://www.fcc.gov/international-bureau-filing-system) |
+| NEO Close Approaches | [NASA/JPL CNEOS](https://cneos.jpl.nasa.gov/), SBDB Close-Approach API |
+| Solar Flares | [NOAA NCEI](https://www.ncei.noaa.gov/) GOES-16 XRS, [SWPC](https://www.swpc.noaa.gov/) |
+
+## License
+
+Pipeline code: [MIT](LICENSE). Datasets: [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/).

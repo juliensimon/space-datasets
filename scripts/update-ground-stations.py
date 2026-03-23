@@ -338,6 +338,19 @@ Daily at 09:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-dat
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
+## Citation
+
+```bibtex
+@dataset{{starlink_ground_stations,
+  author = {{Simon, Julien}},
+  title = {{Starlink Ground Stations}},
+  year = {{2026}},
+  publisher = {{Hugging Face}},
+  url = {{https://huggingface.co/datasets/juliensimon/starlink-ground-stations}},
+  note = {{Based on data from Starlink Insider and FCC IBFS}}
+}}
+```
+
 ## License
 
 [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)

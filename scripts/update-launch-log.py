@@ -216,6 +216,19 @@ Weekly on Mondays at 07:00 UTC via [GitHub Actions](https://github.com/juliensim
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
+## Citation
+
+```bibtex
+@dataset{{space_launch_log,
+  author = {{Simon, Julien}},
+  title = {{Space Launch Log}},
+  year = {{2026}},
+  publisher = {{Hugging Face}},
+  url = {{https://huggingface.co/datasets/juliensimon/space-launch-log}},
+  note = {{Based on GCAT (General Catalog of Artificial Space Objects) by Jonathan McDowell, Harvard-Smithsonian Center for Astrophysics}}
+}}
+```
+
 ## License
 
 [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)

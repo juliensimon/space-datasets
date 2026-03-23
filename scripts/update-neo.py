@@ -214,6 +214,19 @@ Daily at 10:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-dat
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
+## Citation
+
+```bibtex
+@dataset{{neo_close_approaches,
+  author = {{Simon, Julien}},
+  title = {{NEO Close Approaches}},
+  year = {{2026}},
+  publisher = {{Hugging Face}},
+  url = {{https://huggingface.co/datasets/juliensimon/neo-close-approaches}},
+  note = {{Based on NASA/JPL Center for Near Earth Object Studies (CNEOS) data via the SBDB Close-Approach API}}
+}}
+```
+
 ## License
 
 [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
