@@ -194,8 +194,8 @@ print(df["year"].value_counts().sort_index().tail(10))
 # Most-used launch vehicles
 print(df["lv_type"].value_counts().head(10))
 
-# Orbital launches only
-orbital = df[df["category"].str.strip() == "O"]
+# Orbital launches only (launch_code starts with O)
+orbital = df[df["launch_code"].str[0] == "O"]
 
 # Join with site coordinates
 sites_df = sites.to_pandas()
