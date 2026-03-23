@@ -11,6 +11,7 @@ Automated pipelines that keep space-related datasets on Hugging Face up to date.
 ![Update Solar Flares](https://github.com/juliensimon/space-datasets/actions/workflows/update-solar-flares.yml/badge.svg)
 ![Update Dst Index](https://github.com/juliensimon/space-datasets/actions/workflows/update-dst-index.yml/badge.svg)
 ![Update DONKI Events](https://github.com/juliensimon/space-datasets/actions/workflows/update-donki.yml/badge.svg)
+![Update Constellation Census](https://github.com/juliensimon/space-datasets/actions/workflows/update-constellation-census.yml/badge.svg)
 
 ## Datasets
 
@@ -26,6 +27,7 @@ Automated pipelines that keep space-related datasets on Hugging Face up to date.
 | [solar-flare-events](https://huggingface.co/datasets/juliensimon/solar-flare-events) | ![Solar Flares](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['solar-flares']&label=updated&color=brightgreen) | Daily 12:00 UTC | NCEI GOES-16 + SWPC | ~16K flare events (2017+) |
 | [dst-index](https://huggingface.co/datasets/juliensimon/dst-index) | ![Dst](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['dst-index']&label=updated&color=brightgreen) | Daily 13:00 UTC | WDC Kyoto | ~600K hourly readings (1957+) |
 | [donki-space-weather-events](https://huggingface.co/datasets/juliensimon/donki-space-weather-events) | ![DONKI](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.donki&label=updated&color=brightgreen) | Daily 14:00 UTC | NASA CCMC DONKI | CMEs, storms, shocks (2010+) |
+| [constellation-census](https://huggingface.co/datasets/juliensimon/constellation-census) | ![Census](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['constellation-census']&label=updated&color=brightgreen) | Daily 09:00 UTC | CelesTrak | ~20 constellations, ~11K sats |
 
 ## How it works
 
@@ -50,6 +52,9 @@ python scripts/update-launch-log.py
 
 # Update Starlink latest satellites
 python scripts/update-starlink.py
+
+# Update constellation census
+python scripts/update-constellation-census.py
 
 # Update ground stations & PoPs
 python scripts/update-ground-stations.py
@@ -97,7 +102,7 @@ These datasets are built from the following public sources — please cite them 
 
 | Dataset | Original source |
 |---------|----------------|
-| SATCAT, Starlink Fleet, Space Weather | [CelesTrak](https://celestrak.org/) (Dr. T.S. Kelso), NORAD/18th Space Defense Squadron |
+| SATCAT, Starlink Fleet, Constellation Census, Space Weather | [CelesTrak](https://celestrak.org/) (Dr. T.S. Kelso), NORAD/18th Space Defense Squadron |
 | TLE History | [Space-Track.org](https://www.space-track.org/), 18th Space Defense Squadron |
 | Launch Log | [GCAT](https://planet4589.org/space/gcat/) (Jonathan McDowell, Harvard-Smithsonian CfA) |
 | Ground Stations | [Starlink Insider](https://starlinkinsider.com/), [FCC IBFS](https://www.fcc.gov/international-bureau-filing-system) |
