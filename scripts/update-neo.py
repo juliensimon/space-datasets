@@ -216,7 +216,7 @@ Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-d
 
 ## License
 
-MIT
+[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
 """)
 
         print("Uploading to HF...")
