@@ -238,6 +238,10 @@ def main():
 
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
+pretty_name: "Solar Flare Events (GOES X-ray)"
+language:
+  - en
+description: "Individual solar flare detections from NOAA GOES-16 X-ray sensors (2017-present) with class, peak flux, and timing."
 task_categories:
   - tabular-classification
   - time-series-forecasting
@@ -247,6 +251,11 @@ tags:
   - goes
   - space-weather
   - noaa
+  - open-data
+  - goes-16
+  - x-ray
+  - ncei
+  - solar-activity
 size_categories:
   - 10K<n<100K
 ---
@@ -339,7 +348,7 @@ Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-d
   title = {{Solar Flares}},
   year = {{2026}},
   publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/solar-flares}},
+  url = {{https://huggingface.co/datasets/juliensimon/solar-flare-events}},
   note = {{Based on NOAA/SWPC GOES X-ray flux data}}
 }}
 ```

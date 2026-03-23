@@ -126,7 +126,11 @@ def main():
         print(f"  {size_mb:.1f} MB parquet")
 
         (tmp / "README.md").write_text(f"""---
-license: mit
+license: cc-by-4.0
+pretty_name: "Dst Geomagnetic Storm Index (Hourly)"
+language:
+  - en
+description: "Hourly Disturbance Storm Time (Dst) index from WDC Kyoto — the standard measure of geomagnetic storm intensity since 1957."
 task_categories:
   - time-series-forecasting
   - tabular-regression
@@ -135,7 +139,10 @@ tags:
   - space-weather
   - geomagnetic
   - dst-index
-  - noaa
+  - wdc-kyoto
+  - ring-current
+  - magnetosphere
+  - open-data
 size_categories:
   - 100K<n<1M
 ---
@@ -220,6 +227,24 @@ Daily at 13:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-dat
 ## Pipeline
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
+
+## Citation
+
+If you use this dataset, please cite:
+
+```bibtex
+@dataset{{dst_index,
+  author = {{Simon, Julien}},
+  title = {{Dst Geomagnetic Storm Index (Hourly)}},
+  year = {{2026}},
+  publisher = {{Hugging Face}},
+  url = {{https://huggingface.co/datasets/juliensimon/dst-index}}
+}}
+```
+
+### Data source
+
+[WDC for Geomagnetism, Kyoto](https://wdc.kugi.kyoto-u.ac.jp/dstdir/)
 
 ## License
 

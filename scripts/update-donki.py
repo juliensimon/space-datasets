@@ -188,7 +188,11 @@ def main():
         fastest_date = fastest_cme["start_time"].strftime("%Y-%m-%d") if fastest_cme is not None else "N/A"
 
         (tmp / "README.md").write_text(f"""---
-license: mit
+license: cc-by-4.0
+pretty_name: "NASA DONKI Space Weather Events"
+language:
+  - en
+description: "Coronal mass ejections, geomagnetic storms, interplanetary shocks, and solar energetic particles from NASA CCMC DONKI (2010-present)."
 task_categories:
   - tabular-classification
   - time-series-forecasting
@@ -199,6 +203,11 @@ tags:
   - geomagnetic-storm
   - solar
   - nasa
+  - open-data
+  - coronal-mass-ejection
+  - ccmc
+  - donki
+  - solar-wind
 size_categories:
   - 10K<n<100K
 ---
@@ -302,6 +311,24 @@ Daily at 14:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-dat
 ## Pipeline
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
+
+## Citation
+
+If you use this dataset, please cite:
+
+```bibtex
+@dataset{{donki_space_weather_events,
+  author = {{Simon, Julien}},
+  title = {{NASA DONKI Space Weather Events}},
+  year = {{2026}},
+  publisher = {{Hugging Face}},
+  url = {{https://huggingface.co/datasets/juliensimon/donki-space-weather-events}}
+}}
+```
+
+### Data source
+
+[NASA CCMC DONKI API](https://ccmc.gsfc.nasa.gov/tools/DONKI/)
 
 ## License
 

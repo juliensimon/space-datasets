@@ -153,6 +153,10 @@ def generate_readme(df_latest: pd.DataFrame, df_daily: pd.DataFrame, active: int
 
     return f"""---
 license: cc-by-4.0
+pretty_name: "Starlink Constellation Fleet Data"
+language:
+  - en
+description: "Daily snapshots of SpaceX's Starlink mega-constellation — satellite count, orbital shells, and operational status from CelesTrak."
 size_categories:
   - 100K<n<1M
 task_categories:
@@ -166,6 +170,10 @@ tags:
   - tle
   - spacex
   - constellation
+  - open-data
+  - norad
+  - leo
+  - mega-constellation
 configs:
   - config_name: daily_snapshots
     data_files: data/daily_snapshots.parquet

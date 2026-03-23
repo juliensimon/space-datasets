@@ -68,6 +68,10 @@ def main():
 
         (tmp_dir / "README.md").write_text(f"""---
 license: cc-by-4.0
+pretty_name: "Global Space Launch Log"
+language:
+  - en
+description: "Every orbital launch attempt since 1957 from Jonathan McDowell's GCAT, with vehicles, sites, and outcomes. Updated weekly."
 task_categories:
   - tabular-classification
   - time-series-forecasting
@@ -77,6 +81,10 @@ tags:
   - rockets
   - gcat
   - orbital-mechanics
+  - open-data
+  - spaceflight
+  - nasa
+  - launch-vehicle
 configs:
   - config_name: launches
     data_files:

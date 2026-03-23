@@ -243,6 +243,10 @@ def fetch_fcc_stations() -> list[dict]:
 def build_readme(n_gateways: int, n_operational: int, n_planned: int) -> str:
     return f"""---
 license: cc-by-4.0
+pretty_name: "Starlink Ground Stations and PoPs"
+language:
+  - en
+description: "Worldwide Starlink gateway and Point of Presence locations from FCC IBFS filings and Starlink Insider. Updated daily."
 task_categories:
   - tabular-classification
 tags:
@@ -251,6 +255,9 @@ tags:
   - ground-stations
   - satellite-internet
   - geospatial
+  - open-data
+  - spacex
+  - fcc
 configs:
   - config_name: gateways
     data_files:

@@ -95,6 +95,10 @@ def main():
 
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
+pretty_name: "Space Weather Indices (Kp, Ap, F10.7)"
+language:
+  - en
+description: "Daily geomagnetic and solar activity indices since 1957 from NOAA SWPC via CelesTrak — Kp, Ap, F10.7 flux, sunspot numbers."
 task_categories:
   - tabular-regression
   - time-series-forecasting
@@ -105,6 +109,12 @@ tags:
   - solar
   - noaa
   - celestrak
+  - open-data
+  - kp-index
+  - f10.7
+  - sunspot
+  - solar-cycle
+  - swpc
 size_categories:
   - 10K<n<100K
 ---
@@ -214,7 +224,7 @@ Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-d
   title = {{Space Weather Indices}},
   year = {{2026}},
   publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/space-weather}},
+  url = {{https://huggingface.co/datasets/juliensimon/space-weather-indices}},
   note = {{Based on NOAA/SWPC space weather data}}
 }}
 ```

@@ -103,6 +103,10 @@ def main():
 
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
+pretty_name: "Near-Earth Object Close Approaches"
+language:
+  - en
+description: "All asteroid and comet close approaches to Earth within 0.05 AU (1900-2100) from NASA JPL CNEOS. Updated daily."
 task_categories:
   - tabular-classification
   - tabular-regression
@@ -113,6 +117,10 @@ tags:
   - planetary-defense
   - nasa
   - near-earth-object
+  - open-data
+  - jpl
+  - cneos
+  - potentially-hazardous-asteroid
 size_categories:
   - 10K<n<100K
 ---

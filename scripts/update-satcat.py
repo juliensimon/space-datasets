@@ -73,6 +73,10 @@ def main():
 
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
+pretty_name: "NORAD Satellite Catalog (SATCAT)"
+language:
+  - en
+description: "Complete catalog of all tracked objects in Earth orbit from the 18th Space Defense Squadron via CelesTrak. Updated daily."
 task_categories:
   - tabular-classification
 tags:
@@ -81,6 +85,10 @@ tags:
   - norad
   - celestrak
   - orbital-mechanics
+  - space-track
+  - open-data
+  - ssa
+  - debris
 size_categories:
   - 10K<n<100K
 ---
