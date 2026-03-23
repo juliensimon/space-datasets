@@ -424,6 +424,7 @@ tags:
 configs:
   - config_name: latest_satellites
     data_files: data/latest_satellites.parquet
+    default: true
   - config_name: daily_snapshots
     data_files: data/daily_snapshots.parquet
 ---
