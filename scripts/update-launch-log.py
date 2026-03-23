@@ -59,8 +59,8 @@ def main():
         sites.to_parquet(data_dir / "sites.parquet", index=False, engine="pyarrow", compression="zstd")
 
         # Compute stats for README
-        n_orbital = int(df["category"].str.strip().eq("O").sum()) if "category" in df.columns else 0
-        n_suborbital = int(df["category"].str.strip().eq("S").sum()) if "category" in df.columns else 0
+        n_orbital = int(df["launch_code"].str[0].eq("O").sum()) if "launch_code" in df.columns else 0
+        n_suborbital = int(df["launch_code"].str[0].eq("S").sum()) if "launch_code" in df.columns else 0
         n_agencies = df["agency"].nunique()
         first_year = df["launch_date"].str[:4].min() if "launch_date" in df.columns else "1957"
         latest_year = df["launch_date"].str[:4].max() if "launch_date" in df.columns else "2026"
