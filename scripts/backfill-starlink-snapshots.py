@@ -19,14 +19,15 @@ Usage:
     # Custom date range
     python scripts/backfill-starlink-snapshots.py --start 2026-01-15 --end 2026-02-15
 
-    # Adjust delay between requests (default: 30s)
-    python scripts/backfill-starlink-snapshots.py --delay 45
+    # Adjust delay between requests (default: 120s)
+    python scripts/backfill-starlink-snapshots.py --delay 180
 """
 
 import argparse
 import json
 import math
 import os
+import random
 import subprocess
 import sys
 import tempfile
@@ -246,7 +247,7 @@ def main():
     parser = argparse.ArgumentParser(description="Backfill Starlink daily snapshots from Space-Track")
     parser.add_argument("--start", default="2026-01-01", help="Start date (inclusive)")
     parser.add_argument("--end", default="2026-03-20", help="End date (inclusive)")
-    parser.add_argument("--delay", type=int, default=30, help="Seconds between API requests (default: 30)")
+    parser.add_argument("--delay", type=int, default=120, help="Seconds between API requests (default: 120)")
     parser.add_argument("--upload", action="store_true", help="Upload to HF when done")
     args = parser.parse_args()
 
@@ -301,8 +302,8 @@ def main():
 
             except requests.HTTPError as e:
                 if e.response is not None and e.response.status_code == 429:
-                    print(f"\nRate limited! Waiting 5 minutes...")
-                    time.sleep(300)
+                    print(f"\nRate limited! Waiting 10 minutes...")
+                    time.sleep(600)
                     # Don't mark as completed — will retry next run
                     continue
                 else:
@@ -316,10 +317,17 @@ def main():
                 save_progress(progress)
                 sys.exit(1)
 
-            # Be gentle
+            # Be very gentle — base delay + random jitter (±25%)
             if i < len(remaining) - 1:
-                print(f"  Waiting {delay}s...", flush=True)
-                time.sleep(delay)
+                jitter = delay * random.uniform(-0.25, 0.25)
+                wait = delay + jitter
+                # Extra 5-min pause every 20 requests
+                if (i + 1) % 20 == 0:
+                    wait += 300
+                    print(f"  Hourly cooldown — waiting {wait:.0f}s...", flush=True)
+                else:
+                    print(f"  Waiting {wait:.0f}s...", flush=True)
+                time.sleep(wait)
 
     # Merge with existing daily_snapshots
     if not progress["snapshots"]:
