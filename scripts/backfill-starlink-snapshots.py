@@ -246,7 +246,7 @@ def save_progress(progress: dict) -> None:
 def main():
     parser = argparse.ArgumentParser(description="Backfill Starlink daily snapshots from Space-Track")
     parser.add_argument("--start", default="2026-01-01", help="Start date (inclusive)")
-    parser.add_argument("--end", default="2026-03-20", help="End date (inclusive)")
+    parser.add_argument("--end", default="2026-03-22", help="End date (inclusive)")
     parser.add_argument("--delay", type=int, default=120, help="Seconds between API requests (default: 120)")
     parser.add_argument("--upload", action="store_true", help="Upload to HF when done")
     args = parser.parse_args()
