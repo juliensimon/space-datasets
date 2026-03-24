@@ -24,20 +24,37 @@ def main():
     df = pd.read_csv(pd.io.common.StringIO(resp.text))
     print(f"  {len(df):,} rows, columns: {list(df.columns)}")
 
-    # Parse time as datetime
-    if "time" in df.columns:
-        df["time"] = pd.to_datetime(df["time"], errors="coerce")
+    # The LISIRD CSV columns include units in their names, e.g.:
+    #   "time (Julian Date)", "observed_flux (solar flux unit (SFU))", etc.
+    # Match both with-units and without-units variants.
+    time_col = None
+    for col in df.columns:
+        cl = col.strip().lower()
+        if cl.startswith("time"):
+            time_col = col
+            break
 
-    # Rename columns
+    # Convert time column: Julian Date -> datetime
+    if time_col is not None:
+        if "julian" in time_col.lower():
+            df["date"] = pd.to_datetime(
+                df[time_col].astype(float), unit="D", origin="julian", errors="coerce"
+            )
+        else:
+            df["date"] = pd.to_datetime(df[time_col], errors="coerce")
+        if time_col != "date":
+            df = df.drop(columns=[time_col])
+
+    # Rename flux columns -- match actual names with units
     rename_map = {}
-    if "time" in df.columns:
-        rename_map["time"] = "date"
-    if "observed_flux" in df.columns:
-        rename_map["observed_flux"] = "observed_flux_sfu"
-    if "adjusted_flux" in df.columns:
-        rename_map["adjusted_flux"] = "adjusted_flux_sfu"
-    if "absolute_flux" in df.columns:
-        rename_map["absolute_flux"] = "absolute_flux_sfu"
+    for col in df.columns:
+        cl = col.strip().lower()
+        if cl.startswith("observed_flux"):
+            rename_map[col] = "observed_flux_sfu"
+        elif cl.startswith("adjusted_flux"):
+            rename_map[col] = "adjusted_flux_sfu"
+        elif cl.startswith("absolute_flux"):
+            rename_map[col] = "absolute_flux_sfu"
 
     df = df.rename(columns=rename_map)
 

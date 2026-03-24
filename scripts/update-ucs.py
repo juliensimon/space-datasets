@@ -16,8 +16,15 @@ from validate import check_dataset
 HF_REPO = "juliensimon/ucs-satellite-database"
 
 UCS_URLS = [
+    "https://www.ucs.org/sites/default/files/2025-02/UCS-Satellite-Database-5-1-2024.xlsx",
     "https://www.ucsusa.org/sites/default/files/2025-02/UCS-Satellite-Database-5-1-2024.xlsx",
+    "https://www.ucsusa.org/media/2025-02/UCS-Satellite-Database-5-1-2024.xlsx",
+    "https://s3.amazonaws.com/ucs-documents/nuclear-weapons/sat-database/5-2024-update/UCS-Satellite-Database-5-1-2024.xlsx",
 ]
+
+_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (compatible; space-datasets/1.0; +https://github.com/juliensimon/space-datasets)",
+}
 
 
 def main():
@@ -26,7 +33,7 @@ def main():
     for url in UCS_URLS:
         print(f"  Trying {url}...")
         try:
-            resp = requests.get(url, timeout=120)
+            resp = requests.get(url, timeout=120, allow_redirects=True, headers=_HEADERS)
             resp.raise_for_status()
             df = pd.read_excel(io.BytesIO(resp.content), engine="openpyxl")
             print(f"  Success: {len(df):,} rows")

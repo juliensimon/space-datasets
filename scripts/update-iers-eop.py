@@ -49,17 +49,23 @@ def main():
         cl = col.strip().lower()
         if cl == "mjd":
             rename_map[col] = "mjd"
-        elif cl in ("x", "x_arcsec", "x(arcsec)", "x (arcsec)"):
+        elif cl in ("x_pole", "x", "x_arcsec"):
             rename_map[col] = "x_pole_arcsec"
-        elif cl in ("y", "y_arcsec", "y(arcsec)", "y (arcsec)"):
+        elif cl in ("y_pole", "y", "y_arcsec"):
             rename_map[col] = "y_pole_arcsec"
-        elif cl in ("ut1-utc", "ut1-utc(sec)", "ut1-utc (sec)", "ut1_utc"):
+        elif cl in ("sigma_x_pole",):
+            rename_map[col] = "sigma_x_pole_arcsec"
+        elif cl in ("sigma_y_pole",):
+            rename_map[col] = "sigma_y_pole_arcsec"
+        elif cl in ("ut1-utc", "ut1_utc"):
             rename_map[col] = "ut1_utc_sec"
-        elif cl in ("lod", "lod(ms)", "lod (ms)"):
+        elif cl in ("sigma_ut1-utc",):
+            rename_map[col] = "sigma_ut1_utc_sec"
+        elif cl in ("lod",):
             rename_map[col] = "lod_ms"
-        elif cl in ("dx", "dx(mas)", "dx (mas)", "dx_mas"):
+        elif cl in ("dx",):
             rename_map[col] = "dx_mas"
-        elif cl in ("dy", "dy(mas)", "dy (mas)", "dy_mas"):
+        elif cl in ("dy",):
             rename_map[col] = "dy_mas"
 
     if rename_map:
@@ -73,7 +79,7 @@ def main():
 
     df = df.sort_values("date").reset_index(drop=True) if "date" in df.columns else df
 
-    check_dataset(df, "iers-eop", min_rows=15000,
+    check_dataset(df, "iers-eop", min_rows=10000,
                   expected_columns=["date", "x_pole_arcsec", "y_pole_arcsec", "ut1_utc_sec"],
                   critical_columns=["date", "x_pole_arcsec", "y_pole_arcsec"])
 

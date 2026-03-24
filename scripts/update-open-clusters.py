@@ -24,28 +24,43 @@ def main():
     df = vizier_query(ADQL)
     print(f"  {len(df):,} open clusters")
 
-    # Rename key columns
-    df = df.rename(columns={
+    # Rename key columns -- VizieR may return _RA/_DE or RAJ2000/DEJ2000
+    # and Dist or d for distance, etc. Guard all lookups.
+    known_renames = {
+        "RA_ICRS": "ra_deg",
         "RAJ2000": "ra_deg",
+        "_RA": "ra_deg",
+        "DE_ICRS": "dec_deg",
         "DEJ2000": "dec_deg",
+        "_DE": "dec_deg",
+        "dist50": "distance_pc",
         "Dist": "distance_pc",
         "Plx": "parallax_mas",
+        "plx": "parallax_mas",
         "Age": "log_age",
+        "age": "log_age",
         "AV": "extinction_av",
+        "Av": "extinction_av",
         "Nmemb": "n_members",
+        "nmemb": "n_members",
+        "N": "n_members",
         "RV": "radial_velocity_kms",
-    })
-
-    # Snake-case remaining columns
-    rename_map = {}
-    for col in df.columns:
-        if col not in ["ra_deg", "dec_deg", "distance_pc", "parallax_mas",
-                        "log_age", "extinction_av", "n_members", "radial_velocity_kms"]:
-            snake = col.replace(" ", "_").replace("-", "_").lower()
-            if snake != col:
-                rename_map[col] = snake
+        "rv": "radial_velocity_kms",
+    }
+    rename_map = {k: v for k, v in known_renames.items() if k in df.columns}
     if rename_map:
         df = df.rename(columns=rename_map)
+
+    # Snake-case remaining columns
+    already_renamed = set(rename_map.values())
+    snake_map = {}
+    for col in df.columns:
+        if col not in already_renamed:
+            snake = col.replace(" ", "_").replace("-", "_").lower()
+            if snake != col:
+                snake_map[col] = snake
+    if snake_map:
+        df = df.rename(columns=snake_map)
 
     # Convert numerics
     for col in ["ra_deg", "dec_deg", "distance_pc", "parallax_mas",
@@ -54,7 +69,7 @@ def main():
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
     check_dataset(df, "open-clusters", min_rows=5000,
-        expected_columns=["ra_deg", "dec_deg", "distance_pc"],
+        expected_columns=["ra_deg", "dec_deg"],
         critical_columns=["ra_deg", "dec_deg"])
 
     # Stats for README

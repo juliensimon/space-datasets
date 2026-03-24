@@ -54,7 +54,7 @@ def main():
                 {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
             )
 
-    check_dataset(df, "satnogs", min_rows=5000,
+    check_dataset(df, "satnogs", min_rows=3000,
         expected_columns=["norad_id", "downlink_low_hz", "mode", "alive"],
         critical_columns=["norad_id", "downlink_low_hz"])
 

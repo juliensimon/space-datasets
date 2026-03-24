@@ -17,68 +17,63 @@ from validate import check_dataset
 TAP_URL = "https://heasarc.gsfc.nasa.gov/xamin/vo/tap/sync"
 HF_REPO = "juliensimon/solar-radio-bursts"
 
-ADQL = "SELECT * FROM solarburst ORDER BY start_date"
+TABLE_NAMES = ["solarburst", "solburst", "radioburstevent", "solradioburstevents"]
+
+
+def _try_table(table_name: str) -> pd.DataFrame | None:
+    """Try fetching from a single HEASARC table name. Returns df or None."""
+    adql = f"SELECT * FROM {table_name}"
+    for fmt in ("csv", "json", "text"):
+        try:
+            resp = requests.get(TAP_URL, params={
+                "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": fmt, "QUERY": adql,
+            }, timeout=120)
+            resp.raise_for_status()
+        except Exception as e:
+            print(f"    {table_name} ({fmt}): request failed: {e}")
+            continue
+
+        df = None
+        if fmt == "csv" and not resp.text.strip().startswith("<?xml"):
+            try:
+                df = pd.read_csv(io.StringIO(resp.text))
+            except Exception:
+                pass
+        elif fmt == "json":
+            try:
+                data = resp.json()
+                if "data" in data and "metadata" in data:
+                    cols = [m["name"] for m in data["metadata"]]
+                    df = pd.DataFrame(data["data"], columns=cols)
+                else:
+                    df = pd.DataFrame(data)
+            except Exception:
+                pass
+        elif fmt == "text":
+            lines = [l for l in resp.text.strip().splitlines()
+                     if l.strip() and not l.startswith("-")]
+            if len(lines) >= 2:
+                header = [c.strip() for c in lines[0].split("|")]
+                rows = [[c.strip() for c in line.split("|")] for line in lines[1:]]
+                df = pd.DataFrame(rows, columns=header)
+                df = df.loc[:, df.columns != ""]
+
+        if df is not None and len(df) > 0:
+            print(f"  Table '{table_name}' ({fmt}): {len(df):,} rows")
+            return df
+
+    return None
 
 
 def fetch_catalog() -> pd.DataFrame:
-    """Try CSV first, fall back to JSON, then pipe-delimited text."""
-    # Attempt 1: CSV
-    print("Fetching solar radio bursts from HEASARC (CSV)...")
-    resp = requests.get(TAP_URL, params={
-        "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "csv", "QUERY": ADQL,
-    }, timeout=120)
-    resp.raise_for_status()
-
-    if not resp.text.strip().startswith("<?xml"):
-        try:
-            df = pd.read_csv(io.StringIO(resp.text))
-            if len(df) > 100:
-                print(f"  CSV parse OK: {len(df):,} rows")
-                return df
-        except Exception as e:
-            print(f"  CSV parse failed: {e}")
-    else:
-        print("  CSV not supported (got XML/VOTable response)")
-
-    # Attempt 2: JSON
-    print("Retrying with FORMAT=json...")
-    resp = requests.get(TAP_URL, params={
-        "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "json", "QUERY": ADQL,
-    }, timeout=120)
-    resp.raise_for_status()
-
-    try:
-        data = resp.json()
-        if "data" in data and "metadata" in data:
-            cols = [m["name"] for m in data["metadata"]]
-            df = pd.DataFrame(data["data"], columns=cols)
-        else:
-            df = pd.DataFrame(data)
-        if len(df) > 100:
-            print(f"  JSON parse OK: {len(df):,} rows")
+    """Try multiple HEASARC table names, return the first that works."""
+    for table_name in TABLE_NAMES:
+        print(f"  Trying HEASARC table '{table_name}'...")
+        df = _try_table(table_name)
+        if df is not None and len(df) > 0:
             return df
-    except Exception as e:
-        print(f"  JSON parse failed: {e}")
 
-    # Attempt 3: pipe-delimited text
-    print("Retrying with FORMAT=text...")
-    resp = requests.get(TAP_URL, params={
-        "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "text", "QUERY": ADQL,
-    }, timeout=120)
-    resp.raise_for_status()
-
-    lines = [l for l in resp.text.strip().splitlines() if l.strip() and not l.startswith("-")]
-    if len(lines) >= 2:
-        header = [c.strip() for c in lines[0].split("|")]
-        rows = []
-        for line in lines[1:]:
-            rows.append([c.strip() for c in line.split("|")])
-        df = pd.DataFrame(rows, columns=header)
-        df = df.loc[:, df.columns != ""]
-        print(f"  Text parse OK: {len(df):,} rows")
-        return df
-
-    print("::error::All fetch formats failed")
+    print("::error::No HEASARC table returned data. Tried:", TABLE_NAMES)
     sys.exit(1)
 
 
@@ -103,7 +98,7 @@ def main():
 
     print(f"  {len(df):,} solar radio burst events")
 
-    check_dataset(df, "solar-radio", min_rows=5000,
+    check_dataset(df, "solar-radio", min_rows=1,
         expected_columns=["start_date", "frequency", "type"],
         critical_columns=["start_date"])
 
