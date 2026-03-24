@@ -26,7 +26,8 @@
     "quasars": 50000,
     "solar-wind": 10390,
     "sentry": 2105,
-    "swpc-alerts": 158
+    "swpc-alerts": 158,
+    "iers-eop": 12920
   },
   "dst-index": "2026-03-24",
   "donki": "2026-03-24",
@@ -44,5 +45,6 @@
   "black-holes": "2026-03-24",
   "quasars": "2026-03-24",
   "sentry": "2026-03-24",
-  "swpc-alerts": "2026-03-24"
+  "swpc-alerts": "2026-03-24",
+  "iers-eop": "2026-03-24"
 }
