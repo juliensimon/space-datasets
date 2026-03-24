@@ -15,25 +15,28 @@ Automated pipelines that keep space-related datasets on Hugging Face up to date.
 
 ## Datasets
 
-| Dataset | Last Updated | Schedule | Source | Records |
-|---------|-------------|----------|--------|---------|
-| [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) | ![TLE](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.tle-history&label=updated&color=blue) | Yearly (manual) | Space-Track.org | ~232M TLEs (1959-present) |
-| [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) | ![SATCAT](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.satcat&label=updated&color=brightgreen) | Daily 06:00 UTC | CelesTrak | Full NORAD catalog |
-| [space-launch-log](https://huggingface.co/datasets/juliensimon/space-launch-log) | ![Launches](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['launch-log']&label=updated&color=brightgreen) | Weekly Mon 07:00 UTC | GCAT | All launches + sites |
-| [starlink-fleet-data](https://huggingface.co/datasets/juliensimon/starlink-fleet-data) | ![Starlink](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.starlink&label=updated&color=brightgreen) | Daily 08:00 UTC | CelesTrak | Daily constellation snapshots |
-| [starlink-ground-stations](https://huggingface.co/datasets/juliensimon/starlink-ground-stations) | ![Ground Stations](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['ground-stations']&label=updated&color=brightgreen) | Daily 09:00 UTC | Starlink Insider + FCC IBFS | Gateways + PoPs |
-| [neo-close-approaches](https://huggingface.co/datasets/juliensimon/neo-close-approaches) | ![NEO](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.neo&label=updated&color=brightgreen) | Daily 10:00 UTC | NASA JPL CNEOS | ~35K close approaches |
-| [space-weather-indices](https://huggingface.co/datasets/juliensimon/space-weather-indices) | ![Space Weather](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['space-weather']&label=updated&color=brightgreen) | Daily 11:00 UTC | CelesTrak / NOAA SWPC | Daily indices since 1957 |
-| [solar-flare-events](https://huggingface.co/datasets/juliensimon/solar-flare-events) | ![Solar Flares](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['solar-flares']&label=updated&color=brightgreen) | Daily 12:00 UTC | NCEI GOES-16 + SWPC | ~16K flare events (2017+) |
-| [dst-index](https://huggingface.co/datasets/juliensimon/dst-index) | ![Dst](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['dst-index']&label=updated&color=brightgreen) | Daily 13:00 UTC | WDC Kyoto | ~600K hourly readings (1957+) |
-| [donki-space-weather-events](https://huggingface.co/datasets/juliensimon/donki-space-weather-events) | ![DONKI](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.donki&label=updated&color=brightgreen) | Daily 14:00 UTC | NASA CCMC DONKI | CMEs, storms, shocks (2010+) |
-| [constellation-census](https://huggingface.co/datasets/juliensimon/constellation-census) | ![Census](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['constellation-census']&label=updated&color=brightgreen) | Daily 09:00 UTC | CelesTrak | ~20 constellations, ~11K sats |
+| Dataset | Last Updated | Schedule | Update | Source | Records |
+|---------|-------------|----------|--------|--------|---------|
+| [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) | ![TLE](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.tle-history&label=updated&color=blue) | Yearly (manual) | Full | Space-Track.org | ~232M TLEs (1959-present) |
+| [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) | ![SATCAT](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.satcat&label=updated&color=brightgreen) | Daily 06:00 UTC | Full | CelesTrak | Full NORAD catalog |
+| [space-launch-log](https://huggingface.co/datasets/juliensimon/space-launch-log) | ![Launches](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['launch-log']&label=updated&color=brightgreen) | Weekly Mon 07:00 UTC | Full | GCAT | All launches + sites |
+| [starlink-fleet-data](https://huggingface.co/datasets/juliensimon/starlink-fleet-data) | ![Starlink](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.starlink&label=updated&color=brightgreen) | Daily 08:00 UTC | Incremental | CelesTrak | Daily constellation snapshots |
+| [constellation-census](https://huggingface.co/datasets/juliensimon/constellation-census) | ![Census](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['constellation-census']&label=updated&color=brightgreen) | Daily 09:00 UTC | Incremental | CelesTrak | ~20 constellations, ~11K sats |
+| [starlink-ground-stations](https://huggingface.co/datasets/juliensimon/starlink-ground-stations) | ![Ground Stations](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['ground-stations']&label=updated&color=brightgreen) | Daily 09:00 UTC | Full | Starlink Insider + FCC IBFS | Gateways + PoPs |
+| [neo-close-approaches](https://huggingface.co/datasets/juliensimon/neo-close-approaches) | ![NEO](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.neo&label=updated&color=brightgreen) | Daily 10:00 UTC | Full | NASA JPL CNEOS | ~35K close approaches |
+| [space-weather-indices](https://huggingface.co/datasets/juliensimon/space-weather-indices) | ![Space Weather](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['space-weather']&label=updated&color=brightgreen) | Daily 11:00 UTC | Full | CelesTrak / NOAA SWPC | Daily indices since 1957 |
+| [solar-flare-events](https://huggingface.co/datasets/juliensimon/solar-flare-events) | ![Solar Flares](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['solar-flares']&label=updated&color=brightgreen) | Daily 12:00 UTC | Incremental | NCEI GOES-16 + SWPC | ~16K flare events (2017+) |
+| [dst-index](https://huggingface.co/datasets/juliensimon/dst-index) | ![Dst](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['dst-index']&label=updated&color=brightgreen) | Daily 13:00 UTC | Incremental | WDC Kyoto | ~600K hourly readings (1957+) |
+| [donki-space-weather-events](https://huggingface.co/datasets/juliensimon/donki-space-weather-events) | ![DONKI](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.donki&label=updated&color=brightgreen) | Daily 14:00 UTC | Incremental | NASA CCMC DONKI | CMEs, storms, shocks (2010+) |
 
 ## How it works
 
 Each dataset has a Python script in `scripts/` and a GitHub Actions workflow in `.github/workflows/`. The scripts fetch data from public sources, convert to Parquet, and upload to Hugging Face.
 
-Most pipelines are stateless — each run rebuilds from source. The exception is `starlink-fleet-data`, which appends daily aggregate snapshots to a growing time series.
+Pipelines use two update strategies:
+
+- **Full rebuild** — re-fetches the entire dataset from source. Used when the source is a single file with no delta endpoint (SATCAT, Space Weather) or the dataset is small enough that incremental updates aren't worth the complexity.
+- **Incremental** — downloads the existing Parquet from HF, fetches only new/recent data, merges and deduplicates, then uploads. Falls back to full rebuild automatically when no existing data is found. Used by Starlink, Constellation Census, DONKI (14-day window), Dst Index (current month only), and Solar Flares (SWPC daily append).
 
 ## Setup
 
@@ -108,6 +111,8 @@ These datasets are built from the following public sources — please cite them 
 | Ground Stations | [Starlink Insider](https://starlinkinsider.com/), [FCC IBFS](https://www.fcc.gov/international-bureau-filing-system) |
 | NEO Close Approaches | [NASA/JPL CNEOS](https://cneos.jpl.nasa.gov/), SBDB Close-Approach API |
 | Solar Flares | [NOAA NCEI](https://www.ncei.noaa.gov/) GOES-16 XRS, [SWPC](https://www.swpc.noaa.gov/) |
+| Dst Index | [WDC for Geomagnetism, Kyoto](https://wdc.kugi.kyoto-u.ac.jp/dstdir/) |
+| DONKI Events | [NASA CCMC DONKI](https://ccmc.gsfc.nasa.gov/tools/DONKI/) |
 
 ## License
 
