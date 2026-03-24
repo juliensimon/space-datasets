@@ -62,29 +62,101 @@ def parse_dst_wdc(text, quality):
     return records
 
 
+def load_existing_dst(tmp_dir):
+    """Download existing Dst parquet from HF. Returns DataFrame or None."""
+    parquet_path = tmp_dir / "data" / "dst_index.parquet"
+    try:
+        subprocess.run(
+            ["hf", "download", HF_REPO, "data/dst_index.parquet",
+             "--repo-type", "dataset", "--local-dir", str(tmp_dir)],
+            check=True, capture_output=True, timeout=30,
+        )
+        if parquet_path.exists():
+            df = pd.read_parquet(parquet_path)
+            df["datetime"] = pd.to_datetime(df["datetime"])
+            print(f"  Loaded existing: {len(df):,} hourly records")
+            return df
+    except Exception as e:
+        print(f"  Could not load existing ({e}), doing full rebuild")
+    return None
+
+
+def fetch_months(url_template, year, months, quality):
+    """Fetch specific months from WDC Kyoto."""
+    records = []
+    for month in months:
+        ym6 = f"{year}{month:02d}"
+        ym4 = f"{year % 100:02d}{month:02d}"
+        url = url_template.format(ym6=ym6, ym4=ym4)
+        try:
+            resp = requests.get(url, timeout=15)
+            if resp.status_code == 200 and resp.text.startswith("DST"):
+                records.extend(parse_dst_wdc(resp.text, quality))
+        except Exception:
+            pass
+    return records
+
+
 def main():
     print("Fetching Dst index from WDC Kyoto...")
-    all_records = []
     now = datetime.utcnow()
 
-    for quality, url_template, start_year, end_year in DST_SOURCES:
-        actual_end = min(end_year, now.year)
-        for year in range(start_year, actual_end + 1):
-            end_month = now.month if year == now.year else 12
-            for month in range(1, end_month + 1):
-                ym6 = f"{year}{month:02d}"
-                ym4 = f"{year % 100:02d}{month:02d}"
-                url = url_template.format(ym6=ym6, ym4=ym4)
-                try:
-                    resp = requests.get(url, timeout=15)
-                    if resp.status_code == 200 and resp.text.startswith("DST"):
-                        records = parse_dst_wdc(resp.text, quality)
-                        all_records.extend(records)
-                except Exception:
-                    pass  # Skip months with no data
-            print(f"  {quality} {year}: fetched")
+    # Try incremental
+    import tempfile as _tf
+    with _tf.TemporaryDirectory() as probe:
+        df_existing = load_existing_dst(Path(probe))
 
-    df = pd.DataFrame(all_records)
+    if df_existing is not None and len(df_existing) > 0:
+        # Incremental: fetch only realtime (current year) + last provisional month
+        print("  Incremental mode: fetching recent months only")
+        new_records = []
+
+        # Realtime: all months of current year
+        rt_template = DST_SOURCES[2][1]  # realtime URL template
+        rt_months = list(range(1, now.month + 1))
+        new_records.extend(fetch_months(rt_template, now.year, rt_months, "realtime"))
+        print(f"  Realtime {now.year}: {len(new_records)} records ({len(rt_months)} months)")
+
+        # Provisional: re-fetch last 2 months of previous quality tier (corrections)
+        prov_template = DST_SOURCES[1][1]  # provisional URL template
+        prov_year = now.year - 1
+        prov_months = [11, 12]
+        prov_records = fetch_months(prov_template, prov_year, prov_months, "provisional")
+        new_records.extend(prov_records)
+        print(f"  Provisional {prov_year} (Nov-Dec): {len(prov_records)} records")
+
+        df_new = pd.DataFrame(new_records)
+        if not df_new.empty:
+            df_new["datetime"] = pd.to_datetime(df_new["datetime"])
+            # Remove overlapping period from existing, then append new
+            cutoff = df_new["datetime"].min()
+            df_kept = df_existing[df_existing["datetime"] < cutoff]
+            df = pd.concat([df_kept, df_new], ignore_index=True)
+            print(f"  Merged: {len(df):,} records (kept {len(df_kept):,} + {len(df_new):,} new)")
+        else:
+            df = df_existing
+            print("  No new data")
+    else:
+        # Full rebuild
+        print("  Full rebuild from 1957...")
+        all_records = []
+        for quality, url_template, start_year, end_year in DST_SOURCES:
+            actual_end = min(end_year, now.year)
+            for year in range(start_year, actual_end + 1):
+                end_month = now.month if year == now.year else 12
+                for month in range(1, end_month + 1):
+                    ym6 = f"{year}{month:02d}"
+                    ym4 = f"{year % 100:02d}{month:02d}"
+                    url = url_template.format(ym6=ym6, ym4=ym4)
+                    try:
+                        resp = requests.get(url, timeout=15)
+                        if resp.status_code == 200 and resp.text.startswith("DST"):
+                            records = parse_dst_wdc(resp.text, quality)
+                            all_records.extend(records)
+                    except Exception:
+                        pass
+                print(f"  {quality} {year}: fetched")
+        df = pd.DataFrame(all_records)
     df["datetime"] = pd.to_datetime(df["datetime"])
     df = df.sort_values("datetime").reset_index(drop=True)
 

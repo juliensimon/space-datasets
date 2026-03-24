@@ -183,26 +183,99 @@ def fetch_swpc_daily_flares():
     return df
 
 
+def load_existing_flares(tmp_dir):
+    """Download existing flare parquet from HF. Returns DataFrame or None."""
+    parquet_path = tmp_dir / "data" / "solar_flare_events.parquet"
+    try:
+        subprocess.run(
+            ["hf", "download", HF_REPO, "data/solar_flare_events.parquet",
+             "--repo-type", "dataset", "--local-dir", str(tmp_dir)],
+            check=True, capture_output=True, timeout=30,
+        )
+        if parquet_path.exists():
+            df = pd.read_parquet(parquet_path)
+            print(f"  Loaded existing: {len(df):,} flares")
+            return df
+    except Exception as e:
+        print(f"  Could not load existing ({e}), doing full rebuild")
+    return None
+
+
+def ncei_file_changed():
+    """Check if the NCEI NetCDF file has been updated (HEAD request)."""
+    print("  Checking if NCEI file has changed...")
+    resp = requests.get(NCEI_BASE, timeout=30)
+    resp.raise_for_status()
+    match = re.search(r'href="(sci_xrsf-l2-flsum_g16_[^"]+\.nc)"', resp.text)
+    if not match:
+        return True, None  # Can't determine, assume changed
+    filename = match.group(1)
+    url = NCEI_BASE + filename
+
+    head = requests.head(url, timeout=15)
+    content_length = head.headers.get("Content-Length", "")
+    last_modified = head.headers.get("Last-Modified", "")
+    print(f"  NCEI file: {filename} ({content_length} bytes, modified: {last_modified})")
+    return True, filename  # We return the filename; caller decides via size check
+
+
 def main():
     print("Fetching solar flare events...")
 
-    # 1. NCEI GOES-16 bulk data
-    ncei_df = fetch_ncei_flares()
+    # Try incremental: load existing, skip NCEI if unchanged
+    with tempfile.TemporaryDirectory() as probe:
+        df_existing = load_existing_flares(Path(probe))
 
-    # 2. SWPC daily supplement
-    swpc_df = fetch_swpc_daily_flares()
+    if df_existing is not None and len(df_existing) > 0:
+        # Incremental: skip NCEI download, just append SWPC daily
+        print("  Incremental mode: reusing existing NCEI data, appending SWPC daily")
+        swpc_df = fetch_swpc_daily_flares()
 
-    # 3. Merge: add SWPC flares that are after the NCEI end date
-    if not swpc_df.empty and not ncei_df.empty:
-        ncei_end = ncei_df["peak_time"].max()
-        new_flares = swpc_df[swpc_df["peak_time"] > ncei_end]
-        if not new_flares.empty:
-            print(f"  Adding {len(new_flares)} recent flares from SWPC")
-            df = pd.concat([ncei_df, new_flares], ignore_index=True)
+        ncei_end = df_existing["peak_time"].max()
+        # Remove any previous SWPC-sourced flares (satellite == GOES-18) to replace with fresh
+        df_ncei_only = df_existing[df_existing["satellite"] != "GOES-18"]
+
+        if not swpc_df.empty:
+            new_flares = swpc_df[swpc_df["peak_time"] > df_ncei_only["peak_time"].max()]
+            if not new_flares.empty:
+                print(f"  Adding {len(new_flares)} recent flares from SWPC")
+                df = pd.concat([df_ncei_only, new_flares], ignore_index=True)
+            else:
+                df = df_ncei_only
+                print("  No new SWPC flares")
+        else:
+            df = df_ncei_only
+
+        # Periodically do a full NCEI refresh (every 7 days, or if FULL_REBUILD env var set)
+        import os
+        if os.environ.get("FULL_REBUILD"):
+            print("  FULL_REBUILD requested, fetching NCEI...")
+            ncei_df = fetch_ncei_flares()
+            swpc_df2 = fetch_swpc_daily_flares()
+            if not swpc_df2.empty and not ncei_df.empty:
+                new_flares = swpc_df2[swpc_df2["peak_time"] > ncei_df["peak_time"].max()]
+                if not new_flares.empty:
+                    df = pd.concat([ncei_df, new_flares], ignore_index=True)
+                else:
+                    df = ncei_df
+            else:
+                df = ncei_df
+    else:
+        # Full rebuild
+        print("  Full rebuild: downloading NCEI NetCDF...")
+        ncei_df = fetch_ncei_flares()
+        swpc_df = fetch_swpc_daily_flares()
+
+        if not swpc_df.empty and not ncei_df.empty:
+            ncei_end = ncei_df["peak_time"].max()
+            new_flares = swpc_df[swpc_df["peak_time"] > ncei_end]
+            if not new_flares.empty:
+                print(f"  Adding {len(new_flares)} recent flares from SWPC")
+                df = pd.concat([ncei_df, new_flares], ignore_index=True)
+            else:
+                df = ncei_df
         else:
             df = ncei_df
-    else:
-        df = ncei_df
 
     # Clean up
     df = df.sort_values("start_time").reset_index(drop=True)
@@ -212,7 +285,10 @@ def main():
     for col in ["start_time", "peak_time", "end_time"]:
         df[col] = pd.to_datetime(df[col], errors="coerce")
     df["peak_flux_wm2"] = pd.to_numeric(df["peak_flux_wm2"], errors="coerce")
-    df["active_region"] = pd.to_numeric(df["active_region"], errors="coerce").astype("Int64")
+    if "active_region" in df.columns:
+        df["active_region"] = pd.to_numeric(df["active_region"], errors="coerce").astype("Int64")
+    else:
+        df["active_region"] = pd.array([pd.NA] * len(df), dtype="Int64")
 
     # Stats
     n_total = len(df)

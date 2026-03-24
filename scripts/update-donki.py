@@ -4,7 +4,7 @@
 import subprocess
 import tempfile
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -121,42 +121,95 @@ def parse_simple_events(raw, event_type):
     return rows
 
 
+ENDPOINTS = [
+    ("CME", "CME", parse_cmes),
+    ("GST", "GST", parse_gsts),
+    ("IPS", "IPS", lambda raw: parse_simple_events(raw, "IPS")),
+    ("HSS", "HSS", lambda raw: parse_simple_events(raw, "HSS")),
+    ("SEP", "SEP", lambda raw: parse_simple_events(raw, "SEP")),
+]
+
+# How many days to re-fetch for corrections (DONKI backfills events)
+OVERLAP_DAYS = 14
+
+
+def fetch_incremental(start_date, end_date):
+    """Fetch all event types for a date range."""
+    all_rows = []
+    for label, endpoint, parser in ENDPOINTS:
+        try:
+            raw = fetch_donki(endpoint, start_date, end_date)
+            rows = parser(raw)
+            all_rows.extend(rows)
+            print(f"    {label}: {len(rows)} events")
+        except Exception as e:
+            print(f"    {label}: error - {e}")
+        time.sleep(0.5)
+    return all_rows
+
+
+def load_existing(tmp_dir):
+    """Download existing parquet from HF. Returns DataFrame or None."""
+    parquet_path = tmp_dir / "data" / "donki_events.parquet"
+    try:
+        subprocess.run(
+            ["hf", "download", HF_REPO, "data/donki_events.parquet",
+             "--repo-type", "dataset", "--local-dir", str(tmp_dir)],
+            check=True, capture_output=True, timeout=30,
+        )
+        if parquet_path.exists():
+            df = pd.read_parquet(parquet_path)
+            df["start_time"] = pd.to_datetime(df["start_time"])
+            print(f"  Loaded existing: {len(df):,} events")
+            return df
+    except Exception as e:
+        print(f"  Could not load existing ({e}), doing full rebuild")
+    return None
+
+
 def main():
     print("Fetching DONKI space weather events...")
 
-    all_rows = []
+    now = datetime.utcnow()
 
-    # CMEs
-    print("  Fetching CMEs...")
-    cme_raw = fetch_by_year("CME")
-    all_rows.extend(parse_cmes(cme_raw))
-    print(f"  {len(cme_raw)} CMEs total")
+    # Try incremental: load existing, fetch only recent data
+    with tempfile.TemporaryDirectory() as probe:
+        df_existing = load_existing(Path(probe))
 
-    # Geomagnetic Storms
-    print("  Fetching GSTs...")
-    gst_raw = fetch_by_year("GST")
-    all_rows.extend(parse_gsts(gst_raw))
-    print(f"  {len(gst_raw)} GSTs total")
+    if df_existing is not None and len(df_existing) > 0:
+        # Incremental: fetch from (max_date - overlap) to today
+        max_date = df_existing["start_time"].max()
+        fetch_from = (max_date - timedelta(days=OVERLAP_DAYS)).strftime("%Y-%m-%d")
+        fetch_to = now.strftime("%Y-%m-%d")
+        print(f"  Incremental fetch: {fetch_from} to {fetch_to}")
 
-    # Interplanetary Shocks
-    print("  Fetching IPS...")
-    ips_raw = fetch_by_year("IPS")
-    all_rows.extend(parse_simple_events(ips_raw, "IPS"))
-    print(f"  {len(ips_raw)} IPS total")
+        new_rows = fetch_incremental(fetch_from, fetch_to)
+        df_new = pd.DataFrame(new_rows)
 
-    # High Speed Streams
-    print("  Fetching HSS...")
-    hss_raw = fetch_by_year("HSS")
-    all_rows.extend(parse_simple_events(hss_raw, "HSS"))
-    print(f"  {len(hss_raw)} HSS total")
+        if not df_new.empty:
+            df_new["start_time"] = pd.to_datetime(df_new["start_time"], errors="coerce")
+            df_new["cme_time_21_5"] = pd.to_datetime(df_new.get("cme_time_21_5"), errors="coerce")
+            df_new["active_region"] = pd.to_numeric(df_new.get("active_region"), errors="coerce").astype("Int64")
 
-    # Solar Energetic Particles
-    print("  Fetching SEP...")
-    sep_raw = fetch_by_year("SEP")
-    all_rows.extend(parse_simple_events(sep_raw, "SEP"))
-    print(f"  {len(sep_raw)} SEP total")
+            # Merge: new records override existing ones (for corrections)
+            df = pd.concat([df_existing, df_new], ignore_index=True)
+            df = df.drop_duplicates("activity_id", keep="last")
+            print(f"  Merged: {len(df):,} events ({len(df) - len(df_existing):+,} net)")
+        else:
+            df = df_existing
+            print("  No new events")
+    else:
+        # Full rebuild
+        print("  Full rebuild from 2010...")
+        all_rows = []
+        for label, endpoint, parser in ENDPOINTS:
+            print(f"  Fetching {label}...")
+            raw = fetch_by_year(endpoint)
+            rows = parser(raw)
+            all_rows.extend(rows)
+            print(f"  {len(raw)} {label}s total")
 
-    df = pd.DataFrame(all_rows)
+        df = pd.DataFrame(all_rows)
     df["start_time"] = pd.to_datetime(df["start_time"], errors="coerce")
     df["cme_time_21_5"] = pd.to_datetime(df.get("cme_time_21_5"), errors="coerce")
     df["active_region"] = pd.to_numeric(df.get("active_region"), errors="coerce").astype("Int64")
