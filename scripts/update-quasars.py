@@ -120,6 +120,7 @@ configs:
 # Quasar & AGN Catalog
 
 ![Update Quasars](https://github.com/juliensimon/space-datasets/actions/workflows/update-quasars.yml/badge.svg)
+![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.quasars&label=updated&color=brightgreen)
 
 Catalog of **{n:,}** quasars and active galactic nuclei from
 [SIMBAD](https://simbad.u-strasbg.fr/): **{n_qso:,}** quasars, **{n_seyfert:,}**
@@ -154,9 +155,24 @@ df = ds.to_pandas()
 df["agn_category"].value_counts()
 ```
 
+## Update frequency
+
+Updated **weekly on Monday at 19:00 UTC** via GitHub Actions.
+
 ## Data source
 
 [SIMBAD Astronomical Database](https://simbad.u-strasbg.fr/) (CDS, Strasbourg).
+
+## Related datasets
+
+- [black-hole-catalog](https://huggingface.co/datasets/juliensimon/black-hole-catalog) — Known black hole systems and X-ray binaries
+- [messier-catalog](https://huggingface.co/datasets/juliensimon/messier-catalog) — 110 iconic deep-sky objects
+- [ngc-ic-catalog](https://huggingface.co/datasets/juliensimon/ngc-ic-catalog) — 14K deep-sky objects (NGC + IC)
+- [galaxy-clusters](https://huggingface.co/datasets/juliensimon/galaxy-clusters) — 1,650+ Planck SZ-detected clusters
+
+## Pipeline
+
+Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
 ## Citation
 

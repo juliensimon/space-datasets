@@ -133,6 +133,7 @@ configs:
 # Messier Catalog
 
 ![Update Messier](https://github.com/juliensimon/space-datasets/actions/workflows/update-messier.yml/badge.svg)
+![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.messier&label=updated&color=brightgreen)
 
 The complete **Messier catalog** — {n} deep-sky objects catalogued by Charles Messier
 in the 18th century. Includes {n_galaxy} galaxies, {n_cluster} star clusters,
@@ -172,9 +173,23 @@ galaxies = df[df["object_category"].str.contains("Galaxy", na=False)]
 df["object_category"].value_counts()
 ```
 
+## Update frequency
+
+Updated **quarterly** via GitHub Actions.
+
 ## Data source
 
 [SIMBAD Astronomical Database](https://simbad.u-strasbg.fr/) (CDS, Strasbourg).
+
+## Related datasets
+
+- [ngc-ic-catalog](https://huggingface.co/datasets/juliensimon/ngc-ic-catalog) — 14K deep-sky objects (NGC + IC)
+- [quasar-catalog](https://huggingface.co/datasets/juliensimon/quasar-catalog) — 50K quasars and AGN
+- [black-hole-catalog](https://huggingface.co/datasets/juliensimon/black-hole-catalog) — Known black hole systems
+
+## Pipeline
+
+Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
 ## Citation
 

@@ -119,6 +119,7 @@ configs:
 # Black Hole Catalog
 
 ![Update Black Holes](https://github.com/juliensimon/space-datasets/actions/workflows/update-black-holes.yml/badge.svg)
+![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['black-holes']&label=updated&color=brightgreen)
 
 Catalog of **{n}** known black hole systems from [SIMBAD](https://simbad.u-strasbg.fr/):
 **{n_confirmed}** confirmed black holes, **{n_candidate}** candidates, and
@@ -155,9 +156,23 @@ confirmed = df[df["object_type"] == "BH"]
 df["bh_category"].value_counts()
 ```
 
+## Update frequency
+
+Updated **weekly on Monday at 18:30 UTC** via GitHub Actions.
+
 ## Data source
 
 [SIMBAD Astronomical Database](https://simbad.u-strasbg.fr/) (CDS, Strasbourg).
+
+## Related datasets
+
+- [gravitational-wave-events](https://huggingface.co/datasets/juliensimon/gravitational-wave-events) — Black hole and neutron star mergers from LIGO/Virgo
+- [quasar-catalog](https://huggingface.co/datasets/juliensimon/quasar-catalog) — 50K quasars and AGN (supermassive black holes)
+- [pulsar-catalog](https://huggingface.co/datasets/juliensimon/pulsar-catalog) — 4,300+ pulsars (neutron stars)
+
+## Pipeline
+
+Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
 ## Citation
 

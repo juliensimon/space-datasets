@@ -155,6 +155,7 @@ size_categories:
 # Gravitational Wave Events (GWOSC)
 
 ![Update Gravitational Waves](https://github.com/juliensimon/space-datasets/actions/workflows/update-gravitational-waves.yml/badge.svg)
+![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['gravitational-waves']&label=updated&color=brightgreen)
 
 All confirmed gravitational wave events from the [Gravitational-Wave Open Science Center](https://gwosc.org/)
 (GWOSC), covering LIGO, Virgo, and KAGRA observing runs. Currently **{n_events:,}** events
