@@ -13,7 +13,8 @@
     "launch-log": 75729,
     "ground-stations": 303,
     "constellation-census": 11704,
-    "exoplanets": 6150
+    "exoplanets": 6150,
+    "grb": 4241
   },
   "dst-index": "2026-03-23",
   "donki": "2026-03-23",
