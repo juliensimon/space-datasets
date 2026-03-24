@@ -3,13 +3,11 @@
 
 import os
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).parent))
 from validate import check_dataset
 from vizier_tap import vizier_query
 
@@ -17,7 +15,7 @@ from vizier_tap import vizier_query
 HF_REPO = "juliensimon/chime-frb-catalog"
 
 ADQL = """\
-SELECT Name, RAJ2000, DEJ2000, GLON, GLAT, SNR, DM, DMfitb, \
+SELECT Name, RpName, RAJ2000, DEJ2000, GLON, GLAT, SNR, DM, DMfitb, \
 bcwidth, Scat, Flux, Fluence, Nsb \
 FROM "J/ApJS/257/59/table2"\
 """
@@ -28,39 +26,26 @@ def main():
     df = vizier_query(ADQL)
     print(f"  {len(df):,} FRB events")
 
-    # Rename columns to snake_case
-    rename_map = {}
-    for col in df.columns:
-        new = col.strip()
-        # Specific renames
-        if new in ("tns_name", "TNS", "Name"):
-            rename_map[col] = "tns_name"
-        elif new == "ra_deg" or new == "RAJ2000":
-            rename_map[col] = "ra_deg"
-        elif new == "dec_deg" or new == "DEJ2000":
-            rename_map[col] = "dec_deg"
-        elif new == "dm" or new == "DM":
-            rename_map[col] = "dm_pc_cm3"
-        elif new == "width" or new == "Width":
-            rename_map[col] = "width_ms"
-        elif new == "flux" or new == "Flux":
-            rename_map[col] = "flux_jy"
-        elif new == "fluence" or new == "Fluence":
-            rename_map[col] = "fluence_jy_ms"
-        elif new == "scattering" or new == "Scat":
-            rename_map[col] = "scattering_time_ms"
-        elif new in ("snr", "S/N", "SNR"):
-            rename_map[col] = "snr"
-        elif new == "repeater" or new == "Rep":
-            rename_map[col] = "is_repeater"
-        elif new == "sub_num" or new == "Nsub":
-            rename_map[col] = "sub_burst_count"
-        else:
-            # Generic snake_case
-            snake = new.lower().replace(" ", "_").replace("-", "_").replace("/", "_")
-            rename_map[col] = snake
+    # Rename columns
+    df = df.rename(columns={
+        "Name": "tns_name",
+        "RpName": "repeater_name",
+        "RAJ2000": "ra_deg",
+        "DEJ2000": "dec_deg",
+        "GLON": "glon_deg",
+        "GLAT": "glat_deg",
+        "SNR": "snr",
+        "DM": "dm_pc_cm3",
+        "DMfitb": "dm_fitb_pc_cm3",
+        "bcwidth": "width_ms",
+        "Scat": "scattering_time_ms",
+        "Flux": "flux_jy",
+        "Fluence": "fluence_jy_ms",
+        "Nsb": "sub_burst_count",
+    })
 
-    df = df.rename(columns=rename_map)
+    # Derive is_repeater from repeater_name
+    df["is_repeater"] = df["repeater_name"].notna() & (df["repeater_name"] != "-9999")
 
     # Convert numerics
     numeric_cols = ["ra_deg", "dec_deg", "dm_pc_cm3", "width_ms", "flux_jy",

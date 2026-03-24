@@ -116,7 +116,7 @@ def main():
     n_total = len(df)
     n_with_mass = int(df["mass_mev"].notna().sum())
     n_with_width = int(df["width_mev"].notna().sum())
-    n_stable = int(df["width_mev"].isna().sum() & df["mass_mev"].notna().sum())
+    n_stable = int((df["width_mev"].isna() & df["mass_mev"].notna()).sum())
     n_self_conj = int(df["is_self_conjugate"].sum())
     heaviest = df.loc[df["mass_mev"].idxmax()] if df["mass_mev"].notna().any() else None
 

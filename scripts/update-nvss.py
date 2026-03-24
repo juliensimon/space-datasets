@@ -122,7 +122,7 @@ is widely used for cross-matching with optical, infrared, and X-ray catalogs.
 | `position_angle_deg` | float64 | Fitted position angle (degrees) |
 | `ra_error_arcsec` | float64 | RA position uncertainty (arcsec) |
 | `dec_error_arcsec` | float64 | Dec position uncertainty (arcsec) |
-| `residual_code` | string | Residual code from Gaussian fitting |
+| `residual_flux` | float64 | Residual flux from Gaussian fitting (mJy) |
 
 ## Quick stats
 

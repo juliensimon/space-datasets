@@ -46,14 +46,16 @@ def main():
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
     # Create signed latitude/longitude
-    df["latitude"] = df.apply(
-        lambda r: -r["latitude"] if r.get("lat_direction") == "S" else r["latitude"],
-        axis=1,
-    )
-    df["longitude"] = df.apply(
-        lambda r: -r["longitude"] if r.get("lon_direction") == "W" else r["longitude"],
-        axis=1,
-    )
+    if "lat_direction" in df.columns:
+        df["latitude"] = df.apply(
+            lambda r: -r["latitude"] if r["lat_direction"] == "S" else r["latitude"],
+            axis=1,
+        )
+    if "lon_direction" in df.columns:
+        df["longitude"] = df.apply(
+            lambda r: -r["longitude"] if r["lon_direction"] == "W" else r["longitude"],
+            axis=1,
+        )
 
     df = df.sort_values("datetime").reset_index(drop=True)
 

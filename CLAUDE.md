@@ -23,7 +23,7 @@ There is no test suite, linter, or build system. Validation happens inside each 
 
 ## Architecture
 
-**One script + one workflow per dataset.** Every dataset follows the same pattern:
+**One script per dataset, plus a workflow for refreshing datasets.** Static datasets (uploaded once) have no workflow. Every dataset follows the same pattern:
 
 1. **Fetch** — HTTP request(s) to public API or file download
 2. **Transform** — pandas DataFrame: type coercion, column rename, derived columns
