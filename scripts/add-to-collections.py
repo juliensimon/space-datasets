@@ -24,6 +24,9 @@ DATASETS = {
         "juliensimon/jpl-small-body-database",
         "juliensimon/sentry-impact-risk",
         "juliensimon/fireball-bolide-events",
+        "juliensimon/nhats-accessible-asteroids",
+        "juliensimon/satnogs-transmitters",
+        "juliensimon/ucs-satellite-database",
     ],
     PLANETARY: [
         "juliensimon/lunar-craters-robbins",
@@ -37,6 +40,10 @@ DATASETS = {
         "juliensimon/solar-wind",
         "juliensimon/geomagnetic-kp-index",
         "juliensimon/silso-sunspot-number",
+        "juliensimon/f107-solar-flux",
+        "juliensimon/swpc-alerts",
+        "juliensimon/solar-radio-bursts",
+        "juliensimon/iers-earth-orientation",
     ],
     ASTRONOMY: [
         "juliensimon/nasa-exoplanets",
@@ -56,6 +63,9 @@ DATASETS = {
         "juliensimon/fermi-4fgl-dr4",
         "juliensimon/chime-frb-catalog",
         "juliensimon/pantheon-plus-sne-ia",
+        "juliensimon/tess-toi-candidates",
+        "juliensimon/open-star-clusters",
+        "juliensimon/icrf3-reference-frame",
     ],
     PHYSICS: [
         "juliensimon/pdg-particle-properties",
