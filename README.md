@@ -17,6 +17,13 @@ Automated pipelines that keep space-related datasets on Hugging Face up to date.
 ![Update Exoplanets](https://github.com/juliensimon/space-datasets/actions/workflows/update-exoplanets.yml/badge.svg)
 ![Update Gamma-Ray Bursts](https://github.com/juliensimon/space-datasets/actions/workflows/update-grb.yml/badge.svg)
 ![Update Gravitational Waves](https://github.com/juliensimon/space-datasets/actions/workflows/update-gravitational-waves.yml/badge.svg)
+![Update Pulsars](https://github.com/juliensimon/space-datasets/actions/workflows/update-pulsars.yml/badge.svg)
+![Update NGC IC](https://github.com/juliensimon/space-datasets/actions/workflows/update-ngc-ic.yml/badge.svg)
+![Update SNR](https://github.com/juliensimon/space-datasets/actions/workflows/update-snr.yml/badge.svg)
+![Update Galaxy Clusters](https://github.com/juliensimon/space-datasets/actions/workflows/update-galaxy-clusters.yml/badge.svg)
+![Update Messier](https://github.com/juliensimon/space-datasets/actions/workflows/update-messier.yml/badge.svg)
+![Update Black Holes](https://github.com/juliensimon/space-datasets/actions/workflows/update-black-holes.yml/badge.svg)
+![Update Quasars](https://github.com/juliensimon/space-datasets/actions/workflows/update-quasars.yml/badge.svg)
 
 ## Datasets
 
@@ -50,6 +57,13 @@ Automated pipelines that keep space-related datasets on Hugging Face up to date.
 | [nasa-exoplanets](https://huggingface.co/datasets/juliensimon/nasa-exoplanets) | ![Exoplanets](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.exoplanets&label=updated&color=brightgreen) | Weekly Mon 16:00 UTC | Full | 0.5 MB | NASA Exoplanet Archive | ~6K confirmed planets |
 | [gamma-ray-bursts](https://huggingface.co/datasets/juliensimon/gamma-ray-bursts) | ![GRB](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.grb&label=updated&color=brightgreen) | Weekly Mon 17:00 UTC | Full | 0.3 MB | NASA HEASARC Fermi GBM | ~4K GRBs (2008+) |
 | [gravitational-wave-events](https://huggingface.co/datasets/juliensimon/gravitational-wave-events) | ![GW](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['gravitational-waves']&label=updated&color=brightgreen) | Weekly Mon 17:30 UTC | Full | 30 KB | GWOSC (LIGO/Virgo/KAGRA) | ~260 events (O1-O4) |
+| [pulsar-catalog](https://huggingface.co/datasets/juliensimon/pulsar-catalog) | ![Pulsars](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.pulsars&label=updated&color=brightgreen) | Monthly 1st Mon 18:00 UTC | Full | 0.2 MB | ATNF / HEASARC | ~3K pulsars |
+| [ngc-ic-catalog](https://huggingface.co/datasets/juliensimon/ngc-ic-catalog) | ![NGC](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['ngc-ic']&label=updated&color=brightgreen) | Monthly 1st Mon 18:30 UTC | Full | 0.5 MB | OpenNGC | ~14K deep-sky objects |
+| [supernova-remnants](https://huggingface.co/datasets/juliensimon/supernova-remnants) | ![SNR](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.snr&label=updated&color=brightgreen) | Quarterly | Full | 10 KB | Green's Catalog / HEASARC | ~310 Galactic SNRs |
+| [galaxy-clusters](https://huggingface.co/datasets/juliensimon/galaxy-clusters) | ![Clusters](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['galaxy-clusters']&label=updated&color=brightgreen) | Quarterly | Full | 50 KB | Planck PSZ2 / HEASARC | ~1.6K SZ-detected clusters |
+| [messier-catalog](https://huggingface.co/datasets/juliensimon/messier-catalog) | ![Messier](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.messier&label=updated&color=brightgreen) | Quarterly | Full | 10 KB | SIMBAD | 110 iconic deep-sky objects |
+| [black-hole-catalog](https://huggingface.co/datasets/juliensimon/black-hole-catalog) | ![BH](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['black-holes']&label=updated&color=brightgreen) | Weekly Mon 18:30 UTC | Full | 90 KB | SIMBAD | BH systems + X-ray binaries |
+| [quasar-catalog](https://huggingface.co/datasets/juliensimon/quasar-catalog) | ![QSO](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.quasars&label=updated&color=brightgreen) | Weekly Mon 19:00 UTC | Full | 1.3 MB | SIMBAD | ~50K quasars + AGN |
 
 ## How it works
 
@@ -89,6 +103,13 @@ python scripts/update-kp-index.py
 python scripts/update-exoplanets.py
 python scripts/update-grb.py
 python scripts/update-gravitational-waves.py
+python scripts/update-pulsars.py
+python scripts/update-ngc-ic.py
+python scripts/update-snr.py
+python scripts/update-galaxy-clusters.py
+python scripts/update-messier.py
+python scripts/update-black-holes.py
+python scripts/update-quasars.py
 ```
 
 ## Bulk ingestion
@@ -119,7 +140,7 @@ These datasets are built from the following public sources — please cite them 
 |--------|----------------|
 | Orbital Mechanics | [CelesTrak](https://celestrak.org/) (Dr. T.S. Kelso), [Space-Track.org](https://www.space-track.org/), [GCAT](https://planet4589.org/space/gcat/) (Jonathan McDowell), [Starlink Insider](https://starlinkinsider.com/), [NASA/JPL CNEOS](https://cneos.jpl.nasa.gov/) |
 | Space Weather | [NOAA SWPC](https://www.swpc.noaa.gov/), [WDC Kyoto](https://wdc.kugi.kyoto-u.ac.jp/dstdir/), [NASA CCMC DONKI](https://ccmc.gsfc.nasa.gov/tools/DONKI/), [NOAA NCEI](https://www.ncei.noaa.gov/) GOES-16 XRS |
-| Astronomy | [NASA Exoplanet Archive](https://exoplanetarchive.ipac.caltech.edu/), [NASA HEASARC](https://heasarc.gsfc.nasa.gov/) Fermi GBM, [GWOSC](https://gwosc.org/) (LIGO/Virgo/KAGRA) |
+| Astronomy | [NASA Exoplanet Archive](https://exoplanetarchive.ipac.caltech.edu/), [NASA HEASARC](https://heasarc.gsfc.nasa.gov/) Fermi GBM, [GWOSC](https://gwosc.org/) (LIGO/Virgo/KAGRA), [ATNF](https://www.atnf.csiro.au/research/pulsar/psrcat/) Pulsar Catalogue, [OpenNGC](https://github.com/mattiaverga/OpenNGC), [Green's SNR Catalog](https://www.mrao.cam.ac.uk/surveys/snrs/), [SIMBAD](https://simbad.u-strasbg.fr/) (CDS Strasbourg) |
 
 ## License
 
