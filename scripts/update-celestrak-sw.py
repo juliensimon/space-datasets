@@ -34,14 +34,13 @@ def main():
     print(f"  {len(df):,} rows")
 
     # Rename columns to snake_case
-    snake_map = {}
-    for col in df.columns:
-        snake = re.sub(r"([A-Z])", r"_\1", col).lower().lstrip("_")
-        snake = snake.replace(" ", "_").replace("-", "_").replace("__", "_")
-        if snake != col:
-            snake_map[col] = snake
-    if snake_map:
-        df = df.rename(columns=snake_map)
+    df.columns = [c.lower().replace(".", "_") for c in df.columns]
+    # Ensure date column exists
+    if "date" not in df.columns:
+        for col in df.columns:
+            if "date" in col.lower():
+                df = df.rename(columns={col: "date"})
+                break
 
     # Ensure date column exists (may be named DATE or Date)
     if "date" not in df.columns:

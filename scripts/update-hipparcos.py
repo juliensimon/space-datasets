@@ -27,8 +27,10 @@ def main():
     # Rename columns — VizieR may return RA_ICRS or RAJ2000
     known_renames = {
         "HIP": "hip_id",
+        "RAICRS": "ra_deg",
         "RA_ICRS": "ra_deg",
         "RAJ2000": "ra_deg",
+        "DEICRS": "dec_deg",
         "DE_ICRS": "dec_deg",
         "DEJ2000": "dec_deg",
         "Vmag": "v_magnitude",

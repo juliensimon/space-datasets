@@ -16,12 +16,15 @@ HF_REPO = "juliensimon/rc3-galaxy-morphology"
 ADQL = """SELECT * FROM "VII/155/rc3" """
 
 RENAME = {
+    "RA2000": "ra_deg",
     "RA_ICRS": "ra_deg",
     "RAJ2000": "ra_deg",
     "_RA": "ra_deg",
+    "DE2000": "dec_deg",
     "DE_ICRS": "dec_deg",
     "DEJ2000": "dec_deg",
     "_DE": "dec_deg",
+    "name": "name",
     "Name": "name",
     "PGC": "pgc_number",
     "T": "morphological_type_t",
