@@ -17,6 +17,7 @@ SBDB_API = "https://ssd-api.jpl.nasa.gov/sbdb_query.api"
 HF_REPO = "juliensimon/jpl-small-body-database"
 
 # Fields to request — covers orbital elements, physical parameters, and metadata
+
 FIELDS = ",".join([
     "spkid", "full_name", "kind", "neo", "pha", "class",
     "e", "a", "i", "om", "w", "ma", "epoch", "per", "n", "tp", "q", "ad",
@@ -151,11 +152,20 @@ tags:
   - potentially-hazardous-asteroid
   - planetary-defense
   - open-data
+  - tabular-data
 size_categories:
   - 1M<n<10M
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/small_bodies.parquet
+    default: true
 ---
 
 # JPL Small-Body Database
+
+*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 ![Update SBDB](https://github.com/juliensimon/space-datasets/actions/workflows/update-sbdb.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.sbdb&label=updated&color=brightgreen)

@@ -89,11 +89,20 @@ tags:
   - open-data
   - ssa
   - debris
+  - tabular-data
 size_categories:
   - 10K<n<100K
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/satcat.parquet
+    default: true
 ---
 
 # NORAD Satellite Catalog (SATCAT)
+
+*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 ![Update SATCAT](https://github.com/juliensimon/space-datasets/actions/workflows/update-satcat.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.satcat&label=updated&color=brightgreen)

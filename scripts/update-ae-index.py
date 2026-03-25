@@ -17,6 +17,7 @@ from validate import check_dataset
 
 
 # URL patterns: provisional and realtime (AE final data availability varies)
+
 AE_SOURCES = [
     ("provisional", "https://wdc.kugi.kyoto-u.ac.jp/ae_provisional/{ym6}/index.html", 1957, 2025),
     ("realtime", "https://wdc.kugi.kyoto-u.ac.jp/ae_realtime/{ym6}/index.html", 2026, 2030),
@@ -259,11 +260,20 @@ tags:
   - space-weather
   - kyoto
   - open-data
+  - tabular-data
 size_categories:
   - 100K<n<1M
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/ae_index.parquet
+    default: true
 ---
 
 # Auroral Electrojet (AE) Index
+
+*Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
 
 ![Update AE Index](https://github.com/juliensimon/space-datasets/actions/workflows/update-ae-index.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['ae-index']&label=updated&color=brightgreen)

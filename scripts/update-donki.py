@@ -130,6 +130,7 @@ ENDPOINTS = [
 ]
 
 # How many days to re-fetch for corrections (DONKI backfills events)
+
 OVERLAP_DAYS = 14
 
 
@@ -261,11 +262,20 @@ tags:
   - ccmc
   - donki
   - solar-wind
+  - tabular-data
 size_categories:
   - 10K<n<100K
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/donki_events.parquet
+    default: true
 ---
 
 # DONKI Space Weather Events
+
+*Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
 
 ![Update DONKI](https://github.com/juliensimon/space-datasets/actions/workflows/update-donki.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.donki&label=updated&color=brightgreen)

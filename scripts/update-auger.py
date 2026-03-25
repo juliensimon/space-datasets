@@ -132,11 +132,20 @@ tags:
   - auger
   - ultra-high-energy
   - open-data
+  - tabular-data
 size_categories:
   - 1K<n<10K
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/auger_cosmic_rays.parquet
+    default: true
 ---
 
 # Pierre Auger Observatory Cosmic Rays
+
+*Part of the [Physics Datasets](https://huggingface.co/collections/juliensimon/physics-datasets-69c2d4682d37dfdb77447bd7) collection on Hugging Face.*
 
 Summary data from the [Pierre Auger Observatory](https://www.auger.org/),
 the world's largest detector of ultra-high-energy cosmic rays. Currently

@@ -150,11 +150,20 @@ tags:
   - standard-model
   - high-energy-physics
   - open-data
+  - tabular-data
 size_categories:
   - n<1K
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/pdg_particle_properties.parquet
+    default: true
 ---
 
 # PDG Particle Properties
+
+*Part of the [Physics Datasets](https://huggingface.co/collections/juliensimon/physics-datasets-69c2d4682d37dfdb77447bd7) collection on Hugging Face.*
 
 ![Update PDG](https://github.com/juliensimon/space-datasets/actions/workflows/update-pdg.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.pdg&label=updated&color=brightgreen)

@@ -103,6 +103,7 @@ tags:
   - nasa
   - planetary-defense
   - open-data
+  - tabular-data
 configs:
   - config_name: default
     data_files:
@@ -111,6 +112,8 @@ configs:
 ---
 
 # Fireball and Bolide Events
+
+*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 ![Update Fireballs](https://github.com/juliensimon/space-datasets/actions/workflows/update-fireballs.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.fireballs&label=updated&color=brightgreen)

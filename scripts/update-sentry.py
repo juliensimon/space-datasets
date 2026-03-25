@@ -101,6 +101,7 @@ tags:
   - nasa
   - near-earth-object
   - open-data
+  - tabular-data
 configs:
   - config_name: default
     data_files:
@@ -109,6 +110,8 @@ configs:
 ---
 
 # NASA Sentry: Earth Impact Risk Assessment
+
+*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 ![Update Sentry](https://github.com/juliensimon/space-datasets/actions/workflows/update-sentry.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.sentry&label=updated&color=brightgreen)

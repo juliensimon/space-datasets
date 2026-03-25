@@ -111,11 +111,20 @@ tags:
   - 843mhz
   - astronomy
   - open-data
+  - tabular-data
 size_categories:
   - 100K<n<1M
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/sumss_radio_sources.parquet
+    default: true
 ---
 
 # Sydney University Molonglo Sky Survey (SUMSS)
+
+*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 The Sydney University Molonglo Sky Survey (SUMSS) at 843 MHz, the southern-sky complement to
 NVSS. Observed with the Molonglo Observatory Synthesis Telescope (MOST), covering declinations

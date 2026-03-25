@@ -134,11 +134,20 @@ tags:
   - type-iii
   - space-weather
   - open-data
+  - tabular-data
 size_categories:
   - 1K<n<100K
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/solar_radio_bursts.parquet
+    default: true
 ---
 
 # Solar Radio Burst Events
+
+*Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
 
 ![Update Solar Radio](https://github.com/juliensimon/space-datasets/actions/workflows/update-solar-radio.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.solar-radio&label=updated&color=brightgreen)

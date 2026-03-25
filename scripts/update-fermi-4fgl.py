@@ -133,11 +133,20 @@ tags:
   - astronomy
   - high-energy
   - open-data
+  - tabular-data
 size_categories:
   - 1K<n<10K
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/fermi_4fgl_dr4.parquet
+    default: true
 ---
 
 # Fermi LAT 4FGL-DR4 Gamma-Ray Source Catalog
+
+*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 ![Update Fermi 4FGL](https://github.com/juliensimon/space-datasets/actions/workflows/update-fermi-4fgl.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.fermi-4fgl&label=updated&color=brightgreen)

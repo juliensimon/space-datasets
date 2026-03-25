@@ -102,11 +102,20 @@ tags:
   - gaia
   - astronomy
   - open-data
+  - tabular-data
 size_categories:
   - 1K<n<10K
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/open_star_clusters.parquet
+    default: true
 ---
 
 # Open Star Clusters (Hunt & Reffert 2024)
+
+*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 The most comprehensive Gaia-era catalog of open star clusters, containing **{n_total:,}** clusters
 with positions, distances, ages, and membership counts derived from Gaia DR3.

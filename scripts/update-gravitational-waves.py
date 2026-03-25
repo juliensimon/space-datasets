@@ -17,6 +17,7 @@ GWOSC_URL = "https://gwosc.org/eventapi/json/allevents/"
 HF_REPO = "juliensimon/gravitational-wave-events"
 
 # Map catalog prefixes to observing runs
+
 CATALOG_TO_RUN = {
     "O1_O2": "O1/O2",
     "Initial_LIGO": "Initial",
@@ -148,11 +149,20 @@ tags:
   - neutron-star
   - astronomy
   - open-data
+  - tabular-data
 size_categories:
   - {size_cat}
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/gravitational_waves.parquet
+    default: true
 ---
 
 # Gravitational Wave Events (GWOSC)
+
+*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 ![Update Gravitational Waves](https://github.com/juliensimon/space-datasets/actions/workflows/update-gravitational-waves.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['gravitational-waves']&label=updated&color=brightgreen)

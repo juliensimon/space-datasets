@@ -35,6 +35,7 @@ SHELL_NAMES = {
 }
 
 # Operational altitude bands per shell [min, max] in km
+
 # Synced from starlink-viz src/lib/config.ts SHELL_ALT_BANDS
 SHELL_ALT_BANDS = {
     0: (460, 570),   # 33° — Gen2, deploying at ~480-530 km, target 328 km (will lower)
@@ -174,12 +175,15 @@ tags:
   - norad
   - leo
   - mega-constellation
+  - tabular-data
 configs:
   - config_name: daily_snapshots
     data_files: data/daily_snapshots.parquet
 ---
 
 # Starlink Fleet Data
+
+*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 ![Update Starlink Fleet](https://github.com/juliensimon/space-datasets/actions/workflows/update-starlink.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.starlink&label=updated&color=brightgreen)

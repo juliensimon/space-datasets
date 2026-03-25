@@ -86,11 +86,20 @@ tags:
   - quasar
   - vlbi
   - open-data
+  - tabular-data
 size_categories:
   - 1K<n<10K
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/icrf3_reference_frame.parquet
+    default: true
 ---
 
 # ICRF3 Celestial Reference Frame
+
+*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 The third International Celestial Reference Frame (ICRF3) is **the** fundamental coordinate
 reference frame for astronomy, adopted by the International Astronomical Union in 2018.

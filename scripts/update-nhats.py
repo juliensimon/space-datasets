@@ -108,6 +108,7 @@ tags:
   - human-exploration
   - delta-v
   - open-data
+  - tabular-data
 configs:
   - config_name: default
     data_files:
@@ -116,6 +117,8 @@ configs:
 ---
 
 # NASA NHATS Near-Earth Accessible Asteroids
+
+*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 ![Update NHATS](https://github.com/juliensimon/space-datasets/actions/workflows/update-nhats.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.nhats&label=updated&color=brightgreen)

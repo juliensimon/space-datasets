@@ -134,11 +134,20 @@ tags:
   - cosmology
   - astronomy
   - open-data
+  - tabular-data
 size_categories:
   - 1K<n<10K
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/galaxy_clusters.parquet
+    default: true
 ---
 
 # Planck PSZ2 Galaxy Cluster Catalog
+
+*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 ![Update Galaxy Clusters](https://github.com/juliensimon/space-datasets/actions/workflows/update-galaxy-clusters.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$["galaxy-clusters"]&label=updated&color=brightgreen)

@@ -153,11 +153,20 @@ tags:
   - astronomy
   - high-energy
   - open-data
+  - tabular-data
 size_categories:
   - 1K<n<10K
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/grb.parquet
+    default: true
 ---
 
 # Fermi GBM Gamma-Ray Burst Catalog
+
+*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 ![Update GRB](https://github.com/juliensimon/space-datasets/actions/workflows/update-grb.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.grb&label=updated&color=brightgreen)

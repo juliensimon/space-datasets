@@ -114,6 +114,7 @@ tags:
   - magnetosphere
   - bz
   - geomagnetic
+  - tabular-data
 configs:
   - config_name: default
     data_files:
@@ -122,6 +123,8 @@ configs:
 ---
 
 # Real-Time Solar Wind
+
+*Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
 
 ![Update Solar Wind](https://github.com/juliensimon/space-datasets/actions/workflows/update-solar-wind.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['solar-wind']&label=updated&color=brightgreen)

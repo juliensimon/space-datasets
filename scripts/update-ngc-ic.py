@@ -16,6 +16,7 @@ NGC_CSV_URL = "https://raw.githubusercontent.com/mattiaverga/OpenNGC/master/data
 HF_REPO = "juliensimon/ngc-ic-catalog"
 
 # Map OpenNGC Type codes to broad categories
+
 _TYPE_TO_CATEGORY = {
     "G": "Galaxy",
     "GGroup": "Galaxy",
@@ -96,11 +97,20 @@ tags:
   - astronomy
   - open-data
   - messier
+  - tabular-data
 size_categories:
   - 10K<n<100K
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/ngc_ic_catalog.parquet
+    default: true
 ---
 
 # NGC/IC Deep-Sky Object Catalog
+
+*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 ![Update NGC/IC](https://github.com/juliensimon/space-datasets/actions/workflows/update-ngc-ic.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.ngc-ic&label=updated&color=brightgreen)

@@ -102,11 +102,20 @@ tags:
   - dark-energy
   - pantheon
   - open-data
+  - tabular-data
 size_categories:
   - 1K<n<10K
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/pantheon_plus_sne.parquet
+    default: true
 ---
 
 # Pantheon+ Type Ia Supernovae
+
+*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 The gold standard cosmological dataset -- **{n_total:,}** spectroscopically confirmed Type Ia supernovae
 from the Pantheon+ analysis, used to measure the Hubble constant (H0) and constrain the dark energy

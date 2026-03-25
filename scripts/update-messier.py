@@ -123,6 +123,7 @@ tags:
   - nebula
   - star-cluster
   - simbad
+  - tabular-data
 configs:
   - config_name: default
     data_files:
@@ -131,6 +132,8 @@ configs:
 ---
 
 # Messier Catalog
+
+*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 ![Update Messier](https://github.com/juliensimon/space-datasets/actions/workflows/update-messier.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.messier&label=updated&color=brightgreen)

@@ -121,11 +121,20 @@ tags:
   - jpl
   - cneos
   - potentially-hazardous-asteroid
+  - tabular-data
 size_categories:
   - 10K<n<100K
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/neo_close_approaches.parquet
+    default: true
 ---
 
 # Near-Earth Object Close Approaches
+
+*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 ![Update NEO Close Approaches](https://github.com/juliensimon/space-datasets/actions/workflows/update-neo.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.neo&label=updated&color=brightgreen)

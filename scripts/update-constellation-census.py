@@ -27,6 +27,7 @@ MU = 398600.4418  # Earth GM (km³/s²)
 R_EARTH = 6371.0  # km
 
 # ── Constellation definitions ────────────────────────────────────────────────
+
 # Each entry maps a constellation ID to its CelesTrak group, name pattern,
 # metadata, and orbital shell definitions.
 #
@@ -421,6 +422,7 @@ tags:
   - kuiper
   - gps
   - galileo
+  - tabular-data
 configs:
   - config_name: latest_satellites
     data_files:
@@ -434,6 +436,8 @@ configs:
 ---
 
 # Constellation Census
+
+*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 ![Update Constellation Census](https://github.com/juliensimon/space-datasets/actions/workflows/update-constellation-census.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.constellation-census&label=updated&color=brightgreen)

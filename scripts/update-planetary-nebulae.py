@@ -113,11 +113,20 @@ tags:
   - muse
   - astronomy
   - open-data
+  - tabular-data
 size_categories:
   - 1K<n<10K
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/planetary_nebulae.parquet
+    default: true
 ---
 
 # Planetary Nebulae (MUSE Survey)
+
+*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 Catalog of **{n_total:,}** planetary nebulae from the MUSE (Multi Unit Spectroscopic
 Explorer) survey, with positions, velocities, and morphological classifications.

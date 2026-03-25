@@ -332,11 +332,20 @@ tags:
   - x-ray
   - ncei
   - solar-activity
+  - tabular-data
 size_categories:
   - 10K<n<100K
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/solar_flare_events.parquet
+    default: true
 ---
 
 # Solar Flare Events
+
+*Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
 
 ![Update Solar Flares](https://github.com/juliensimon/space-datasets/actions/workflows/update-solar-flares.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['solar-flares']&label=updated&color=brightgreen)

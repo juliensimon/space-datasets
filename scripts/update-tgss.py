@@ -103,11 +103,20 @@ tags:
   - 150mhz
   - astronomy
   - open-data
+  - tabular-data
 size_categories:
   - 100K<n<1M
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/tgss_radio_sources.parquet
+    default: true
 ---
 
 # TGSS Alternative Data Release 1 (150 MHz)
+
+*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 The TIFR GMRT Sky Survey Alternative Data Release 1 (TGSS ADR1), a 150 MHz radio continuum
 survey covering 90% of the sky (declination > -53 deg) using the Giant Metrewave Radio Telescope.

@@ -12,6 +12,7 @@ SW_URL = "https://celestrak.org/SpaceData/SW-All.csv"
 HF_REPO = "juliensimon/space-weather-indices"
 
 # NOAA Kp-based storm scale thresholds (max 3-hourly Kp in a day)
+
 STORM_THRESHOLDS = [(9, "G5"), (8, "G4"), (7, "G3"), (6, "G2"), (5, "G1")]
 
 
@@ -115,11 +116,20 @@ tags:
   - sunspot
   - solar-cycle
   - swpc
+  - tabular-data
 size_categories:
   - 10K<n<100K
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/space_weather_indices.parquet
+    default: true
 ---
 
 # Space Weather Indices
+
+*Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
 
 ![Update Space Weather](https://github.com/juliensimon/space-datasets/actions/workflows/update-space-weather.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['space-weather']&label=updated&color=brightgreen)

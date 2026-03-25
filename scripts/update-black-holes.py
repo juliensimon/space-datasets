@@ -18,6 +18,7 @@ HF_REPO = "juliensimon/black-hole-catalog"
 SIMBAD_TAP = "https://simbad.u-strasbg.fr/simbad/sim-tap/sync"
 
 # Query all objects typed as black hole candidates (X*) and confirmed BHs (BH*)
+
 # SIMBAD otypes: BH = black hole, BH? = BH candidate, XB* = X-ray binary,
 # HXB = High-mass XRB, LXB = Low-mass XRB
 ADQL = """SELECT main_id AS name, ra, dec, otype_txt AS object_type, sp_type AS spectral_type
@@ -109,6 +110,7 @@ tags:
   - x-ray-binary
   - simbad
   - high-energy
+  - tabular-data
 configs:
   - config_name: default
     data_files:
@@ -117,6 +119,8 @@ configs:
 ---
 
 # Black Hole Catalog
+
+*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 ![Update Black Holes](https://github.com/juliensimon/space-datasets/actions/workflows/update-black-holes.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['black-holes']&label=updated&color=brightgreen)

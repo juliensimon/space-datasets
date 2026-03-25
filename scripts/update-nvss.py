@@ -91,11 +91,20 @@ tags:
   - astronomy
   - 1400mhz
   - open-data
+  - tabular-data
 size_categories:
   - 1M<n<10M
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/nvss_radio_sources.parquet
+    default: true
 ---
 
 # NVSS Radio Source Catalog
+
+*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 The NRAO VLA Sky Survey (NVSS) -- THE foundational 1.4 GHz radio survey covering 82% of the celestial
 sky (declination > -40 deg) with **{n_total:,}** discrete radio sources. This is the most widely

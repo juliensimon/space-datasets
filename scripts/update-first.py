@@ -96,11 +96,20 @@ tags:
   - astronomy
   - 1400mhz
   - open-data
+  - tabular-data
 size_categories:
   - 100K<n<1M
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/first_radio_sources.parquet
+    default: true
 ---
 
 # FIRST Radio Survey Catalog
+
+*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 The Faint Images of the Radio Sky at Twenty-cm (FIRST) survey catalog, covering 10,575 square degrees
 at 1.4 GHz with 5 arcsecond resolution using the NRAO VLA. Contains **{n_total:,}** discrete radio sources.

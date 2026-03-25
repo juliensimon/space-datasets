@@ -119,11 +119,20 @@ tags:
   - planetary-science
   - usgs
   - open-data
+  - tabular-data
 size_categories:
   - 100K<n<1M
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/mars_craters.parquet
+    default: true
 ---
 
 # Mars Crater Database (Robbins & Hynek 2012)
+
+*Part of the [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2) collection on Hugging Face.*
 
 The only global Mars impact crater database, containing **{n_total:,}** craters with diameter >= 1 km
 identified from high-resolution imagery. This is the definitive reference catalog for Mars crater studies.

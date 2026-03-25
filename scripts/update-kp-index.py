@@ -108,6 +108,7 @@ tags:
   - noaa
   - magnetosphere
   - aurora
+  - tabular-data
 configs:
   - config_name: default
     data_files:
@@ -116,6 +117,8 @@ configs:
 ---
 
 # Geomagnetic Kp Index (3-Hourly)
+
+*Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
 
 ![Update Kp Index](https://github.com/juliensimon/space-datasets/actions/workflows/update-kp-index.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['kp-index']&label=updated&color=brightgreen)

@@ -117,11 +117,20 @@ tags:
   - hubble-type
   - astronomy
   - open-data
+  - tabular-data
 size_categories:
   - 10K<n<100K
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/rc3_galaxies.parquet
+    default: true
 ---
 
 # Third Reference Catalogue of Bright Galaxies (RC3)
+
+*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 The Third Reference Catalogue of Bright Galaxies (RC3), the classic comprehensive catalog of
 **{n_total:,}** bright galaxies with Hubble-type morphological classifications, photometry,

@@ -101,6 +101,7 @@ tags:
   - human-spaceflight
   - missions
   - open-data
+  - tabular-data
 configs:
   - config_name: default
     data_files:
@@ -109,6 +110,8 @@ configs:
 ---
 
 # Astronaut Database
+
+*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 Complete database of every person who has been to space — **{n:,}** records covering
 **{n_unique:,}** astronauts from **{n_nationalities}** countries, with missions

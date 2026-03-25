@@ -15,6 +15,7 @@ from vizier_tap import vizier_query
 HF_REPO = "juliensimon/kepler-eclipsing-binaries"
 
 # Slawson et al. (2011) -- 2,177 Kepler eclipsing binaries
+
 ADQL_MAIN = """\
 SELECT * FROM "J/AJ/142/160/table3"\
 """
@@ -123,11 +124,20 @@ tags:
   - binary-star
   - astronomy
   - open-data
+  - tabular-data
 size_categories:
   - 1K<n<10K
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/kepler_eclipsing_binaries.parquet
+    default: true
 ---
 
 # Kepler Eclipsing Binary Catalog
+
+*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 Catalog of **{n_total:,}** eclipsing binary systems identified by the Kepler mission,
 with orbital periods, morphology parameters, and stellar properties.

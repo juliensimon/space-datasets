@@ -135,11 +135,20 @@ tags:
   - high-energy
   - particle
   - open-data
+  - tabular-data
 size_categories:
   - 100K<n<1M
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/crdb_cosmic_ray_spectra.parquet
+    default: true
 ---
 
 # Cosmic Ray Database (CRDB)
+
+*Part of the [Physics Datasets](https://huggingface.co/collections/juliensimon/physics-datasets-69c2d4682d37dfdb77447bd7) collection on Hugging Face.*
 
 ![Update CRDB](https://github.com/juliensimon/space-datasets/actions/workflows/update-crdb.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.crdb&label=updated&color=brightgreen)

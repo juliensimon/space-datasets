@@ -18,6 +18,7 @@ HF_REPO = "juliensimon/quasar-catalog"
 SIMBAD_TAP = "https://simbad.u-strasbg.fr/simbad/sim-tap/sync"
 
 # SIMBAD otypes for AGN: QSO (quasar), AGN (active galactic nucleus),
+
 # Sy1/Sy2 (Seyfert), BLL (BL Lac), Bla (Blazar), LIN (LINER)
 ADQL = """SELECT TOP 100000 main_id AS name, ra, dec, otype_txt AS object_type
 FROM basic
@@ -110,6 +111,7 @@ tags:
   - redshift
   - simbad
   - cosmology
+  - tabular-data
 configs:
   - config_name: default
     data_files:
@@ -118,6 +120,8 @@ configs:
 ---
 
 # Quasar & AGN Catalog
+
+*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 ![Update Quasars](https://github.com/juliensimon/space-datasets/actions/workflows/update-quasars.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.quasars&label=updated&color=brightgreen)

@@ -12,6 +12,7 @@ import requests
 
 
 # URL patterns: final (1957-2020), provisional (2021-2025), realtime (recent)
+
 DST_SOURCES = [
     ("final", "https://wdc.kugi.kyoto-u.ac.jp/dst_final/{ym6}/dst{ym4}.for.request", 1957, 2020),
     ("provisional", "https://wdc.kugi.kyoto-u.ac.jp/dst_provisional/{ym6}/dst{ym4}.for.request", 2021, 2025),
@@ -215,11 +216,20 @@ tags:
   - ring-current
   - magnetosphere
   - open-data
+  - tabular-data
 size_categories:
   - 100K<n<1M
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/dst_index.parquet
+    default: true
 ---
 
 # Dst Geomagnetic Index (Hourly)
+
+*Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
 
 ![Update Dst Index](https://github.com/juliensimon/space-datasets/actions/workflows/update-dst-index.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['dst-index']&label=updated&color=brightgreen)

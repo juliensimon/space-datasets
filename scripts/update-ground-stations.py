@@ -37,6 +37,7 @@ CACHE_PATH = Path(__file__).parent.parent / "data" / "ground-stations-cache.json
 USER_AGENT = "StarLink-MissionControl/1.0"
 
 # ── PoPs ─────────────────────────────────────────────────────────────────────
+
 # DNS codes from Starlink rDNS hostnames (customer.<code><N>.isp.starlink.com)
 # Coordinates from SpaceX peering/IXP locations.
 POPS = [
@@ -258,6 +259,7 @@ tags:
   - open-data
   - spacex
   - fcc
+  - tabular-data
 configs:
   - config_name: gateways
     data_files:
@@ -272,6 +274,8 @@ size_categories:
 ---
 
 # Starlink Ground Stations & Points of Presence
+
+*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 ![Update Ground Stations](https://github.com/juliensimon/space-datasets/actions/workflows/update-ground-stations.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['ground-stations']&label=updated&color=brightgreen)

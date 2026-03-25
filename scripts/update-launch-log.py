@@ -85,6 +85,7 @@ tags:
   - spaceflight
   - nasa
   - launch-vehicle
+  - tabular-data
 configs:
   - config_name: launches
     data_files:
@@ -99,6 +100,8 @@ size_categories:
 ---
 
 # Space Launch Log
+
+*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 ![Update Launch Log](https://github.com/juliensimon/space-datasets/actions/workflows/update-launch-log.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['launch-log']&label=updated&color=brightgreen)

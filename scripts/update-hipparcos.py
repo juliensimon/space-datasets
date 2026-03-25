@@ -110,6 +110,7 @@ tags:
   - parallax
   - astronomy
   - open-data
+  - tabular-data
 configs:
   - config_name: default
     data_files:
@@ -118,6 +119,8 @@ configs:
 ---
 
 # Hipparcos Star Catalog
+
+*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 The ESA Hipparcos space astrometry mission catalog containing **{n:,}** of the brightest
 stars in the sky with precise positions, parallaxes, and proper motions.

@@ -113,11 +113,20 @@ tags:
   - distance-ladder
   - astronomy
   - open-data
+  - tabular-data
 size_categories:
   - 100K<n<1M
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/gaia_dr3_rrlyrae.parquet
+    default: true
 ---
 
 # Gaia DR3 RR Lyrae Variables
+
+*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 The Gaia Data Release 3 catalog of **{n_total:,}** RR Lyrae variable stars -- the largest
 homogeneous catalog of pulsating horizontal-branch stars ever compiled. RR Lyrae stars are

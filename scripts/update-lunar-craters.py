@@ -102,11 +102,20 @@ tags:
   - usgs
   - artemis
   - open-data
+  - tabular-data
 size_categories:
   - 1M<n<10M
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/lunar_craters.parquet
+    default: true
 ---
 
 # Lunar Crater Database (Robbins 2019)
+
+*Part of the [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2) collection on Hugging Face.*
 
 The definitive lunar impact crater database, containing **{n_total:,}** craters with diameter >= 1 km.
 Essential reference for Artemis mission planning and lunar surface studies.

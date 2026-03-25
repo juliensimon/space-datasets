@@ -151,11 +151,20 @@ tags:
   - high-energy
   - astronomy
   - open-data
+  - tabular-data
 size_categories:
   - n<1K
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/icecube_neutrino_catalog.parquet
+    default: true
 ---
 
 # IceCube Neutrino Point Source Catalog
+
+*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 Point source catalog from the [IceCube Neutrino Observatory](https://icecube.wisc.edu/),
 sourced via NASA HEASARC. Currently **{n_total:,}** sources.

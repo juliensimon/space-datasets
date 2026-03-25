@@ -115,11 +115,20 @@ tags:
   - stellar
   - astronomy
   - open-data
+  - tabular-data
 size_categories:
   - 10K<n<100K
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/brown_dwarfs.parquet
+    default: true
 ---
 
 # Ultracool and Brown Dwarf Catalog (40 pc)
+
+*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 Comprehensive catalog of **{n_total:,}** ultracool and brown dwarfs within 40 parsecs,
 highly relevant for JWST atmospheric characterization studies.

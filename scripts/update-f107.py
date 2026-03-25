@@ -108,6 +108,7 @@ tags:
   - ionosphere
   - atmospheric-drag
   - open-data
+  - tabular-data
 configs:
   - config_name: default
     data_files:
@@ -116,6 +117,8 @@ configs:
 ---
 
 # F10.7 Solar Radio Flux (Penticton)
+
+*Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
 
 ![Update F10.7](https://github.com/juliensimon/space-datasets/actions/workflows/update-f107.yml/badge.svg)
 ![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.f107&label=updated&color=brightgreen)
