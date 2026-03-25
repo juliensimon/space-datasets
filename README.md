@@ -170,9 +170,6 @@ python scripts/update-fireballs.py
 python scripts/update-nhats.py
 python scripts/update-satnogs.py
 python scripts/update-ucs.py  # requires: pip install openpyxl
-python scripts/update-wds.py
-python scripts/update-celestrak-sw.py
-python scripts/update-astronauts.py
 
 # Planetary Science
 python scripts/update-lunar-craters.py
@@ -223,6 +220,8 @@ python scripts/update-icecube.py
 python scripts/update-brown-dwarfs.py
 python scripts/update-kepler-eb.py
 python scripts/update-planetary-nebulae.py
+python scripts/update-wds.py
+python scripts/update-astronauts.py
 
 # Physics
 pip install particle && python scripts/update-pdg.py
@@ -260,7 +259,7 @@ These datasets are built from the following public sources — please cite them 
 | Planetary Science | [USGS Astrogeology](https://astrogeology.usgs.gov/) (Robbins crater databases) |
 | Space Weather | [NOAA SWPC](https://www.swpc.noaa.gov/), [WDC Kyoto](https://wdc.kugi.kyoto-u.ac.jp/dstdir/), [NASA CCMC DONKI](https://ccmc.gsfc.nasa.gov/tools/DONKI/), [NOAA NCEI](https://www.ncei.noaa.gov/) GOES-16 XRS, [SILSO](https://www.sidc.be/SILSO/) (Royal Observatory of Belgium), [LASP LISIRD](https://lasp.colorado.edu/lisird/) (F10.7), [IERS](https://www.iers.org/) |
 | Astronomy | [NASA Exoplanet Archive](https://exoplanetarchive.ipac.caltech.edu/), [NASA HEASARC](https://heasarc.gsfc.nasa.gov/) Fermi GBM, [GWOSC](https://gwosc.org/) (LIGO/Virgo/KAGRA), [ATNF](https://www.atnf.csiro.au/research/pulsar/psrcat/) Pulsar Catalogue, [OpenNGC](https://github.com/mattiaverga/OpenNGC), [Green's SNR Catalog](https://www.mrao.cam.ac.uk/surveys/snrs/), [SIMBAD](https://simbad.u-strasbg.fr/) (CDS Strasbourg), [VizieR](https://vizier.cds.unistra.fr/) (CDS Strasbourg), [Fermi LAT](https://fermi.gsfc.nasa.gov/ssc/), [CHIME/FRB](https://www.chime-frb.ca/), [eROSITA](https://erosita.mpe.mpg.de/), [Pantheon+](https://github.com/PantheonPlusSH0ES/DataRelease) |
-| Physics | [Particle Data Group](https://pdg.lbl.gov/) (PDG) |
+| Physics | [Particle Data Group](https://pdg.lbl.gov/) (PDG), [CRDB](https://lpsc.in2p3.fr/crdb/) (Cosmic Ray DataBase), [Pierre Auger Observatory](https://www.auger.org/) (via Zenodo), [IceCube](https://icecube.wisc.edu/) (via HEASARC) |
 
 ## License
 
