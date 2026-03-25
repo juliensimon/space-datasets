@@ -4,26 +4,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-Automated data pipelines that fetch public space data (orbital mechanics, space weather, astronomy), convert to Parquet with zstd compression, and upload to Hugging Face. Currently 23 datasets, all under `juliensimon/` on HF.
+Automated data pipelines that fetch public space data (orbital mechanics, space weather, astronomy, physics), convert to Parquet with zstd compression, and upload to Hugging Face under `juliensimon/`. Currently 60+ datasets with 45 GitHub Actions workflows for daily/weekly updates. Static datasets (uploaded once) have no workflow.
 
 ## Running a Dataset Pipeline
 
 ```bash
 pip install -r requirements.txt
-# Some scripts need extras: netCDF4 (solar-flares)
+# Some scripts need extras: netCDF4 (solar-flares), beautifulsoup4/lxml (already in requirements.txt)
 
 # Run any single pipeline:
 HF_TOKEN=hf_xxx python scripts/update-<dataset>.py
 
-# Skip HF upload for local testing: the script will fail at the `hf upload` step
-# but the parquet file will be written to a temp dir before that
+# Local testing without HF upload: script fails at `hf upload` but parquet is written to temp dir first
+# Syntax check: python3 -c "import py_compile; py_compile.compile('scripts/update-<name>.py', doraise=True)"
 ```
 
 There is no test suite, linter, or build system. Validation happens inside each script via `validate.py`.
 
 ## Architecture
 
-**One script per dataset, plus a workflow for refreshing datasets.** Static datasets (uploaded once) have no workflow. Every dataset follows the same pattern:
+**One script per dataset.** Every pipeline follows the same 6-step pattern:
 
 1. **Fetch** — HTTP request(s) to public API or file download
 2. **Transform** — pandas DataFrame: type coercion, column rename, derived columns
@@ -34,30 +34,37 @@ There is no test suite, linter, or build system. Validation happens inside each 
 
 **Two update strategies:**
 - **Full rebuild**: re-fetches entire source. Used when source is a single file or dataset is small.
-- **Incremental**: downloads existing parquet from HF, fetches recent window (7–14 days), merges/deduplicates. Falls back to full rebuild if no existing data. Used by: starlink, constellation-census, donki, dst-index, solar-flares, solar-wind, kp-index.
+- **Incremental**: downloads existing parquet from HF, fetches recent window (7–14 days), merges/deduplicates via `pd.concat` + `drop_duplicates(keep="last")`. Falls back to full rebuild if no existing data. Used by: starlink, constellation-census, donki, dst-index, solar-flares, solar-wind, kp-index.
 
 ## Key Files
 
-- `scripts/validate.py` — shared `check_dataset()` function. Hard-fails on row count or missing columns; warns on null thresholds and row-count drops >20%.
-- `scripts/update-status.py` — updates `status.json` with date and optional row count. Called by every workflow.
+- `scripts/validate.py` — shared `check_dataset()` function. Hard-fails (`sys.exit(1)`) on row count below minimum or missing columns; warns (GitHub Actions `::warning::` annotations) on null thresholds and row-count drops >20%.
+- `scripts/vizier_tap.py` — shared VizieR TAP client with automatic pagination via `recno` filtering (VizieR doesn't support OFFSET). Returns CSV, exits on VOTable.
+- `scripts/jpl_api.py` — shared helpers for NASA JPL SSD API (NEO, SBDB, Sentry, NHATS). Converts `{"fields": [...], "data": [[...]]}` format to DataFrame.
+- `scripts/update-status.py` — updates `status.json` with date and optional row count.
+- `scripts/add-to-collections.py` — adds datasets to HF domain collections.
 - `status.json` — tracks last-updated date per dataset + `_rows` dict with row counts.
-- `.github/workflows/update-<dataset>.yml` — GitHub Actions workflows. All use Python 3.12, `environment: HF` (for `HF_TOKEN` secret), and a 3-attempt retry loop for git push conflicts on status.json.
+- `CHECKLIST.md` — detailed checklist for adding new datasets (frontmatter fields, workflow template, pitfalls).
 
 ## Adding a New Dataset
 
-Create two files following existing patterns (e.g., `update-neo.py` for full-rebuild, `update-donki.py` for incremental):
+Create the script (and workflow if not static) following existing patterns. Reference `CHECKLIST.md` for the full procedure. Key files to use as models:
+- Full rebuild: `update-neo.py`, `update-exoplanets.py`
+- Incremental: `update-donki.py`, `update-starlink.py`
+- VizieR TAP source: `update-pulsars.py`, `update-quasars.py`
+- HEASARC TAP source: `update-grb.py`, `update-fermi-4fgl.py`
 
-1. **`scripts/update-<name>.py`** — fetch, transform, validate, write parquet + README, upload via `hf upload`
-2. **`.github/workflows/update-<name>.yml`** — schedule, pip install, run script, update-status.py + git push
+### Conventions
 
-Conventions:
 - HF repo name: `juliensimon/<descriptive-name>` (kebab-case)
 - Parquet file goes in `data/` subdir within the temp upload directory
-- README.md uses HF dataset card frontmatter (license: cc-by-4.0, tags, size_categories)
+- README.md uses HF dataset card frontmatter (license: cc-by-4.0, tags, size_categories, configs with explicit split/path)
 - Column names: snake_case, descriptive (e.g., `distance_au` not `dist`)
 - Always call `check_dataset()` before upload
 - Output row count for status tracking
-- Add badge to repo README.md
+- Add badge + table row to repo `README.md`
+- Add to correct HF collection (Orbital/Planetary/Weather/Astronomy/Physics)
+- Static datasets get a script only, no GitHub Actions workflow
 
 ## Workflow Template
 
@@ -65,7 +72,7 @@ Conventions:
 name: Update DATASET
 on:
   schedule:
-    - cron: '0 6 * * *'
+    - cron: '0 6 * * *'  # stagger across 06:00-19:30 UTC range
   workflow_dispatch:
 permissions:
   contents: write
@@ -100,6 +107,14 @@ jobs:
           done
 ```
 
-## Data Sources
+## Data Source Gotchas
 
-APIs are unauthenticated (except HF uploads). Be polite: use `time.sleep()` between sequential API calls, set reasonable `timeout=` on requests. Many sources (VizieR, HEASARC, NASA APIs) have rate limits but no auth.
+APIs are unauthenticated (except HF uploads). Use `time.sleep()` between sequential API calls and set `timeout=` on requests.
+
+| Source | Gotcha |
+|--------|--------|
+| VizieR TAP | Always `SELECT *`, check actual CSV headers with curl. Column names may differ from docs (e.g. `logAge50` not `Age`, brackets get sanitized). No OFFSET — use `recno` pagination via `vizier_tap.py`. |
+| HEASARC TAP | Use `FORMAT=text` (pipe-delimited). `FORMAT=csv` returns VOTable XML. |
+| SIMBAD TAP | Use `basic` table only — JOINs with `allfluxes`/`mesDistance` fail. Use `OR` chains, not `IN (...)`. No `regexp()`. |
+| CelesTrak | 500 errors are common — add 1s delay + 3 retries with exponential backoff. |
+| GFZ Kp API | Unreliable — use NOAA SWPC endpoint instead. |
