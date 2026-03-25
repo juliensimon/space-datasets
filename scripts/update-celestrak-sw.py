@@ -42,13 +42,6 @@ def main():
                 df = df.rename(columns={col: "date"})
                 break
 
-    # Ensure date column exists (may be named DATE or Date)
-    if "date" not in df.columns:
-        for col in df.columns:
-            if col.lower() == "date":
-                df = df.rename(columns={col: "date"})
-                break
-
     # Parse date
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -164,7 +157,7 @@ print(df.tail(10))
 # Plot F10.7 solar flux over time
 import matplotlib.pyplot as plt
 fig, ax = plt.subplots(figsize=(14, 4))
-ax.plot(df["date"], df.get("f10.7_obs", df.iloc[:, -1]), linewidth=0.5)
+ax.plot(df["date"], df.get("f10_7_obs", df.iloc[:, -1]), linewidth=0.5)
 ax.set_xlabel("Date")
 ax.set_ylabel("F10.7 (SFU)")
 ax.set_title("Solar Radio Flux (F10.7)")
