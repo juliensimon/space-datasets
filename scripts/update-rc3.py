@@ -24,9 +24,10 @@ RENAME = {
     "DE_ICRS": "dec_deg",
     "DEJ2000": "dec_deg",
     "_DE": "dec_deg",
-    "name": "name",
-    "Name": "name",
+    "name": "galaxy_name",
+    "Name": "galaxy_name",
     "PGC": "pgc_number",
+    "type": "morphological_type",
     "T": "morphological_type_t",
     "LC": "luminosity_class",
     "SB": "surface_brightness",
@@ -73,7 +74,6 @@ def main():
     # Stats
     n_total = len(df)
     n_with_type = int(df["morphological_type"].notna().sum()) if "morphological_type" in df.columns else 0
-    n_with_velocity = int(df["helio_radial_velocity"].notna().sum()) if "helio_radial_velocity" in df.columns else 0
     n_with_mag = int(df["bt_magnitude"].notna().sum()) if "bt_magnitude" in df.columns else 0
     if "morphological_type_t" in df.columns:
         t_min = df["morphological_type_t"].min()
@@ -170,7 +170,7 @@ and is widely used for training galaxy classification models.
 
 - **{n_total:,}** bright galaxies
 - **{n_with_type:,}** with morphological type
-- **{n_with_velocity:,}** with radial velocity
+
 - **{n_with_mag:,}** with B magnitude
 - Hubble type T range: {t_min:.0f} to {t_max:.0f}
 

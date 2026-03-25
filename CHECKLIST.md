@@ -160,5 +160,10 @@ Required fields for discoverability (HF indexes these for search):
 | Badge "no status" | Trigger `workflow_dispatch` after first push |
 | status.json push race | 3-attempt `git pull --rebase` retry loop |
 | Optional column missing | Guard with `if "col" in df.columns` |
+| VizieR column names differ from docs | Always use `SELECT *`, check actual CSV headers with `curl`, add all name variants to rename dict |
+| README stats always 0 | The stat references a column that doesn't exist after rename — verify column actually gets created by running locally first |
+| Boolean column destroyed by string cleaning | Create derived boolean columns AFTER `df.select_dtypes(include=["object"])` cleaning loop, not before |
+| VizieR `[Fe/H]` brackets | VizieR sanitizes special chars in column names — check actual CSV output, don't assume bracket notation works |
+| VizieR age/distance columns | Hunt & Reffert uses `logAge50`/`dist50` (with percentile suffixes), not `Age`/`Dist` |
 | Multi-config viewer issues | Use explicit `split: train` + `path:` format + `default: true` |
 | HF viewer "no status" | Wait 1-2 min after upload, then check `is-valid` API |

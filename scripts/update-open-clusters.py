@@ -37,6 +37,7 @@ def main():
         "Dist": "distance_pc",
         "Plx": "parallax_mas",
         "plx": "parallax_mas",
+        "logAge50": "log_age",
         "Age": "log_age",
         "age": "log_age",
         "AV": "extinction_av",

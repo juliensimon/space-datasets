@@ -86,8 +86,8 @@ def main():
 
     # Stats for README
     n_total = len(df)
-    n_with_vel = int(df["velocity_kms"].notna().sum()) if "velocity_kms" in df.columns else 0
-    n_with_morph = int(df["morphology"].notna().sum()) if "morphology" in df.columns else 0
+    n_with_m5007 = int(df["m5007"].notna().sum()) if "m5007" in df.columns else 0
+    n_galaxies = int(df["gal"].nunique()) if "gal" in df.columns else 0
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
@@ -129,7 +129,7 @@ configs:
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 Catalog of **{n_total:,}** planetary nebulae from the MUSE (Multi Unit Spectroscopic
-Explorer) survey, with positions, velocities, and morphological classifications.
+Explorer) survey, with positions and [OIII] 5007 magnitudes.
 
 ## Dataset description
 
@@ -142,8 +142,8 @@ on ESO's Very Large Telescope, providing unprecedented spectroscopic detail.
 ## Quick stats
 
 - **{n_total:,}** planetary nebulae
-- **{n_with_vel:,}** with radial velocity measurements
-- **{n_with_morph:,}** with morphological classifications
+- **{n_with_m5007:,}** with [OIII] 5007 magnitude measurements
+- **{n_galaxies}** host galaxies surveyed
 
 ## Usage
 
@@ -153,10 +153,10 @@ from datasets import load_dataset
 ds = load_dataset("juliensimon/planetary-nebulae", split="train")
 df = ds.to_pandas()
 
-# PNe with velocity measurements
-if "velocity_kms" in df.columns:
-    with_vel = df.dropna(subset=["velocity_kms"])
-    print(f"{{len(with_vel):,}} PNe with velocities")
+# PNe with [OIII] magnitudes
+if "m5007" in df.columns:
+    with_mag = df.dropna(subset=["m5007"])
+    print(f"{{len(with_mag):,}} PNe with [OIII] magnitudes")
     print(f"Velocity range: {{with_vel['velocity_kms'].min():.0f}} to {{with_vel['velocity_kms'].max():.0f}} km/s")
 
 # Sky distribution

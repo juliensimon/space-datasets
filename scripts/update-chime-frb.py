@@ -45,8 +45,6 @@ def main():
     })
 
     # Derive is_repeater from repeater_name
-    df["is_repeater"] = df["repeater_name"].notna() & (df["repeater_name"] != "-9999")
-
     # Convert numerics
     numeric_cols = ["ra_deg", "dec_deg", "dm_pc_cm3", "width_ms", "flux_jy",
                     "fluence_jy_ms", "scattering_time_ms", "snr", "sub_burst_count"]
@@ -60,11 +58,9 @@ def main():
             {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
         )
 
-    # Convert is_repeater to boolean if present
-    if "is_repeater" in df.columns:
-        df["is_repeater"] = df["is_repeater"].map(
-            {"1": True, "0": False, "Y": True, "N": False, True: True, False: False}
-        )
+    # Derive is_repeater AFTER string cleaning
+    if "repeater_name" in df.columns:
+        df["is_repeater"] = df["repeater_name"].notna() & (df["repeater_name"] != "-9999") & (df["repeater_name"] != "<NA>")
 
     check_dataset(df, "chime-frb", min_rows=500,
         expected_columns=["tns_name", "ra_deg", "dec_deg", "dm_pc_cm3"],

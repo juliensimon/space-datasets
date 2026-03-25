@@ -66,16 +66,7 @@ def main():
     # Stats
     n_total = len(df)
     n_with_period = int(df["period_days"].notna().sum()) if "period_days" in df.columns else 0
-    n_with_metal = int(df["metallicity_feh"].notna().sum()) if "metallicity_feh" in df.columns else 0
-    n_with_dist = int(df["distance_pc"].notna().sum()) if "distance_pc" in df.columns else 0
     period_median = df["period_days"].median() if "period_days" in df.columns else 0
-    if "best_classification" in df.columns:
-        top_classes = df["best_classification"].value_counts().head(5)
-        top_classes_str = ", ".join(f"{t} ({c:,})" for t, c in top_classes.items())
-        n_classes = int(df["best_classification"].nunique())
-    else:
-        top_classes_str = "N/A"
-        n_classes = 0
 
     # Validate
     check_dataset(
@@ -165,10 +156,7 @@ stellar halo substructure, tidal streams, and satellite galaxies.
 ## Quick stats
 
 - **{n_total:,}** RR Lyrae variables
-- **{n_classes}** classification subtypes: {top_classes_str}
 - **{n_with_period:,}** with pulsation period (median {period_median:.4f} days)
-- **{n_with_metal:,}** with metallicity estimate
-- **{n_with_dist:,}** with photometric distance
 
 ## Usage
 
