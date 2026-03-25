@@ -45,6 +45,7 @@ DATASETS = {
         "juliensimon/solar-radio-bursts",
         "juliensimon/iers-earth-orientation",
         "juliensimon/celestrak-space-weather",
+        "juliensimon/auroral-electrojet-index",
     ],
     ASTRONOMY: [
         "juliensimon/nasa-exoplanets",
@@ -74,9 +75,15 @@ DATASETS = {
         "juliensimon/rc3-galaxy-morphology",
         "juliensimon/wds-double-stars",
         "juliensimon/astronaut-database",
+        "juliensimon/icecube-neutrino-catalog",
+        "juliensimon/brown-dwarf-catalog",
+        "juliensimon/kepler-eclipsing-binaries",
+        "juliensimon/planetary-nebulae",
     ],
     PHYSICS: [
         "juliensimon/pdg-particle-properties",
+        "juliensimon/crdb-cosmic-ray-spectra",
+        "juliensimon/auger-cosmic-rays",
     ],
 }
 
