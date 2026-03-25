@@ -59,12 +59,11 @@ def fetch_instrument(instrument: str) -> pd.DataFrame:
 
     while True:
         query = (
-            f"SELECT * FROM epn_core "
+            f"SELECT TOP {PAGE_SIZE} * FROM epn_core "
             f"WHERE instrument_host_name = 'Mars Express' "
             f"AND instrument_name = '{instrument}' "
             f"AND granule_uid > '{last_id}' "
-            f"ORDER BY granule_uid "
-            f"TOP {PAGE_SIZE}"
+            f"ORDER BY granule_uid"
         )
         resp = requests.get(TAP_URL, params={
             "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "json",

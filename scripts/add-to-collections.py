@@ -7,6 +7,7 @@ Run after uploading new datasets to HF. Safe to re-run — skips duplicates.
 from huggingface_hub import add_collection_item
 
 ORBITAL = "juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994"
+PROBES = "juliensimon/space-probe-and-mission-datasets-69c3fe82d410a42b1e313167"
 PLANETARY = "juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2"
 WEATHER = "juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70"
 ASTRONOMY = "juliensimon/astronomy-datasets-69c24caf2f17e36128946743"
@@ -31,6 +32,15 @@ DATASETS = {
         "juliensimon/gcat-launch-vehicles",
         "juliensimon/deep-space-probes",
         "juliensimon/cassini-saturn-observations",
+        "juliensimon/nasa-eva-chronology",
+    ],
+    PROBES: [
+        "juliensimon/deep-space-probes",
+        "juliensimon/cassini-saturn-observations",
+        "juliensimon/esa-mars-express-observations",
+        "juliensimon/esa-rosetta-observations",
+        "juliensimon/mars-chemcam-compositions",
+        "juliensimon/mars-perseverance-weather",
         "juliensimon/nasa-eva-chronology",
     ],
     PLANETARY: [

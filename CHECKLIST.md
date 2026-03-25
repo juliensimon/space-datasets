@@ -139,18 +139,21 @@ Required fields for discoverability (HF indexes these for search):
 
 ## 7. Post-Launch Checks
 
+**Every script must be run locally before considering it done.** Do not skip this — compile-only verification is insufficient.
+
 - [ ] Script compiles: `python3 -c "import py_compile; py_compile.compile('scripts/update-<name>.py', doraise=True)"`
-- [ ] Workflow YAML is valid: `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/update-<name>.yml'))"`
-- [ ] Run script locally — check row counts match expectations
-- [ ] Verify parquet loads locally: `load_dataset("juliensimon/<name>", split="train")`
-- [ ] Trigger `workflow_dispatch` — badge shows "no status" until first run
-- [ ] Confirm workflow succeeds: `gh run list --repo juliensimon/space-datasets --limit 1`
+- [ ] Workflow YAML is valid (if applicable): `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/update-<name>.yml'))"`
+- [ ] **Run script locally with HF_TOKEN** — verify row count, parquet written, and HF upload succeeds
 - [ ] Check HF dataset viewer: `curl -s "https://datasets-server.huggingface.co/is-valid?dataset=juliensimon/<name>"` → `viewer: true`
 - [ ] Check HF first-rows: `curl -s "https://datasets-server.huggingface.co/first-rows?dataset=juliensimon/<name>&config=default&split=train"` → rows returned
+- [ ] **Add to HF collection** — update `scripts/add-to-collections.py` and run it, or use `add_collection_item()` directly
+- [ ] Verify dataset appears on the correct HF collection page
 - [ ] README renders correctly on HF dataset page
+- [ ] Commit and push all changes to GitHub
+- [ ] Verify GitHub README shows the new dataset (badge, table row, manual run command)
+- [ ] For refreshing datasets: trigger `workflow_dispatch` and confirm workflow succeeds
 - [ ] Badges show green (CI badge + status.json dynamic badge)
 - [ ] Second run is idempotent (same-day re-run doesn't duplicate rows)
-- [ ] Collection page shows new dataset
 
 ---
 

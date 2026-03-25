@@ -176,6 +176,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ## Collections on Hugging Face
 
 - [Orbital Mechanics](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) — satellites, TLEs, launches, NEOs, asteroids, impact risk
+- [Space Probes & Missions](https://huggingface.co/collections/juliensimon/space-probe-and-mission-datasets-69c3fe82d410a42b1e313167) — Voyager, Pioneer, Cassini, Mars Express, Rosetta, Curiosity, Perseverance, EVAs
 - [Planetary Science](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2) — lunar craters, Mars craters, Mars geochemistry, meteorites
 - [Space Weather](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) — solar flares, CMEs, geomagnetic storms, solar wind, Kp/Ap/F10.7 indices
 - [Astronomy](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) — exoplanets, pulsars, radio surveys, X-ray catalogs, variable stars, gravitational waves, galaxy morphology
