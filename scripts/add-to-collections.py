@@ -27,10 +27,16 @@ DATASETS = {
         "juliensimon/nhats-accessible-asteroids",
         "juliensimon/satnogs-transmitters",
         "juliensimon/ucs-satellite-database",
+        "juliensimon/iau-meteor-showers",
+        "juliensimon/gcat-launch-vehicles",
+        "juliensimon/deep-space-probes",
+        "juliensimon/cassini-saturn-observations",
+        "juliensimon/nasa-eva-chronology",
     ],
     PLANETARY: [
         "juliensimon/lunar-craters-robbins",
         "juliensimon/mars-craters-robbins",
+        "juliensimon/meteorite-landings",
     ],
     WEATHER: [
         "juliensimon/space-weather-indices",
@@ -79,11 +85,18 @@ DATASETS = {
         "juliensimon/brown-dwarf-catalog",
         "juliensimon/kepler-eclipsing-binaries",
         "juliensimon/planetary-nebulae",
+        "juliensimon/gravitational-lenses",
+        "juliensimon/cosmicflows-galaxy-distances",
+        "juliensimon/vlass-radio-sources",
+        "juliensimon/chandra-x-ray-sources",
     ],
     PHYSICS: [
         "juliensimon/pdg-particle-properties",
         "juliensimon/crdb-cosmic-ray-spectra",
         "juliensimon/auger-cosmic-rays",
+        "juliensimon/swift-bat-hard-xray-survey",
+        "juliensimon/fermi-4lac-agn-catalog",
+        "juliensimon/fermi-3fhl-hard-gamma-ray",
     ],
 }
 

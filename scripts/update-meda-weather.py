@@ -1,0 +1,505 @@
+#!/usr/bin/env python3
+"""Fetch Perseverance MEDA weather data from PDS and upload to HF.
+
+Source: PDS Atmospheres Node — Mars2020 MEDA derived environmental data.
+https://pds-atmospheres.nmsu.edu/PDS/data/PDS4/Mars2020/mars2020_meda/data_derived_env/
+
+Incremental: tracks the last-ingested sol and only fetches new sol directories.
+"""
+
+import io
+import re
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+
+import pandas as pd
+import requests
+
+sys.path.insert(0, str(Path(__file__).parent))
+from validate import check_dataset
+
+BASE_URL = "https://pds-atmospheres.nmsu.edu/PDS/data/PDS4/Mars2020/mars2020_meda/data_derived_env"
+HF_REPO = "juliensimon/mars-perseverance-weather"
+PARQUET_NAME = "meda_weather.parquet"
+TIMEOUT = 60
+MIN_ROWS = 100_000
+
+# CSV types to download per sol (skip ANCILLARY — rover position, not weather)
+CSV_TYPES = ["PS", "RHS", "TIRS"]
+
+
+# ── Directory crawling ────────────────────────────────────────────────────────
+
+def list_links(url):
+    """Parse an Apache directory listing and return href links."""
+    resp = requests.get(url, timeout=TIMEOUT)
+    resp.raise_for_status()
+    return re.findall(r'href="([^"]+)"', resp.text)
+
+
+def discover_sol_range_dirs():
+    """Return sorted list of sol-range directory names (e.g. sol_0000_0089)."""
+    links = list_links(BASE_URL + "/")
+    dirs = [l.strip("/") for l in links if l.startswith("sol_") and l.endswith("/")]
+    return sorted(dirs)
+
+
+def discover_sol_dirs(range_dir):
+    """Return sorted list of individual sol directory names within a range dir."""
+    url = f"{BASE_URL}/{range_dir}/"
+    links = list_links(url)
+    dirs = [l.strip("/") for l in links if l.startswith("sol_") and l.endswith("/")]
+    return sorted(dirs)
+
+
+def find_csv_url(range_dir, sol_dir, csv_type):
+    """Find the CSV file URL for a given type in a sol directory.
+
+    Filename pattern: WE__NNNN___________DER_<TYPE>___...___PNN.CSV
+    We pick whichever version is present (there's usually exactly one).
+    """
+    url = f"{BASE_URL}/{range_dir}/{sol_dir}/"
+    links = list_links(url)
+    pattern = re.compile(rf"WE__\d{{4}}___________DER_{csv_type}_+P\d{{2}}\.CSV", re.IGNORECASE)
+    matches = [l for l in links if pattern.match(l)]
+    if matches:
+        return f"{url}{matches[0]}"
+    return None
+
+
+# ── CSV downloading and parsing ──────────────────────────────────────────────
+
+def download_csv(url):
+    """Download a CSV file and return a DataFrame."""
+    resp = requests.get(url, timeout=TIMEOUT)
+    resp.raise_for_status()
+    df = pd.read_csv(io.StringIO(resp.text))
+    return df
+
+
+def fetch_sol(range_dir, sol_dir):
+    """Fetch and merge PS, RHS, TIRS CSVs for one sol.
+
+    Merges on SCLK (spacecraft clock) with an outer join so no data is lost.
+    Returns a DataFrame or None if no data found.
+    """
+    frames = {}
+    for csv_type in CSV_TYPES:
+        url = find_csv_url(range_dir, sol_dir, csv_type)
+        if url is None:
+            continue
+        try:
+            df = download_csv(url)
+            if df.empty:
+                continue
+            # Keep SCLK, LMST, LTST from this file; prefix sensor-specific cols
+            frames[csv_type] = df
+        except Exception as e:
+            print(f"    Warning: failed to download {csv_type} for {sol_dir}: {e}")
+
+    if not frames:
+        return None
+
+    # Start with whichever frame we have, merge the rest on SCLK
+    merged = None
+    for csv_type, df in frames.items():
+        if merged is None:
+            merged = df
+        else:
+            # Drop duplicate LMST/LTST from the right side before merging
+            right_cols = [c for c in df.columns if c not in ("LMST", "LTST")]
+            merged = merged.merge(df[right_cols], on="SCLK", how="outer")
+
+    # Extract sol number from directory name
+    sol_match = re.search(r"sol_(\d+)$", sol_dir)
+    if sol_match:
+        merged["sol"] = int(sol_match.group(1))
+
+    return merged
+
+
+def sol_number_from_dir(sol_dir):
+    """Extract the sol number from a directory name like sol_0001."""
+    m = re.search(r"sol_(\d+)$", sol_dir)
+    return int(m.group(1)) if m else -1
+
+
+# ── Incremental support ──────────────────────────────────────────────────────
+
+def load_existing(tmp_dir):
+    """Download existing parquet from HF. Returns DataFrame or None."""
+    parquet_path = tmp_dir / "data" / PARQUET_NAME
+    try:
+        subprocess.run(
+            ["hf", "download", HF_REPO, f"data/{PARQUET_NAME}",
+             "--repo-type", "dataset", "--local-dir", str(tmp_dir)],
+            check=True, capture_output=True, timeout=120,
+        )
+        if parquet_path.exists():
+            df = pd.read_parquet(parquet_path)
+            print(f"  Loaded existing: {len(df):,} rows, max sol {df['sol'].max()}")
+            return df
+    except Exception as e:
+        print(f"  Could not load existing ({e}), doing full rebuild")
+    return None
+
+
+# ── Transform ─────────────────────────────────────────────────────────────────
+
+RENAME_MAP = {
+    "SCLK": "sclk",
+    "LMST": "lmst",
+    "LTST": "ltst",
+    "PRESSURE": "pressure_pa",
+    "PRESSURE_UNCERTAINTY": "pressure_uncertainty_pa",
+    "TRANSDUCER": "transducer",
+    "LOCAL_RELATIVE_HUMIDITY": "relative_humidity_pct",
+    "LOCAL_RELATIVE_HUMIDITY_UNCERTAINTY": "relative_humidity_uncertainty_pct",
+    "HUMIDITY_LOCAL_TEMP": "humidity_sensor_temp_k",
+    "HUMIDITY_LOCAL_TEMP_UNCERTAINTY": "humidity_sensor_temp_uncertainty_k",
+    "VOLUME_MIXING_RATIO": "volume_mixing_ratio",
+    "VOLUME_MIXING_RATIO_UNCERTAINTY": "volume_mixing_ratio_uncertainty",
+    "DOWNWARD_LW_IRRADIANCE": "downward_lw_irradiance_wm2",
+    "DOWNWARD_LW_IRRADIANCE_UNCERTAINTY": "downward_lw_irradiance_uncertainty_wm2",
+    "UPWARD_LW_IRRADIANCE": "upward_lw_irradiance_wm2",
+    "UPWARD_LW_UNCERTAINTY": "upward_lw_irradiance_uncertainty_wm2",
+    "RSM_HEAD_OUTSIDE_TIRS_UPWARD_LOOKING_FOV": "rsm_head_outside_tirs_up_fov",
+    "WHEEL_OUTSIDE_TIRS_DOWNWARD_LOOKING_FOV": "wheel_outside_tirs_down_fov",
+    "SUN_OUTSIDE_TIRS_FOV": "sun_outside_tirs_fov",
+    "ROVER_LOW_TILT": "rover_low_tilt",
+    "TIRS_GROUND_FOOTPRINT_NOT_IN_SHADOW": "tirs_ground_not_in_shadow",
+    "ROVER_HGA_OFF": "rover_hga_off",
+    "SKYCAM_OFF": "skycam_off",
+    "ROVER_STILL": "rover_still",
+}
+
+# Columns that should be numeric (coerce errors to NaN)
+NUMERIC_COLS = [
+    "sclk", "pressure_pa", "pressure_uncertainty_pa", "transducer",
+    "relative_humidity_pct", "relative_humidity_uncertainty_pct",
+    "humidity_sensor_temp_k", "humidity_sensor_temp_uncertainty_k",
+    "volume_mixing_ratio", "volume_mixing_ratio_uncertainty",
+    "downward_lw_irradiance_wm2", "downward_lw_irradiance_uncertainty_wm2",
+    "upward_lw_irradiance_wm2", "upward_lw_irradiance_uncertainty_wm2",
+]
+
+
+def transform(df):
+    """Rename columns, coerce types, sort."""
+    # Rename known columns, snake_case any unknown ones
+    df = df.rename(columns=RENAME_MAP)
+    df.columns = [c.lower().replace(" ", "_") for c in df.columns]
+
+    # Coerce numeric columns
+    for col in NUMERIC_COLS:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    # Ensure sol is integer
+    if "sol" in df.columns:
+        df["sol"] = df["sol"].astype("Int64")
+
+    # Sort by sol then sclk
+    sort_cols = [c for c in ["sol", "sclk"] if c in df.columns]
+    if sort_cols:
+        df = df.sort_values(sort_cols).reset_index(drop=True)
+
+    return df
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+EXPECTED_COLUMNS = [
+    "sclk", "lmst", "ltst", "sol", "pressure_pa",
+    "humidity_sensor_temp_k",
+    "downward_lw_irradiance_wm2", "upward_lw_irradiance_wm2",
+]
+
+CRITICAL_COLUMNS = ["sclk", "sol", "pressure_pa"]
+
+
+def main():
+    print("=== Perseverance MEDA Weather ===")
+
+    # ── Try incremental ───────────────────────────────────────────────────
+    with tempfile.TemporaryDirectory() as probe:
+        df_existing = load_existing(Path(probe))
+
+    last_sol = -1
+    if df_existing is not None and len(df_existing) > 0:
+        last_sol = int(df_existing["sol"].max())
+        print(f"  Incremental mode: fetching sols > {last_sol}")
+
+    # ── Discover and crawl directories ────────────────────────────────────
+    print("Discovering sol-range directories...")
+    range_dirs = discover_sol_range_dirs()
+    print(f"  Found {len(range_dirs)} sol-range directories")
+
+    new_frames = []
+    sols_fetched = 0
+
+    for range_dir in range_dirs:
+        # Quick check: if range max < last_sol, skip entirely
+        range_match = re.search(r"sol_\d+_(\d+)$", range_dir)
+        if range_match and int(range_match.group(1)) <= last_sol:
+            print(f"  Skipping {range_dir} (all sols <= {last_sol})")
+            continue
+
+        print(f"  Scanning {range_dir}...")
+        try:
+            sol_dirs = discover_sol_dirs(range_dir)
+        except Exception as e:
+            print(f"    Error listing {range_dir}: {e}")
+            continue
+        time.sleep(0.3)
+
+        for sol_dir in sol_dirs:
+            sol_num = sol_number_from_dir(sol_dir)
+            if sol_num <= last_sol:
+                continue
+
+            try:
+                df_sol = fetch_sol(range_dir, sol_dir)
+                if df_sol is not None and len(df_sol) > 0:
+                    new_frames.append(df_sol)
+                    sols_fetched += 1
+                    if sols_fetched % 50 == 0:
+                        print(f"    Fetched {sols_fetched} sols so far "
+                              f"({len(df_sol)} rows for sol {sol_num})")
+            except Exception as e:
+                print(f"    Error fetching {sol_dir}: {e}")
+            time.sleep(0.5)  # Be polite to PDS server
+
+    # ── Combine ───────────────────────────────────────────────────────────
+    if new_frames:
+        df_new = pd.concat(new_frames, ignore_index=True)
+        print(f"  Fetched {sols_fetched} new sols, {len(df_new):,} new rows")
+
+        if df_existing is not None and len(df_existing) > 0:
+            df = pd.concat([df_existing, df_new], ignore_index=True)
+            # Deduplicate on (sol, sclk) keeping latest
+            df = df.drop_duplicates(subset=["sol", "sclk"], keep="last")
+            print(f"  Merged: {len(df):,} total rows")
+        else:
+            df = df_new
+    elif df_existing is not None and len(df_existing) > 0:
+        df = df_existing
+        print("  No new sols found, re-uploading existing data")
+    else:
+        print("ERROR: No data fetched and no existing data")
+        sys.exit(1)
+
+    # ── Transform ─────────────────────────────────────────────────────────
+    df = transform(df)
+
+    # ── Validate ──────────────────────────────────────────────────────────
+    check_dataset(
+        df,
+        dataset_name="meda-weather",
+        min_rows=MIN_ROWS,
+        expected_columns=EXPECTED_COLUMNS,
+        critical_columns=CRITICAL_COLUMNS,
+        max_null_pct=0.50,  # Mars weather has many sensor gaps
+    )
+
+    # ── Stats ─────────────────────────────────────────────────────────────
+    n_rows = len(df)
+    n_sols = int(df["sol"].nunique())
+    sol_min = int(df["sol"].min())
+    sol_max = int(df["sol"].max())
+
+    pressure_mean = df["pressure_pa"].mean()
+    pressure_min = df["pressure_pa"].min()
+    pressure_max = df["pressure_pa"].max()
+
+    has_humidity = "relative_humidity_pct" in df.columns
+    humidity_nonnull = int(df["relative_humidity_pct"].notna().sum()) if has_humidity else 0
+
+    # Size category
+    if n_rows < 100_000:
+        size_cat = "10K<n<100K"
+    elif n_rows < 1_000_000:
+        size_cat = "100K<n<1M"
+    elif n_rows < 10_000_000:
+        size_cat = "1M<n<10M"
+    else:
+        size_cat = "10M<n<100M"
+
+    # ── Write ─────────────────────────────────────────────────────────────
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        data_dir = tmp / "data"
+        data_dir.mkdir()
+
+        out = data_dir / PARQUET_NAME
+        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
+        size_mb = out.stat().st_size / 1024 / 1024
+        print(f"  Wrote {size_mb:.1f} MB parquet ({n_rows:,} rows)")
+
+        (tmp / "README.md").write_text(f"""---
+license: cc-by-4.0
+pretty_name: "Mars Perseverance MEDA Weather"
+language:
+  - en
+description: "Surface weather measurements from the MEDA instrument on NASA's Perseverance rover: pressure, temperature, humidity, and thermal infrared radiation on Mars."
+task_categories:
+  - tabular-regression
+  - time-series-forecasting
+tags:
+  - space
+  - mars
+  - perseverance
+  - meda
+  - weather
+  - nasa
+  - planetary-science
+  - open-data
+  - tabular-data
+size_categories:
+  - {size_cat}
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/{PARQUET_NAME}
+    default: true
+---
+
+# Mars Perseverance MEDA Weather
+
+*Part of the [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
+
+![Update MEDA Weather](https://github.com/juliensimon/space-datasets/actions/workflows/update-meda-weather.yml/badge.svg)
+![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['meda-weather']&label=updated&color=brightgreen)
+
+Surface weather measurements from the **Mars Environmental Dynamics Analyzer (MEDA)** on NASA's
+Perseverance rover in Jezero Crater, Mars. Covers **sol {sol_min}** to **sol {sol_max}** with
+**{n_rows:,}** measurements across **{n_sols}** sols.
+
+## Dataset description
+
+MEDA is a suite of environmental sensors on the Perseverance rover that measures Martian weather
+at ~1 Hz cadence. This dataset combines three derived data products from the PDS Atmospheres Node:
+
+- **PS** — Atmospheric pressure (Pa) from the pressure sensor
+- **RHS** — Relative humidity (%) and humidity sensor temperature (K)
+- **TIRS** — Thermal infrared upward/downward longwave irradiance (W/m2)
+
+Records are merged on spacecraft clock (SCLK) to produce a unified weather timeline.
+
+## Schema
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `sclk` | int64 | Spacecraft clock count (unique timestamp) |
+| `lmst` | string | Local Mean Solar Time |
+| `ltst` | string | Local True Solar Time |
+| `sol` | int64 | Martian sol (day) number since landing |
+| `pressure_pa` | float64 | Atmospheric pressure (Pa) |
+| `pressure_uncertainty_pa` | float64 | Pressure measurement uncertainty (Pa) |
+| `transducer` | int64 | Pressure transducer ID (1 or 2) |
+| `relative_humidity_pct` | float64 | Local relative humidity (%) |
+| `relative_humidity_uncertainty_pct` | float64 | Humidity uncertainty (%) |
+| `humidity_sensor_temp_k` | float64 | Humidity sensor temperature (K) |
+| `humidity_sensor_temp_uncertainty_k` | float64 | Humidity sensor temperature uncertainty (K) |
+| `volume_mixing_ratio` | float64 | Water vapor volume mixing ratio |
+| `volume_mixing_ratio_uncertainty` | float64 | Volume mixing ratio uncertainty |
+| `downward_lw_irradiance_wm2` | float64 | Downward longwave irradiance (W/m2) |
+| `downward_lw_irradiance_uncertainty_wm2` | float64 | Downward LW irradiance uncertainty (W/m2) |
+| `upward_lw_irradiance_wm2` | float64 | Upward longwave irradiance (W/m2) — proxy for ground temperature |
+| `upward_lw_irradiance_uncertainty_wm2` | float64 | Upward LW irradiance uncertainty (W/m2) |
+
+Additional TIRS quality flag columns: `rsm_head_outside_tirs_up_fov`, `wheel_outside_tirs_down_fov`,
+`sun_outside_tirs_fov`, `rover_low_tilt`, `tirs_ground_not_in_shadow`, `rover_hga_off`, `skycam_off`, `rover_still`.
+
+## Quick stats
+
+- **{n_rows:,}** measurements across **{n_sols}** sols (sol {sol_min}--{sol_max})
+- Mean surface pressure: **{pressure_mean:.1f} Pa** (range {pressure_min:.1f}--{pressure_max:.1f} Pa)
+- **{humidity_nonnull:,}** humidity readings available
+
+## Usage
+
+```python
+from datasets import load_dataset
+
+ds = load_dataset("juliensimon/mars-perseverance-weather", split="train")
+df = ds.to_pandas()
+
+# Daily pressure cycle for a given sol
+sol_100 = df[df["sol"] == 100]
+sol_100.plot(x="ltst", y="pressure_pa", title="Sol 100 pressure")
+
+# Seasonal pressure variation (Mars has ~25% annual pressure swing)
+daily_avg = df.groupby("sol")["pressure_pa"].mean()
+daily_avg.plot(title="Mars surface pressure by sol")
+
+# Ground temperature proxy from upward thermal IR
+df["ground_temp_proxy"] = (df["upward_lw_irradiance_wm2"] / 5.67e-8) ** 0.25
+daily_temp = df.groupby("sol")["ground_temp_proxy"].agg(["min", "max"])
+daily_temp.plot(title="Ground temperature range by sol")
+
+# Humidity readings (sparse — mostly nighttime)
+humid = df[df["relative_humidity_pct"].notna()]
+humid.groupby("sol")["relative_humidity_pct"].mean().plot()
+```
+
+## Data source
+
+[NASA PDS Atmospheres Node](https://pds-atmospheres.nmsu.edu/PDS/data/PDS4/Mars2020/mars2020_meda/data_derived_env/) —
+Mars 2020 MEDA derived environmental data, maintained by New Mexico State University.
+
+## Update schedule
+
+Monthly (1st of each month at 08:00 UTC) via [GitHub Actions](https://github.com/juliensimon/space-datasets).
+New sols are ingested incrementally.
+
+## Related datasets
+
+- [mars-craters](https://huggingface.co/datasets/juliensimon/mars-craters) — Mars crater catalog
+- [neo-close-approaches](https://huggingface.co/datasets/juliensimon/neo-close-approaches) — Near-Earth object approaches
+- [exoplanets](https://huggingface.co/datasets/juliensimon/exoplanets) — NASA Exoplanet Archive
+
+## Pipeline
+
+Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
+
+## Citation
+
+```bibtex
+@dataset{{meda_weather,
+  author = {{Simon, Julien}},
+  title = {{Mars Perseverance MEDA Weather}},
+  year = {{2026}},
+  publisher = {{Hugging Face}},
+  url = {{https://huggingface.co/datasets/juliensimon/mars-perseverance-weather}},
+  note = {{Based on NASA PDS Mars 2020 MEDA derived environmental data}}
+}}
+```
+
+## License
+
+[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
+""")
+
+        # ── Upload ────────────────────────────────────────────────────────
+        print("Uploading to HF...")
+        commit_msg = (f"Update MEDA weather: {n_rows:,} rows, "
+                      f"{n_sols} sols (sol {sol_min}-{sol_max})")
+        subprocess.run(
+            ["hf", "upload", HF_REPO, str(tmp), ".",
+             "--repo-type", "dataset",
+             "--commit-message", commit_msg],
+            check=True,
+        )
+
+    # ── Output row count for workflow ─────────────────────────────────────
+    print(f"::set-output name=rows::{n_rows}")
+    print(f"Done. {n_rows:,} rows across {n_sols} sols.")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,6 +1,6 @@
 # space-datasets
 
-Open-source data pipelines that publish **60+ space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, and more — sourced from NASA, NOAA, ESA, and other public APIs. Updated daily via GitHub Actions.
+Open-source data pipelines that publish **85+ space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, and other public APIs. Updated daily via GitHub Actions.
 
 All datasets are loadable in one line (`load_dataset("juliensimon/...")`), require no API keys, and work with `pandas`, `polars`, or any Parquet-compatible tool.
 
@@ -48,9 +48,14 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![CHIME/FRB](https://github.com/juliensimon/space-datasets/actions/workflows/update-chime-frb.yml/badge.svg)
 ![TESS TOI](https://github.com/juliensimon/space-datasets/actions/workflows/update-tess-toi.yml/badge.svg)
 ![WDS](https://github.com/juliensimon/space-datasets/actions/workflows/update-wds.yml/badge.svg)
+<!-- Space Probes -->
+![Deep Space Probes](https://github.com/juliensimon/space-datasets/actions/workflows/update-deep-space-probes.yml/badge.svg)
+![Mars Express](https://github.com/juliensimon/space-datasets/actions/workflows/update-mars-express.yml/badge.svg)
+![MEDA Weather](https://github.com/juliensimon/space-datasets/actions/workflows/update-meda-weather.yml/badge.svg)
 <!-- Physics -->
 ![CRDB](https://github.com/juliensimon/space-datasets/actions/workflows/update-crdb.yml/badge.svg)
 ![PDG](https://github.com/juliensimon/space-datasets/actions/workflows/update-pdg.yml/badge.svg)
+![Fermi GBM](https://github.com/juliensimon/space-datasets/actions/workflows/update-fermi-gbm-triggers.yml/badge.svg)
 
 ## Datasets
 
@@ -71,6 +76,20 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 | [nhats-accessible-asteroids](https://huggingface.co/datasets/juliensimon/nhats-accessible-asteroids) | 4,800+ asteroids accessible for human space missions with delta-v requirements | ![NHATS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.nhats&label=updated&color=brightgreen) | Daily | <1 MB |
 | [satnogs-transmitters](https://huggingface.co/datasets/juliensimon/satnogs-transmitters) | 10K+ satellite radio transmitters and frequencies from SatNOGS | ![SatNOGS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.satnogs&label=updated&color=brightgreen) | Weekly | 5 MB |
 | [ucs-satellite-database](https://huggingface.co/datasets/juliensimon/ucs-satellite-database) | 7,500+ active satellites with purpose, operator, and orbit metadata | ![UCS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.ucs&label=updated&color=brightgreen) | Quarterly | 5 MB |
+| [iau-meteor-showers](https://huggingface.co/datasets/juliensimon/iau-meteor-showers) | 2,163 meteor shower records from the IAU Meteor Data Center | — | Static | <1 MB |
+| [gcat-launch-vehicles](https://huggingface.co/datasets/juliensimon/gcat-launch-vehicles) | 4,875 launch vehicles, engines, and stages from GCAT | — | Static | <1 MB |
+
+### Space Probes
+
+| Dataset | Description | Last Updated | Schedule | Size |
+|---------|-------------|-------------|----------|------|
+| [deep-space-probes](https://huggingface.co/datasets/juliensimon/deep-space-probes) | 1.2M hourly readings from Voyager 1+2 and Pioneer 10+11 (1972–2025) | ![Probes](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['deep-space-probes']&label=updated&color=blue) | Monthly | 32 MB |
+| [cassini-saturn-observations](https://huggingface.co/datasets/juliensimon/cassini-saturn-observations) | 63K Saturn observation records from the Cassini mission (2004–2017) | — | Static | 1.6 MB |
+| [esa-mars-express-observations](https://huggingface.co/datasets/juliensimon/esa-mars-express-observations) | 1.66M observation metadata from ESA Mars Express (8 instruments, since 2003) | — | Weekly | 200 MB |
+| [esa-rosetta-observations](https://huggingface.co/datasets/juliensimon/esa-rosetta-observations) | 8.3M observation records from ESA Rosetta at comet 67P | — | Static | 1 GB |
+| [mars-chemcam-compositions](https://huggingface.co/datasets/juliensimon/mars-chemcam-compositions) | 30K+ Mars rock/soil oxide compositions from Curiosity ChemCam LIBS | — | Static | 1 MB |
+| [mars-perseverance-weather](https://huggingface.co/datasets/juliensimon/mars-perseverance-weather) | Mars surface weather from Perseverance MEDA (temperature, pressure, wind, UV) | — | Monthly | ~100 MB |
+| [nasa-eva-chronology](https://huggingface.co/datasets/juliensimon/nasa-eva-chronology) | 375 spacewalks (EVAs) — complete history from Gemini to ISS | — | Static | <1 MB |
 
 ### Planetary Science
 
@@ -78,6 +97,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 |---------|-------------|-------------|----------|------|
 | [lunar-craters-robbins](https://huggingface.co/datasets/juliensimon/lunar-craters-robbins) | 1.3M+ lunar impact craters from the Robbins 2019 database | — | Static | 200 MB |
 | [mars-craters-robbins](https://huggingface.co/datasets/juliensimon/mars-craters-robbins) | 384K+ Mars impact craters from the Robbins & Hynek 2012 database | — | Static | 50 MB |
+| [meteorite-landings](https://huggingface.co/datasets/juliensimon/meteorite-landings) | 45K+ known meteorite landings with classification and mass | — | Static | 5 MB |
 
 ### Space Weather
 
@@ -132,6 +152,10 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 | [brown-dwarf-catalog](https://huggingface.co/datasets/juliensimon/brown-dwarf-catalog) | 14K ultracool and brown dwarfs within 40 pc | — | Static | 10 MB |
 | [kepler-eclipsing-binaries](https://huggingface.co/datasets/juliensimon/kepler-eclipsing-binaries) | 2,177 Kepler eclipsing binary stars | — | Static | 1 MB |
 | [planetary-nebulae](https://huggingface.co/datasets/juliensimon/planetary-nebulae) | 1,715 planetary nebulae from MUSE survey | — | Static | <1 MB |
+| [vlass-radio-sources](https://huggingface.co/datasets/juliensimon/vlass-radio-sources) | 3.4M radio sources from VLA Sky Survey Epoch 1 (VLASS) at 3 GHz | — | Static | 681 MB |
+| [chandra-x-ray-sources](https://huggingface.co/datasets/juliensimon/chandra-x-ray-sources) | 28K X-ray sources from the Chandra Source Catalog (CSC 2.1) | — | Static | 1.8 MB |
+| [cosmicflows-galaxy-distances](https://huggingface.co/datasets/juliensimon/cosmicflows-galaxy-distances) | 56K galaxy distances from Cosmicflows-4 (8 distance methods) | — | Static | 3.7 MB |
+| [gravitational-lenses](https://huggingface.co/datasets/juliensimon/gravitational-lenses) | 33K strong gravitational lenses from the lenscat community catalog | — | Static | 0.9 MB |
 
 ### Physics
 
@@ -140,14 +164,22 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 | [pdg-particle-properties](https://huggingface.co/datasets/juliensimon/pdg-particle-properties) | Every known particle from the Particle Data Group | ![PDG](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.pdg&label=updated&color=brightgreen) | Annual | 50 MB |
 | [crdb-cosmic-ray-spectra](https://huggingface.co/datasets/juliensimon/crdb-cosmic-ray-spectra) | 316K cosmic ray measurements from 131 experiments | ![CRDB](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.crdb&label=updated&color=brightgreen) | Quarterly | 50 MB |
 | [auger-cosmic-rays](https://huggingface.co/datasets/juliensimon/auger-cosmic-rays) | Ultra-high-energy cosmic ray events from Pierre Auger Observatory | — | Static | 100 MB |
+| [swift-bat-hard-xray-survey](https://huggingface.co/datasets/juliensimon/swift-bat-hard-xray-survey) | 1,893 hard X-ray sources (14–195 keV) from Swift-BAT 157-month survey | — | Static | 0.3 MB |
+| [fermi-4lac-agn-catalog](https://huggingface.co/datasets/juliensimon/fermi-4lac-agn-catalog) | 3,409 gamma-ray AGN from Fermi LAT Fourth AGN Catalog (4LAC) | — | Static | 0.7 MB |
+| [fermi-3fhl-hard-gamma-ray](https://huggingface.co/datasets/juliensimon/fermi-3fhl-hard-gamma-ray) | 1,558 hard gamma-ray sources (>10 GeV) from Fermi LAT 3FHL | — | Static | 0.6 MB |
+| [fermi-gbm-triggers](https://huggingface.co/datasets/juliensimon/fermi-gbm-triggers) | 12.5K+ Fermi GBM triggers — all triggers, not just confirmed GRBs | ![GBM](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['fermi-gbm-triggers']&label=updated&color=brightgreen) | Daily | 1.8 MB |
+| [integral-ibis-hard-xray](https://huggingface.co/datasets/juliensimon/integral-ibis-hard-xray) | 929 hard X-ray sources from INTEGRAL IBIS 17-year survey (17–290 keV) | — | Static | 0.3 MB |
+| [tevcat-tev-gamma-ray](https://huggingface.co/datasets/juliensimon/tevcat-tev-gamma-ray) | 322 TeV gamma-ray sources — THE ground-based VHE reference catalog | — | Static | <1 MB |
+| [lhaaso-gamma-ray-sources](https://huggingface.co/datasets/juliensimon/lhaaso-gamma-ray-sources) | 180 ultra-high-energy gamma-ray sources from 1LHAASO (2024) | — | Static | <1 MB |
+| [hawc-tev-gamma-ray](https://huggingface.co/datasets/juliensimon/hawc-tev-gamma-ray) | 65 TeV gamma-ray sources from the 3HWC HAWC catalog | — | Static | <1 MB |
 
 ## Collections on Hugging Face
 
 - [Orbital Mechanics](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) — satellites, TLEs, launches, NEOs, asteroids, impact risk
-- [Planetary Science](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2) — lunar and Mars impact craters
+- [Planetary Science](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2) — lunar craters, Mars craters, Mars geochemistry, meteorites
 - [Space Weather](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) — solar flares, CMEs, geomagnetic storms, solar wind, Kp/Ap/F10.7 indices
 - [Astronomy](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) — exoplanets, pulsars, radio surveys, X-ray catalogs, variable stars, gravitational waves, galaxy morphology
-- [Physics](https://huggingface.co/collections/juliensimon/physics-datasets-69c2d4682d37dfdb77447bd7) — particle properties, cosmic ray spectra
+- [Physics](https://huggingface.co/collections/juliensimon/physics-datasets-69c2d4682d37dfdb77447bd7) — particle properties, cosmic ray spectra, hard X-ray surveys, gamma-ray catalogs (TeV/UHE)
 
 ## How it works
 
@@ -180,10 +212,13 @@ python scripts/update-fireballs.py
 python scripts/update-nhats.py
 python scripts/update-satnogs.py
 python scripts/update-ucs.py  # requires: pip install openpyxl
+python scripts/update-meteor-showers.py
+python scripts/update-gcat.py
 
 # Planetary Science
 python scripts/update-lunar-craters.py
 python scripts/update-mars-craters.py
+python scripts/update-meteorite-landings.py
 
 # Space Weather
 python scripts/update-space-weather.py
@@ -199,6 +234,15 @@ python scripts/update-solar-radio.py
 python scripts/update-iers-eop.py
 python scripts/update-celestrak-sw.py
 python scripts/update-ae-index.py
+
+# Space Probes
+python scripts/update-deep-space-probes.py
+python scripts/update-cassini.py
+python scripts/update-mars-express.py
+python scripts/update-rosetta.py
+python scripts/update-chemcam.py
+python scripts/update-meda-weather.py
+python scripts/update-eva.py
 
 # Astronomy
 python scripts/update-exoplanets.py
@@ -232,11 +276,23 @@ python scripts/update-kepler-eb.py
 python scripts/update-planetary-nebulae.py
 python scripts/update-wds.py
 python scripts/update-astronauts.py
+python scripts/update-vlass.py
+python scripts/update-chandra.py
+python scripts/update-cosmicflows.py
+python scripts/update-gravitational-lenses.py
 
 # Physics
 pip install particle && python scripts/update-pdg.py
 pip install crdb && python scripts/update-crdb.py
 python scripts/update-auger.py
+python scripts/update-swift-bat.py
+python scripts/update-fermi-4lac.py
+python scripts/update-fermi-3fhl.py
+python scripts/update-fermi-gbm-triggers.py
+python scripts/update-integral-ibis.py
+python scripts/update-tevcat.py
+python scripts/update-lhaaso.py
+python scripts/update-hawc.py
 ```
 
 ## Bulk ingestion
@@ -265,11 +321,12 @@ These datasets are built from the following public sources — please cite them 
 
 | Domain | Original source |
 |--------|----------------|
-| Orbital Mechanics | [CelesTrak](https://celestrak.org/) (Dr. T.S. Kelso), [Space-Track.org](https://www.space-track.org/), [GCAT](https://planet4589.org/space/gcat/) (Jonathan McDowell), [Starlink Insider](https://starlinkinsider.com/), [NASA/JPL CNEOS](https://cneos.jpl.nasa.gov/), [NASA/JPL SSD](https://ssd.jpl.nasa.gov/), [NASA NHATS](https://cneos.jpl.nasa.gov/nhats/), [SatNOGS](https://db.satnogs.org/) (Libre Space Foundation), [UCS](https://www.ucsusa.org/resources/satellite-database) |
-| Planetary Science | [USGS Astrogeology](https://astrogeology.usgs.gov/) (Robbins crater databases) |
+| Orbital Mechanics | [CelesTrak](https://celestrak.org/) (Dr. T.S. Kelso), [Space-Track.org](https://www.space-track.org/), [GCAT](https://planet4589.org/space/gcat/) (Jonathan McDowell), [Starlink Insider](https://starlinkinsider.com/), [NASA/JPL CNEOS](https://cneos.jpl.nasa.gov/), [NASA/JPL SSD](https://ssd.jpl.nasa.gov/), [NASA NHATS](https://cneos.jpl.nasa.gov/nhats/), [SatNOGS](https://db.satnogs.org/) (Libre Space Foundation), [UCS](https://www.ucsusa.org/resources/satellite-database), [IAU MDC](https://www.ta3.sk/IAUC22DB/MDC2022/) |
+| Space Probes | [NASA SPDF COHOWeb](https://spdf.gsfc.nasa.gov/) (Voyager, Pioneer), [PDS Atmospheres](https://pds-atmospheres.nmsu.edu/) (Cassini, MEDA), [PDS Geosciences](https://pds-geosciences.wustl.edu/) (ChemCam), [ESA PSA](https://psa.esa.int/) (Mars Express, Rosetta) |
+| Planetary Science | [USGS Astrogeology](https://astrogeology.usgs.gov/) (Robbins crater databases), [Meteoritical Society](https://www.lpi.usra.edu/meteor/) (via NASA data.gov) |
 | Space Weather | [NOAA SWPC](https://www.swpc.noaa.gov/), [WDC Kyoto](https://wdc.kugi.kyoto-u.ac.jp/dstdir/), [NASA CCMC DONKI](https://ccmc.gsfc.nasa.gov/tools/DONKI/), [NOAA NCEI](https://www.ncei.noaa.gov/) GOES-16 XRS, [SILSO](https://www.sidc.be/SILSO/) (Royal Observatory of Belgium), [LASP LISIRD](https://lasp.colorado.edu/lisird/) (F10.7), [IERS](https://www.iers.org/) |
-| Astronomy | [NASA Exoplanet Archive](https://exoplanetarchive.ipac.caltech.edu/), [NASA HEASARC](https://heasarc.gsfc.nasa.gov/) Fermi GBM, [GWOSC](https://gwosc.org/) (LIGO/Virgo/KAGRA), [ATNF](https://www.atnf.csiro.au/research/pulsar/psrcat/) Pulsar Catalogue, [OpenNGC](https://github.com/mattiaverga/OpenNGC), [Green's SNR Catalog](https://www.mrao.cam.ac.uk/surveys/snrs/), [SIMBAD](https://simbad.u-strasbg.fr/) (CDS Strasbourg), [VizieR](https://vizier.cds.unistra.fr/) (CDS Strasbourg), [Fermi LAT](https://fermi.gsfc.nasa.gov/ssc/), [CHIME/FRB](https://www.chime-frb.ca/), [eROSITA](https://erosita.mpe.mpg.de/), [Pantheon+](https://github.com/PantheonPlusSH0ES/DataRelease) |
-| Physics | [Particle Data Group](https://pdg.lbl.gov/) (PDG), [CRDB](https://lpsc.in2p3.fr/crdb/) (Cosmic Ray DataBase), [Pierre Auger Observatory](https://www.auger.org/) (via Zenodo), [IceCube](https://icecube.wisc.edu/) (via HEASARC) |
+| Astronomy | [NASA Exoplanet Archive](https://exoplanetarchive.ipac.caltech.edu/), [NASA HEASARC](https://heasarc.gsfc.nasa.gov/) (Fermi, Chandra, Swift), [GWOSC](https://gwosc.org/) (LIGO/Virgo/KAGRA), [ATNF](https://www.atnf.csiro.au/research/pulsar/psrcat/) Pulsar Catalogue, [OpenNGC](https://github.com/mattiaverga/OpenNGC), [Green's SNR Catalog](https://www.mrao.cam.ac.uk/surveys/snrs/), [SIMBAD](https://simbad.u-strasbg.fr/) (CDS Strasbourg), [VizieR](https://vizier.cds.unistra.fr/) (CDS Strasbourg — VLASS, Cosmicflows-4, INTEGRAL, LHAASO, HAWC), [Fermi LAT](https://fermi.gsfc.nasa.gov/ssc/), [CHIME/FRB](https://www.chime-frb.ca/), [eROSITA](https://erosita.mpe.mpg.de/), [Pantheon+](https://github.com/PantheonPlusSH0ES/DataRelease), [lenscat](https://github.com/lenscat/lenscat) |
+| Physics | [Particle Data Group](https://pdg.lbl.gov/) (PDG), [CRDB](https://lpsc.in2p3.fr/crdb/) (Cosmic Ray DataBase), [Pierre Auger Observatory](https://www.auger.org/) (via Zenodo), [IceCube](https://icecube.wisc.edu/) (via HEASARC), [Swift/BAT](https://swift.gsfc.nasa.gov/results/bs157mon/) (NASA), [INTEGRAL IBIS](https://www.isdc.unige.ch/) (ESA), [TeVCat](http://tevcat.uchicago.edu/) (via HEASARC), [LHAASO](http://english.ihep.cas.cn/) (via VizieR), [HAWC](https://www.hawc-observatory.org/) (via VizieR) |
 
 ## License
 

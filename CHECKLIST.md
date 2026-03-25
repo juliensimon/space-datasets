@@ -1,6 +1,6 @@
 # Dataset Addition Checklist
 
-Reusable checklist for adding any new dataset to `juliensimon/space-datasets`. Learned from building 23 datasets.
+Reusable checklist for adding any new dataset to `juliensimon/space-datasets`. Learned from building 85 datasets.
 
 ---
 
@@ -29,6 +29,8 @@ Reusable checklist for adding any new dataset to `juliensimon/space-datasets`. L
 
 - [ ] Test ADQL query in isolation first (curl or browser)
 - [ ] HEASARC: use `FORMAT=text` (pipe-delimited) — CSV returns VOTable XML
+- [ ] HEASARC: if using multi-format fallback (CSV→JSON→text), always add XML guard: `if not resp.text.strip().startswith("<?xml")` before CSV parse
+- [ ] HEASARC: add column sanity check after parse (e.g., `and "ra" in df.columns`), not just row count
 - [ ] SIMBAD: avoid JOINs with `allfluxes`/`mesDistance`. Use `basic` table only
 - [ ] SIMBAD: use `OR` chains, not `IN (...)`. No `regexp()` function
 - [ ] VizieR/Gaia: use `FORMAT=csv` (usually works correctly)
@@ -116,18 +118,22 @@ Required fields for discoverability (HF indexes these for search):
 - [ ] Add dataset entry to `status.json` with initial date value
 - [ ] Verify `status.json` is valid JSON after editing: `python3 -c "import json; json.loads(open('status.json').read())"`
 - [ ] Add dataset to GitHub `README.md`:
-  - [ ] Badge in badge row at top
-  - [ ] Row in correct domain table (Orbital / Space Weather / Astronomy)
+  - [ ] Update dataset count in opening paragraph (`85+` → new count)
+  - [ ] Badge in badge row at top (refreshing datasets only, grouped by domain comment)
+  - [ ] Row in correct domain table (Orbital / Space Probes / Planetary / Space Weather / Astronomy / Physics)
   - [ ] Description column with plain-English summary + specific numbers
-  - [ ] Manual run command in the `## Manual run` section
-- [ ] Add to data sources table if new source
-- [ ] Add to correct HF domain collection (or run `python scripts/add-to-collections.py`):
+  - [ ] Manual run command in the `## Manual run` section (in correct domain group)
+  - [ ] Add to data sources table if new source
+- [ ] Add dataset to `scripts/add-to-collections.py` in the correct collection list, then run it:
   - Orbital: `juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994`
   - Planetary: `juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2`
   - Weather: `juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70`
   - Astronomy: `juliensimon/astronomy-datasets-69c24caf2f17e36128946743`
   - Physics: `juliensimon/physics-datasets-69c2d4682d37dfdb77447bd7`
+- [ ] Update `CANDIDATES.md`: move from remaining to built, update counts, renumber
+- [ ] Update `CHECKLIST.md` dataset count if a round number was crossed
 - [ ] Cross-reference in related datasets' HF READMEs (nice-to-have)
+- [ ] Commit and push all changes (README, CANDIDATES, CHECKLIST, add-to-collections.py, scripts, workflows)
 
 ---
 
@@ -165,5 +171,15 @@ Required fields for discoverability (HF indexes these for search):
 | Boolean column destroyed by string cleaning | Create derived boolean columns AFTER `df.select_dtypes(include=["object"])` cleaning loop, not before |
 | VizieR `[Fe/H]` brackets | VizieR sanitizes special chars in column names — check actual CSV output, don't assume bracket notation works |
 | VizieR age/distance columns | Hunt & Reffert uses `logAge50`/`dist50` (with percentile suffixes), not `Age`/`Dist` |
-| Multi-config viewer issues | Use explicit `split: train` + `path:` format + `default: true` |
+| Multi-config viewer issues | Use explicit `split: train` + `path:` format + `default: true` on one config |
+| Multi-config missing `default: true` | `load_dataset()` fails without it — always set `default: true` on the primary config |
 | HF viewer "no status" | Wait 1-2 min after upload, then check `is-valid` API |
+| HEASARC CSV returns XML silently | `pd.read_csv()` may parse XML as garbage without error — always check `startswith("<?xml")` before parse |
+| PDS/GCAT column names with trailing spaces | Strip column names with `df.columns = df.columns.str.strip()` after read |
+| Day-of-year datetime format (YYYY-DDDTHH:MM:SS) | Use `pd.to_datetime(col, format="%Y-%jT%H:%M:%S")` — dateutil fallback silently returns NaT |
+| README f-string crash on NaN stats | Guard computed stats (e.g., `heaviest = df.loc[df["mass"].idxmax()]`) with `is not None` before using in f-strings |
+| Over-broad numeric column matching | Use `startswith()` prefix matching, not `in` substring matching — `"ra" in "separation"` matches incorrectly |
+| NASA data.nasa.gov SODA API | Endpoints may go 404 without notice (e.g., `y77d-th95` as of 2026-03). Test before committing |
+| HEASARC TAP sync truncates large tables | Sync endpoint has a server-side row limit (~28K for some tables). Add `MAXREC=500000` but it may not help — verify row count matches expected. For 100K+ tables, consider async TAP or VizieR mirror |
+| VizieR catalog sizes differ from docs | VLASS component catalog is 3.4M rows (not 700K as listed in papers). Always check actual row count from `vizier_query()` and adjust `size_categories` accordingly |
+| `import` inside function body | Keep all imports at file top level for consistency with project convention |
