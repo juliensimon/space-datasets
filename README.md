@@ -15,6 +15,8 @@ Automated pipelines that keep space-related datasets on Hugging Face up to date.
 ![NHATS](https://github.com/juliensimon/space-datasets/actions/workflows/update-nhats.yml/badge.svg)
 ![SatNOGS](https://github.com/juliensimon/space-datasets/actions/workflows/update-satnogs.yml/badge.svg)
 ![UCS](https://github.com/juliensimon/space-datasets/actions/workflows/update-ucs.yml/badge.svg)
+![CelesTrak SW](https://github.com/juliensimon/space-datasets/actions/workflows/update-celestrak-sw.yml/badge.svg)
+![WDS](https://github.com/juliensimon/space-datasets/actions/workflows/update-wds.yml/badge.svg)
 <!-- Space Weather -->
 ![Space Weather](https://github.com/juliensimon/space-datasets/actions/workflows/update-space-weather.yml/badge.svg)
 ![Solar Flares](https://github.com/juliensimon/space-datasets/actions/workflows/update-solar-flares.yml/badge.svg)
@@ -65,6 +67,9 @@ Automated pipelines that keep space-related datasets on Hugging Face up to date.
 | [nhats-accessible-asteroids](https://huggingface.co/datasets/juliensimon/nhats-accessible-asteroids) | 4,800+ asteroids accessible for human space missions with delta-v requirements | ![NHATS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.nhats&label=updated&color=brightgreen) | Daily | <1 MB |
 | [satnogs-transmitters](https://huggingface.co/datasets/juliensimon/satnogs-transmitters) | 10K+ satellite radio transmitters and frequencies from SatNOGS | ![SatNOGS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.satnogs&label=updated&color=brightgreen) | Weekly | 5 MB |
 | [ucs-satellite-database](https://huggingface.co/datasets/juliensimon/ucs-satellite-database) | 7,500+ active satellites with purpose, operator, and orbit metadata | ![UCS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.ucs&label=updated&color=brightgreen) | Quarterly | 5 MB |
+| [wds-double-stars](https://huggingface.co/datasets/juliensimon/wds-double-stars) | 157K visual double star systems from the Washington Double Star Catalog | ![WDS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.wds&label=updated&color=brightgreen) | Weekly | 50 MB |
+| [celestrak-space-weather](https://huggingface.co/datasets/juliensimon/celestrak-space-weather) | Consolidated space weather data for orbit propagation (Kp, Ap, F10.7) | ![CelesTrak SW](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['celestrak-sw']&label=updated&color=brightgreen) | Daily | 5 MB |
+| [astronaut-database](https://huggingface.co/datasets/juliensimon/astronaut-database) | Every person who has been to space — 560 astronauts/cosmonauts | — | Static | <1 MB |
 
 ### Planetary Science
 
@@ -89,7 +94,7 @@ Automated pipelines that keep space-related datasets on Hugging Face up to date.
 | [solar-radio-bursts](https://huggingface.co/datasets/juliensimon/solar-radio-bursts) | Solar radio burst events (Type II/III/IV/V) from HEASARC | ![Solar Radio](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['solar-radio']&label=updated&color=brightgreen) | Weekly | 5 MB |
 | [iers-earth-orientation](https://huggingface.co/datasets/juliensimon/iers-earth-orientation) | Daily Earth orientation parameters (polar motion, UT1-UTC, LOD) since 1973 | ![IERS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['iers-eop']&label=updated&color=brightgreen) | Daily | 5 MB |
 
-### Astronomy
+### Astronomy & Reference
 
 | Dataset | Description | Last Updated | Schedule | Size |
 |---------|-------------|-------------|----------|------|
@@ -113,6 +118,11 @@ Automated pipelines that keep space-related datasets on Hugging Face up to date.
 | [tess-toi-candidates](https://huggingface.co/datasets/juliensimon/tess-toi-candidates) | 7K+ TESS Objects of Interest — active exoplanet candidates | ![TESS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['tess-toi']&label=updated&color=brightgreen) | Weekly | 5 MB |
 | [open-star-clusters](https://huggingface.co/datasets/juliensimon/open-star-clusters) | 7,167 Gaia-era open star clusters with distances and ages | — | Static | 5 MB |
 | [icrf3-reference-frame](https://huggingface.co/datasets/juliensimon/icrf3-reference-frame) | 3,417 ICRF3 extragalactic radio sources — THE celestial reference frame | — | Static | 2 MB |
+| [tgss-radio-catalog](https://huggingface.co/datasets/juliensimon/tgss-radio-catalog) | 624K radio sources at 150 MHz from GMRT TGSS ADR1 | — | Static | 80 MB |
+| [sumss-radio-catalog](https://huggingface.co/datasets/juliensimon/sumss-radio-catalog) | 211K southern radio sources at 843 MHz from SUMSS | — | Static | 30 MB |
+| [hipparcos-catalog](https://huggingface.co/datasets/juliensimon/hipparcos-catalog) | 118K brightest stars with precise positions and parallaxes from ESA Hipparcos | — | Static | 30 MB |
+| [gaia-dr3-rrlyrae](https://huggingface.co/datasets/juliensimon/gaia-dr3-rrlyrae) | 272K RR Lyrae pulsating stars from Gaia DR3 — distance ladder | — | Static | 50 MB |
+| [rc3-galaxy-morphology](https://huggingface.co/datasets/juliensimon/rc3-galaxy-morphology) | 23K bright galaxies with Hubble morphological types from RC3 | — | Static | 10 MB |
 
 ### Physics
 
@@ -151,6 +161,9 @@ python scripts/update-fireballs.py
 python scripts/update-nhats.py
 python scripts/update-satnogs.py
 python scripts/update-ucs.py  # requires: pip install openpyxl
+python scripts/update-wds.py
+python scripts/update-celestrak-sw.py
+python scripts/update-astronauts.py
 
 # Planetary Science
 python scripts/update-lunar-craters.py
@@ -190,6 +203,11 @@ python scripts/update-pantheon.py
 python scripts/update-tess-toi.py
 python scripts/update-open-clusters.py
 python scripts/update-icrf3.py
+python scripts/update-tgss.py
+python scripts/update-sumss.py
+python scripts/update-hipparcos.py
+python scripts/update-gaia-rrlyrae.py
+python scripts/update-rc3.py
 
 # Physics
 pip install particle && python scripts/update-pdg.py

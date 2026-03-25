@@ -1,0 +1,228 @@
+#!/usr/bin/env python3
+"""Fetch CelesTrak consolidated space weather data and upload to HF."""
+
+import io
+import os
+import re
+import subprocess
+import tempfile
+from pathlib import Path
+
+import pandas as pd
+import requests
+
+from validate import check_dataset
+
+
+HF_REPO = "juliensimon/celestrak-space-weather"
+
+SW_URL = "https://celestrak.org/SpaceData/SW-All.csv"
+
+
+def main():
+    print("Fetching CelesTrak consolidated space weather data...")
+
+    resp = requests.get(SW_URL, timeout=60)
+    resp.raise_for_status()
+
+    # Skip comment lines starting with #
+    lines = resp.text.splitlines()
+    data_lines = [line for line in lines if not line.startswith("#")]
+    clean_text = "\n".join(data_lines)
+
+    df = pd.read_csv(io.StringIO(clean_text))
+    print(f"  {len(df):,} rows")
+
+    # Rename columns to snake_case
+    snake_map = {}
+    for col in df.columns:
+        snake = re.sub(r"([A-Z])", r"_\1", col).lower().lstrip("_")
+        snake = snake.replace(" ", "_").replace("-", "_").replace("__", "_")
+        if snake != col:
+            snake_map[col] = snake
+    if snake_map:
+        df = df.rename(columns=snake_map)
+
+    # Ensure date column exists (may be named DATE or Date)
+    if "date" not in df.columns:
+        for col in df.columns:
+            if col.lower() == "date":
+                df = df.rename(columns={col: "date"})
+                break
+
+    # Parse date
+    if "date" in df.columns:
+        df["date"] = pd.to_datetime(df["date"], errors="coerce")
+
+    # Convert numeric columns
+    for col in df.columns:
+        if col == "date":
+            continue
+        if df[col].dtype == object:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    df = df.sort_values("date").reset_index(drop=True)
+
+    check_dataset(df, "celestrak-sw", min_rows=20000,
+                  expected_columns=["date"],
+                  critical_columns=["date"])
+
+    # Stats for README
+    n = len(df)
+    n_cols = len(df.columns)
+    date_min = df["date"].min().strftime("%Y-%m-%d") if "date" in df.columns else "N/A"
+    date_max = df["date"].max().strftime("%Y-%m-%d") if "date" in df.columns else "N/A"
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        data_dir = tmp / "data"
+        data_dir.mkdir()
+
+        out = data_dir / "celestrak_space_weather.parquet"
+        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
+        size_mb = out.stat().st_size / 1024 / 1024
+        print(f"  {size_mb:.1f} MB parquet")
+
+        # Build column table for README
+        col_rows = []
+        for col in df.columns:
+            dtype = str(df[col].dtype)
+            col_rows.append(f"| `{col}` | {dtype} |")
+        col_table = "\n".join(col_rows)
+
+        (tmp / "README.md").write_text(f"""---
+license: cc-by-4.0
+pretty_name: "CelesTrak Consolidated Space Weather"
+language:
+  - en
+description: >-
+  CelesTrak consolidated space weather data — daily Kp, Ap, F10.7, and solar/geomagnetic
+  indices used by SGP4/SDP4 propagators, atmospheric models (JB2008, NRLMSISE), and
+  conjunction screening. {n:,} daily records from {date_min} to {date_max}.
+size_categories:
+  - 10K<n<100K
+task_categories:
+  - tabular-regression
+  - time-series-forecasting
+tags:
+  - space
+  - space-weather
+  - celestrak
+  - sgp4
+  - atmospheric-drag
+  - orbit-propagation
+  - open-data
+configs:
+  - config_name: default
+    data_files:
+      - split: train
+        path: data/celestrak_space_weather.parquet
+---
+
+# CelesTrak Consolidated Space Weather
+
+![Update CelesTrak SW](https://github.com/juliensimon/space-datasets/actions/workflows/update-celestrak-sw.yml/badge.svg)
+![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$["celestrak-sw"]&label=updated&color=brightgreen)
+
+CelesTrak consolidated space weather data — **THE** file every orbit propagator needs.
+**{n:,}** daily records from **{date_min}** to **{date_max}**, with {n_cols} columns of
+solar and geomagnetic indices.
+
+## Dataset description
+
+This dataset contains the consolidated space weather data file maintained by CelesTrak
+(Dr. T.S. Kelso). It includes daily values of Kp indices (8 three-hour values per day),
+Ap indices, F10.7 solar radio flux, and other solar/geomagnetic parameters essential for:
+
+- **SGP4/SDP4 orbit propagation** — atmospheric drag modeling
+- **Atmospheric density models** — JB2008, NRLMSISE-00, DTM
+- **Conjunction screening** — collision avoidance maneuver planning
+- **Space weather research** — solar cycle analysis, geomagnetic storm studies
+
+## Schema
+
+| Column | Type |
+|--------|------|
+{col_table}
+
+## Quick stats
+
+- **{n:,}** daily records
+- Date range: **{date_min}** to **{date_max}**
+- **{n_cols}** columns
+
+## Usage
+
+```python
+from datasets import load_dataset
+
+ds = load_dataset("juliensimon/celestrak-space-weather", split="train")
+df = ds.to_pandas()
+
+# Recent space weather
+print(df.tail(10))
+
+# Plot F10.7 solar flux over time
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots(figsize=(14, 4))
+ax.plot(df["date"], df.get("f10.7_obs", df.iloc[:, -1]), linewidth=0.5)
+ax.set_xlabel("Date")
+ax.set_ylabel("F10.7 (SFU)")
+ax.set_title("Solar Radio Flux (F10.7)")
+```
+
+## Update frequency
+
+Updated **daily at 12:00 UTC** via GitHub Actions.
+
+## Data source
+
+[CelesTrak Space Data](https://celestrak.org/SpaceData/) (Dr. T.S. Kelso).
+Original data from NOAA SWPC, USAF, and other agencies.
+
+## Related datasets
+
+- [kp-index](https://huggingface.co/datasets/juliensimon/kp-index) -- GFZ Potsdam Kp geomagnetic index
+- [dst-index](https://huggingface.co/datasets/juliensimon/dst-index) -- WDC Kyoto Dst geomagnetic index
+- [solar-wind](https://huggingface.co/datasets/juliensimon/solar-wind) -- DSCOVR real-time solar wind
+- [f107-index](https://huggingface.co/datasets/juliensimon/f107-index) -- NRCan F10.7 solar radio flux
+
+## Pipeline
+
+Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
+
+## Citation
+
+```bibtex
+@dataset{{celestrak_space_weather,
+  author = {{Simon, Julien}},
+  title = {{CelesTrak Consolidated Space Weather}},
+  year = {{2026}},
+  publisher = {{Hugging Face}},
+  url = {{https://huggingface.co/datasets/juliensimon/celestrak-space-weather}},
+  note = {{Based on CelesTrak Space Data (Dr. T.S. Kelso)}}
+}}
+```
+
+## License
+
+[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
+""")
+
+        print("Uploading to HF...")
+        commit_msg = f"Update CelesTrak space weather: {n:,} records"
+        subprocess.run(
+            ["hf", "upload", HF_REPO, str(tmp), ".",
+             "--repo-type", "dataset",
+             "--commit-message", commit_msg],
+            check=True,
+        )
+
+    if os.environ.get("GITHUB_OUTPUT"):
+        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+            f.write(f"rows={n}\n")
+    print("Done.")
+
+
+if __name__ == "__main__":
+    main()

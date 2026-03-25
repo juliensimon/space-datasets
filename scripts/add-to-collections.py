@@ -27,6 +27,9 @@ DATASETS = {
         "juliensimon/nhats-accessible-asteroids",
         "juliensimon/satnogs-transmitters",
         "juliensimon/ucs-satellite-database",
+        "juliensimon/wds-double-stars",
+        "juliensimon/celestrak-space-weather",
+        "juliensimon/astronaut-database",
     ],
     PLANETARY: [
         "juliensimon/lunar-craters-robbins",
@@ -66,6 +69,11 @@ DATASETS = {
         "juliensimon/tess-toi-candidates",
         "juliensimon/open-star-clusters",
         "juliensimon/icrf3-reference-frame",
+        "juliensimon/tgss-radio-catalog",
+        "juliensimon/sumss-radio-catalog",
+        "juliensimon/hipparcos-catalog",
+        "juliensimon/gaia-dr3-rrlyrae",
+        "juliensimon/rc3-galaxy-morphology",
     ],
     PHYSICS: [
         "juliensimon/pdg-particle-properties",
