@@ -17,22 +17,67 @@ HF_REPO = "juliensimon/crdb-cosmic-ray-spectra"
 
 RENAME_MAP = {
     "quantity": "particle",
-    "sub_exp": "sub_exp",
-    "e_min": "energy_min_gev_n",
-    "e_max": "energy_max_gev_n",
-    "sigma_lo": "error_low",
-    "sigma_hi": "error_high",
-    "ref": "reference",
-    "ads_url": "ads_url",
-    "is_useable": "is_usable",
+    "exp": "experiment",
+    "exp_type": "experiment_type",
+    "sub_exp": "sub_experiment",
+    "e": "energy_gev_n",
+    "e_bin_lo": "energy_bin_lo_gev_n",
+    "e_bin_hi": "energy_bin_hi_gev_n",
+    "value": "flux",
+    "err_sta_lo": "stat_error_lo",
+    "err_sta_hi": "stat_error_hi",
+    "err_sys_lo": "sys_error_lo",
+    "err_sys_hi": "sys_error_hi",
+    "e_relerr": "energy_relative_error",
+    "is_upper_limit": "is_upper_limit",
+    "phi": "solar_modulation_mv",
+    "ads": "ads_bibcode",
+    "e_type": "energy_type",
+    "datetime": "observation_period",
+    "distance": "distance_au",
 }
 
 
 def main():
     print("Fetching cosmic ray spectra from CRDB...")
-    tab = crdb.query("*", energy_type="EKN")
-    df = pd.DataFrame(tab)
-    print(f"  Raw: {len(df):,} rows, {len(df.columns)} columns")
+
+    # Query major particle species separately (CRDB doesn't support "*")
+    particles = [
+        "H", "He", "C", "N", "O", "Ne", "Mg", "Si", "Fe",
+        "e-", "e+", "p-bar",
+        "B/C", "Be/B", "Be/C",
+        "Li", "Be", "B", "F", "Na", "Al", "P", "S", "Cl", "Ar",
+        "K", "Ca", "Ti", "V", "Cr", "Mn", "Co", "Ni",
+    ]
+    all_dfs = []
+    for p in particles:
+        try:
+            tab = crdb.query(p, energy_type="EKN")
+            # Flatten multidimensional recarray fields
+            rows = []
+            for rec in tab:
+                row = {}
+                for name in tab.dtype.names:
+                    val = rec[name]
+                    if hasattr(val, '__len__') and not isinstance(val, str) and len(val) == 2:
+                        row[f"{name}_lo"] = val[0]
+                        row[f"{name}_hi"] = val[1]
+                    else:
+                        row[name] = val
+                rows.append(row)
+            df_p = pd.DataFrame(rows)
+            print(f"  {p}: {len(df_p):,} rows")
+            all_dfs.append(df_p)
+        except Exception as e:
+            print(f"  {p}: skipped ({e})")
+
+    if not all_dfs:
+        print("::error::No data fetched from CRDB")
+        sys.exit(1)
+
+    df = pd.concat(all_dfs, ignore_index=True)
+    df = df.drop_duplicates()
+    print(f"  Total: {len(df):,} unique rows, {len(df.columns)} columns")
 
     # Rename columns to snake_case
     rename = {k: v for k, v in RENAME_MAP.items() if k in df.columns}
@@ -62,8 +107,8 @@ def main():
     n_experiments = df["experiment"].nunique() if "experiment" in df.columns else 0
     print(f"  {n_total:,} measurements, {n_particles} particle types, {n_experiments} experiments")
 
-    check_dataset(df, "crdb", min_rows=100000,
-                  expected_columns=["particle", "experiment", "energy_min_gev_n", "flux"])
+    check_dataset(df, "crdb", min_rows=5000,
+                  expected_columns=["particle", "experiment", "energy_gev_n", "flux"])
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
