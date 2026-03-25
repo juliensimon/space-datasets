@@ -11,114 +11,113 @@ from pathlib import Path
 
 import pandas as pd
 import requests
-from bs4 import BeautifulSoup
 
 from validate import check_dataset
 
 
-# URL patterns: provisional and realtime (AE final data availability varies)
-
-AE_SOURCES = [
-    ("provisional", "https://wdc.kugi.kyoto-u.ac.jp/ae_provisional/{ym6}/index.html", 1957, 2025),
-    ("realtime", "https://wdc.kugi.kyoto-u.ac.jp/ae_realtime/{ym6}/index.html", 2026, 2030),
-]
+# Data directory with WDC-format files (minute-resolution, hourly means)
+# Realtime data_dir has data from 2021 onward; older data is no longer served
+AE_DATA_DIR = "https://wdc.kugi.kyoto-u.ac.jp/ae_realtime/data_dir"
+AE_INDICES = ["ae", "al", "ao", "au"]
+AE_START_YEAR = 2021  # Oldest year in data_dir
 HF_REPO = "juliensimon/auroral-electrojet-index"
 
 
-def parse_ae_wdc(text, quality):
-    """Parse WDC-format AE data page. Format is similar to Dst — fixed-width lines
-    with 24 hourly values per day, one block per index (AE, AU, AL, AO)."""
-    records = {}  # keyed by (year, month, day, hour)
+def parse_ae_data_file(text, index_name):
+    """Parse a WDC minute-resolution AE data file.
 
-    # Try to parse fixed-width format lines starting with AE/AU/AL/AO
+    Format: each line is one hour with 60 minute values + 1 hourly mean.
+    Line format: AEALAOAU    YYMMDDEHHINDEX QUALITY    val1  val2  ... val60  mean
+    We extract the hourly mean (last value on each line).
+    """
+    records = []
+    col_map = {"ae": "ae_index", "au": "au_index",
+               "al": "al_index", "ao": "ao_index"}
+    col = col_map.get(index_name)
+    if not col:
+        return []
+
     for line in text.splitlines():
         line = line.rstrip()
-        if len(line) < 34:
+        if len(line) < 40:
             continue
 
-        # Detect index type from prefix
-        prefix = line[:2].upper()
-        if prefix not in ("AE", "AU", "AL", "AO"):
-            continue
-
+        # Header: AEALAOAU    YYMMDDEHHINDEX QUALITY
         try:
-            yy = int(line[2:4])
-            mm = int(line[4:6])
-            # Skip the '*' or space at position 6
-            dd = int(line[7:9])
+            # Extract date and hour from fixed positions
+            # Format: "AEALAOAU    260301E00AE QUICKLK      193   186 ..."
+            parts = line.split()
+            if len(parts) < 5:
+                continue
+
+            # Second field: YYMMDDEHHINDEX (e.g., "260301E00AE")
+            date_field = parts[1]
+            yy = int(date_field[0:2])
+            mm = int(date_field[2:4])
+            dd = int(date_field[4:6])
+            # Skip 'E' at position 6
+            hh = int(date_field[7:9])
             year = 1900 + yy if yy >= 57 else 2000 + yy
 
-            # 24 hourly values start at position 14, 6 chars each
-            # (AE format uses 6-char fields vs Dst's 4-char fields)
-            values_str = line[14:]
-            for hour in range(24):
-                start = hour * 6
-                end = start + 6
-                if end > len(values_str):
-                    break
-                val_str = values_str[start:end].strip()
-                if val_str == "9999" or val_str == "" or val_str == "99999":
-                    val = None
-                else:
-                    try:
-                        val = int(val_str)
-                    except ValueError:
-                        val = None
+            # The hourly mean is the last numeric value on the line
+            mean_str = parts[-1].strip()
+            if mean_str in ("9999", "99999", ""):
+                val = None
+            else:
+                val = int(mean_str)
 
-                key = (year, mm, dd, hour)
-                if key not in records:
-                    records[key] = {
-                        "datetime": datetime(year, mm, dd, hour),
-                        "ae_index": None,
-                        "au_index": None,
-                        "al_index": None,
-                        "ao_index": None,
-                        "quality": quality,
-                    }
-                col_map = {"AE": "ae_index", "AU": "au_index",
-                           "AL": "al_index", "AO": "ao_index"}
-                records[key][col_map[prefix]] = val
+            records.append({
+                "datetime": datetime(year, mm, dd, hh),
+                col: val,
+            })
         except (ValueError, IndexError):
             continue
 
+    return records
+
+
+def fetch_day(year, month, day):
+    """Fetch all 4 AE indices for a single day from data_dir."""
+    records = {}  # keyed by (year, month, day, hour)
+    yy = year % 100
+    date_str = f"{yy:02d}{month:02d}{day:02d}"
+
+    for idx in AE_INDICES:
+        url = f"{AE_DATA_DIR}/{year}/{month:02d}/{day:02d}/{idx}{date_str}"
+        try:
+            resp = requests.get(url, timeout=15)
+            if resp.status_code != 200:
+                continue
+            parsed = parse_ae_data_file(resp.text, idx)
+            for rec in parsed:
+                key = (rec["datetime"].year, rec["datetime"].month,
+                       rec["datetime"].day, rec["datetime"].hour)
+                if key not in records:
+                    records[key] = {
+                        "datetime": rec["datetime"],
+                        "ae_index": None, "au_index": None,
+                        "al_index": None, "ao_index": None,
+                        "quality": "realtime",
+                    }
+                # Merge index value
+                for col in ("ae_index", "au_index", "al_index", "ao_index"):
+                    if col in rec and rec[col] is not None:
+                        records[key][col] = rec[col]
+        except Exception:
+            continue
+
     return list(records.values())
 
 
-def parse_ae_html_table(html, quality):
-    """Fallback: parse HTML table format from WDC Kyoto AE pages."""
-    soup = BeautifulSoup(html, "lxml")
-    records = {}
-
-    # Look for <pre> blocks with fixed-width data
-    for pre in soup.find_all("pre"):
-        text = pre.get_text()
-        parsed = parse_ae_wdc(text, quality)
-        for rec in parsed:
-            key = (rec["datetime"].year, rec["datetime"].month,
-                   rec["datetime"].day, rec["datetime"].hour)
-            records[key] = rec
-
-    return list(records.values())
-
-
-def fetch_month(url_template, year, month, quality):
-    """Fetch a single month of AE data from WDC Kyoto."""
-    ym6 = f"{year}{month:02d}"
-    url = url_template.format(ym6=ym6)
+def list_days(year, month):
+    """List available day directories for a year/month."""
+    url = f"{AE_DATA_DIR}/{year}/{month:02d}/"
     try:
-        resp = requests.get(url, timeout=30)
+        resp = requests.get(url, timeout=15)
         if resp.status_code != 200:
             return []
-        text = resp.text
-
-        # Try fixed-width parsing first
-        records = parse_ae_wdc(text, quality)
-        if records:
-            return records
-
-        # Fallback to HTML table parsing
-        records = parse_ae_html_table(text, quality)
-        return records
+        days = re.findall(r'href="(\d{2})/"', resp.text)
+        return [int(d) for d in sorted(set(days))]
     except Exception:
         return []
 
@@ -152,24 +151,21 @@ def main():
         df_existing = load_existing_ae(Path(probe))
 
     if df_existing is not None and len(df_existing) > 0:
-        # Incremental: fetch realtime (current year) + last provisional months
-        print("  Incremental mode: fetching recent months only")
+        # Incremental: fetch current month + previous month
+        print("  Incremental mode: fetching recent data only")
         new_records = []
 
-        # Realtime: all months of current year
-        rt_template = AE_SOURCES[1][1]
-        for month in range(1, now.month + 1):
-            records = fetch_month(rt_template, now.year, month, "realtime")
-            new_records.extend(records)
-        print(f"  Realtime {now.year}: {len(new_records)} records")
+        # Current month
+        for day in list_days(now.year, now.month):
+            new_records.extend(fetch_day(now.year, now.month, day))
+        print(f"  {now.year}/{now.month:02d}: {len(new_records)} records")
 
-        # Provisional: re-fetch last 2 months of previous year
-        prov_template = AE_SOURCES[0][1]
-        prov_year = now.year - 1
-        for month in [11, 12]:
-            records = fetch_month(prov_template, prov_year, month, "provisional")
-            new_records.extend(records)
-        print(f"  Provisional {prov_year} (Nov-Dec): fetched")
+        # Previous month (re-fetch for corrections)
+        prev_year, prev_month = (now.year, now.month - 1) if now.month > 1 else (now.year - 1, 12)
+        prev_count = len(new_records)
+        for day in list_days(prev_year, prev_month):
+            new_records.extend(fetch_day(prev_year, prev_month, day))
+        print(f"  {prev_year}/{prev_month:02d}: {len(new_records) - prev_count} records")
 
         df_new = pd.DataFrame(new_records)
         if not df_new.empty:
@@ -182,17 +178,18 @@ def main():
             df = df_existing
             print("  No new data")
     else:
-        # Full rebuild
-        print("  Full rebuild from 1957...")
+        # Full rebuild from data_dir (2021 onward)
+        print(f"  Full rebuild from {AE_START_YEAR}...")
         all_records = []
-        for quality, url_template, start_year, end_year in AE_SOURCES:
-            actual_end = min(end_year, now.year)
-            for year in range(start_year, actual_end + 1):
-                end_month = now.month if year == now.year else 12
-                for month in range(1, end_month + 1):
-                    records = fetch_month(url_template, year, month, quality)
-                    all_records.extend(records)
-                print(f"  {quality} {year}: fetched")
+        for year in range(AE_START_YEAR, now.year + 1):
+            end_month = now.month if year == now.year else 12
+            for month in range(1, end_month + 1):
+                days = list_days(year, month)
+                for day in days:
+                    all_records.extend(fetch_day(year, month, day))
+                import time
+                time.sleep(0.3)
+            print(f"  {year}: {len(all_records):,} records so far")
         df = pd.DataFrame(all_records)
 
     if df.empty:
@@ -229,7 +226,7 @@ def main():
 
     print(f"  {n_total:,} hourly records ({date_min} to {date_max})")
 
-    check_dataset(df, "ae-index", min_rows=100000,
+    check_dataset(df, "ae-index", min_rows=30000,
                   expected_columns=["datetime", "ae_index"],
                   critical_columns=["datetime", "ae_index"])
 
