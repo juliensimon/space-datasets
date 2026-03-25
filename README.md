@@ -1,6 +1,8 @@
 # space-datasets
 
-Automated pipelines that keep space-related datasets on Hugging Face up to date.
+Open-source data pipelines that publish **60+ space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, and more — sourced from NASA, NOAA, ESA, and other public APIs. Updated daily via GitHub Actions.
+
+All datasets are loadable in one line (`load_dataset("juliensimon/...")`), require no API keys, and work with `pandas`, `polars`, or any Parquet-compatible tool.
 
 <!-- Orbital Mechanics -->
 ![SATCAT](https://github.com/juliensimon/space-datasets/actions/workflows/update-satcat.yml/badge.svg)
@@ -138,6 +140,14 @@ Automated pipelines that keep space-related datasets on Hugging Face up to date.
 | [pdg-particle-properties](https://huggingface.co/datasets/juliensimon/pdg-particle-properties) | Every known particle from the Particle Data Group | ![PDG](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.pdg&label=updated&color=brightgreen) | Annual | 50 MB |
 | [crdb-cosmic-ray-spectra](https://huggingface.co/datasets/juliensimon/crdb-cosmic-ray-spectra) | 316K cosmic ray measurements from 131 experiments | ![CRDB](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.crdb&label=updated&color=brightgreen) | Quarterly | 50 MB |
 | [auger-cosmic-rays](https://huggingface.co/datasets/juliensimon/auger-cosmic-rays) | Ultra-high-energy cosmic ray events from Pierre Auger Observatory | — | Static | 100 MB |
+
+## Collections on Hugging Face
+
+- [Orbital Mechanics](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) — satellites, TLEs, launches, NEOs, asteroids, impact risk
+- [Planetary Science](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2) — lunar and Mars impact craters
+- [Space Weather](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) — solar flares, CMEs, geomagnetic storms, solar wind, Kp/Ap/F10.7 indices
+- [Astronomy](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) — exoplanets, pulsars, radio surveys, X-ray catalogs, variable stars, gravitational waves, galaxy morphology
+- [Physics](https://huggingface.co/collections/juliensimon/physics-datasets-69c2d4682d37dfdb77447bd7) — particle properties, cosmic ray spectra
 
 ## How it works
 
