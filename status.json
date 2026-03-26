@@ -1,6 +1,6 @@
 {
   "tle-history": "2026-03-26",
-  "satcat": "2026-03-25",
+  "satcat": "2026-03-26",
   "launch-log": "2026-03-23",
   "starlink": "2026-03-25",
   "ground-stations": "2026-03-25",
@@ -8,7 +8,7 @@
   "solar-flares": "2026-03-25",
   "space-weather": "2026-03-25",
   "_rows": {
-    "satcat": 68188,
+    "satcat": 68273,
     "starlink": 9905,
     "launch-log": 75729,
     "ground-stations": 303,
