@@ -1,0 +1,43 @@
+name: Update Supernovae
+on:
+  schedule:
+    - cron: '0 7 * * 1'  # weekly on Monday at 07:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    environment: HF
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pandas pyarrow requests huggingface_hub[hf_xet]
+      - id: update
+        run: |
+          output=$(python scripts/update-supernovae.py)
+          echo "$output"
+          rows=$(echo "$output" | grep -oP 'rows=\K\d+')
+          echo "rows=$rows" >> "$GITHUB_OUTPUT"
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      - name: Update and push status
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          for i in 1 2 3; do
+            git pull --rebase || true
+            git checkout status.json 2>/dev/null || true
+            python scripts/update-status.py supernovae --rows ${{ steps.update.outputs.rows }}
+            git add status.json
+            git diff --cached --quiet && break
+            git commit -m "status: supernovae updated $(date -u +%Y-%m-%d)"
+            git push && break
+            echo "Push failed (attempt $i), retrying..."
+            git reset HEAD~1
+            sleep 2
+          done

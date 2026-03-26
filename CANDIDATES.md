@@ -2,7 +2,7 @@
 
 *Researched 2026-03-24, expanded 2026-03-25. Goal: the most comprehensive free, tabular space data collection on Hugging Face.*
 
-**Built: 85 dataset scripts (83 uploaded)** | **Remaining candidates: 46** | All sources free, no auth (except 1 with free registration).
+**Built: 85 dataset scripts (84 uploaded, MEDA in progress)** | **Remaining candidates: 46** | All sources free, no auth (except 1 with free registration).
 
 ---
 
@@ -12,7 +12,7 @@ All P0 candidates are built. Scripts in `scripts/update-*.py`, workflows in `.gi
 
 **From P0 (all 14):** JPL SBDB, NVSS, Lunar Craters, FIRST, eROSITA, Mars Craters, Sunspot, GCVS, Fermi 4FGL, CHIME/FRB, Sentry, Fireballs, Pantheon+, PDG
 
-**From P1 (30 of 30 — all complete):** IceCube, TGSS, CRDB, Gaia RR Lyrae, SUMSS, Hipparcos, WDS, Auger, CelesTrak SW, RC3, IERS EOP, F10.7, SWPC Alerts, Solar Radio, SatNOGS, UCS, TESS TOI, Open Clusters, NHATS, ICRF3, Astronauts, VLASS (3.4M), Chandra (28K), Cosmicflows-4, IAU Meteor Showers, GCAT, NASA EVA, Neutron Monitor (remaining), Transients (remaining), Reentry Events (blocked)
+**From P1 (27 of 30):** IceCube, TGSS, CRDB, Gaia RR Lyrae, SUMSS, Hipparcos, WDS, Auger, CelesTrak SW, RC3, IERS EOP, F10.7, SWPC Alerts, Solar Radio, SatNOGS, UCS, TESS TOI, Open Clusters, NHATS, ICRF3, Astronauts, VLASS (3.4M), Chandra (28K), Cosmicflows-4, IAU Meteor Showers, GCAT, NASA EVA. *Not built: Neutron Monitor, Transients (needs API key), Reentry Events (now unblocked — TLE gap resolved)*
 
 **From P1 Space Probes (all 4):** ChemCam MOC, ESA Mars Express (1.66M, weekly), ESA Rosetta (8.3M), Perseverance MEDA Weather (~3.2M, monthly)
 
@@ -24,7 +24,9 @@ All P0 candidates are built. Scripts in `scripts/update-*.py`, workflows in `.gi
 
 **Pre-existing (23):** NEO, Starlink, SATCAT, Launch Log, Ground Stations, Constellation Census, DONKI, Dst Index, Kp Index, Solar Flares, Solar Wind, Space Weather, Exoplanets, GRB, Gravitational Waves, Pulsars, NGC/IC, SNR, Messier, Black Holes, Quasars, Galaxy Clusters
 
-**Blocked (2):** Meteorite Landings (NASA SODA API 404), Reentry Events (TLE gap)
+**Blocked (1):** Meteorite Landings (NASA SODA API 404)
+
+**Unblocked:** Reentry Events — TLE gap resolved as of 2026-03-26
 
 **Note on actual sizes:** VLASS is 3.4M rows (not 700K — full component catalog). Chandra is 28K rows (HEASARC TAP sync truncates the 407K master catalog).
 
