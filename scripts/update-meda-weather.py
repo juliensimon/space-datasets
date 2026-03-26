@@ -118,6 +118,13 @@ def fetch_sol(range_dir, sol_dir):
     if sol_match:
         merged["sol"] = int(sol_match.group(1))
 
+    # Downsample to 1-minute resolution (SCLK is ~1 Hz, ~48K rows/sol → ~800 rows/sol)
+    # Use SCLK integer division by 60 to create minute bins, keep first reading per bin
+    if "SCLK" in merged.columns and len(merged) > 1000:
+        merged["_sclk_min"] = pd.to_numeric(merged["SCLK"], errors="coerce") // 60
+        merged = merged.drop_duplicates(subset=["_sclk_min"], keep="first")
+        merged = merged.drop(columns=["_sclk_min"])
+
     return merged
 
 
@@ -238,8 +245,13 @@ def main():
     range_dirs = discover_sol_range_dirs()
     print(f"  Found {len(range_dirs)} sol-range directories")
 
-    new_frames = []
+    # Process in batches to limit memory — write intermediate parquet files
+    BATCH_SIZE = 100  # sols per batch
+    batch_dir = Path(tempfile.mkdtemp(prefix="meda_batches_"))
+    batch_frames = []
+    batch_num = 0
     sols_fetched = 0
+    total_rows = 0
 
     for range_dir in range_dirs:
         # Quick check: if range max < last_sol, skip entirely
@@ -264,27 +276,59 @@ def main():
             try:
                 df_sol = fetch_sol(range_dir, sol_dir)
                 if df_sol is not None and len(df_sol) > 0:
-                    new_frames.append(df_sol)
+                    batch_frames.append(df_sol)
                     sols_fetched += 1
-                    if sols_fetched % 50 == 0:
-                        print(f"    Fetched {sols_fetched} sols so far "
-                              f"({len(df_sol)} rows for sol {sol_num})")
+
+                    # Flush batch to disk when full
+                    if sols_fetched % BATCH_SIZE == 0:
+                        batch_df = pd.concat(batch_frames, ignore_index=True)
+                        batch_path = batch_dir / f"batch_{batch_num:04d}.parquet"
+                        batch_df.to_parquet(batch_path, index=False, engine="pyarrow")
+                        total_rows += len(batch_df)
+                        print(f"    Batch {batch_num}: {len(batch_df):,} rows "
+                              f"({sols_fetched} sols, {total_rows:,} total)")
+                        batch_frames.clear()
+                        batch_num += 1
+                        del batch_df
             except Exception as e:
                 print(f"    Error fetching {sol_dir}: {e}")
             time.sleep(0.5)  # Be polite to PDS server
 
-    # ── Combine ───────────────────────────────────────────────────────────
-    if new_frames:
-        df_new = pd.concat(new_frames, ignore_index=True)
-        print(f"  Fetched {sols_fetched} new sols, {len(df_new):,} new rows")
+    # Flush remaining batch
+    if batch_frames:
+        batch_df = pd.concat(batch_frames, ignore_index=True)
+        batch_path = batch_dir / f"batch_{batch_num:04d}.parquet"
+        batch_df.to_parquet(batch_path, index=False, engine="pyarrow")
+        total_rows += len(batch_df)
+        print(f"    Final batch: {len(batch_df):,} rows ({total_rows:,} total)")
+        batch_frames.clear()
+        del batch_df
+
+    print(f"  Fetched {sols_fetched} new sols in {batch_num + 1} batches, {total_rows:,} rows")
+
+    # ── Combine batches ────────────────────────────────────────────────────
+    batch_files = sorted(batch_dir.glob("batch_*.parquet"))
+    if batch_files:
+        # Read batch files one at a time and combine
+        new_parts = [pd.read_parquet(f) for f in batch_files]
+        df_new = pd.concat(new_parts, ignore_index=True)
+        del new_parts
+        # Clean up batch files
+        for f in batch_files:
+            f.unlink()
+        batch_dir.rmdir()
+
+        print(f"  Combined: {len(df_new):,} new rows")
 
         if df_existing is not None and len(df_existing) > 0:
             df = pd.concat([df_existing, df_new], ignore_index=True)
-            # Deduplicate on (sol, sclk) keeping latest
-            df = df.drop_duplicates(subset=["sol", "sclk"], keep="last")
+            del df_new, df_existing
+            dedup_col = "sclk" if "sclk" in df.columns else "SCLK"
+            df = df.drop_duplicates(subset=["sol", dedup_col], keep="last")
             print(f"  Merged: {len(df):,} total rows")
         else:
             df = df_new
+            del df_new
     elif df_existing is not None and len(df_existing) > 0:
         df = df_existing
         print("  No new sols found, re-uploading existing data")
