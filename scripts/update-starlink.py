@@ -393,7 +393,7 @@ def main():
             "operational_count": int((shell["status"] == "operational").sum()),
             "raising_count": int((shell["status"] == "raising").sum()),
             "deorbiting_count": int((shell["status"] == "deorbiting").sum()),
-            "isl_operational_count": int(shell["is_isl_capable"].sum()),
+            "isl_operational_count": int((shell["is_isl_capable"] & (shell["status"] == "operational")).sum()),
             "new_launches": 0,
         })
     df_today = pd.DataFrame(daily_rows)
