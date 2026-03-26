@@ -117,8 +117,9 @@ Required fields for discoverability (HF indexes these for search):
 
 - [ ] Add dataset entry to `status.json` with initial date value
 - [ ] Verify `status.json` is valid JSON after editing: `python3 -c "import json; json.loads(open('status.json').read())"`
+- [ ] Update GitHub repo description if dataset count milestone crossed: `gh repo edit juliensimon/space-datasets --description "..."`
 - [ ] Add dataset to GitHub `README.md`:
-  - [ ] Update dataset count in opening paragraph (`85+` → new count)
+  - [ ] Update dataset count in opening paragraph (`100+` → new count)
   - [ ] Badge in badge row at top (refreshing datasets only, grouped by domain comment)
   - [ ] Row in correct domain table (Orbital / Space Probes / Planetary / Space Weather / Astronomy / Physics)
   - [ ] Description column with plain-English summary + specific numbers
