@@ -38,7 +38,8 @@
     "fermi-gbm-triggers": 12056,
     "tle-history": 6577008,
     "ae-index": 45312,
-    "reentry-events": 34916
+    "reentry-events": 34916,
+    "supernovae": 72145
   },
   "dst-index": "2026-03-25",
   "donki": "2026-03-25",
@@ -67,5 +68,6 @@
   "nhats": "2026-03-25",
   "fermi-gbm-triggers": "2026-03-26",
   "ae-index": "2026-03-26",
-  "reentry-events": "2026-03-26"
+  "reentry-events": "2026-03-26",
+  "supernovae": "2026-03-26"
 }
