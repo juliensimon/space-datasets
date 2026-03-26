@@ -1,7 +1,9 @@
 data/tle-archive/
+data/tle-backfill/
 *.parquet
 __pycache__/
 *.pyc
 .env
+.claude/
 # Intentionally tracked:
 # data/ground-stations-cache.json
