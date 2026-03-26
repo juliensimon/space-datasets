@@ -10,6 +10,7 @@ Intelsat, Eutelsat, Telesat.
 import math
 import os
 import subprocess
+import sys
 import tempfile
 import time
 from datetime import datetime, timezone
@@ -619,24 +620,22 @@ def main():
 
         # Download existing daily_snapshots and append today
         daily_path = data_dir / "daily_snapshots.parquet"
-        try:
-            subprocess.run(
-                ["hf", "download", HF_REPO, "data/daily_snapshots.parquet",
-                 "--repo-type", "dataset", "--local-dir", str(tmp_dir)],
-                check=True, capture_output=True, timeout=30,
-            )
-            if daily_path.exists():
-                df_existing = pd.read_parquet(daily_path)
-                df_existing["date"] = pd.to_datetime(df_existing["date"])
-                df_existing = df_existing[df_existing["date"] != today]
-                df_daily = pd.concat([df_existing, df_today], ignore_index=True)
-                print(f"  daily_snapshots: appended {today} ({len(df_daily):,} total rows)")
-            else:
-                df_daily = df_today
-                print(f"  daily_snapshots: created with {today}")
-        except Exception as e:
-            print(f"  daily_snapshots: could not fetch existing ({e}), starting fresh")
-            df_daily = df_today
+        subprocess.run(
+            ["hf", "download", HF_REPO, "data/daily_snapshots.parquet",
+             "--repo-type", "dataset", "--local-dir", str(tmp_dir)],
+            check=True, capture_output=True, timeout=120,
+        )
+        if not daily_path.exists():
+            print("::error::daily_snapshots.parquet not found after download — aborting to protect historical data")
+            sys.exit(1)
+        df_existing = pd.read_parquet(daily_path)
+        df_existing["date"] = pd.to_datetime(df_existing["date"])
+        if len(df_existing) < 10:
+            print(f"::error::daily_snapshots has only {len(df_existing)} rows — aborting to protect historical data")
+            sys.exit(1)
+        df_existing = df_existing[df_existing["date"] != today]
+        df_daily = pd.concat([df_existing, df_today], ignore_index=True)
+        print(f"  daily_snapshots: appended {today} ({len(df_daily):,} total rows)")
 
         df_daily.to_parquet(daily_path, index=False, engine="pyarrow", compression="zstd")
 
