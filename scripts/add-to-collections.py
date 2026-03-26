@@ -21,6 +21,7 @@ DATASETS = {
         "juliensimon/starlink-fleet-data",
         "juliensimon/constellation-census",
         "juliensimon/starlink-ground-stations",
+        "juliensimon/starlink-tle-latest",
         "juliensimon/neo-close-approaches",
         "juliensimon/jpl-small-body-database",
         "juliensimon/sentry-impact-risk",
