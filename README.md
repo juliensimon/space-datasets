@@ -5,6 +5,7 @@ Open-source data pipelines that publish **85+ space, astronomy, and physics data
 All datasets are loadable in one line (`load_dataset("juliensimon/...")`), require no API keys, and work with `pandas`, `polars`, or any Parquet-compatible tool.
 
 <!-- Orbital Mechanics -->
+![TLE History](https://github.com/juliensimon/space-datasets/actions/workflows/update-tle-history.yml/badge.svg)
 ![SATCAT](https://github.com/juliensimon/space-datasets/actions/workflows/update-satcat.yml/badge.svg)
 ![Launch Log](https://github.com/juliensimon/space-datasets/actions/workflows/update-launch-log.yml/badge.svg)
 ![Starlink](https://github.com/juliensimon/space-datasets/actions/workflows/update-starlink.yml/badge.svg)
@@ -63,7 +64,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 
 | Dataset | Description | Last Updated | Schedule | Size |
 |---------|-------------|-------------|----------|------|
-| [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) | 232 million orbital element sets for every cataloged object since 1959 | ![TLE](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.tle-history&label=updated&color=blue) | Yearly (manual) | 10.9 GB |
+| [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) | 238 million orbital element sets for every cataloged object since 1959 | ![TLE](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.tle-history&label=updated&color=brightgreen) | Daily | 10.9 GB |
 | [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) | Complete NORAD satellite catalog — 68K satellites, rocket bodies, and debris | ![SATCAT](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.satcat&label=updated&color=brightgreen) | Daily | 1.6 MB |
 | [space-launch-log](https://huggingface.co/datasets/juliensimon/space-launch-log) | Every orbital and suborbital launch since 1957 with sites and outcomes | ![Launches](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['launch-log']&label=updated&color=brightgreen) | Weekly | 2.4 MB |
 | [starlink-fleet-data](https://huggingface.co/datasets/juliensimon/starlink-fleet-data) | Daily Starlink constellation health — per-shell satellite counts and status | ![Starlink](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.starlink&label=updated&color=brightgreen) | Daily | 618 MB |
@@ -298,9 +299,9 @@ python scripts/update-hawc.py
 
 ## Bulk ingestion
 
-`build-tle-archive.py` builds the TLE history dataset from Space-Track yearly bulk zip exports (232M records). Run manually when new yearly exports are available.
+`build-tle-archive.py` builds historical TLE data from Space-Track yearly bulk zip exports (1959–2025). Daily updates for the current year are automated via `update-tle-history.py` (fetches yesterday's GP history, appends to `tle_{year}.parquet`). Requires `SPACETRACK_USER` and `SPACETRACK_PASS` secrets.
 
-Starlink fleet ingestion scripts (`ingest-bulk-zip.ts`, `backfill-spacetrack.ts`, `export-dataset.py`) live in the [starlink-viz](https://github.com/juliensimon/starlink-viz) repo as they depend on its classification library.
+`backfill-tle-history.py` and `backfill-starlink-snapshots.py` are one-time scripts for filling gaps from Space-Track GP history. Not needed for ongoing operation.
 
 ## Citation
 

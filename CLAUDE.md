@@ -109,7 +109,9 @@ jobs:
 
 ## Data Source Gotchas
 
-APIs are unauthenticated (except HF uploads). Use `time.sleep()` between sequential API calls and set `timeout=` on requests.
+APIs are unauthenticated except HF uploads and Space-Track (TLE history). Use `time.sleep()` between sequential API calls and set `timeout=` on requests.
+
+**Space-Track** (`update-tle-history.py`): requires `SPACETRACK_USER` and `SPACETRACK_PASS` secrets in the HF environment. Makes exactly 2 requests/day (login + GP history for yesterday). Be extremely conservative with rate limits — the account has been banned before.
 
 | Source | Gotcha |
 |--------|--------|
@@ -118,3 +120,4 @@ APIs are unauthenticated (except HF uploads). Use `time.sleep()` between sequent
 | SIMBAD TAP | Use `basic` table only — JOINs with `allfluxes`/`mesDistance` fail. Use `OR` chains, not `IN (...)`. No `regexp()`. |
 | CelesTrak | 500 errors are common — add 1s delay + 3 retries with exponential backoff. |
 | GFZ Kp API | Unreliable — use NOAA SWPC endpoint instead. |
+| Space-Track | Authenticated (cookie session). Max 2 requests/day for the daily pipeline. GP history returns only TLEs *generated* that day, not a complete snapshot — use forward-fill for backfills. Account has been banned before for aggressive usage. |
