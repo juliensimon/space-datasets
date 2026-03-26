@@ -40,7 +40,8 @@
     "ae-index": 45312,
     "reentry-events": 34916,
     "supernovae": 72145,
-    "deep-space-probes": 1218456
+    "deep-space-probes": 1218456,
+    "mars-express": 1658416
   },
   "dst-index": "2026-03-25",
   "donki": "2026-03-25",
@@ -72,5 +73,6 @@
   "reentry-events": "2026-03-26",
   "supernovae": "2026-03-26",
   "deep-space-probes": "2026-03-26",
-  "neutron-monitor": "2026-03-26"
+  "neutron-monitor": "2026-03-26",
+  "mars-express": "2026-03-26"
 }
