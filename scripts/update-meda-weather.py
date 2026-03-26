@@ -425,14 +425,20 @@ Perseverance rover in Jezero Crater, Mars. Covers **sol {sol_min}** to **sol {so
 
 ## Dataset description
 
-MEDA is a suite of environmental sensors on the Perseverance rover that measures Martian weather
-at ~1 Hz cadence. This dataset combines three derived data products from the PDS Atmospheres Node:
+MEDA is a suite of environmental sensors on the Perseverance rover that measures Martian weather.
+This dataset combines three derived data products from the PDS Atmospheres Node:
 
 - **PS** — Atmospheric pressure (Pa) from the pressure sensor
 - **RHS** — Relative humidity (%) and humidity sensor temperature (K)
 - **TIRS** — Thermal infrared upward/downward longwave irradiance (W/m2)
 
 Records are merged on spacecraft clock (SCLK) to produce a unified weather timeline.
+
+**Resolution:** Downsampled to **1-minute cadence** (one reading per minute) from the original ~1 Hz raw data.
+This preserves 100% of the time coverage — every sol, every minute — while keeping the dataset to a
+manageable ~1M rows. All diurnal cycles, seasonal pressure swings, and dust devil pressure drops
+are fully captured at this resolution. For the full 1-Hz data (~67M rows), use the
+[PDS source](https://pds-atmospheres.nmsu.edu/PDS/data/PDS4/Mars2020/mars2020_meda/data_derived_env/) directly.
 
 ## Schema
 
