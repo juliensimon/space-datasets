@@ -16,12 +16,17 @@ DATA_URLS = [
 ]
 HF_REPO = "juliensimon/lunar-craters-robbins"
 
+# Column mapping — supports both 2019 USGS and 2014 sjrdesign column names
 KEEP_COLS = {
     "CRATER_ID": "crater_id",
     "LAT_CIRC_IMG": "latitude_deg",
+    "LATITUDE_CIRCLE_IMAGE": "latitude_deg",
     "LON_CIRC_IMG": "longitude_deg",
+    "LONGITUDE_CIRCLE_IMAGE": "longitude_deg",
     "DIAM_CIRC_IMG": "diameter_km",
+    "DIAM_CIRCLE_IMAGE": "diameter_km",
     "DEPTH_RIM_TOPO": "depth_km",
+    "DEPTH_RIMFLOOR_TOPOG": "depth_km",
     "DEPTH_FLOOR_TOPO": "floor_elevation_km",
     "DEPTH_RIM_SD": "depth_rim_sd_km",
 }

@@ -20,16 +20,24 @@ DATA_URLS = [
 ]
 HF_REPO = "juliensimon/mars-craters-robbins"
 
+# Column mapping — supports both 2012 TSV and 2020 CSV column names
 KEEP_COLS = {
     "CRATER_ID": "crater_id",
     "LATITUDE_CIRCLE_IMAGE": "latitude_deg",
+    "LAT_CIRC_IMG": "latitude_deg",
     "LONGITUDE_CIRCLE_IMAGE": "longitude_deg",
+    "LON_CIRC_IMG": "longitude_deg",
     "DIAM_CIRCLE_IMAGE": "diameter_km",
+    "DIAM_CIRC_IMG": "diameter_km",
     "DEPTH_RIMFLOOR_TOPOG": "depth_km",
     "MORPHOLOGY_EJECTA_1": "ejecta_morphology_1",
+    "MORPH_EJECTA_1": "ejecta_morphology_1",
     "MORPHOLOGY_EJECTA_2": "ejecta_morphology_2",
+    "MORPH_EJECTA_2": "ejecta_morphology_2",
     "MORPHOLOGY_EJECTA_3": "ejecta_morphology_3",
+    "MORPH_EJECTA_3": "ejecta_morphology_3",
     "NUMBER_LAYERS": "n_ejecta_layers",
+    "N_LAYERS": "n_ejecta_layers",
 }
 
 NUMERIC_COLS = ["latitude_deg", "longitude_deg", "diameter_km", "depth_km", "n_ejecta_layers"]
