@@ -2,8 +2,10 @@
 """Fetch NASA meteorite landing data and upload to HF."""
 
 import os
+import re
 import subprocess
 import tempfile
+from io import StringIO
 from pathlib import Path
 
 import pandas as pd
@@ -11,31 +13,91 @@ import requests
 
 from validate import check_dataset
 
-SODA_URL = "https://data.nasa.gov/resource/y77d-th95.csv"
+# NASA retired the Socrata SODA API (y77d-th95 / gh4g-9sfh).
+# The full 45K-row dataset is mirrored by Wolfram Data Repository.
+WOLFRAM_CSV_URL = (
+    "https://www.wolframcloud.com/objects/"
+    "8ae6268d-3eaf-4f3a-8928-05d140a08e20"
+)
 HF_REPO = "juliensimon/meteorite-landings"
 
 
+def _parse_wolfram_mass(val):
+    """Extract numeric mass in grams from Wolfram Quantity[..., 'Grams']."""
+    if not isinstance(val, str) or "Quantity" not in val:
+        return None
+    m = re.search(r"Quantity\[([^,]+),", val)
+    if m:
+        try:
+            return float(m.group(1))
+        except ValueError:
+            return None
+    return None
+
+
+def _parse_wolfram_year(val):
+    """Extract year from Wolfram DateObject[{YYYY}, ...]."""
+    if not isinstance(val, str) or "DateObject" not in val:
+        return None
+    m = re.search(r"DateObject\[\{(\d+)\}", val)
+    if m:
+        return int(m.group(1))
+    return None
+
+
+def _parse_wolfram_coords(val):
+    """Extract (lat, lon) from Wolfram GeoPosition[{lat, lon}]."""
+    if not isinstance(val, str) or "GeoPosition" not in val:
+        return None, None
+    m = re.search(r"GeoPosition\[\{([^,]+),\s*([^}]+)\}", val)
+    if m:
+        try:
+            return float(m.group(1)), float(m.group(2))
+        except ValueError:
+            return None, None
+    return None, None
+
+
 def main():
-    print("Fetching meteorite landings from NASA SODA API...")
-    resp = requests.get(SODA_URL, params={"$limit": 50000}, timeout=120)
+    print("Fetching meteorite landings from Wolfram Data Repository...")
+    resp = requests.get(WOLFRAM_CSV_URL, timeout=120)
     resp.raise_for_status()
 
-    from io import StringIO
     df = pd.read_csv(StringIO(resp.text))
-    print(f"  {len(df):,} meteorite landings")
+    print(f"  {len(df):,} raw rows")
 
-    # Drop redundant GeoLocation column
-    if "geolocation" in df.columns:
-        df = df.drop(columns=["geolocation"])
-    if "GeoLocation" in df.columns:
-        df = df.drop(columns=["GeoLocation"])
+    # Rename columns to match original schema
+    df = df.rename(columns={
+        "Name": "name",
+        "ID": "id",
+        "NameType": "nametype",
+        "Classification": "recclass",
+        "Mass": "mass_raw",
+        "Fall": "fall",
+        "Year": "year_raw",
+        "Coordinates": "coords_raw",
+    })
+
+    # Parse Wolfram-encoded fields
+    df["mass"] = df["mass_raw"].apply(_parse_wolfram_mass)
+    df["year"] = df["year_raw"].apply(_parse_wolfram_year)
+    coords = df["coords_raw"].apply(lambda v: pd.Series(_parse_wolfram_coords(v)))
+    df["reclat"] = coords[0]
+    df["reclong"] = coords[1]
+
+    # Build proper datetime from year (matching original schema)
+    df["year"] = pd.to_datetime(df["year"], format="%Y", errors="coerce")
+
+    # Drop raw columns
+    df = df.drop(columns=["mass_raw", "year_raw", "coords_raw"])
 
     # Type coercion
     df["id"] = pd.to_numeric(df["id"], errors="coerce").astype("Int64")
     df["mass"] = pd.to_numeric(df["mass"], errors="coerce")
     df["reclat"] = pd.to_numeric(df["reclat"], errors="coerce")
     df["reclong"] = pd.to_numeric(df["reclong"], errors="coerce")
-    df["year"] = pd.to_datetime(df["year"], errors="coerce")
+
+    print(f"  {len(df):,} meteorite landings")
 
     # Derived column: mass in kg
     df["mass_kg"] = (df["mass"] / 1000).round(3)
@@ -56,7 +118,15 @@ def main():
     n_fell = int((df["fall"] == "Fell").sum())
     n_found = int((df["fall"] == "Found").sum())
     n_with_mass = int(df["mass"].notna().sum())
-    heaviest = df.loc[df["mass"].idxmax()] if df["mass"].notna().any() else None
+    if df["mass"].notna().any():
+        _h = df.loc[df["mass"].idxmax()]
+        heaviest_name = _h["name"]
+        heaviest_kg = f"{_h['mass_kg']:,.1f}"
+        heaviest_class = _h["recclass"]
+    else:
+        heaviest_name = "N/A"
+        heaviest_kg = "0"
+        heaviest_class = ""
     n_classes = df["recclass"].nunique()
     year_min = int(df["year"].dt.year.min()) if df["year"].notna().any() else 0
     year_max = int(df["year"].dt.year.max()) if df["year"].notna().any() else 0
@@ -133,7 +203,7 @@ was observed falling ("Fell") or found after the fact ("Found").
 - **{n_fell:,}** observed falls, **{n_found:,}** found specimens
 - **{n_with_mass:,}** records with known mass
 - **{n_classes}** distinct classification types
-- Heaviest: **{heaviest['name'] if heaviest is not None else 'N/A'}** at **{heaviest['mass_kg']:,.1f if heaviest is not None else 0} kg**{f" ({heaviest['recclass']})" if heaviest is not None else ''}
+- Heaviest: **{heaviest_name}** at **{heaviest_kg} kg**{f" ({heaviest_class})" if heaviest_class else ''}
 
 ## Usage
 
@@ -155,8 +225,10 @@ with_coords = df.dropna(subset=["reclat", "reclong"])
 
 ## Data source
 
-[NASA Open Data Portal -- Meteorite Landings](https://data.nasa.gov/Space-Science/Meteorite-Landings/gh4g-9sfh),
-maintained by The Meteoritical Society and published via NASA's Socrata SODA API.
+[NASA Open Data Portal -- Meteorite Landings](https://data.nasa.gov/dataset/meteorite-landings),
+maintained by The Meteoritical Society. Full dataset mirrored by the
+[Wolfram Data Repository](https://datarepository.wolframcloud.com/resources/Meteorite-Landings)
+(NASA retired the original Socrata SODA API in 2025).
 
 ## Update schedule
 
@@ -172,10 +244,6 @@ Static dataset (meteorite records are updated infrequently).
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/meteorite-landings) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
 ## Citation
 
 ```bibtex
@@ -185,7 +253,7 @@ If you find this dataset useful, please give it a ❤️ on the [dataset page](h
   year = {{2026}},
   publisher = {{Hugging Face}},
   url = {{https://huggingface.co/datasets/juliensimon/meteorite-landings}},
-  note = {{Based on NASA/The Meteoritical Society meteorite landing data via the Socrata SODA API}}
+  note = {{Based on NASA/The Meteoritical Society meteorite landing data via Wolfram Data Repository}}
 }}
 ```
 
