@@ -42,7 +42,8 @@
     "supernovae": 72145,
     "deep-space-probes": 1218456,
     "mars-express": 1658416,
-    "meda-weather": 1189443
+    "meda-weather": 1189443,
+    "tle-latest": 10016
   },
   "dst-index": "2026-03-26",
   "donki": "2026-03-26",
@@ -76,5 +77,6 @@
   "deep-space-probes": "2026-03-26",
   "neutron-monitor": "2026-03-26",
   "mars-express": "2026-03-26",
-  "meda-weather": "2026-03-26"
+  "meda-weather": "2026-03-26",
+  "tle-latest": "2026-03-27"
 }
