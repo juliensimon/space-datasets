@@ -245,6 +245,10 @@ Reference: Ajello, M. et al. 2017, ApJS, 232, 18.
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
+## Support
+
+If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/fermi-3fhl-hard-gamma-ray) and share feedback in the Community tab!
+
 ## Citation
 
 ```bibtex

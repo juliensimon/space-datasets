@@ -301,6 +301,10 @@ using the combined PLS+ICA multivariate model (sPDL Tool v2.5).
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
+## Support
+
+If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/mars-chemcam-compositions) and share feedback in the Community tab!
+
 ## Citation
 
 ```bibtex

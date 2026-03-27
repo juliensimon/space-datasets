@@ -383,6 +383,10 @@ Grav et al. (2012), Bauer et al. (2013), Nugent et al. (2015, 2016).
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
+## Support
+
+If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/neowise-asteroid-properties) and share feedback in the Community tab!
+
 ## Citation
 
 ```bibtex

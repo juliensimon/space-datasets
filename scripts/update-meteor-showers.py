@@ -313,6 +313,10 @@ Static dataset — rebuilt manually when the IAU MDC publishes annual updates.
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
+## Support
+
+If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/iau-meteor-showers) and share feedback in the Community tab!
+
 ## Citation
 
 ```bibtex

@@ -260,6 +260,10 @@ Based on Vollmer, B. et al. (2005, 2010). Via VizieR CDS.
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
+## Support
+
+If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/unified-radio-catalog) and share feedback in the Community tab!
+
 ## Citation
 
 ```bibtex

@@ -249,6 +249,10 @@ Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-d
 - [pulsar-catalog](https://huggingface.co/datasets/juliensimon/pulsar-catalog) — ATNF Pulsar Catalogue
 - [rosat-all-sky](https://huggingface.co/datasets/juliensimon/rosat-all-sky) — ROSAT All-Sky Survey
 
+## Support
+
+If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/swift-bat-hard-xray-survey) and share feedback in the Community tab!
+
 ## Citation
 
 ```bibtex

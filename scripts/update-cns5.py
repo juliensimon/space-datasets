@@ -288,6 +288,10 @@ accessed via [VizieR](https://vizier.cds.unistra.fr/), CDS Strasbourg.
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
+## Support
+
+If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/cns5-nearby-stars) and share feedback in the Community tab!
+
 ## Citation
 
 ```bibtex

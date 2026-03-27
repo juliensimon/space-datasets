@@ -245,6 +245,10 @@ Static dataset, rebuilt monthly. Source code: [juliensimon/space-datasets](https
 - [fermi-4fgl](https://huggingface.co/datasets/juliensimon/fermi-4fgl) — Fermi LAT 4FGL Source Catalog
 - [near-earth-objects](https://huggingface.co/datasets/juliensimon/near-earth-objects) — NEO close approaches
 
+## Support
+
+If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/grbweb-unified-grb-catalog) and share feedback in the Community tab!
+
 ## Citation
 
 ```bibtex

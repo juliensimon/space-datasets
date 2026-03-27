@@ -392,6 +392,10 @@ The full dataset is re-downloaded each run (~100 MB ASCII).
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
+## Support
+
+If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/omni-solar-wind-parameters) and share feedback in the Community tab!
+
 ## Citation
 
 ```bibtex

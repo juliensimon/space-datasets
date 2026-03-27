@@ -13,6 +13,7 @@ The observation table is the primary output; orbital elements from the asteroid
 table are merged in via asteroid number.
 """
 
+import gc
 import io
 import subprocess
 import tempfile
@@ -81,12 +82,19 @@ def _read_pds_table(url: str, colspecs: list[tuple]) -> pd.DataFrame:
     names = [c[0] for c in colspecs]
     specs = [(c[1], c[1] + c[2]) for c in colspecs]  # (start, end) 0-based
 
+    text = resp.text
+    del resp
+    gc.collect()
+
     df = pd.read_fwf(
-        io.StringIO(resp.text),
+        io.StringIO(text),
         colspecs=specs,
         names=names,
         dtype=str,
     )
+    del text
+    gc.collect()
+
     # Strip whitespace from all string columns
     for col in df.columns:
         df[col] = df[col].astype(str).str.strip()
@@ -145,9 +153,30 @@ def main():
         "osc_semimajor_au", "osc_eccentricity", "osc_inclination_deg",
     ]
     ast_merge = ast_df[merge_cols].copy()
+    del ast_df
+    gc.collect()
 
-    # Merge on ast_number (left join — keep all observations)
-    df = obs_df.merge(ast_merge, on="ast_number", how="left")
+    # Exclude ast_number == 0 or null from merge to avoid cartesian product
+    # (many unnumbered observations would cross-join with many unnumbered asteroids)
+    obs_numbered = obs_df[obs_df["ast_number"].notna() & (obs_df["ast_number"] != 0)]
+    obs_unnumbered = obs_df[obs_df["ast_number"].isna() | (obs_df["ast_number"] == 0)]
+    ast_merge_valid = ast_merge[ast_merge["ast_number"].notna() & (ast_merge["ast_number"] != 0)]
+    del obs_df
+    gc.collect()
+
+    # Merge only numbered asteroids
+    merged_numbered = obs_numbered.merge(ast_merge_valid, on="ast_number", how="left")
+    del obs_numbered, ast_merge_valid, ast_merge
+    gc.collect()
+
+    # For unnumbered observations, add empty merge columns
+    for col in merge_cols:
+        if col != "ast_number" and col not in obs_unnumbered.columns:
+            obs_unnumbered[col] = None
+
+    df = pd.concat([merged_numbered, obs_unnumbered], ignore_index=True)
+    del merged_numbered, obs_unnumbered
+    gc.collect()
 
     # Replace ast_number == 0 with NaN
     df.loc[df["ast_number"] == 0, "ast_number"] = pd.NA
@@ -362,6 +391,10 @@ See Carvano et al. (2010) and Ivezic et al. (2010).
 ## Pipeline
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
+
+## Support
+
+If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/sdss-asteroid-taxonomy) and share feedback in the Community tab!
 
 ## Citation
 

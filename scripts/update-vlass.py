@@ -297,6 +297,10 @@ Processed by CIRADA. Via VizieR CDS (J/ApJS/255/30).
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
+## Support
+
+If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/vlass-radio-sources) and share feedback in the Community tab!
+
 ## Citation
 
 ```bibtex

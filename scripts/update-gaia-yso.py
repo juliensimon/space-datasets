@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Fetch Gaia DR3 Young Stellar Objects catalog from ESA Gaia Archive and upload to HF."""
+"""Fetch Gaia DR3 Young Stellar Objects catalog from ESA Gaia Archive and upload to HF.
+
+YSO candidates are identified by joining gaiadr3.vari_classifier_result (best_class_name = 'YSO')
+with gaiadr3.vari_summary (variability statistics) and gaiadr3.gaia_source (astrometry/photometry).
+~79K sources total, paginated via TOP + source_id > last_id.
+"""
 
 import io
 import os
@@ -15,31 +20,57 @@ from validate import check_dataset
 
 GAIA_TAP = "https://gea.esac.esa.int/tap-server/tap/sync"
 HF_REPO = "juliensimon/gaia-dr3-young-stellar-objects"
-PAGE_SIZE = 500_000
+PAGE_SIZE = 50_000
+
+# Columns to select from the three-way join
+COLUMNS = """
+c.source_id, c.best_class_name, c.best_class_score,
+g.ra, g.dec, g.l, g.b,
+g.parallax, g.parallax_error, g.pmra, g.pmdec,
+g.phot_g_mean_mag, g.phot_bp_mean_mag, g.phot_rp_mean_mag,
+s.mean_mag_g_fov, s.mean_mag_bp, s.mean_mag_rp,
+s.median_mag_g_fov, s.median_mag_bp, s.median_mag_rp,
+s.std_dev_mag_g_fov, s.std_dev_mag_bp, s.std_dev_mag_rp,
+s.trimmed_range_mag_g_fov, s.trimmed_range_mag_bp, s.trimmed_range_mag_rp,
+s.range_mag_g_fov, s.range_mag_bp, s.range_mag_rp,
+s.min_mag_g_fov, s.max_mag_g_fov,
+s.num_selected_g_fov, s.num_selected_bp, s.num_selected_rp,
+s.skewness_mag_g_fov, s.kurtosis_mag_g_fov,
+s.mad_mag_g_fov, s.abbe_mag_g_fov, s.iqr_mag_g_fov
+""".strip()
+
+FROM_CLAUSE = (
+    "FROM gaiadr3.vari_classifier_result c "
+    "JOIN gaiadr3.vari_summary s ON c.source_id = s.source_id "
+    "JOIN gaiadr3.gaia_source g ON c.source_id = g.source_id"
+)
 
 
 def fetch_gaia_yso():
-    """Fetch young stellar objects from Gaia archive with OFFSET pagination."""
+    """Fetch YSO candidates via paginated JOIN across classifier, summary, and source tables."""
     all_dfs = []
-    offset = 0
+    last_id = 0
+    page = 0
     while True:
         query = (
-            f"SELECT * FROM gaiadr3.vari_young_stellar_object "
-            f"ORDER BY source_id "
-            f"OFFSET {offset}"
+            f"SELECT TOP {PAGE_SIZE} {COLUMNS} "
+            f"{FROM_CLAUSE} "
+            f"WHERE c.best_class_name = 'YSO' AND c.source_id > {last_id} "
+            f"ORDER BY c.source_id"
         )
-        print(f"  Fetching rows {offset:,}–{offset + PAGE_SIZE:,}...")
+        page += 1
+        print(f"  Page {page}: fetching up to {PAGE_SIZE:,} rows (source_id > {last_id})...")
         resp = requests.post(GAIA_TAP, data={
             "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "csv",
-            "QUERY": query, "MAXREC": PAGE_SIZE,
+            "QUERY": query,
         }, timeout=600)
         resp.raise_for_status()
         df = pd.read_csv(io.StringIO(resp.text))
         if len(df) == 0:
             break
         all_dfs.append(df)
-        print(f"    got {len(df):,} rows")
-        offset += len(df)
+        last_id = int(df["source_id"].max())
+        print(f"    got {len(df):,} rows (last source_id: {last_id})")
         if len(df) < PAGE_SIZE:
             break
         time.sleep(2)
@@ -51,25 +82,23 @@ def main():
     df = fetch_gaia_yso()
     print(f"  {len(df):,} raw rows")
 
-    # Gaia archive returns snake_case columns — convert any object columns to numeric
+    # Convert object columns to numeric where appropriate
     for col in df.select_dtypes(include=["object"]).columns:
+        if col == "best_class_name":
+            continue
         converted = pd.to_numeric(df[col], errors="coerce")
-        # Only convert if most values survived (skip true string columns)
         if converted.notna().sum() > 0.5 * df[col].notna().sum():
             df[col] = converted
 
     # Integer columns
-    int_cols = [
-        "number_of_clean_epochs_g", "number_of_clean_epochs_bp",
-        "number_of_clean_epochs_rp",
-    ]
+    int_cols = ["num_selected_g_fov", "num_selected_bp", "num_selected_rp"]
     for col in int_cols:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int32")
 
-    # Derived: color index
-    if "median_mag_bp" in df.columns and "median_mag_rp" in df.columns:
-        df["bp_rp"] = df["median_mag_bp"] - df["median_mag_rp"]
+    # Derived: BP-RP color index from catalog photometry
+    if "phot_bp_mean_mag" in df.columns and "phot_rp_mean_mag" in df.columns:
+        df["bp_rp"] = df["phot_bp_mean_mag"] - df["phot_rp_mean_mag"]
 
     # Sort by source_id
     if "source_id" in df.columns:
@@ -77,16 +106,16 @@ def main():
 
     # Stats
     n_total = len(df)
-    classifications = df["best_class_name"].value_counts() if "best_class_name" in df.columns else pd.Series(dtype=int)
-    class_summary = ", ".join(f"{k}: {v:,}" for k, v in classifications.head(5).items())
     g_median = df["median_mag_g_fov"].median() if "median_mag_g_fov" in df.columns else float("nan")
+    score_median = df["best_class_score"].median() if "best_class_score" in df.columns else float("nan")
 
     # Validate
     check_dataset(
         df,
         "gaia-yso",
         min_rows=50_000,
-        expected_columns=["source_id", "best_class_name"],
+        expected_columns=["source_id", "best_class_name", "best_class_score", "ra", "dec",
+                          "median_mag_g_fov", "parallax"],
         critical_columns=["source_id", "best_class_name"],
     )
 
@@ -105,7 +134,7 @@ license: cc-by-4.0
 pretty_name: "Gaia DR3 Young Stellar Objects"
 language:
   - en
-description: "Gaia DR3 young stellar object (YSO) candidates — {n_total:,} pre-main-sequence stars with classification (CTTS, WTTS, HAeBe), variability parameters, and multi-band photometry from ESA Gaia mission."
+description: "Gaia DR3 young stellar object (YSO) candidates — {n_total:,} pre-main-sequence stars with classification scores, variability parameters, astrometry, and multi-band photometry from ESA Gaia mission."
 task_categories:
   - tabular-classification
   - tabular-regression
@@ -134,38 +163,49 @@ configs:
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 The Gaia DR3 young stellar object (YSO) catalog, containing **{n_total:,}** YSO candidates
-identified by the ESA Gaia mission's variability processing pipeline. Each source includes
-a YSO classification (Classical T Tauri, Weak-line T Tauri, Herbig Ae/Be, etc.),
-variability parameters, photometric amplitudes, and multi-band photometry (G, BP, RP).
+identified by the ESA Gaia mission's variability classification pipeline. Each source includes
+a YSO classification confidence score, variability statistics (amplitudes, standard deviations,
+skewness, kurtosis), astrometry (positions, parallax, proper motions), and multi-band
+photometry (G, BP, RP).
 
 ## Dataset description
 
 Young stellar objects are pre-main-sequence stars still in the process of forming, often
 surrounded by circumstellar disks and exhibiting irregular photometric variability. Gaia's
 all-sky photometric survey identified these candidates through automated variability
-classification. The `best_class_name` field provides the specific YSO subtype:
-- **CTTS** — Classical T Tauri stars (strong accretion)
-- **WTTS** — Weak-line T Tauri stars (little/no accretion)
-- **HAeBe** — Herbig Ae/Be stars (intermediate-mass pre-main-sequence)
-- **FUOR** — FU Orionis variables (episodic accretion outbursts)
-- **DIPDIPPER** — Dipper-type variables (disk occultation)
+classification in the `vari_classifier_result` table. The `best_class_score` field gives
+the classifier's confidence for the YSO label (higher = more confident).
+
+This dataset joins three Gaia DR3 tables:
+- **`vari_classifier_result`** — YSO classification and confidence score
+- **`vari_summary`** — variability statistics (mean/median magnitudes, amplitudes, scatter)
+- **`gaia_source`** — astrometry (ra, dec, parallax, proper motion) and catalog photometry
 
 ## Key columns
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `source_id` | int64 | Gaia DR3 unique source identifier |
-| `best_class_name` | string | YSO classification (CTTS, WTTS, HAeBe, etc.) |
-| `best_class_score` | float64 | Classification confidence score |
-| `median_mag_g_fov` | float64 | Median G-band magnitude |
-| `median_mag_bp` | float64 | Median BP-band magnitude |
-| `median_mag_rp` | float64 | Median RP-band magnitude |
+| `best_class_name` | string | Classification label (always "YSO" in this dataset) |
+| `best_class_score` | float64 | Classification confidence score (0-1) |
+| `ra` | float64 | Right ascension (deg, ICRS, epoch 2016.0) |
+| `dec` | float64 | Declination (deg, ICRS, epoch 2016.0) |
+| `l` | float64 | Galactic longitude (deg) |
+| `b` | float64 | Galactic latitude (deg) |
+| `parallax` | float64 | Parallax (mas) |
+| `parallax_error` | float64 | Parallax uncertainty (mas) |
+| `pmra` | float64 | Proper motion in RA (mas/yr) |
+| `pmdec` | float64 | Proper motion in Dec (mas/yr) |
+| `phot_g_mean_mag` | float64 | G-band mean magnitude (catalog) |
+| `median_mag_g_fov` | float64 | Median G-band magnitude (variability) |
+| `median_mag_bp` | float64 | Median BP-band magnitude (variability) |
+| `median_mag_rp` | float64 | Median RP-band magnitude (variability) |
 | `bp_rp` | float64 | BP-RP color index (derived) |
-| `trimmed_range_mag_g_fov` | float64 | G-band variability amplitude |
-| `trimmed_range_mag_bp` | float64 | BP-band variability amplitude |
-| `trimmed_range_mag_rp` | float64 | RP-band variability amplitude |
 | `std_dev_mag_g_fov` | float64 | G-band magnitude standard deviation |
-| `number_of_clean_epochs_g` | Int32 | Number of clean G-band observations |
+| `trimmed_range_mag_g_fov` | float64 | G-band variability amplitude |
+| `skewness_mag_g_fov` | float64 | G-band magnitude skewness |
+| `kurtosis_mag_g_fov` | float64 | G-band magnitude kurtosis |
+| `num_selected_g_fov` | Int32 | Number of G-band observations used |
 
 Full schema includes {len(df.columns)} columns with variability metrics and photometric parameters.
 
@@ -173,7 +213,7 @@ Full schema includes {len(df.columns)} columns with variability metrics and phot
 
 - **{n_total:,}** YSO candidates
 - Median G magnitude: {g_median:.2f}
-- Classification breakdown: {class_summary}
+- Median classification score: {score_median:.3f}
 
 ## Usage
 
@@ -183,22 +223,20 @@ from datasets import load_dataset
 ds = load_dataset("juliensimon/gaia-dr3-young-stellar-objects", split="train")
 df = ds.to_pandas()
 
-# Classification distribution
-print(df["best_class_name"].value_counts())
+# Classification score distribution
+print(df["best_class_score"].describe())
 
-# T Tauri stars only
-ttauri = df[df["best_class_name"].isin(["CTTS", "WTTS"])]
-print(f"T Tauri stars: {{len(ttauri):,}}")
+# High-confidence YSOs (score > 0.5)
+confident = df[df["best_class_score"] > 0.5]
+print(f"High-confidence YSOs: {{len(confident):,}}")
 
 # Color-magnitude diagram
 import matplotlib.pyplot as plt
-for cls in df["best_class_name"].unique():
-    sub = df[df["best_class_name"] == cls]
-    plt.scatter(sub["bp_rp"], sub["median_mag_g_fov"], s=1, alpha=0.3, label=cls)
+plt.scatter(df["bp_rp"], df["phot_g_mean_mag"], s=1, alpha=0.3, c=df["best_class_score"], cmap="viridis")
+plt.colorbar(label="Classification score")
 plt.xlabel("BP - RP (mag)")
 plt.ylabel("G (mag)")
 plt.gca().invert_yaxis()
-plt.legend(markerscale=5)
 plt.title("Gaia DR3 YSO Color-Magnitude Diagram")
 plt.show()
 ```
@@ -206,7 +244,8 @@ plt.show()
 ## Data source
 
 Gaia Collaboration (2023), *Gaia Data Release 3: variability processing and analysis results.*
-European Space Agency. Via ESA Gaia Archive (gaiadr3.vari_young_stellar_object).
+European Space Agency. Via ESA Gaia Archive — joined from `gaiadr3.vari_classifier_result`,
+`gaiadr3.vari_summary`, and `gaiadr3.gaia_source`.
 
 ## Related datasets
 
@@ -216,6 +255,10 @@ European Space Agency. Via ESA Gaia Archive (gaiadr3.vari_young_stellar_object).
 ## Pipeline
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
+
+## Support
+
+If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/gaia-dr3-young-stellar-objects) and share feedback in the Community tab!
 
 ## Citation
 

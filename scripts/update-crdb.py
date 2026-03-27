@@ -227,6 +227,10 @@ Quarterly (1st of Jan/Apr/Jul/Oct at 06:00 UTC) via [GitHub Actions](https://git
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
+## Support
+
+If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/crdb-cosmic-ray-spectra) and share feedback in the Community tab!
+
 ## Citation
 
 ```bibtex

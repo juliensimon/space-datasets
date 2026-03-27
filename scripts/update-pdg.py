@@ -251,6 +251,10 @@ Annual (August 1) via [GitHub Actions](https://github.com/juliensimon/space-data
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
+## Support
+
+If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/pdg-particle-properties) and share feedback in the Community tab!
+
 ## Citation
 
 ```bibtex

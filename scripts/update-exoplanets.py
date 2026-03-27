@@ -202,6 +202,10 @@ Weekly on Monday at 16:00 UTC via [GitHub Actions](https://github.com/juliensimo
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
+## Support
+
+If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/nasa-exoplanets) and share feedback in the Community tab!
+
 ## Citation
 
 ```bibtex

@@ -606,6 +606,10 @@ recent = df[df["discovery_year"] >= 2020]
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
+## Support
+
+If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/solar-system-moons) and share feedback in the Community tab!
+
 ## Citation
 
 ```bibtex

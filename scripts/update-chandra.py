@@ -248,6 +248,10 @@ All data comes from the [Chandra Source Catalog 2.1](https://cxc.cfa.harvard.edu
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
+## Support
+
+If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/chandra-x-ray-sources) and share feedback in the Community tab!
+
 ## Citation
 
 ```bibtex

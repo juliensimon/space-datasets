@@ -250,6 +250,10 @@ Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-d
 - [gamma-ray-bursts](https://huggingface.co/datasets/juliensimon/gamma-ray-bursts) — Fermi GBM Gamma-Ray Burst Catalog
 - [pulsar-catalog](https://huggingface.co/datasets/juliensimon/pulsar-catalog) — ATNF Pulsar Catalogue
 
+## Support
+
+If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/tevcat-tev-gamma-ray) and share feedback in the Community tab!
+
 ## Citation
 
 ```bibtex

@@ -182,6 +182,10 @@ A&A, 686, A42. Accessed via [VizieR](https://vizier.cds.unistra.fr/), CDS Strasb
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
+## Support
+
+If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/open-star-clusters) and share feedback in the Community tab!
+
 ## Citation
 
 ```bibtex

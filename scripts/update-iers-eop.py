@@ -202,6 +202,10 @@ Daily at 13:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-dat
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
+## Support
+
+If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/iers-earth-orientation) and share feedback in the Community tab!
+
 ## Citation
 
 ```bibtex

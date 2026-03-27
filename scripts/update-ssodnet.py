@@ -356,6 +356,10 @@ publications, curated by IMCCE (Paris Observatory). See Berthier et al. (2023),
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
+## Support
+
+If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/ssodnet-asteroid-properties) and share feedback in the Community tab!
+
 ## Citation
 
 ```bibtex

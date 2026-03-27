@@ -258,6 +258,10 @@ Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-d
 - [tevcat-tev-gamma-ray](https://huggingface.co/datasets/juliensimon/tevcat-tev-gamma-ray) — TeVCat TeV Gamma-Ray Source Catalog
 - [cosmic-rays](https://huggingface.co/datasets/juliensimon/cosmic-rays) — Cosmic Ray Database
 
+## Support
+
+If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/icecat-neutrino-alerts) and share feedback in the Community tab!
+
 ## Citation
 
 ```bibtex

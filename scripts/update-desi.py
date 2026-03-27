@@ -293,6 +293,10 @@ DESI Collaboration (2025). "The DESI Data Release 1." arXiv:2503.14745.
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
+## Support
+
+If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/desi-dr1-redshifts) and share feedback in the Community tab!
+
 ## Citation
 
 ```bibtex
