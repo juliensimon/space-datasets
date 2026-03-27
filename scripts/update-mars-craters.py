@@ -54,7 +54,7 @@ def main():
     for url in DATA_URLS:
         try:
             print(f"  Trying {url[:80]}...")
-            resp = requests.get(url, timeout=120)
+            resp = requests.get(url, timeout=120, headers={"User-Agent": "space-datasets/1.0"})
             resp.raise_for_status()
             if url.endswith(".zip"):
                 with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
