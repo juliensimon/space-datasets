@@ -1,95 +1,96 @@
 #!/usr/bin/env python3
-"""Fetch HECATE (Heraklion Extragalactic Catalogue) from VizieR and upload to HF."""
+"""Fetch HECATE (Heraklion Extragalactic Catalogue) and upload to HF.
 
+Source: https://hecate.ia.forth.gr/ (Kovlakas et al. 2021, MNRAS, 506, 1896)
+The catalog is not available on VizieR TAP, so we download the CSV directly.
+"""
+
+import io
 import os
 import subprocess
 import tempfile
 from pathlib import Path
 
 import pandas as pd
+import requests
 
 from validate import check_dataset
-from vizier_tap import vizier_query
 
 
 HF_REPO = "juliensimon/hecate-nearby-galaxies"
 
-ADQL = """\
-SELECT * FROM "J/MNRAS/506/1896"\
-"""
+HECATE_CSV_URL = "https://hecate.ia.forth.gr/assets/files/HECATE_v1.1.csv"
 
 
 def main():
-    print("Fetching HECATE from VizieR...")
-    df = vizier_query(ADQL)
-    print(f"  {len(df):,} galaxies")
+    print("Downloading HECATE v1.1 from hecate.ia.forth.gr...")
+    resp = requests.get(HECATE_CSV_URL, timeout=180)
+    resp.raise_for_status()
+    print(f"  Downloaded {len(resp.content):,} bytes")
 
-    # Rename columns to snake_case
+    df = pd.read_csv(io.StringIO(resp.text))
+    print(f"  {len(df):,} galaxies, {len(df.columns)} columns")
+
+    # Rename columns to snake_case (matching actual HECATE v1.1 column names)
     rename = {
         # Position
-        "RAJ2000": "ra_deg",
-        "RA_ICRS": "ra_deg",
-        "RAICRS": "ra_deg",
-        "DEJ2000": "dec_deg",
-        "DE_ICRS": "dec_deg",
-        "DEICRS": "dec_deg",
+        "RA": "ra_deg",
+        "DEC": "dec_deg",
         # Identifiers
         "PGC": "pgc",
-        "Name": "name",
-        "objname": "name",
+        "OBJNAME": "name",
+        "ID_NED": "id_ned",
+        "ID_2MASS": "id_2mass",
         # Distance
         "D": "distance_mpc",
-        "Dist": "distance_mpc",
-        "D_Mpc_": "distance_mpc",
-        "e_D": "distance_mpc_err",
-        "e_Dist": "distance_mpc_err",
-        # Stellar mass
-        "logM_": "log_stellar_mass",
-        "logM*": "log_stellar_mass",
-        "logMstar": "log_stellar_mass",
-        "e_logM_": "log_stellar_mass_err",
-        "e_logMstar": "log_stellar_mass_err",
-        # Star formation rate
-        "logSFR": "log_sfr",
-        "e_logSFR": "log_sfr_err",
-        # Metallicity
-        "Z_": "metallicity",
-        "12_logO_H_": "metallicity_12logoh",
-        "Met": "metallicity",
+        "E_D": "distance_mpc_err",
+        "NDIST": "n_distances",
+        "DMETHOD": "distance_method",
         # Morphology
         "T": "morphological_type",
-        "TT": "morphological_type",
-        "t": "morphological_type",
-        # Nuclear activity
-        "Act": "activity_class",
-        "AGN": "activity_class",
-        # Magnitudes
-        "Bmag": "b_mag",
-        "BT": "b_mag",
-        "BTmag": "b_mag",
-        "Kmag": "k_mag",
-        "Kt": "k_mag",
-        "K2M": "k_mag",
-        # HI mass
-        "logMHI": "log_hi_mass",
-        "e_logMHI": "log_hi_mass_err",
-        # Group membership
-        "Gr": "group_id",
-        "Group": "group_id",
+        "E_T": "morphological_type_err",
+        "INCL": "inclination_deg",
         # Radial velocity
-        "cz": "radial_velocity",
-        "RV": "radial_velocity",
-        "HRV": "radial_velocity",
+        "V": "radial_velocity",
+        "E_V": "radial_velocity_err",
+        "V_VIR": "radial_velocity_virgo",
         # Size
         "R1": "r1_arcmin",
         "R2": "r2_arcmin",
-        "a": "semimajor_arcmin",
-        # Axis ratio / inclination
-        "b_a": "axis_ratio",
-        "i": "inclination_deg",
-        # Galactic coordinates
-        "GLON": "glon_deg",
-        "GLAT": "glat_deg",
+        "PA": "position_angle",
+        # Photometry
+        "BT": "b_mag",
+        "E_BT": "b_mag_err",
+        "J": "j_mag",
+        "H": "h_mag",
+        "K": "k_mag",
+        "E_J": "j_mag_err",
+        "E_H": "h_mag_err",
+        "E_K": "k_mag_err",
+        # Extinction
+        "AG": "extinction_g",
+        "AI": "extinction_i",
+        # Luminosities
+        "logL_TIR": "log_l_tir",
+        "logL_FIR": "log_l_fir",
+        "logL_K": "log_l_k",
+        # Star formation rate
+        "logSFR_HEC": "log_sfr",
+        "FLAG_SFR_HEC": "log_sfr_flag",
+        "logSFR_TIR": "log_sfr_tir",
+        "logSFR_FIR": "log_sfr_fir",
+        # Stellar mass
+        "logM_HEC": "log_stellar_mass",
+        "logM_GSW": "log_stellar_mass_gsw",
+        # Metallicity
+        "METAL": "metallicity",
+        "FLAG_METAL": "metallicity_flag",
+        # Nuclear activity
+        "CLASS_SP": "spectral_class",
+        "AGN_S17": "agn_satyapal17",
+        "AGN_HEC": "activity_class",
+        # ML ratio
+        "ML_RATIO": "ml_ratio",
     }
     # Apply only columns that exist
     rename = {k: v for k, v in rename.items() if k in df.columns}
@@ -153,7 +154,7 @@ license: cc-by-4.0
 pretty_name: "HECATE Nearby Galaxies"
 language:
   - en
-description: "HECATE (Heraklion Extragalactic Catalogue): {n_total:,} galaxies within 200 Mpc with stellar masses, star formation rates, metallicity, morphology, and nuclear activity. Sourced via VizieR CDS Strasbourg."
+description: "HECATE (Heraklion Extragalactic Catalogue): {n_total:,} galaxies within 200 Mpc with stellar masses, star formation rates, metallicity, morphology, and nuclear activity. Sourced from hecate.ia.forth.gr."
 task_categories:
   - tabular-classification
 tags:
@@ -230,9 +231,9 @@ plt.title("HECATE Galaxy Morphology Distribution")
 
 ## Data source
 
-[HECATE](https://vizier.cds.unistra.fr/viz-bin/VizieR?-source=J/MNRAS/506/1896)
+[HECATE](https://hecate.ia.forth.gr/) v1.1
 (Kovlakas K., Zezas A., Andrews J.J., et al., 2021, MNRAS, 506, 1896),
-accessed via [VizieR](https://vizier.cds.unistra.fr/), CDS Strasbourg.
+downloaded directly from the authors' website at the Institute of Astrophysics, FORTH.
 
 ## Update schedule
 
@@ -248,10 +249,6 @@ Static dataset (fixed catalog release). No scheduled updates.
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
 
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/hecate-nearby-galaxies) and share feedback in the Community tab!
-
 ## Citation
 
 ```bibtex
@@ -261,7 +258,7 @@ If you find this dataset useful, please give it a ❤️ on the [dataset page](h
   year = {{2026}},
   publisher = {{Hugging Face}},
   url = {{https://huggingface.co/datasets/juliensimon/hecate-nearby-galaxies}},
-  note = {{Based on HECATE (Kovlakas et al. 2021, MNRAS, 506, 1896) via VizieR CDS Strasbourg}}
+  note = {{Based on HECATE v1.1 (Kovlakas et al. 2021, MNRAS, 506, 1896) from hecate.ia.forth.gr}}
 }}
 ```
 

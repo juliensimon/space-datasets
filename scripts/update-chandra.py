@@ -250,7 +250,7 @@ Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-d
 
 ## Support
 
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/chandra-x-ray-sources) and share feedback in the Community tab!
+If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/chandra-x-ray-sources) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
 
 ## Citation
 

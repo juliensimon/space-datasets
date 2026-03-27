@@ -6,6 +6,7 @@ stellar masses, star formation rates, and dust attenuation from
 UV+optical+IR SED fitting (Salim et al. 2016, 2018).
 """
 
+import io
 import subprocess
 import tempfile
 from pathlib import Path
@@ -53,19 +54,23 @@ def main():
     resp = requests.get(SOURCE_URL, timeout=300)
     resp.raise_for_status()
 
-    # Write gzipped file to temp, then read as whitespace-delimited
-    with tempfile.NamedTemporaryFile(suffix=".dat.gz") as tmp_gz:
-        tmp_gz.write(resp.content)
-        tmp_gz.flush()
+    # The server sets Content-Encoding: x-gzip, so `requests` auto-decompresses
+    # the response. resp.content is already plain text, not gzip bytes.
+    # Detect which case we're in by checking the gzip magic number.
+    raw = resp.content
+    if raw[:2] == b"\x1f\x8b":
+        compression = "gzip"
+    else:
+        compression = None
 
-        df = pd.read_csv(
-            tmp_gz.name,
-            compression="gzip",
-            sep=r"\s+",
-            header=None,
-            names=COLUMNS,
-            dtype=str,  # read all as string first, coerce below
-        )
+    df = pd.read_csv(
+        io.BytesIO(raw),
+        compression=compression,
+        sep=r"\s+",
+        header=None,
+        names=COLUMNS,
+        dtype=str,  # read all as string first, coerce below
+    )
 
     print(f"  {len(df):,} galaxies, {len(df.columns)} columns")
 
@@ -287,10 +292,6 @@ dusty = df[df["a_fuv"] > 3.0]
 ## Pipeline
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/gswlc-galaxy-properties) and share feedback in the Community tab!
 
 ## Citation
 
