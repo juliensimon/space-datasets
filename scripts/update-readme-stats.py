@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
-"""Update README.md with top 10 datasets by downloads from HF API."""
+"""Update README.md with top 10 space datasets by downloads from HF API.
 
+Filters to space-datasets only (excludes unrelated HF repos).
+Subtracts estimated self-downloads from incremental pipelines.
+"""
+
+import json
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -8,24 +13,67 @@ from pathlib import Path
 from huggingface_hub import HfApi
 
 README = Path(__file__).parent.parent / "README.md"
+STATUS_FILE = Path(__file__).parent.parent / "status.json"
 MARKER_START = "<!-- TOP_DOWNLOADS_START -->"
 MARKER_END = "<!-- TOP_DOWNLOADS_END -->"
+
+# Datasets whose pipelines download their own data from HF (incremental updates).
+# Each run = 1 self-download. Estimate: days_since_launch * 1.
+SELF_DOWNLOADING = {
+    "starlink-fleet-data", "constellation-census", "donki-space-weather-events",
+    "dst-index", "solar-flare-events", "solar-wind", "geomagnetic-kp-index",
+    "auroral-electrojet-index", "space-track-tle-history", "neutron-monitor",
+    "fermi-gbm-triggers", "meda-weather",
+}
+
+# Non-space datasets to exclude
+EXCLUDE = {
+    "amazon-shoe-reviews", "autonlp-data-song-lyrics", "autonlp-data-imdb-demo-hf",
+    "food102",
+}
 
 
 def main():
     api = HfApi()
     datasets = [d for d in api.list_datasets(author="juliensimon")]
 
+    # Load status.json to know which datasets are ours
+    status = json.loads(STATUS_FILE.read_text()) if STATUS_FILE.exists() else {}
+    status_keys = {k for k in status if not k.startswith("_")}
+
+    # Estimate days since pipelines started (Mar 21, 2026)
+    now = datetime.now(timezone.utc)
+    pipeline_start = datetime(2026, 3, 21, tzinfo=timezone.utc)
+    days_running = max(1, (now - pipeline_start).days)
+
     results = []
     for d in datasets:
         name = d.id.replace("juliensimon/", "")
-        results.append((name, d.id, d.likes, d.downloads))
+        if name in EXCLUDE:
+            continue
+
+        # Filter: must be in status.json OR have space-related tags
+        space_tags = {"space", "satellite", "satellites", "orbital-mechanics",
+                      "astronomy", "space-weather", "exoplanets", "pulsars",
+                      "physics", "planetary-science", "cosmic-rays", "asteroids"}
+        tags = set(d.tags or [])
+        # Map dataset name to status key (some differ)
+        is_tracked = any(name.startswith(k) or k in name for k in status_keys)
+        if not is_tracked and not (tags & space_tags):
+            continue
+
+        downloads = d.downloads
+        # Subtract estimated self-downloads for incremental pipelines
+        if name in SELF_DOWNLOADING:
+            downloads = max(0, downloads - days_running)
+
+        results.append((name, d.id, d.likes, downloads))
 
     results.sort(key=lambda x: x[3], reverse=True)
     top10 = results[:10]
     total_downloads = sum(d for _, _, _, d in results)
     total_likes = sum(l for _, _, l, _ in results)
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = now.strftime("%Y-%m-%d")
 
     lines = [
         f"**{total_downloads:,}** downloads  ·  **{total_likes}** likes  ·  **{len(results)}** datasets  ·  updated {today}",
