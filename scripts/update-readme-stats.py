@@ -5,7 +5,6 @@ Filters to space-datasets only (excludes unrelated HF repos).
 Subtracts estimated self-downloads from incremental pipelines.
 """
 
-import json
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,7 +12,6 @@ from pathlib import Path
 from huggingface_hub import HfApi
 
 README = Path(__file__).parent.parent / "README.md"
-STATUS_FILE = Path(__file__).parent.parent / "status.json"
 MARKER_START = "<!-- TOP_DOWNLOADS_START -->"
 MARKER_END = "<!-- TOP_DOWNLOADS_END -->"
 
@@ -37,10 +35,6 @@ def main():
     api = HfApi()
     datasets = [d for d in api.list_datasets(author="juliensimon")]
 
-    # Load status.json to know which datasets are ours
-    status = json.loads(STATUS_FILE.read_text()) if STATUS_FILE.exists() else {}
-    status_keys = {k for k in status if not k.startswith("_")}
-
     # Estimate days since pipelines started (Mar 21, 2026)
     now = datetime.now(timezone.utc)
     pipeline_start = datetime(2026, 3, 21, tzinfo=timezone.utc)
@@ -50,16 +44,6 @@ def main():
     for d in datasets:
         name = d.id.replace("juliensimon/", "")
         if name in EXCLUDE:
-            continue
-
-        # Filter: must be in status.json OR have space-related tags
-        space_tags = {"space", "satellite", "satellites", "orbital-mechanics",
-                      "astronomy", "space-weather", "exoplanets", "pulsars",
-                      "physics", "planetary-science", "cosmic-rays", "asteroids"}
-        tags = set(d.tags or [])
-        # Map dataset name to status key (some differ)
-        is_tracked = any(name.startswith(k) or k in name for k in status_keys)
-        if not is_tracked and not (tags & space_tags):
             continue
 
         downloads = d.downloads
