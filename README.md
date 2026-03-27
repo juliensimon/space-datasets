@@ -4,6 +4,25 @@ Open-source data pipelines that publish **110+ space, astronomy, and physics dat
 
 All datasets are loadable in one line (`load_dataset("juliensimon/...")`), require no API keys, and work with `pandas`, `polars`, or any Parquet-compatible tool.
 
+### Top downloads
+
+<!-- TOP_DOWNLOADS_START -->
+**2,392** downloads  ·  **3** likes  ·  **114** datasets  ·  updated 2026-03-27
+
+| # | Dataset | Downloads |
+|--:|---------|----------:|
+| 1 | [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) | 135 |
+| 2 | [starlink-fleet-data](https://huggingface.co/datasets/juliensimon/starlink-fleet-data) | 120 |
+| 3 | [amazon-shoe-reviews](https://huggingface.co/datasets/juliensimon/amazon-shoe-reviews) | 109 |
+| 4 | [starlink-ground-stations](https://huggingface.co/datasets/juliensimon/starlink-ground-stations) | 56 |
+| 5 | [donki-space-weather-events](https://huggingface.co/datasets/juliensimon/donki-space-weather-events) | 51 |
+| 6 | [constellation-census](https://huggingface.co/datasets/juliensimon/constellation-census) | 51 |
+| 7 | [autonlp-data-song-lyrics](https://huggingface.co/datasets/juliensimon/autonlp-data-song-lyrics) | 44 |
+| 8 | [messier-catalog](https://huggingface.co/datasets/juliensimon/messier-catalog) | 43 |
+| 9 | [food102](https://huggingface.co/datasets/juliensimon/food102) | 41 |
+| 10 | [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) | 40 |
+<!-- TOP_DOWNLOADS_END -->
+
 <!-- Orbital Mechanics -->
 ![TLE History](https://github.com/juliensimon/space-datasets/actions/workflows/update-tle-history.yml/badge.svg)
 ![SATCAT](https://github.com/juliensimon/space-datasets/actions/workflows/update-satcat.yml/badge.svg)
