@@ -292,6 +292,10 @@ excluded).
 - [space-launch-log](https://huggingface.co/datasets/juliensimon/space-launch-log) — Global launch history from GCAT
 - [starlink-ground-stations](https://huggingface.co/datasets/juliensimon/starlink-ground-stations) — Starlink gateway and PoP locations
 
+## See it in action
+
+This dataset powers the fleet dashboard in [Starlink Viz](https://github.com/juliensimon/starlink-viz) — constellation growth, shell fill rates, ISL coverage, and more.
+
 ## Pipeline
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)

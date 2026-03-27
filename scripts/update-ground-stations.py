@@ -345,6 +345,10 @@ Daily at 09:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-dat
 - [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) — NORAD satellite catalog
 - [space-launch-log](https://huggingface.co/datasets/juliensimon/space-launch-log) — Global launch history from GCAT
 
+## See it in action
+
+This dataset powers the ground station map in [Starlink Viz](https://github.com/juliensimon/starlink-viz) — interactive 3D visualization of gateway and PoP locations.
+
 ## Pipeline
 
 Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
