@@ -59,12 +59,13 @@ def fetch_data():
             resp.raise_for_status()
             if url.endswith(".zip"):
                 with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
-                    names = [n for n in zf.namelist() if n.endswith((".csv", ".tsv"))]
+                    names = [n for n in zf.namelist()
+                             if n.endswith((".csv", ".tsv", ".txt")) and not n.startswith("__MACOSX") and "Changelog" not in n]
                     if not names:
                         continue
-                    sep = "\t" if names[0].endswith(".tsv") else ","
+                    sep = "\t"  # Robbins data is always tab-separated
                     with zf.open(names[0]) as f:
-                        return pd.read_csv(f, sep=sep, low_memory=False)
+                        return pd.read_csv(f, sep=sep, low_memory=False, encoding="latin-1")
             else:
                 return pd.read_csv(io.StringIO(resp.text), low_memory=False)
         except Exception as e:
@@ -104,7 +105,7 @@ def main():
     check_dataset(
         df,
         "lunar-craters",
-        min_rows=1_000_000,
+        min_rows=300_000,  # 2019 USGS has 1.3M, 2014 sjrdesign fallback has 384K
         expected_columns=["crater_id", "latitude_deg", "longitude_deg", "diameter_km"],
         critical_columns=["crater_id", "latitude_deg", "longitude_deg", "diameter_km"],
     )
