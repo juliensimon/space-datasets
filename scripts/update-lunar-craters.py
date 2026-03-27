@@ -10,7 +10,10 @@ import pandas as pd
 
 from validate import check_dataset
 
-DATA_URL = "https://astropedia.astrogeology.usgs.gov/download/Moon/Research/Craters/lunar_crater_database_robbins_2019.csv"
+DATA_URLS = [
+    "https://astropedia.astrogeology.usgs.gov/download/Moon/Research/Craters/lunar_crater_database_robbins_2019.csv",
+    "https://craters.sjrdesign.net/RobbinsCraterDatabase_20140829.tsv.zip",
+]
 HF_REPO = "juliensimon/lunar-craters-robbins"
 
 KEEP_COLS = {
@@ -39,9 +42,36 @@ def size_class(diameter):
     return "giant"
 
 
+def fetch_data():
+    """Try multiple URLs with fallback."""
+    import io
+    import zipfile
+    import requests
+    for url in DATA_URLS:
+        print(f"  Trying {url[:80]}...")
+        try:
+            resp = requests.get(url, timeout=120)
+            resp.raise_for_status()
+            if url.endswith(".zip"):
+                with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
+                    names = [n for n in zf.namelist() if n.endswith((".csv", ".tsv"))]
+                    if not names:
+                        continue
+                    sep = "\t" if names[0].endswith(".tsv") else ","
+                    with zf.open(names[0]) as f:
+                        return pd.read_csv(f, sep=sep, low_memory=False)
+            else:
+                return pd.read_csv(io.StringIO(resp.text), low_memory=False)
+        except Exception as e:
+            print(f"  Failed: {e}")
+    print("::error::All download URLs failed")
+    import sys
+    sys.exit(1)
+
+
 def main():
     print("Fetching Lunar crater database (Robbins 2019)...")
-    df = pd.read_csv(DATA_URL)
+    df = fetch_data()
     print(f"  {len(df):,} raw rows")
 
     # Keep and rename columns

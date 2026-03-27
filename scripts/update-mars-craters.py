@@ -16,6 +16,7 @@ from validate import check_dataset
 DATA_URLS = [
     "https://astropedia.astrogeology.usgs.gov/download/Mars/Research/Craters/RobbinsCraterDatabase_20121016.tsv",
     "https://planetarynames.wr.usgs.gov/images/RobbinsCraterDatabase_20121016.tsv",
+    "https://craters.sjrdesign.net/Catalog_Mars_Release_2020_1kmPlus_FullMorphData.csv.zip",
 ]
 HF_REPO = "juliensimon/mars-craters-robbins"
 
@@ -48,13 +49,23 @@ def size_class(diameter):
 
 def main():
     print("Fetching Mars crater database (Robbins & Hynek 2012)...")
+    import zipfile
     df = None
     for url in DATA_URLS:
         try:
-            print(f"  Trying {url[:60]}...")
+            print(f"  Trying {url[:80]}...")
             resp = requests.get(url, timeout=120)
             resp.raise_for_status()
-            df = pd.read_csv(io.StringIO(resp.text), sep="\t")
+            if url.endswith(".zip"):
+                with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
+                    names = [n for n in zf.namelist() if n.endswith((".csv", ".tsv"))]
+                    if not names:
+                        continue
+                    sep = "\t" if names[0].endswith(".tsv") else ","
+                    with zf.open(names[0]) as f:
+                        df = pd.read_csv(f, sep=sep, low_memory=False)
+            else:
+                df = pd.read_csv(io.StringIO(resp.text), sep="\t", low_memory=False)
             break
         except Exception as e:
             print(f"  Failed: {e}")
