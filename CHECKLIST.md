@@ -72,6 +72,7 @@ Required fields for discoverability (HF indexes these for search):
 - [ ] Update frequency note (daily/weekly/monthly/quarterly at HH:MM UTC)
 - [ ] Related datasets section (cross-link siblings in same domain)
 - [ ] Pipeline source link: `Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)`
+- [ ] Support section before Citation: `If you find this dataset useful, please give it a ❤️ on the dataset page and share feedback in the Community tab!`
 - [ ] Citation bibtex block with correct HF URL matching `HF_REPO` constant
 
 ---
