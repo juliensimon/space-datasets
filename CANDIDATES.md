@@ -2,11 +2,11 @@
 
 *Researched 2026-03-24, expanded 2026-03-26. Goal: the most comprehensive free, tabular space data collection on Hugging Face.*
 
-**Built: 115 dataset scripts (110 uploaded, 5 pending source fixes)** | **Remaining candidates: 18** | All sources free, no auth.
+**Built: 121 dataset scripts (all uploaded)** | **Remaining candidates: 13** | All sources free, no auth.
 
 ---
 
-## Already Built (115 dataset scripts, 110 uploaded to HF)
+## Already Built (121 dataset scripts, all uploaded to HF)
 
 All P0 and P1 candidates are built. Scripts in `scripts/update-*.py`, workflows in `.github/workflows/`.
 
@@ -32,7 +32,7 @@ All P0 and P1 candidates are built. Scripts in `scripts/update-*.py`, workflows 
 
 **Gap-filling bridge datasets (8):** OMNI Solar Wind (500K+, daily), GRBweb Unified GRBs (9K), ICECAT-1 Neutrino Alerts (348), Kepler Transit Timing (295K), SDSS Asteroid Taxonomy (pending OOM fix), Gaia YSOs (pending source), HECATE Galaxies (pending source), GSWLC-2 (pending source)
 
-**Blocked (5):** Meteorite Landings (NASA API 404), SDSS Taxonomy (OOM on merge), Gaia YSOs (table missing from Gaia archive), HECATE (VizieR table not found), GSWLC-2 (download URL broken)
+**All previously blocked datasets now fixed and uploaded:** Meteorite Landings (Wolfram source), SDSS Taxonomy (OOM fixed), Gaia YSOs (3-way JOIN), HECATE (direct CSV), GSWLC-2 (gzip fix), Lunar/Mars Craters (sjrdesign.net fallback)
 
 **Note on actual sizes:** VLASS is 3.4M rows (not 700K — full component catalog). Chandra is 28K rows (HEASARC TAP truncates). AAVSO VSX is 10.3M (not 2.1M — catalog grew). DESI BGS subset is ~5M of the full 28.4M.
 
