@@ -142,6 +142,12 @@ DATASETS = {
         "juliensimon/gswlc-galaxy-properties",
         "juliensimon/hecate-nearby-galaxies",
         "juliensimon/kepler-transit-timing",
+        "juliensimon/rave-dr6",
+        "juliensimon/apogee-dr17",
+        "juliensimon/gaia-dr3-cepheids",
+        "juliensimon/milliquas",
+        "juliensimon/bright-star-catalog",
+        "juliensimon/carbon-stars",
     ],
     PHYSICS: [
         "juliensimon/pdg-particle-properties",
