@@ -136,13 +136,21 @@ Each section serves a dual purpose: human readability AND search engine discover
   - [ ] Description column with plain-English summary + specific numbers
   - [ ] Manual run command in the `## Manual run` section (in correct domain group)
   - [ ] Add to data sources table if new source
-- [ ] Add dataset to `scripts/add-to-collections.py` in the correct collection list, then run it:
-  - Orbital: `juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994`
-  - Planetary: `juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2`
-  - Weather: `juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70`
-  - Astronomy: `juliensimon/astronomy-datasets-69c24caf2f17e36128946743`
-  - Physics: `juliensimon/physics-datasets-69c2d4682d37dfdb77447bd7`
-  - Solar System: `juliensimon/solar-system-datasets-69c6fa681978de62dff2f347`
+- [ ] Add dataset to `scripts/add-to-collections.py` in the correct collection list(s), then run it:
+  - **Parent collections** (umbrella — add every dataset to the relevant parent):
+    - Orbital: `juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994`
+    - Planetary: `juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2`
+    - Weather: `juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70`
+    - Astronomy: `juliensimon/astronomy-datasets-69c24caf2f17e36128946743`
+    - Physics: `juliensimon/physics-datasets-69c2d4682d37dfdb77447bd7`
+    - Solar System: `juliensimon/solar-system-datasets-69c6fa681978de62dff2f347`
+  - **Sub-collections** (focused — also add to the best-fit sub-collection):
+    - Stellar Catalogs: `juliensimon/stellar-catalogs-69c792b1a52ab2757b0eaa57`
+    - Variable Stars & Transients: `juliensimon/variable-stars-and-transients-69c792b1dd7a45812c5a9b36`
+    - Galaxies & Cosmology: `juliensimon/galaxies-and-cosmology-69c792b117242a3b236df55d`
+    - Sky Surveys: `juliensimon/sky-surveys-69c792b17d77aba7996e2442`
+    - Satellites & Launches: `juliensimon/satellites-and-launches-69c792b1fca01f437233082d`
+    - Asteroids & Small Bodies: `juliensimon/asteroids-and-small-bodies-69c792b1e0240f3bf1235c66`
 - [ ] Update `CANDIDATES.md`: move from remaining to built, update counts, renumber
 - [ ] Update `CHECKLIST.md` dataset count if a round number was crossed
 - [ ] Cross-reference in related datasets' HF READMEs (nice-to-have)
@@ -200,6 +208,7 @@ Each section serves a dual purpose: human readability AND search engine discover
 | VizieR catalog sizes differ from docs | VLASS component catalog is 3.4M rows (not 700K as listed in papers). Always check actual row count from `vizier_query()` and adjust `size_categories` accordingly |
 | `import` inside function body | Keep all imports at file top level for consistency with project convention |
 | License body says "MIT" | Always use `[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)` in README body — must match YAML frontmatter |
+| HF collection description too long | Hard limit is 150 characters. Use `update_collection_metadata(slug, description=...)` — pack in domain keywords and source names |
 
 ---
 
@@ -243,3 +252,19 @@ Each dataset page should link to:
 4. 3-4 sibling datasets (via "Related datasets" section)
 
 This creates a dense link graph: GitHub ↔ HF profile ↔ HF collections ↔ individual datasets ↔ each other. Every link strengthens the SEO of all connected pages.
+
+### HF Collection Descriptions
+
+HF collection descriptions have a **150 character hard limit**. Pack in domain keywords and source names — these appear in search results. Current descriptions:
+
+| Collection | Description |
+|---|---|
+| Orbital Mechanics | Satellites, TLEs, launches, NEOs, and asteroids. Track every orbiting object from NORAD SATCAT to Starlink fleet health and JPL impact risk. |
+| Space Probes | Voyager, Pioneer, Cassini, Mars Express, Rosetta, Curiosity, Perseverance, InSight. 50+ years of interplanetary spacecraft data in Parquet. |
+| Planetary Science | Impact craters (Moon, Mars, Ceres), IAU planetary nomenclature, and meteorite landings. The most comprehensive surface geology datasets. |
+| Space Weather | Solar flares, CMEs, geomagnetic storms, Kp/Ap/Dst/AE indices, F10.7, sunspot numbers, solar wind, and NOAA alerts. Updated daily. |
+| Astronomy | Exoplanets, gravitational waves, pulsars, GRBs, FRBs, quasars, variable stars, and million-source radio/X-ray sky surveys in Parquet. |
+| Physics | PDG particle properties, cosmic ray spectra, ultra-high-energy events, and gamma-ray catalogs from Fermi, Swift, INTEGRAL, HAWC, and LHAASO. |
+| Solar System | Planetary missions, crater databases (Moon/Mars/Ceres), atmospheric profiles (Jupiter/Titan), marsquakes, and Mars surface exploration. |
+
+Update these when adding datasets that significantly expand a collection's scope. Use `update_collection_metadata(slug, description=...)` from `huggingface_hub`.
