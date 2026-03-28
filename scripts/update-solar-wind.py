@@ -115,6 +115,7 @@ tags:
   - bz
   - geomagnetic
   - tabular-data
+  - parquet
 configs:
   - config_name: default
     data_files:
@@ -245,7 +246,8 @@ def main():
     check_dataset(df, "solar-wind", min_rows=5000,
                   expected_columns=["time_tag", "density", "speed", "temperature",
                                     "bt", "bz_gsm"],
-                  critical_columns=["time_tag", "speed"])
+                  critical_columns=["time_tag", "speed"],
+            incremental=True)
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_dir = Path(tmp)

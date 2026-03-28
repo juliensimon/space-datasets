@@ -110,6 +110,7 @@ tags:
   - planetary-science
   - pds
   - tabular-data
+  - parquet
 configs:
   - config_name: default
     data_files:

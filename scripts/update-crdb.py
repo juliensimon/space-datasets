@@ -129,6 +129,7 @@ description: "Cosmic Ray Database — ALL cosmic ray measurements from 131 exper
 task_categories:
   - tabular-regression
 tags:
+  - space
   - physics
   - cosmic-ray
   - crdb
@@ -136,6 +137,7 @@ tags:
   - particle
   - open-data
   - tabular-data
+  - parquet
 size_categories:
   - 100K<n<1M
 configs:

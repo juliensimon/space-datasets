@@ -132,6 +132,7 @@ tags:
   - open-data
   - sdss
   - tabular-data
+  - parquet
 size_categories:
   - 100K<n<1M
 configs:

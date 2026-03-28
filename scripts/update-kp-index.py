@@ -109,6 +109,7 @@ tags:
   - magnetosphere
   - aurora
   - tabular-data
+  - parquet
 configs:
   - config_name: default
     data_files:
@@ -238,7 +239,8 @@ def main():
     min_rows = 50
     check_dataset(df, "kp-index", min_rows=min_rows,
                   expected_columns=["datetime", "kp_value", "storm_level"],
-                  critical_columns=["datetime", "kp_value"])
+                  critical_columns=["datetime", "kp_value"],
+            incremental=True)
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_dir = Path(tmp)

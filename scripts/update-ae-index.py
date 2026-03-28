@@ -228,7 +228,8 @@ def main():
 
     check_dataset(df, "ae-index", min_rows=30000,
                   expected_columns=["datetime", "ae_index"],
-                  critical_columns=["datetime", "ae_index"])
+                  critical_columns=["datetime", "ae_index"],
+            incremental=True)
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
@@ -258,6 +259,7 @@ tags:
   - kyoto
   - open-data
   - tabular-data
+  - parquet
 size_categories:
   - 100K<n<1M
 configs:

@@ -222,7 +222,8 @@ def main():
     # Validation
     check_dataset(df, "fermi-gbm-triggers", min_rows=10_000,
                   expected_columns=["name", "trigger_time", "ra", "dec"],
-                  critical_columns=["name", "trigger_time"])
+                  critical_columns=["name", "trigger_time"],
+            incremental=True)
 
     # Stats for README
     n_grb = int(df["is_grb"].sum()) if "is_grb" in df.columns else 0
@@ -295,6 +296,7 @@ tags:
   - physics
   - open-data
   - tabular-data
+  - parquet
 size_categories:
   - 10K<n<100K
 configs:

@@ -119,6 +119,7 @@ tags:
   - physics
   - open-data
   - tabular-data
+  - parquet
 size_categories:
   - n<1K
 configs:

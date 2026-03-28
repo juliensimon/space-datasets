@@ -10,6 +10,8 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from validate import check_dataset
+
 
 DONKI_BASE = "https://kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get"
 HF_REPO = "juliensimon/donki-space-weather-events"
@@ -228,6 +230,11 @@ def main():
     fastest_cme = df.loc[df["cme_speed_kms"].idxmax()] if "cme_speed_kms" in df.columns else None
     max_kp = df["gst_max_kp"].max() if "gst_max_kp" in df.columns else None
 
+    check_dataset(df, "donki", min_rows=5000,
+                  expected_columns=["activity_id", "event_type", "start_time"],
+                  critical_columns=["activity_id", "start_time"],
+                  incremental=True)
+
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         data_dir = tmp / "data"
@@ -263,6 +270,7 @@ tags:
   - donki
   - solar-wind
   - tabular-data
+  - parquet
 size_categories:
   - 10K<n<100K
 configs:
@@ -399,7 +407,7 @@ If you use this dataset, please cite:
 
 ## License
 
-MIT
+[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
 """)
 
         print("Uploading to HF...")

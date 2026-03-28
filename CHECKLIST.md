@@ -42,12 +42,18 @@ Reusable checklist for adding any new dataset to `juliensimon/space-datasets`. L
 Required fields for discoverability (HF indexes these for search):
 
 - [ ] `license: cc-by-4.0` (or `cc-by-sa-4.0` if upstream requires)
-- [ ] `pretty_name:` — appears in search results as title
+- [ ] `pretty_name:` — appears in HF search results as title. Use a descriptive, human-readable name (not the repo slug)
 - [ ] `language: [en]` — enables language filter
-- [ ] `description:` — 1-2 sentences, Google-indexed subtitle
+- [ ] `description:` — 1-2 sentences optimized for search snippets. Include: source name, row count/scope, date range, key content. Template: `"{What} from {Source} ({scope}). {Key detail}."` Example: `"All asteroid and comet close approaches to Earth within 0.05 AU (1900-2100) from NASA JPL CNEOS. Updated daily."`
 - [ ] `size_categories:` — e.g. `n<1K`, `1K<n<10K`, `10K<n<100K`, `100K<n<1M`
 - [ ] `task_categories:` — e.g. `tabular-classification`, `time-series-forecasting`
-- [ ] `tags:` — include `open-data` + domain terms + source names (nasa, noaa, esa, etc.)
+- [ ] `tags:` — MUST include these 4 mandatory umbrella tags + domain terms + source names:
+  - `space` — brand umbrella (every dataset, including physics-only)
+  - `open-data` — discoverability in HF "open data" searches
+  - `tabular-data` — format category
+  - `parquet` — format filter (HF users search by this)
+  - Plus domain terms: `astronomy`, `space-weather`, `orbital-mechanics`, `physics`, `planetary-science`, etc.
+  - Plus source names: `nasa`, `noaa`, `esa`, `jpl`, etc.
 - [ ] `configs:` — list each parquet config with explicit split/path format:
   ```yaml
   configs:
@@ -60,20 +66,24 @@ Required fields for discoverability (HF indexes these for search):
 
 ---
 
-## 3. HF README — Body Content
+## 3. HF README — Body Content (SEO-optimized structure)
 
-- [ ] Title as H1 with dataset name
-- [ ] CI badge: `![Update](https://github.com/juliensimon/space-datasets/actions/workflows/update-<name>.yml/badge.svg)`
-- [ ] Dynamic "updated" badge from status.json (use `$['key-name']` for hyphenated keys)
-- [ ] 1-paragraph description with **bold** key stats
-- [ ] Schema table: Column | Type | Description (for each config)
-- [ ] Usage section with `load_dataset()` Python example
-- [ ] Data source section with attribution and URL
-- [ ] Update frequency note (daily/weekly/monthly/quarterly at HH:MM UTC)
-- [ ] Related datasets section (cross-link siblings in same domain)
-- [ ] Pipeline source link: `Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)`
-- [ ] Support section before Citation: `If you find this dataset useful, please give it a ❤️ on the dataset page and share feedback in the Community tab!`
-- [ ] Citation bibtex block with correct HF URL matching `HF_REPO` constant
+Each section serves a dual purpose: human readability AND search engine discoverability.
+
+- [ ] **H1 title** — must match `pretty_name`. This is the strongest on-page SEO signal
+- [ ] **Collection backlink** — `*Part of the [Domain Datasets](...) collection on Hugging Face.*` (improves HF nav graph)
+- [ ] **CI badge** + **dynamic "updated" badge** — freshness signals for search engines
+- [ ] **Keyword-rich intro paragraph** — 2-3 sentences with **bold** key stats (row count, date range, source). Front-load important terms. This paragraph often becomes the Google snippet
+- [ ] **Schema table** — Column | Type | Description. Schema tables rank for "[dataset] columns" queries
+- [ ] **Quick stats** — computed from data (e.g., "closest approach: X at Y km"). Unique content helps differentiation
+- [ ] **Usage section** with `load_dataset()` Python example — ranks for "[dataset] python example" queries. Include 3-5 realistic use cases (filtering, aggregation)
+- [ ] **Data source section** with attribution URL — backlink to authoritative source (trust signal)
+- [ ] **Update frequency** note (daily/weekly/monthly/quarterly at HH:MM UTC)
+- [ ] **Related datasets** section — cross-link 3-4 siblings in same domain/collection (internal linking improves SEO for all linked pages)
+- [ ] **Pipeline source link**: `Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)` (backlink to GitHub)
+- [ ] **Support section**: `If you find this dataset useful, please give it a ❤️ on the dataset page and share feedback in the Community tab!`
+- [ ] **Citation bibtex block** — with correct HF URL. Critical for academic discoverability (Google Scholar indexes BibTeX)
+- [ ] **License** — `[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)` (always link, never just "MIT" or plain text)
 
 ---
 
@@ -132,6 +142,7 @@ Required fields for discoverability (HF indexes these for search):
   - Weather: `juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70`
   - Astronomy: `juliensimon/astronomy-datasets-69c24caf2f17e36128946743`
   - Physics: `juliensimon/physics-datasets-69c2d4682d37dfdb77447bd7`
+  - Solar System: `juliensimon/solar-system-datasets-69c6fa681978de62dff2f347`
 - [ ] Update `CANDIDATES.md`: move from remaining to built, update counts, renumber
 - [ ] Update `CHECKLIST.md` dataset count if a round number was crossed
 - [ ] Cross-reference in related datasets' HF READMEs (nice-to-have)
@@ -188,3 +199,47 @@ Required fields for discoverability (HF indexes these for search):
 | HEASARC TAP sync truncates large tables | Sync endpoint has a server-side row limit (~28K for some tables). Add `MAXREC=500000` but it may not help — verify row count matches expected. For 100K+ tables, consider async TAP or VizieR mirror |
 | VizieR catalog sizes differ from docs | VLASS component catalog is 3.4M rows (not 700K as listed in papers). Always check actual row count from `vizier_query()` and adjust `size_categories` accordingly |
 | `import` inside function body | Keep all imports at file top level for consistency with project convention |
+| License body says "MIT" | Always use `[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)` in README body — must match YAML frontmatter |
+
+---
+
+## SEO Reference
+
+Learnings from the 2026-03-27 SEO audit across 122 dataset scripts.
+
+### GitHub Repo SEO
+
+- **Topics** (17 set): space, astronomy, dataset, nasa, noaa, esa, parquet, physics, python, etc. Limit is 20. Update via `gh repo edit --add-topic`
+- **Description**: keyword-rich, shows in Google search results. Update when dataset count milestones crossed
+- **Homepage URL**: set to `https://huggingface.co/juliensimon` — links GitHub to HF profile
+- **README H1**: includes tagline with key terms ("Open Space, Astronomy & Physics Datasets on Hugging Face"). Google uses H1 as page title in search results
+- **README FAQ section**: targets Google "People also ask" long-tail queries. Each H3 question is a potential featured snippet
+- **JSON-LD**: do NOT add to GitHub README — GitHub strips `<script>` tags from rendered markdown, making it invisible to crawlers. HF adds structured data server-side on dataset pages
+
+### HF Dataset Card SEO
+
+**Mandatory umbrella tags** (every script must have all 4):
+- `space` — brand umbrella, even for physics-only datasets
+- `open-data` — HF search discoverability
+- `tabular-data` — format category filter
+- `parquet` — format filter (users search HF by this)
+
+**Description field** is the most important frontmatter field for SEO:
+- HF uses it as the search snippet subtitle
+- Keep 100-200 characters, mention source + scope + key metric
+- Use f-string templates with dynamic values: `f"{n_total:,} rows"`, `f"{date_min} to {date_max}"`
+
+**What does NOT help on HF:**
+- `dataset_summary` field — not part of current HF spec, `description` serves the same role
+- Adding more than ~15 tags — diminishing returns, focus on the right tags
+- `task_categories` beyond 2 — stick to the relevant 1-2 (tabular-classification, tabular-regression, time-series-forecasting)
+
+### Cross-Linking Strategy
+
+Each dataset page should link to:
+1. Parent HF collection (via "Part of the..." line)
+2. GitHub repo (via "Source code" line)
+3. Original data source (via "Data source" section)
+4. 3-4 sibling datasets (via "Related datasets" section)
+
+This creates a dense link graph: GitHub ↔ HF profile ↔ HF collections ↔ individual datasets ↔ each other. Every link strengthens the SEO of all connected pages.

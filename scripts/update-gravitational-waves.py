@@ -140,6 +140,7 @@ description: "All confirmed gravitational wave events from LIGO/Virgo/KAGRA obse
 task_categories:
   - tabular-classification
 tags:
+  - space
   - gravitational-waves
   - ligo
   - virgo
@@ -150,6 +151,7 @@ tags:
   - astronomy
   - open-data
   - tabular-data
+  - parquet
 size_categories:
   - {size_cat}
 configs:

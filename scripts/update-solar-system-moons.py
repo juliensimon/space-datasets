@@ -502,6 +502,7 @@ tags:
   - orbital-mechanics
   - jpl
   - tabular-data
+  - parquet
 size_categories:
   - n<1K
 configs:

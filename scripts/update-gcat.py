@@ -125,6 +125,7 @@ tags:
   - open-data
   - gcat
   - tabular-data
+  - parquet
 configs:
   - config_name: vehicles
     data_files:

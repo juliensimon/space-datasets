@@ -11,6 +11,8 @@ import numpy as np
 import pandas as pd
 import requests
 
+from validate import check_dataset
+
 try:
     import netCDF4 as nc
 except ImportError:
@@ -302,6 +304,11 @@ def main():
     strongest_class = strongest["goes_class"]
     strongest_date = strongest["peak_time"].strftime("%Y-%m-%d %H:%M")
 
+    check_dataset(df, "solar-flares", min_rows=5000,
+                  expected_columns=["start_time", "peak_time", "goes_class"],
+                  critical_columns=["start_time", "goes_class"],
+                  incremental=True)
+
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         data_dir = tmp / "data"
@@ -333,6 +340,7 @@ tags:
   - ncei
   - solar-activity
   - tabular-data
+  - parquet
 size_categories:
   - 10K<n<100K
 configs:

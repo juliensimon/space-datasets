@@ -260,6 +260,7 @@ tags:
   - spacex
   - fcc
   - tabular-data
+  - parquet
 configs:
   - config_name: gateways
     data_files:

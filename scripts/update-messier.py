@@ -115,6 +115,7 @@ size_categories:
 task_categories:
   - tabular-classification
 tags:
+  - space
   - open-data
   - astronomy
   - messier
@@ -124,6 +125,7 @@ tags:
   - star-cluster
   - simbad
   - tabular-data
+  - parquet
 configs:
   - config_name: default
     data_files:

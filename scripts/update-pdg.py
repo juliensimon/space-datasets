@@ -144,6 +144,7 @@ task_categories:
   - tabular-classification
   - tabular-regression
 tags:
+  - space
   - physics
   - particle
   - pdg
@@ -151,6 +152,7 @@ tags:
   - high-energy-physics
   - open-data
   - tabular-data
+  - parquet
 size_categories:
   - n<1K
 configs:

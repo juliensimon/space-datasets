@@ -103,6 +103,7 @@ tags:
   - pantheon
   - open-data
   - tabular-data
+  - parquet
 size_categories:
   - 1K<n<10K
 configs:

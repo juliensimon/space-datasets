@@ -145,6 +145,7 @@ description: "Complete catalog of known radio pulsars from the ATNF Pulsar Catal
 task_categories:
   - tabular-classification
 tags:
+  - space
   - pulsar
   - neutron-star
   - astronomy
@@ -153,6 +154,7 @@ tags:
   - atnf
   - open-data
   - tabular-data
+  - parquet
 size_categories:
   - 1K<n<10K
 configs:

@@ -346,8 +346,8 @@ def main():
         min_rows=MIN_ROWS,
         expected_columns=EXPECTED_COLUMNS,
         critical_columns=CRITICAL_COLUMNS,
-        max_null_pct=0.50,  # Mars weather has many sensor gaps
-    )
+        max_null_pct=0.50,  # Mars weather has many sensor gaps,
+            incremental=True)
 
     # ── Stats ─────────────────────────────────────────────────────────────
     n_rows = len(df)
@@ -402,6 +402,7 @@ tags:
   - planetary-science
   - open-data
   - tabular-data
+  - parquet
 size_categories:
   - {size_cat}
 configs:

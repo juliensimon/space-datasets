@@ -424,6 +424,7 @@ tags:
   - gps
   - galileo
   - tabular-data
+  - parquet
 configs:
   - config_name: latest_satellites
     data_files:
@@ -593,7 +594,8 @@ def main():
     check_dataset(df, "constellation-census", min_rows=5000,
                   expected_columns=["norad_id", "name", "constellation", "altitude_km",
                                     "inclination", "status", "shell_id"],
-                  critical_columns=["norad_id", "altitude_km", "constellation"])
+                  critical_columns=["norad_id", "altitude_km", "constellation"],
+            incremental=True)
 
     # Build daily_snapshots: per-constellation aggregates
     daily_rows = []

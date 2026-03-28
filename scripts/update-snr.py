@@ -140,6 +140,7 @@ description: "Galactic supernova remnants from Green's catalog with positions, a
 task_categories:
   - tabular-classification
 tags:
+  - space
   - supernova-remnant
   - snr
   - astronomy
@@ -147,6 +148,7 @@ tags:
   - galactic
   - open-data
   - tabular-data
+  - parquet
 size_categories:
   - n<1K
 configs:

@@ -86,6 +86,7 @@ tags:
   - nasa
   - launch-vehicle
   - tabular-data
+  - parquet
 configs:
   - config_name: launches
     data_files:

@@ -122,6 +122,7 @@ tags:
   - cneos
   - potentially-hazardous-asteroid
   - tabular-data
+  - parquet
 size_categories:
   - 10K<n<100K
 configs:

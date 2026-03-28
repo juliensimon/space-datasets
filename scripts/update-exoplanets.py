@@ -82,6 +82,7 @@ task_categories:
   - tabular-classification
   - tabular-regression
 tags:
+  - space
   - exoplanet
   - astronomy
   - nasa
@@ -91,6 +92,7 @@ tags:
   - tess
   - open-data
   - tabular-data
+  - parquet
 size_categories:
   - 1K<n<10K
 configs:

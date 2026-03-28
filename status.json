@@ -44,7 +44,12 @@
     "mars-express": 1658416,
     "meda-weather": 1189443,
     "tle-latest": 10015,
-    "omni": 561024
+    "omni": 561024,
+    "pds-missions": 1000,
+    "insight-marsquakes": 2715,
+    "planetary-nomenclature": 13723,
+    "galileo-atmosphere": 686,
+    "huygens-atmosphere": 2727
   },
   "dst-index": "2026-03-27",
   "donki": "2026-03-27",
@@ -80,5 +85,10 @@
   "mars-express": "2026-03-26",
   "meda-weather": "2026-03-26",
   "tle-latest": "2026-03-28",
-  "omni": "2026-03-27"
+  "omni": "2026-03-27",
+  "pds-missions": "2026-03-27",
+  "insight-marsquakes": "2026-03-27",
+  "planetary-nomenclature": "2026-03-27",
+  "galileo-atmosphere": "2026-03-27",
+  "huygens-atmosphere": "2026-03-27"
 }

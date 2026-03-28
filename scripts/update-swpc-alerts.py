@@ -108,6 +108,7 @@ tags:
   - geomagnetic-storm
   - open-data
   - tabular-data
+  - parquet
 configs:
   - config_name: default
     data_files:

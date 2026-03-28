@@ -12,6 +12,7 @@ PLANETARY = "juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2"
 WEATHER = "juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70"
 ASTRONOMY = "juliensimon/astronomy-datasets-69c24caf2f17e36128946743"
 PHYSICS = "juliensimon/physics-datasets-69c2d4682d37dfdb77447bd7"
+SOLAR_SYSTEM = "juliensimon/solar-system-datasets-69c6fa681978de62dff2f347"
 
 DATASETS = {
     ORBITAL: [
@@ -41,6 +42,10 @@ DATASETS = {
         "juliensimon/asterank-asteroid-mining",
         "juliensimon/asteroid-lightcurves-lcdb",
         "juliensimon/mpc-comet-elements",
+        "juliensimon/bus-demeo-asteroid-taxonomy",
+        "juliensimon/sdss-asteroid-taxonomy",
+        "juliensimon/orbital-fragmentation-events",
+        "juliensimon/launch-cost-to-leo",
     ],
     PROBES: [
         "juliensimon/deep-space-probes",
@@ -50,12 +55,19 @@ DATASETS = {
         "juliensimon/mars-chemcam-compositions",
         "juliensimon/mars-perseverance-weather",
         "juliensimon/nasa-eva-chronology",
+        "juliensimon/pds-planetary-missions",
+        "juliensimon/insight-marsquake-catalog",
+        "juliensimon/galileo-jupiter-atmosphere",
+        "juliensimon/huygens-titan-atmosphere",
+        "juliensimon/astronaut-database",
     ],
     PLANETARY: [
         "juliensimon/lunar-craters-robbins",
         "juliensimon/mars-craters-robbins",
         "juliensimon/meteorite-landings",
         "juliensimon/solar-system-moons",
+        "juliensimon/planetary-nomenclature",
+        "juliensimon/ceres-craters-dawn",
     ],
     WEATHER: [
         "juliensimon/space-weather-indices",
@@ -72,6 +84,8 @@ DATASETS = {
         "juliensimon/celestrak-space-weather",
         "juliensimon/auroral-electrojet-index",
         "juliensimon/neutron-monitor-cosmic-rays",
+        "juliensimon/omni-solar-wind-parameters",
+        "juliensimon/solar-proton-events",
     ],
     ASTRONOMY: [
         "juliensimon/nasa-exoplanets",
@@ -122,6 +136,12 @@ DATASETS = {
         "juliensimon/wolf-rayet-stars",
         "juliensimon/unified-radio-catalog",
         "juliensimon/mcgill-magnetar-catalog",
+        "juliensimon/gaia-dr3-young-stellar-objects",
+        "juliensimon/globular-star-clusters",
+        "juliensimon/grbweb-unified-grb-catalog",
+        "juliensimon/gswlc-galaxy-properties",
+        "juliensimon/hecate-nearby-galaxies",
+        "juliensimon/kepler-transit-timing",
     ],
     PHYSICS: [
         "juliensimon/pdg-particle-properties",
@@ -135,6 +155,29 @@ DATASETS = {
         "juliensimon/tevcat-tev-gamma-ray",
         "juliensimon/lhaaso-gamma-ray-sources",
         "juliensimon/hawc-tev-gamma-ray",
+        "juliensimon/icecat-neutrino-alerts",
+    ],
+    SOLAR_SYSTEM: [
+        # Planetary Science (existing)
+        "juliensimon/lunar-craters-robbins",
+        "juliensimon/mars-craters-robbins",
+        "juliensimon/meteorite-landings",
+        "juliensimon/solar-system-moons",
+        # Space Probes (existing)
+        "juliensimon/deep-space-probes",
+        "juliensimon/cassini-saturn-observations",
+        "juliensimon/esa-mars-express-observations",
+        "juliensimon/esa-rosetta-observations",
+        "juliensimon/mars-chemcam-compositions",
+        "juliensimon/mars-perseverance-weather",
+        "juliensimon/nasa-eva-chronology",
+        # New solar system datasets
+        "juliensimon/pds-planetary-missions",
+        "juliensimon/insight-marsquake-catalog",
+        "juliensimon/planetary-nomenclature",
+        "juliensimon/ceres-craters-dawn",
+        "juliensimon/galileo-jupiter-atmosphere",
+        "juliensimon/huygens-titan-atmosphere",
     ],
 }
 

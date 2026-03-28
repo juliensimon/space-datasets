@@ -241,6 +241,7 @@ tags:
   - orbital-mechanics
   - open-data
   - tabular-data
+  - parquet
 size_categories:
   - 100K<n<1M
 configs:

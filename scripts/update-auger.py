@@ -127,12 +127,14 @@ description: "Cosmic ray event data from the Pierre Auger Observatory — the wo
 task_categories:
   - tabular-regression
 tags:
+  - space
   - physics
   - cosmic-ray
   - auger
   - ultra-high-energy
   - open-data
   - tabular-data
+  - parquet
 size_categories:
   - 1K<n<10K
 configs:

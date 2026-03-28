@@ -234,7 +234,7 @@ def main():
                           "daily_mean_count_rate", "pct_deviation"],
         critical_columns=["count_rate"],
         max_null_pct=0.10,
-    )
+            incremental=True)
 
     # Stats for README
     date_min = df["datetime"].min().strftime("%Y-%m-%d")
@@ -273,6 +273,7 @@ tags:
   - space-weather
   - open-data
   - tabular-data
+  - parquet
 size_categories:
   - 100K<n<1M
 configs:

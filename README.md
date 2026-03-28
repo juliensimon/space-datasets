@@ -1,6 +1,6 @@
-# space-datasets
+# space-datasets — Open Space, Astronomy & Physics Datasets on Hugging Face
 
-Open-source data pipelines that publish **120+ space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, and other public APIs. Updated daily via GitHub Actions.
+Open-source data pipelines that publish **125+ space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, and other public APIs. Updated daily via GitHub Actions.
 
 All datasets are loadable in one line (`load_dataset("juliensimon/...")`), require no API keys, and work with `pandas`, `polars`, or any Parquet-compatible tool.
 
@@ -101,11 +101,15 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 | [iau-meteor-showers](https://huggingface.co/datasets/juliensimon/iau-meteor-showers) | 2,163 meteor shower records from the IAU Meteor Data Center | — | Static | <1 MB |
 | [gcat-launch-vehicles](https://huggingface.co/datasets/juliensimon/gcat-launch-vehicles) | 4,875 launch vehicles, engines, and stages from GCAT | — | Static | <1 MB |
 
-### Space Probes
+### Space Probes & Missions
 
 | Dataset | Description | Last Updated | Schedule | Size |
 |---------|-------------|-------------|----------|------|
+| [pds-planetary-missions](https://huggingface.co/datasets/juliensimon/pds-planetary-missions) | NASA PDS mission catalog — 98 missions, 115 spacecraft, 748 instruments with targets and cross-references | — | Static | <5 MB |
 | [deep-space-probes](https://huggingface.co/datasets/juliensimon/deep-space-probes) | 1.2M hourly readings from Voyager 1+2 and Pioneer 10+11 (1972–2025) | ![Probes](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['deep-space-probes']&label=updated&color=blue) | Monthly | 32 MB |
+| [galileo-jupiter-atmosphere](https://huggingface.co/datasets/juliensimon/galileo-jupiter-atmosphere) | Jupiter atmospheric profile from Galileo Probe descent (1995) — temperature, pressure, density to 24 bar | — | Static | <1 MB |
+| [huygens-titan-atmosphere](https://huggingface.co/datasets/juliensimon/huygens-titan-atmosphere) | Titan atmospheric profile from Huygens Probe descent (2005) — 1,400 km to surface | — | Static | <1 MB |
+| [insight-marsquake-catalog](https://huggingface.co/datasets/juliensimon/insight-marsquake-catalog) | 2,715 marsquakes detected by InSight SEIS seismometer (2019–2022, final catalog) | — | Static | <1 MB |
 | [cassini-saturn-observations](https://huggingface.co/datasets/juliensimon/cassini-saturn-observations) | 63K Saturn observation records from the Cassini mission (2004–2017) | — | Static | 1.6 MB |
 | [esa-mars-express-observations](https://huggingface.co/datasets/juliensimon/esa-mars-express-observations) | 1.66M observation metadata from ESA Mars Express (8 instruments, since 2003) | — | Weekly | 200 MB |
 | [esa-rosetta-observations](https://huggingface.co/datasets/juliensimon/esa-rosetta-observations) | 8.3M observation records from ESA Rosetta at comet 67P | — | Static | 1 GB |
@@ -117,8 +121,10 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 
 | Dataset | Description | Last Updated | Schedule | Size |
 |---------|-------------|-------------|----------|------|
+| [planetary-nomenclature](https://huggingface.co/datasets/juliensimon/planetary-nomenclature) | 15K+ IAU-approved named features on Moon, Mars, Venus, and Mercury | — | Static | 5 MB |
 | [lunar-craters-robbins](https://huggingface.co/datasets/juliensimon/lunar-craters-robbins) | 1.3M+ lunar impact craters from the Robbins 2019 database | — | Static | 200 MB |
 | [mars-craters-robbins](https://huggingface.co/datasets/juliensimon/mars-craters-robbins) | 384K+ Mars impact craters from the Robbins & Hynek 2012 database | — | Static | 50 MB |
+| [ceres-craters-dawn](https://huggingface.co/datasets/juliensimon/ceres-craters-dawn) | 44,594 impact craters on Ceres (≥1 km) from the Dawn Framing Camera | — | Static | 9 MB |
 | [meteorite-landings](https://huggingface.co/datasets/juliensimon/meteorite-landings) | 45K+ known meteorite landings with classification and mass | — | Static | 5 MB |
 
 ### Space Weather
@@ -203,6 +209,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 - [Space Weather](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) — solar flares, CMEs, geomagnetic storms, solar wind, Kp/Ap/F10.7 indices
 - [Astronomy](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) — exoplanets, pulsars, radio surveys, X-ray catalogs, variable stars, gravitational waves, galaxy morphology
 - [Physics](https://huggingface.co/collections/juliensimon/physics-datasets-69c2d4682d37dfdb77447bd7) — particle properties, cosmic ray spectra, hard X-ray surveys, gamma-ray catalogs (TeV/UHE)
+- [Solar System](https://huggingface.co/collections/juliensimon/solar-system-datasets-69c6fa681978de62dff2f347) — planetary missions, craters (Moon/Mars/Ceres/Mercury), atmospheric profiles (Jupiter/Titan), named features
 
 ## How it works
 
@@ -239,8 +246,10 @@ python scripts/update-meteor-showers.py
 python scripts/update-gcat.py
 
 # Planetary Science
+pip install dbfread && python scripts/update-planetary-nomenclature.py
 python scripts/update-lunar-craters.py
 python scripts/update-mars-craters.py
+python scripts/update-ceres-craters.py
 python scripts/update-meteorite-landings.py
 
 # Space Weather
@@ -258,8 +267,12 @@ python scripts/update-iers-eop.py
 python scripts/update-celestrak-sw.py
 python scripts/update-ae-index.py
 
-# Space Probes
+# Space Probes & Missions
+python scripts/update-pds-missions.py
 python scripts/update-deep-space-probes.py
+python scripts/update-galileo-atmosphere.py
+python scripts/update-huygens-atmosphere.py
+python scripts/update-insight-marsquakes.py
 python scripts/update-cassini.py
 python scripts/update-mars-express.py
 python scripts/update-rosetta.py
@@ -323,6 +336,35 @@ python scripts/update-hawc.py
 `build-tle-archive.py` builds historical TLE data from Space-Track yearly bulk zip exports (1959–2025). Daily updates for the current year are automated via `update-tle-history.py` (fetches yesterday's GP history, appends to `tle_{year}.parquet`). Requires `SPACETRACK_USER` and `SPACETRACK_PASS` secrets.
 
 `backfill-tle-history.py` and `backfill-starlink-snapshots.py` are one-time scripts for filling gaps from Space-Track GP history. Not needed for ongoing operation.
+
+## Frequently Asked Questions
+
+### How do I load these datasets in Python?
+
+All datasets are on Hugging Face. Load any dataset in one line:
+
+```python
+from datasets import load_dataset
+ds = load_dataset("juliensimon/<name>")
+```
+
+No API keys needed. Works with pandas, polars, DuckDB, and any Parquet-compatible tool.
+
+### What format are the datasets?
+
+Apache Parquet with zstd compression. Files range from a few KB to several GB.
+
+### How often are datasets updated?
+
+~50 datasets update daily, ~20 weekly, the rest are static snapshots. Each dataset page shows its schedule.
+
+### Can I use these datasets commercially?
+
+Yes. Code is MIT-licensed. Datasets are CC-BY-4.0 (with rare exceptions noted per dataset).
+
+### How do I cite these datasets?
+
+Each dataset page has a BibTeX citation block. See the [Citation](#citation) section below for citing the collection.
 
 ## Citation
 

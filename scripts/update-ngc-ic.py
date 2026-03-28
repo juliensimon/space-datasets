@@ -88,6 +88,7 @@ description: "Complete NGC and IC deep-sky object catalog from OpenNGC — galax
 task_categories:
   - tabular-classification
 tags:
+  - space
   - ngc
   - ic
   - deep-sky
@@ -98,6 +99,7 @@ tags:
   - open-data
   - messier
   - tabular-data
+  - parquet
 size_categories:
   - 10K<n<100K
 configs:

@@ -10,6 +10,8 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from validate import check_dataset
+
 
 # URL patterns: final (1957-2020), provisional (2021-2025), realtime (recent)
 
@@ -188,6 +190,11 @@ def main():
     n_provisional = int((df["quality"] == "provisional").sum())
     n_realtime = int((df["quality"] == "realtime").sum())
 
+    check_dataset(df, "dst-index", min_rows=400_000,
+                  expected_columns=["datetime", "dst_nt", "quality"],
+                  critical_columns=["datetime", "dst_nt"],
+                  incremental=True)
+
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         data_dir = tmp / "data"
@@ -217,6 +224,7 @@ tags:
   - magnetosphere
   - open-data
   - tabular-data
+  - parquet
 size_categories:
   - 100K<n<1M
 configs:

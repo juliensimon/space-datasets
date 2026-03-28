@@ -146,6 +146,7 @@ description: "GRB detections from Fermi Gamma-ray Burst Monitor with duration, f
 task_categories:
   - tabular-classification
 tags:
+  - space
   - gamma-ray-burst
   - grb
   - fermi
@@ -154,6 +155,7 @@ tags:
   - high-energy
   - open-data
   - tabular-data
+  - parquet
 size_categories:
   - 1K<n<10K
 configs:

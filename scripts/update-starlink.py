@@ -177,6 +177,7 @@ tags:
   - leo
   - mega-constellation
   - tabular-data
+  - parquet
 configs:
   - config_name: daily_snapshots
     data_files: data/daily_snapshots.parquet
@@ -382,7 +383,8 @@ def main():
     check_dataset(df, "starlink", min_rows=5000,
         expected_columns=["norad_id", "name", "altitude_km", "shell_id",
                           "inclination", "status"],
-        critical_columns=["norad_id", "altitude_km"])
+        critical_columns=["norad_id", "altitude_km"],
+            incremental=True)
 
     # Build latest_satellites
     df_latest = df.sort_values("epoch_utc").drop_duplicates("norad_id", keep="last")

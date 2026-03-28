@@ -104,6 +104,7 @@ tags:
   - debris
   - open-data
   - tabular-data
+  - parquet
 size_categories:
   - 10K<n<100K
 configs:

@@ -135,6 +135,7 @@ tags:
   - space-weather
   - open-data
   - tabular-data
+  - parquet
 size_categories:
   - 1K<n<100K
 configs:

@@ -97,6 +97,7 @@ tags:
   - 1400mhz
   - open-data
   - tabular-data
+  - parquet
 size_categories:
   - 100K<n<1M
 configs:

@@ -102,6 +102,7 @@ task_categories:
   - tabular-classification
   - tabular-regression
 tags:
+  - space
   - open-data
   - astronomy
   - quasar
@@ -112,6 +113,7 @@ tags:
   - simbad
   - cosmology
   - tabular-data
+  - parquet
 configs:
   - config_name: default
     data_files:

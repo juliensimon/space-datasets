@@ -104,6 +104,7 @@ size_categories:
 task_categories:
   - tabular-classification
 tags:
+  - space
   - open-data
   - astronomy
   - black-hole
@@ -111,6 +112,7 @@ tags:
   - simbad
   - high-energy
   - tabular-data
+  - parquet
 configs:
   - config_name: default
     data_files:

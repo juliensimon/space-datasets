@@ -17,10 +17,13 @@ def check_dataset(
     expected_columns: list[str],
     critical_columns: list[str] | None = None,
     max_null_pct: float = 0.05,
+    incremental: bool = False,
 ) -> None:
     """Validate a DataFrame before upload.
 
     Hard fails (SystemExit) on row count below minimum or missing columns.
+    For incremental datasets, also hard-fails on >20% row count drop
+    (protects against uploading truncated data over good data).
     Prints ::warning:: annotations for null percentage violations.
     """
     warnings = 0
@@ -50,15 +53,25 @@ def check_dataset(
                 warnings += 1
 
     # ── Row count trend ──────────────────────────────────────────────────
-    warnings += _check_row_trend(dataset_name, len(df))
+    warnings += _check_row_trend(dataset_name, len(df), fail_on_drop=incremental)
 
     status = "0 warnings" if warnings == 0 else f"{warnings} warning(s)"
     print(f"Validation passed [{dataset_name}]: "
           f"{len(df):,} rows, {len(df.columns)} columns, {status}")
 
 
-def _check_row_trend(dataset_name: str, current_rows: int, drop_warn_pct: float = 0.20) -> int:
-    """Warn if row count dropped significantly from last run. Returns warning count."""
+def _check_row_trend(
+    dataset_name: str,
+    current_rows: int,
+    drop_warn_pct: float = 0.20,
+    fail_on_drop: bool = False,
+) -> int:
+    """Check row count against previous run.
+
+    For incremental datasets (fail_on_drop=True), a >20% drop is a hard failure
+    — this prevents uploading truncated data over good data on HF.
+    For full-rebuild datasets, the same drop is a warning only.
+    """
     if not STATUS_FILE.exists():
         return 0
     try:
@@ -68,9 +81,16 @@ def _check_row_trend(dataset_name: str, current_rows: int, drop_warn_pct: float 
             return 0
         if prev_rows > 0 and current_rows < prev_rows * (1 - drop_warn_pct):
             drop_pct = (prev_rows - current_rows) / prev_rows
-            print(f"::warning::[{dataset_name}] row count dropped {drop_pct:.0%}: "
-                  f"{prev_rows:,} -> {current_rows:,}")
-            return 1
+            if fail_on_drop:
+                print(f"::error::VALIDATION FAILED [{dataset_name}]: "
+                      f"row count dropped {drop_pct:.0%} ({prev_rows:,} -> {current_rows:,}). "
+                      f"Aborting to protect existing HF data. "
+                      f"If this is expected, update status.json manually.")
+                sys.exit(1)
+            else:
+                print(f"::warning::[{dataset_name}] row count dropped {drop_pct:.0%}: "
+                      f"{prev_rows:,} -> {current_rows:,}")
+                return 1
     except (json.JSONDecodeError, TypeError, ValueError):
         pass
     return 0

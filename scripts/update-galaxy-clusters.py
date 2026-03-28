@@ -128,6 +128,7 @@ description: "Galaxy clusters detected by the Planck satellite via the Sunyaev-Z
 task_categories:
   - tabular-regression
 tags:
+  - space
   - galaxy-cluster
   - planck
   - sz-effect
@@ -135,6 +136,7 @@ tags:
   - astronomy
   - open-data
   - tabular-data
+  - parquet
 size_categories:
   - 1K<n<10K
 configs:

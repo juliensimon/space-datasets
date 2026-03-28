@@ -185,6 +185,7 @@ tags:
   - astronomy
   - open-data
   - tabular-data
+  - parquet
 size_categories:
   - 1M<n<10M
 configs:
