@@ -82,6 +82,8 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 
 ### Orbital Mechanics
 
+Track every object orbiting Earth and beyond. This collection covers the complete NORAD satellite catalog, daily Starlink constellation health, two-line element sets dating back to 1959, launch records, and near-Earth asteroid monitoring from NASA JPL. Whether you're propagating orbits with SGP4, analyzing space debris trends, or studying asteroid close approaches, these datasets provide the foundation for orbital mechanics research and space situational awareness.
+
 | Dataset | Description | Last Updated | Schedule | Size |
 |---------|-------------|-------------|----------|------|
 | [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) | 238 million orbital element sets for every cataloged object since 1959 | ![TLE](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.tle-history&label=updated&color=brightgreen) | Daily | 10.9 GB |
@@ -103,6 +105,8 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 
 ### Space Probes & Missions
 
+Data returned by humanity's most distant spacecraft and surface explorers. Includes 50+ years of interplanetary measurements from Voyager and Pioneer, Cassini's Saturn observations, Mars surface weather from Perseverance, rock compositions from Curiosity's laser spectrometer, marsquake detections from InSight, and million-record observation logs from ESA's Mars Express and Rosetta missions. Ideal for planetary science, mission planning studies, and multi-instrument data fusion.
+
 | Dataset | Description | Last Updated | Schedule | Size |
 |---------|-------------|-------------|----------|------|
 | [pds-planetary-missions](https://huggingface.co/datasets/juliensimon/pds-planetary-missions) | NASA PDS mission catalog — 98 missions, 115 spacecraft, 748 instruments with targets and cross-references | — | Static | <5 MB |
@@ -119,6 +123,8 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 
 ### Planetary Science
 
+Explore the surfaces of other worlds through impact crater databases and geochemistry. Features the most comprehensive crater catalogs available — 1.3 million lunar craters, 384K Mars craters, and 44K Ceres craters mapped by the Dawn mission — alongside IAU-approved planetary nomenclature and the Meteoritical Society's record of every known meteorite fall on Earth.
+
 | Dataset | Description | Last Updated | Schedule | Size |
 |---------|-------------|-------------|----------|------|
 | [planetary-nomenclature](https://huggingface.co/datasets/juliensimon/planetary-nomenclature) | 15K+ IAU-approved named features on Moon, Mars, Venus, and Mercury | — | Static | 5 MB |
@@ -128,6 +134,8 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 | [meteorite-landings](https://huggingface.co/datasets/juliensimon/meteorite-landings) | 45K+ known meteorite landings with classification and mass | — | Static | 5 MB |
 
 ### Space Weather
+
+Monitor the Sun-Earth connection in near real-time. These datasets track solar flares, coronal mass ejections, geomagnetic storms, and the solar wind — the key drivers of space weather that affect satellite operations, GPS accuracy, power grids, and astronaut safety. Includes essential indices for orbit propagation (Kp, Ap, F10.7), 70+ years of sunspot records, and official NOAA alerts. Updated daily from NOAA SWPC, NASA DONKI, WDC Kyoto, and other authoritative sources.
 
 | Dataset | Description | Last Updated | Schedule | Size |
 |---------|-------------|-------------|----------|------|
@@ -146,6 +154,8 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 | [auroral-electrojet-index](https://huggingface.co/datasets/juliensimon/auroral-electrojet-index) | Hourly AE/AU/AL/AO auroral electrojet indices from Kyoto WDC | ![AE](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['ae-index']&label=updated&color=brightgreen) | Daily | 2 MB |
 
 ### Astronomy & Reference
+
+A broad survey of the observable universe — from exoplanets in our galactic neighborhood to quasars at the edge of the cosmos. Covers confirmed exoplanets from NASA, gravitational wave detections from LIGO/Virgo/KAGRA, gamma-ray bursts, fast radio bursts from CHIME, pulsars, variable stars, galaxy clusters, and million-source radio and X-ray sky surveys. These datasets support multi-messenger astronomy, cross-matching across wavelengths, and large-scale statistical studies of astrophysical populations.
 
 | Dataset | Description | Last Updated | Schedule | Size |
 |---------|-------------|-------------|----------|------|
@@ -186,6 +196,8 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 | [gravitational-lenses](https://huggingface.co/datasets/juliensimon/gravitational-lenses) | 33K strong gravitational lenses from the lenscat community catalog | — | Static | 0.9 MB |
 
 ### Physics
+
+Fundamental particle properties and high-energy astrophysics catalogs. Includes the Particle Data Group's authoritative summary of every known particle, cosmic ray energy spectra from 131 experiments, ultra-high-energy events from the Pierre Auger Observatory, and gamma-ray source catalogs spanning MeV to PeV energies from Fermi, Swift, INTEGRAL, HAWC, and LHAASO. Essential for particle physics, astroparticle research, and multi-wavelength source identification.
 
 | Dataset | Description | Last Updated | Schedule | Size |
 |---------|-------------|-------------|----------|------|
