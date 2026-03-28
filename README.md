@@ -7,20 +7,20 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ### Top downloads
 
 <!-- TOP_DOWNLOADS_START -->
-**2,127** downloads  ·  **1** likes  ·  **125** datasets  ·  updated 2026-03-28
+**2,197** downloads (+70)  ·  **1** likes  ·  **125** datasets  ·  updated 2026-03-28
 
 | # | Dataset | Downloads |
 |--:|---------|----------:|
-| 1 | [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) | 128 |
-| 2 | [starlink-fleet-data](https://huggingface.co/datasets/juliensimon/starlink-fleet-data) | 113 |
+| 1 | [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) | 135 (+7) |
+| 2 | [starlink-fleet-data](https://huggingface.co/datasets/juliensimon/starlink-fleet-data) | 120 (+7) |
 | 3 | [starlink-ground-stations](https://huggingface.co/datasets/juliensimon/starlink-ground-stations) | 56 |
-| 4 | [donki-space-weather-events](https://huggingface.co/datasets/juliensimon/donki-space-weather-events) | 44 |
-| 5 | [constellation-census](https://huggingface.co/datasets/juliensimon/constellation-census) | 44 |
+| 4 | [donki-space-weather-events](https://huggingface.co/datasets/juliensimon/donki-space-weather-events) | 51 (+7) |
+| 5 | [constellation-census](https://huggingface.co/datasets/juliensimon/constellation-census) | 51 (+7) |
 | 6 | [messier-catalog](https://huggingface.co/datasets/juliensimon/messier-catalog) | 43 |
 | 7 | [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) | 40 |
-| 8 | [neo-close-approaches](https://huggingface.co/datasets/juliensimon/neo-close-approaches) | 37 |
-| 9 | [nasa-exoplanets](https://huggingface.co/datasets/juliensimon/nasa-exoplanets) | 37 |
-| 10 | [space-weather-indices](https://huggingface.co/datasets/juliensimon/space-weather-indices) | 35 |
+| 8 | [solar-wind](https://huggingface.co/datasets/juliensimon/solar-wind) | 38 (+7) |
+| 9 | [neo-close-approaches](https://huggingface.co/datasets/juliensimon/neo-close-approaches) | 37 |
+| 10 | [solar-flare-events](https://huggingface.co/datasets/juliensimon/solar-flare-events) | 37 (+7) |
 <!-- TOP_DOWNLOADS_END -->
 
 <!-- Orbital Mechanics -->

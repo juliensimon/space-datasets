@@ -18,15 +18,6 @@ SNAPSHOT_FILE = Path(__file__).parent.parent / "data" / "download-stats.json"
 MARKER_START = "<!-- TOP_DOWNLOADS_START -->"
 MARKER_END = "<!-- TOP_DOWNLOADS_END -->"
 
-# Datasets whose pipelines download their own data from HF (incremental updates).
-# Each run = 1 self-download. Estimate: days_since_launch * 1.
-SELF_DOWNLOADING = {
-    "starlink-fleet-data", "constellation-census", "donki-space-weather-events",
-    "dst-index", "solar-flare-events", "solar-wind", "geomagnetic-kp-index",
-    "auroral-electrojet-index", "space-track-tle-history", "neutron-monitor",
-    "fermi-gbm-triggers", "meda-weather",
-}
-
 # Non-space datasets to exclude
 EXCLUDE = {
     "amazon-shoe-reviews", "autonlp-data-song-lyrics", "autonlp-data-imdb-demo-hf",
@@ -49,11 +40,7 @@ def main():
     api = HfApi()
     datasets = [d for d in api.list_datasets(author="juliensimon")]
 
-    # Estimate days since pipelines started (Mar 21, 2026)
     now = datetime.now(timezone.utc)
-    pipeline_start = datetime(2026, 3, 21, tzinfo=timezone.utc)
-    days_running = max(1, (now - pipeline_start).days)
-
     previous = load_previous()
 
     current = {}
@@ -64,9 +51,6 @@ def main():
             continue
 
         downloads = d.downloads
-        if name in SELF_DOWNLOADING:
-            downloads = max(0, downloads - days_running)
-
         current[name] = downloads
         results.append((name, d.id, d.likes, downloads))
 
