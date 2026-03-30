@@ -22,18 +22,4 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
       - name: Update and push status
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          for i in 1 2 3; do
-            git pull --rebase || true
-            git checkout status.json 2>/dev/null || true
-            python scripts/update-status.py constellation-census --rows ${{ steps.update.outputs.rows }}
-            git add status.json
-            git diff --cached --quiet && break
-            git commit -m "status: constellation-census updated $(date -u +%Y-%m-%d)"
-            git push && break
-            echo "Push failed (attempt $i), retrying..."
-            git reset HEAD~1
-            sleep 2
-          done
+        run: bash scripts/push-status.sh constellation-census --rows ${{ steps.update.outputs.rows }}
