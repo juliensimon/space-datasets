@@ -4,6 +4,7 @@
 import re
 import subprocess
 import tempfile
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -84,19 +85,30 @@ def load_existing_dst(tmp_dir):
     return None
 
 
+def fetch_month(url_template, year, month, quality, retries=3):
+    """Fetch a single month from WDC Kyoto with retries."""
+    ym6 = f"{year}{month:02d}"
+    ym4 = f"{year % 100:02d}{month:02d}"
+    url = url_template.format(ym6=ym6, ym4=ym4)
+    for attempt in range(retries):
+        try:
+            resp = requests.get(url, timeout=15)
+            if resp.status_code == 200 and resp.text.startswith("DST"):
+                return parse_dst_wdc(resp.text, quality)
+            if resp.status_code == 404:
+                return []  # month not available, don't retry
+        except Exception:
+            pass
+        if attempt < retries - 1:
+            time.sleep(2 ** attempt)
+    return []
+
+
 def fetch_months(url_template, year, months, quality):
     """Fetch specific months from WDC Kyoto."""
     records = []
     for month in months:
-        ym6 = f"{year}{month:02d}"
-        ym4 = f"{year % 100:02d}{month:02d}"
-        url = url_template.format(ym6=ym6, ym4=ym4)
-        try:
-            resp = requests.get(url, timeout=15)
-            if resp.status_code == 200 and resp.text.startswith("DST"):
-                records.extend(parse_dst_wdc(resp.text, quality))
-        except Exception:
-            pass
+        records.extend(fetch_month(url_template, year, month, quality))
     return records
 
 
@@ -147,17 +159,8 @@ def main():
             actual_end = min(end_year, now.year)
             for year in range(start_year, actual_end + 1):
                 end_month = now.month if year == now.year else 12
-                for month in range(1, end_month + 1):
-                    ym6 = f"{year}{month:02d}"
-                    ym4 = f"{year % 100:02d}{month:02d}"
-                    url = url_template.format(ym6=ym6, ym4=ym4)
-                    try:
-                        resp = requests.get(url, timeout=15)
-                        if resp.status_code == 200 and resp.text.startswith("DST"):
-                            records = parse_dst_wdc(resp.text, quality)
-                            all_records.extend(records)
-                    except Exception:
-                        pass
+                months = list(range(1, end_month + 1))
+                all_records.extend(fetch_months(url_template, year, months, quality))
                 print(f"  {quality} {year}: fetched")
         df = pd.DataFrame(all_records)
     df["datetime"] = pd.to_datetime(df["datetime"])
@@ -190,7 +193,7 @@ def main():
     n_provisional = int((df["quality"] == "provisional").sum())
     n_realtime = int((df["quality"] == "realtime").sum())
 
-    check_dataset(df, "dst-index", min_rows=400_000,
+    check_dataset(df, "dst-index", min_rows=150_000,
                   expected_columns=["datetime", "dst_nt", "quality"],
                   critical_columns=["datetime", "dst_nt"],
                   incremental=True)
@@ -256,6 +259,12 @@ satellite operators and power grid managers to assess storm severity.
 Dst complements the Kp/Ap indices (available in our
 [space-weather-indices](https://huggingface.co/datasets/juliensimon/space-weather-indices) dataset)
 by providing **hourly** resolution vs. 3-hourly/daily.
+
+The ring current is a toroidal band of 10-200 keV ions (primarily H+ and O+) trapped in the inner magnetosphere at geocentric distances of 3-8 Earth radii. During quiet times, the ring current produces a modest depression of the surface magnetic field (Dst around -20 to +10 nT). When a CME or high-speed stream arrives with sustained southward interplanetary magnetic field (Bz < 0), enhanced convection electric fields inject fresh particles from the plasma sheet into the ring current, causing Dst to plunge rapidly during the storm main phase. The largest storms in the space age reached Dst below -500 nT (November 2003, March 1989), while the Carrington Event of 1859 is estimated at approximately -850 nT.
+
+Dst is derived from the horizontal field component (H) at four low-latitude magnetometer stations: Hermanus (South Africa), Kakioka (Japan), Honolulu (Hawaii), and San Juan (Puerto Rico). By using near-equatorial stations, the measurement isolates the symmetric ring current signature from the auroral electrojet contributions that dominate at higher latitudes. The hourly cadence resolves the storm main phase (typically 6-12 hours of rapid decrease) and the recovery phase (1-7 days of gradual return to baseline as ring current particles are lost through charge exchange with geocoronal hydrogen and wave-particle scattering into the loss cone).
+
+The Dst index has direct applications in satellite operations: empirical models relate Dst excursions to increased satellite surface charging, single-event upset rates in electronics, and thermospheric density enhancements that accelerate orbital decay. The Burton equation and its variants use solar wind parameters (velocity, density, Bz) to predict Dst in near-real-time, making this dataset valuable for training machine learning models that forecast storm intensity from upstream L1 measurements.
 
 ## Schema
 

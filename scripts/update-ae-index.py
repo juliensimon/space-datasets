@@ -6,7 +6,7 @@ import re
 import subprocess
 import sys
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -27,7 +27,8 @@ def parse_ae_data_file(text, index_name):
     """Parse a WDC minute-resolution AE data file.
 
     Format: each line is one hour with 60 minute values + 1 hourly mean.
-    Line format: AEALAOAU    YYMMDDEHHINDEX QUALITY    val1  val2  ... val60  mean
+    The first ~14 chars are header (index code + date + hour), followed by
+    a quality tag and 61 numeric values (60 minutes + hourly mean).
     We extract the hourly mean (last value on each line).
     """
     records = []
@@ -42,24 +43,25 @@ def parse_ae_data_file(text, index_name):
         if len(line) < 40:
             continue
 
-        # Header: AEALAOAU    YYMMDDEHHINDEX QUALITY
         try:
-            # Extract date and hour from fixed positions
-            # Format: "AEALAOAU    260301E00AE QUICKLK      193   186 ..."
-            parts = line.split()
-            if len(parts) < 5:
+            # Use regex to find date pattern YYMMDDEHHXX in first 30 chars
+            # Works regardless of whether fields are space-separated or run together
+            m = re.search(r'(\d{2})(\d{2})(\d{2})E(\d{2})', line[:30])
+            if not m:
                 continue
 
-            # Second field: YYMMDDEHHINDEX (e.g., "260301E00AE")
-            date_field = parts[1]
-            yy = int(date_field[0:2])
-            mm = int(date_field[2:4])
-            dd = int(date_field[4:6])
-            # Skip 'E' at position 6
-            hh = int(date_field[7:9])
+            yy = int(m.group(1))
+            mm = int(m.group(2))
+            dd = int(m.group(3))
+            hh = int(m.group(4))
             year = 1900 + yy if yy >= 57 else 2000 + yy
 
+            # Validate date components
+            if not (1 <= mm <= 12 and 1 <= dd <= 31 and 0 <= hh <= 23):
+                continue
+
             # The hourly mean is the last numeric value on the line
+            parts = line.split()
             mean_str = parts[-1].strip()
             if mean_str in ("9999", "99999", ""):
                 val = None
@@ -143,7 +145,7 @@ def load_existing_ae(tmp_dir):
 
 def main():
     print("Fetching AE index from WDC Kyoto...")
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     # Try incremental
     import tempfile as _tf
@@ -293,6 +295,12 @@ currents flowing in the auroral oval. It is derived from geomagnetic variations 
 
 AE complements the Dst index (ring current) by specifically tracking substorm-driven
 auroral activity, which is critical for high-latitude communications and power grids.
+
+Magnetospheric substorms are the fundamental energy release process in the coupled solar wind-magnetosphere system. When the interplanetary magnetic field turns southward, magnetic flux accumulates in the magnetotail lobes during the growth phase (30-60 minutes). At onset, explosive reconnection in the near-tail (15-25 Earth radii) diverts a cross-tail current wedge into the ionosphere via field-aligned currents, producing the substorm current wedge. The westward electrojet -- a sheet of Hall current flowing in the E-region ionosphere at ~110 km altitude -- intensifies dramatically, and AL plunges to -500 to -2,000 nT during strong substorms. Simultaneously, the eastward electrojet strengthens on the dusk side, driving AU positive. AE, defined as AU minus AL, thus captures the total electrojet intensity regardless of local time.
+
+The 10-13 magnetometer stations that contribute to AE are positioned along the auroral zone (typically 65-70 degrees geomagnetic latitude) at roughly uniform longitudinal spacing. This geometry ensures that the auroral electrojets are always sampled regardless of universal time. The AU envelope represents the maximum positive H-component deviation across all stations (capturing the eastward electrojet), while AL represents the maximum negative deviation (capturing the westward electrojet). During major storms, the auroral oval expands equatorward, and some contributing stations may fall inside the polar cap, potentially affecting the index quality -- an important consideration when using AE during extreme events.
+
+AE is widely used in magnetospheric physics to quantify substorm occurrence rates, energy dissipation in the ionosphere (Joule heating scales roughly as AE squared), and coupling efficiency between the solar wind and magnetosphere. In practical applications, elevated AE indicates enhanced ionospheric currents that can induce geomagnetically induced currents (GICs) in high-latitude power grids and pipelines. AE also serves as an input to empirical radiation belt models and high-latitude ionospheric conductance models used in space weather forecasting.
 
 ## Schema
 

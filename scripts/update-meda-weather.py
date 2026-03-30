@@ -103,6 +103,14 @@ def fetch_sol(range_dir, sol_dir):
     if not frames:
         return None
 
+    # Ensure SCLK is numeric in all frames to prevent cartesian joins
+    for csv_type in frames:
+        if "SCLK" in frames[csv_type].columns:
+            frames[csv_type]["SCLK"] = pd.to_numeric(
+                frames[csv_type]["SCLK"], errors="coerce"
+            )
+            frames[csv_type] = frames[csv_type].dropna(subset=["SCLK"])
+
     # Start with whichever frame we have, merge the rest on SCLK
     merged = None
     for csv_type, df in frames.items():
@@ -246,7 +254,7 @@ def main():
     print(f"  Found {len(range_dirs)} sol-range directories")
 
     # Process in batches to limit memory — write intermediate parquet files
-    BATCH_SIZE = 100  # sols per batch
+    BATCH_SIZE = 25  # sols per batch (limit memory on CI runners)
     batch_dir = Path(tempfile.mkdtemp(prefix="meda_batches_"))
     batch_frames = []
     batch_num = 0
@@ -310,9 +318,10 @@ def main():
     batch_files = sorted(batch_dir.glob("batch_*.parquet"))
     if batch_files:
         # Read batch files one at a time and combine
-        new_parts = [pd.read_parquet(f) for f in batch_files]
-        df_new = pd.concat(new_parts, ignore_index=True)
-        del new_parts
+        # Read and combine batch files one at a time to limit peak memory
+        df_new = pd.read_parquet(batch_files[0])
+        for f in batch_files[1:]:
+            df_new = pd.concat([df_new, pd.read_parquet(f)], ignore_index=True)
         # Clean up batch files
         for f in batch_files:
             f.unlink()
@@ -440,6 +449,12 @@ This preserves 100% of the time coverage — every sol, every minute — while k
 manageable ~1M rows. All diurnal cycles, seasonal pressure swings, and dust devil pressure drops
 are fully captured at this resolution. For the full 1-Hz data (~67M rows), use the
 [PDS source](https://pds-atmospheres.nmsu.edu/PDS/data/PDS4/Mars2020/mars2020_meda/data_derived_env/) directly.
+
+The Martian atmosphere is thin (mean surface pressure around 610 Pa, less than 1% of Earth's) and composed predominantly of CO2, with trace amounts of nitrogen, argon, and water vapor. Despite its low density, this atmosphere drives vigorous meteorological phenomena: strong diurnal thermal tides produce a regular daily pressure oscillation of several percent, seasonal sublimation and condensation of the polar CO2 ice caps cause the global mean pressure to vary by roughly 25% over a Martian year, and regional and global dust storms can dramatically alter atmospheric opacity and thermal structure. MEDA captures all of these phenomena at Jezero Crater, a 49 km diameter impact basin on the northwest rim of the Isidis Planitia, where Perseverance landed in February 2021.
+
+The thermal infrared radiation measurements from TIRS are particularly valuable because they serve as a proxy for ground and near-surface air temperature. Downward longwave irradiance tracks atmospheric thermal emission (sensitive to dust loading and cloud cover), while upward longwave irradiance reflects surface skin temperature through Stefan-Boltzmann emission. These data enable calculation of the surface energy budget and detection of phenomena such as nighttime temperature inversions and the thermal effects of passing dust devils. Humidity measurements, though sparse and concentrated in nighttime hours when relative humidity peaks, constrain the water cycle in equatorial Mars and the exchange of water vapor between the regolith and atmosphere.
+
+Jezero Crater was selected as the Perseverance landing site because it preserves a fossil river delta that entered an ancient lake, making it a prime target for astrobiology. The local meteorology measured by MEDA provides essential context for understanding present-day aeolian processes that are actively modifying the delta sediments, constraining dust transport and deposition rates, and supporting operations planning for the Mars Sample Return campaign.
 
 ## Schema
 

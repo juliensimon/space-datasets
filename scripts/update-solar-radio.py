@@ -65,13 +65,34 @@ def _try_table(table_name: str) -> pd.DataFrame | None:
     return None
 
 
+def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalize HEASARC column names to expected snake_case."""
+    df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
+    aliases = {
+        "start_time": "start_date",
+        "end_time": "end_date",
+        "freq_mhz": "frequency",
+        "frequency_mhz": "frequency",
+        "burst_type": "type",
+        "event_type": "type",
+        "class": "type",
+        "obs_name": "observatory",
+        "observatory_name": "observatory",
+        "name": "source_name",
+    }
+    df = df.rename(columns={k: v for k, v in aliases.items() if k in df.columns})
+    return df
+
+
 def fetch_catalog() -> pd.DataFrame:
     """Try multiple HEASARC table names, return the first that works."""
     for table_name in TABLE_NAMES:
         print(f"  Trying HEASARC table '{table_name}'...")
         df = _try_table(table_name)
-        if df is not None and len(df) > 0:
-            return df
+        if df is not None and len(df) >= 10:
+            return _normalize_columns(df)
+        elif df is not None:
+            print(f"    Table '{table_name}' returned only {len(df)} rows, trying next...")
 
     print("::error::No HEASARC table returned data. Tried:", TABLE_NAMES)
     sys.exit(1)
@@ -166,6 +187,12 @@ and coronal mass ejections. They are important indicators of space weather activ
 - **Type III** bursts: fast-drifting, caused by electron beams along open field lines
 - **Type IV** bursts: broadband continuum, associated with post-flare loops
 - **Type V** bursts: short-duration continuum following Type III
+
+The physics behind these emissions is coherent plasma radiation. When energetic electrons stream through the solar corona, they excite Langmuir waves at the local plasma frequency, which then convert into electromagnetic radiation at the fundamental and second harmonic. Because the plasma frequency depends on electron density -- which decreases with altitude in the corona -- Type III bursts exhibit a characteristic fast frequency drift (roughly 100 MHz/s to below 1 MHz in minutes) as the electron beam propagates outward along open magnetic field lines. Type II bursts drift much more slowly (a few MHz per minute), tracing the passage of a CME-driven shock through progressively less dense coronal plasma.
+
+Solar radio bursts are among the earliest detectable signatures of eruptive solar activity, often preceding the arrival of energetic particles and geomagnetic disturbances at Earth by minutes to days. Monitoring them is therefore critical for operational space weather forecasting. A Type II burst, for instance, signals that a CME-driven shock has formed in the corona, providing advance warning of a potential solar energetic particle event. Type IV continuum emission indicates sustained particle trapping in post-flare magnetic structures and can persist for hours.
+
+The catalog spans observations from ground-based solar radio spectrographs and space-based receivers operating across a wide frequency range, from tens of GHz (microwave, probing the low corona) down to tens of kHz (interplanetary space, observed by spacecraft such as Wind/WAVES and STEREO/SWAVES). Each event's frequency, duration, and drift rate encode information about the ambient coronal density profile and the kinematics of the driving disturbance.
 
 ## Schema
 
