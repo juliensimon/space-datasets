@@ -51,7 +51,8 @@
     "galileo-atmosphere": 686,
     "huygens-atmosphere": 2727,
     "crdb": 6837,
-    "fireballs": 1055
+    "fireballs": 1055,
+    "satnogs": 4754
   },
   "dst-index": "2026-03-27",
   "donki": "2026-03-29",
@@ -94,5 +95,6 @@
   "galileo-atmosphere": "2026-03-27",
   "huygens-atmosphere": "2026-03-27",
   "crdb": "2026-03-29",
-  "fireballs": "2026-03-30"
+  "fireballs": "2026-03-30",
+  "satnogs": "2026-03-30"
 }
