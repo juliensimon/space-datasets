@@ -1,14 +1,14 @@
 # The Definitive Space Data Archive — Candidate Datasets
 
-*Researched 2026-03-24, expanded 2026-03-26, solar system missions added 2026-03-27. Goal: the most comprehensive free, tabular space data collection on Hugging Face.*
+*Researched 2026-03-24, expanded 2026-03-26, solar system missions added 2026-03-27, Wikidata datasets added 2026-03-31. Goal: the most comprehensive free, tabular space data collection on Hugging Face.*
 
-**Built: 136 dataset scripts (135 uploaded, 1 blocked on USGS, 2 source unavailable)** | **Remaining candidates: 24** | All sources free, no auth.
+**Built: 140 dataset scripts (139 uploaded, 1 blocked on USGS)** | **Remaining candidates: 20** | All sources free, no auth.
 
 ---
 
-## Already Built (128 dataset scripts)
+## Already Built (140 dataset scripts)
 
-All P0 and P1 candidates are built. Scripts in `scripts/update-*.py`, workflows in `.github/workflows/`.
+All P0 and P1 candidates are built, plus 4 P2 and 8 Wikidata datasets. Scripts in `scripts/update-*.py`, workflows in `.github/workflows/`.
 
 **From P0 (all 14):** JPL SBDB, NVSS, Lunar Craters, FIRST, eROSITA, Mars Craters, Sunspot, GCVS, Fermi 4FGL, CHIME/FRB, Sentry, Fireballs, Pantheon+, PDG
 
@@ -22,11 +22,11 @@ All P0 and P1 candidates are built. Scripts in `scripts/update-*.py`, workflows 
 
 **From P1 Unblocked (2):** Neutron Monitor (470K, daily), Reentry Events (30K, daily)
 
-**From P2 (16):** AE Index, Brown Dwarfs, Kepler EB, Planetary Nebulae, Gaia DR3 White Dwarfs (1.28M), SsODNet (1.49M), OTTER TDE (90), CNS5 (5.9K), Wolf-Rayet (380), Nesvorny Families (171K), Asterank Mining (600K), LCDB Lightcurves (36K), Solar System Moons (440), Magnetars (31), MPC Comets (1K), Unified Radio (1.66M)
+**From P2 (20):** AE Index, Brown Dwarfs, Kepler EB, Planetary Nebulae, Gaia DR3 White Dwarfs (1.28M), SsODNet (1.49M), OTTER TDE (90), CNS5 (5.9K), Wolf-Rayet (380), Nesvorny Families (171K), Asterank Mining (600K), LCDB Lightcurves (36K), Solar System Moons (440), Magnetars (31), MPC Comets (1K), Unified Radio (1.66M), Bus-DeMeo Taxonomy (371), Solar Proton Events (300), Globular Clusters (168), Launch Cost to LEO (100)
 
 **From new research (7):** Deep Space Probes (1.2M, monthly), Cassini (63K), Swift-BAT, Fermi 4LAC, Fermi 3FHL, Gravitational Lenses (33K), Meteorite Landings
 
-**From Wikidata (8):** Space Missions (24K), Astronomer Database (11K), Spacecraft Database (8K), Impact Craters (4K), Meteorite Database (1K), Observatory Database (640), Launch Vehicles (230), Space Agency Database (200)
+**From Wikidata (8, quarterly):** Space Missions (25K), Astronomer Database (11.5K), Spacecraft Database (8.8K), Impact Craters (4.5K), Meteorite Database (1.2K), Observatory Database (609), Launch Vehicles (209), Space Agency Database (141)
 
 **Pre-existing (23):** NEO, Starlink, SATCAT, Launch Log, Ground Stations, Constellation Census, DONKI, Dst Index, Kp Index, Solar Flares, Solar Wind, Space Weather, Exoplanets, GRB, Gravitational Waves, Pulsars, NGC/IC, SNR, Messier, Black Holes, Quasars, Galaxy Clusters
 
@@ -59,7 +59,7 @@ Built and uploaded: #1 PDS Missions, #2 InSight Marsquakes, #3 IAU Nomenclature,
 
 ---
 
-## P2 — Solid
+## P2 — Remaining Candidates
 
 | # | Dataset | Domain | Rows | Size | Incr? | Schedule | Notes |
 |---|---------|--------|-----:|------|:-----:|----------|-------|
@@ -67,30 +67,25 @@ Built and uploaded: #1 PDS Missions, #2 InSight Marsquakes, #3 IAU Nomenclature,
 | 2 | GPS NANU Archive | Orbital | 3,000 | 5 MB | Yes | Weekly | Append new NANUs by date |
 | 3 | Forbush Decreases | Weather | 1,000 | 500 KB | No | Static | Published event list |
 | 4 | Aerospace Corp Reentries | Orbital | 1,000+ | 5 MB | Yes | Weekly | Append new reentries. Web scraping, fragile |
-| 5 | Bus-DeMeo Taxonomy | Orbital | 371 | <1 MB | No | Static | Better combined with SBDB |
-| 6 | Solar Proton Events | Weather | 300 | <1 MB | Yes | Monthly | Append new events from SWPC lists |
-| 7 | Baumgardt Globular Clusters | Astronomy | 168 | 200 KB | No | Static | HTML scraping needed. Tiny |
-| 8 | Harris Globular Clusters | Astronomy | 157 | 30 KB | No | Static | Fixed-width parse |
-| 9 | Launch Cost to LEO | Economics | 100 | <1 MB | No | Yearly | Full rebuild. ~100 rows |
-| 10 | Habitable Worlds Catalog | Astronomy | 70 | <1 MB | No | Quarterly | Full rebuild. Better as filtered exoplanets view |
-| 11 | Orbital Debris Density | Orbital | derived | 1 MB | No | Static | Low standalone value |
+| 5 | Habitable Worlds Catalog | Astronomy | 70 | <1 MB | No | Quarterly | Full rebuild. Better as filtered exoplanets view |
+| 6 | Orbital Debris Density | Orbital | derived | 1 MB | No | Static | Low standalone value |
 
 ## P3 — Large/complex or niche
 
 | # | Dataset | Domain | Rows | Size | Incr? | Schedule | Notes |
 |---|---------|--------|-----:|------|:-----:|----------|-------|
-| 12 | AstDyS Proper Elements | Orbital | 1,500,000 | 200 MB | No | Monthly | Full rebuild. Bulk text parse. Overlaps SBDB |
-| 13 | OGLE Variables (params) | Astronomy | 1,000,000 | 200 MB | No | Yearly | No bulk download. Query interface only |
-| 14 | Thermospheric Density | Weather | 1,000,000 | 50 MB | No | Static | CHAMP/GRACE derived. Very niche |
-| 15 | Ionosonde foF2/hmF2 | Weather | 1,000,000 | 20 MB | Yes | Daily | Append hourly readings. Specialized ionospheric |
-| 16 | ASAS-SN Variables | Astronomy | 700,000 | 100 MB | No | Quarterly | Full rebuild. Overlaps GCVS |
-| 17 | Gaia DR3 RR Lyrae (full) | Astronomy | 271,779 | 50 MB | No | Static | Overlaps existing Gaia RR Lyrae subset |
-| 18 | SpaceTrack-TimeSeries | Orbital | 57,000,000 | 2 GB | No | Static | 57M rows. Overlaps TLE history |
-| 19 | EGM2008 Geoid | Geodesy | 4,672,080 | 500 MB | No | Static | Extremely specialized |
-| 20 | NANOGrav Pulsar Timing | Astronomy | 68 pulsars | 1 GB | No | Static | Complex format per release |
-| 21 | NASA Fragmentation History | Orbital | 355 | 1 MB | No | Static | PDF extraction |
-| 22 | ESA OPS-SAT Anomalies | Orbital | 2,123 | 10 MB | No | Static | Niche ML benchmark |
-| 23 | Transients (TNS) | Astronomy | 10–50K | 5 MB | Yes | Daily | Needs free API key registration |
+| 7 | AstDyS Proper Elements | Orbital | 1,500,000 | 200 MB | No | Monthly | Full rebuild. Bulk text parse. Overlaps SBDB |
+| 8 | OGLE Variables (params) | Astronomy | 1,000,000 | 200 MB | No | Yearly | No bulk download. Query interface only |
+| 9 | Thermospheric Density | Weather | 1,000,000 | 50 MB | No | Static | CHAMP/GRACE derived. Very niche |
+| 10 | Ionosonde foF2/hmF2 | Weather | 1,000,000 | 20 MB | Yes | Daily | Append hourly readings. Specialized ionospheric |
+| 11 | ASAS-SN Variables | Astronomy | 700,000 | 100 MB | No | Quarterly | Full rebuild. Overlaps GCVS |
+| 12 | Gaia DR3 RR Lyrae (full) | Astronomy | 271,779 | 50 MB | No | Static | Overlaps existing Gaia RR Lyrae subset |
+| 13 | SpaceTrack-TimeSeries | Orbital | 57,000,000 | 2 GB | No | Static | 57M rows. Overlaps TLE history |
+| 14 | EGM2008 Geoid | Geodesy | 4,672,080 | 500 MB | No | Static | Extremely specialized |
+| 15 | NANOGrav Pulsar Timing | Astronomy | 68 pulsars | 1 GB | No | Static | Complex format per release |
+| 16 | NASA Fragmentation History | Orbital | 355 | 1 MB | No | Static | PDF extraction |
+| 17 | ESA OPS-SAT Anomalies | Orbital | 2,123 | 10 MB | No | Static | Niche ML benchmark |
+| 18 | Transients (TNS) | Astronomy | 10–50K | 5 MB | Yes | Daily | Needs free API key registration |
 
 ---
 
@@ -98,13 +93,13 @@ Built and uploaded: #1 PDS Missions, #2 InSight Marsquakes, #3 IAU Nomenclature,
 
 | Type | Count | Datasets |
 |------|------:|----------|
-| **Static** (no workflow) | 17 | Ceres Craters (blocked), Mercury Craters, Venus Craters, TNO/Centaur, GRS Elements, Venus Express, Pluto Atmospherics, Lunar Geochemistry, Mercury Degradation, Juno Mag, Forbush, Harris GC, Baumgardt GC, Debris Density, Thermospheric, Gaia RRL, SpaceTrack, EGM2008, NANOGrav, Fragmentation, OPS-SAT |
+| **Static** | 10 | Ceres Craters (blocked), Mercury Craters, Venus Craters, TNO/Centaur, GRS Elements, Venus Express, Pluto Atmospherics, Lunar Geochemistry, Mercury Degradation, Juno Mag |
 | **Daily** | 2 | Ionosonde, Transients (TNS) |
 | **Weekly** | 2 | GPS NANU, Aerospace Reentries |
-| **Monthly** | 2 | Solar Proton Events, GCAT Deep Space |
+| **Monthly** | 1 | GCAT Deep Space |
 | **Quarterly** | 2 | Habitable Worlds, Substorm Onset |
-| **Yearly** | 2 | Launch Cost, OGLE, MAVEN KP |
-| **Total remaining** | **24** | (12 solar system + 12 original P2/P3) |
+| **Yearly** | 1 | OGLE |
+| **Total remaining** | **20** | (12 solar system + 6 P2 + 2 P3 feasible) |
 
 ## Skip
 
@@ -139,13 +134,18 @@ Built and uploaded: #1 PDS Missions, #2 InSight Marsquakes, #3 IAU Nomenclature,
 | Solar Radio Bursts (HEASARC) | `solarburst` table no longer exists on HEASARC (never successfully fetched). No alternative consolidated source. Script + workflow kept (schedule disabled) |
 | UCS Satellite Database | All download URLs return 404/403 (2026-03). UCS may have taken database offline. Script + workflow kept (schedule disabled) |
 | Astronaut Database (Mendeley) | Original Mendeley source dead (2026-03). **Rebuilt using Wikidata SPARQL** — 1,044 astronauts, CC0 licensed |
+| Baumgardt Globular Clusters | Merged into globular-star-clusters dataset |
+| Harris Globular Clusters | Merged into globular-star-clusters dataset |
+| Bus-DeMeo Taxonomy | **Built** as bus-demeo-asteroid-taxonomy |
+| Solar Proton Events | **Built** as solar-proton-events |
+| Launch Cost to LEO | **Built** as launch-cost-to-leo |
 
 ---
 
 ## Auth Summary
 
-- **No auth needed**: 22 of 23 remaining candidates
-- **Free API key**: TNS (#23 Transients) — free bot key registration
+- **No auth needed**: 19 of 20 remaining candidates
+- **Free API key**: TNS (#18 Transients) — free bot key registration
 
 ## If You Could Only Build 3 More
 
