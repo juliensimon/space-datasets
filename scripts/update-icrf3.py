@@ -116,6 +116,12 @@ the most accurate positions of extragalactic objects, with median positional unc
 of ~30 microarcseconds for the defining sources. These sources serve as the fixed reference
 points against which all other celestial positions are measured.
 
+The ICRF is conceptually the modern replacement for the FK5 optical fundamental star catalog. While FK5 was limited by the proper motions and parallaxes of nearby stars, the ICRF uses extremely distant quasars whose apparent motions are negligible, providing a quasi-inertial reference frame tied to the large-scale structure of the universe. VLBI observations at centimeter wavelengths achieve angular resolution of fractions of a milliarcsecond, enabling position determinations at the microarcsecond level for the best-observed sources. ICRF3 incorporates observations at S/X-band (2.3/8.4 GHz), K-band (24 GHz), and X/Ka-band (8.4/32 GHz), providing the first multi-frequency celestial reference frame.
+
+The 4,588 ICRF3 sources are classified into three tiers: 303 defining sources with the most stable positions and minimal source structure, 688 special-handling sources that require careful treatment due to extended jet structure, and the remainder as non-defining sources that densify the reference frame. Source structure -- the extended radio jets that cause apparent position shifts depending on observing frequency and array orientation -- is the dominant systematic error in VLBI astrometry. This dataset includes structure index parameters that quantify each source's compactness and positional stability, which is critical for selecting calibrators for VLBI observations and for space geodesy applications including Earth orientation monitoring and spacecraft navigation.
+
+ICRF3 is the authoritative astrometric reference for missions such as Gaia, which ties its optical reference frame to the ICRF through quasars observed in both radio and optical wavelengths. Differences between the Gaia optical positions and ICRF3 radio positions of the same quasars reveal physical offsets between the optical photocenters and radio cores, providing unique constraints on AGN jet physics and accretion disk structure.
+
 ## Schema
 
 | Column | Type | Description |

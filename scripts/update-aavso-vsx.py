@@ -181,6 +181,10 @@ known), epoch, and spectral classification.
 Of the {n_total:,} entries, **{n_with_period:,}** have a measured period and
 **{n_with_type:,}** have a variability classification.
 
+Stellar variability is one of the richest observational windows into astrophysics, and VSX is the most comprehensive catalog of its kind. Variable stars span an enormous range of physical mechanisms: pulsating variables (Cepheids, RR Lyrae, Miras, Delta Scuti) arise from opacity-driven instabilities in stellar envelopes and obey period-luminosity relations that serve as standard candles for distance measurement. Eclipsing binaries (Algol, Beta Lyrae, W UMa types) provide the most direct method of measuring stellar masses and radii to percent-level precision. Eruptive variables include young T Tauri stars still accreting from circumstellar disks, FU Orionis outbursts, and cataclysmic variables — white dwarfs accreting from close companions through Roche lobe overflow, producing dwarf novae and classical novae.
+
+The diversity of variability types in VSX makes it a foundational resource for time-domain astronomy. Pulsating variables trace Galactic structure: RR Lyrae stars map the old halo and bulge populations, while classical Cepheids delineate the young disk and spiral arms. Long-period variables (Miras and semi-regulars) on the AGB are key tracers of intermediate-age populations and mass-loss processes. Rotational variables reveal starspot activity and magnetic cycles analogous to the solar cycle. With the advent of large time-domain surveys — LSST/Rubin Observatory, TESS, and ZTF — the number of known variables is growing rapidly, and VSX serves as the authoritative cross-matched index that unifies discoveries across surveys, prevents duplicate designations, and maintains a consistent classification taxonomy.
+
 ## Key columns
 
 | Column | Type | Description |

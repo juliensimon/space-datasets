@@ -246,6 +246,12 @@ This dataset covers the complete NOAA record from 1976 onward, including:
 - **Radio emissions**: Type II and Type IV radio burst associations
 - **CME speed**: linear speed of associated coronal mass ejection (km/s)
 
+Solar energetic particles are accelerated by two distinct mechanisms. Impulsive SEP events are associated with solar flares, where magnetic reconnection accelerates electrons and ions (enriched in 3He and heavy ions) over seconds to minutes. These events are typically small, brief, and originate from compact source regions. Gradual SEP events -- which account for most entries in this dataset -- are accelerated by CME-driven coronal and interplanetary shocks via diffusive shock acceleration (first-order Fermi process). These events can last for days, produce vastly higher proton fluxes, and have a broad longitudinal extent because the shock front subtends a wide angle as it propagates outward. The largest gradual events (>10,000 pfu) are associated with fast, wide CMEs and western-hemisphere flares, where the magnetic connection along the Parker spiral provides early particle access to Earth.
+
+The >10 MeV proton flux threshold of 10 pfu used to define SPEs in this catalog corresponds to the NOAA S1 (minor) solar radiation storm level. At S1, elevated radiation doses affect high-latitude aircraft passengers and unshielded satellite components. At S3-S5 (>1,000 to >100,000 pfu), single-event upsets and latchups become a serious concern for satellite electronics, astronaut EVA activities must be curtailed, HF radio is degraded or blacked out on the entire sunlit hemisphere, and GPS accuracy is significantly reduced. The October 2003 event (>29,000 pfu) and the January 2005 event (>5,000 pfu) caused documented satellite anomalies and forced ISS crew members to shelter in the more heavily shielded Russian segment.
+
+The associations with Type II and Type IV radio bursts recorded in this dataset are physically significant. Type II bursts are produced by electrons accelerated at CME-driven shocks and serve as independent confirmation that a shock is present. Type IV bursts indicate trapped energetic electrons in post-eruption magnetic structures. The presence of both burst types strongly correlates with the most energetic and prolonged SPE events, making these radio associations useful as early predictors of event severity before the proton flux has peaked at Earth.
+
 ## Schema
 
 | Column | Type | Description |

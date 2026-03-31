@@ -135,8 +135,36 @@ contains positions, magnitudes, spectral types, proper motions, and astrometric 
 (position angles and separations) for each system. The catalog is actively maintained and
 regularly updated as new observations are published.
 
-Double stars are essential for determining stellar masses — the most fundamental property
-of a star — and for testing stellar evolution models.
+Double stars are essential for determining stellar masses -- the most fundamental property
+of a star -- and for testing stellar evolution models.
+
+The WDS traces its lineage back to Sherburne Wesley Burnham's catalog of 1906 and has been
+continuously maintained at the US Naval Observatory for over a century, incorporating
+astrometric measurements from visual micrometry, speckle interferometry, adaptive optics,
+long-baseline optical interferometry, and space-based observations (Hipparcos, Gaia). The
+catalog includes both gravitationally bound physical pairs (true binaries) and optical
+doubles -- chance alignments of unrelated stars along the same line of sight. Distinguishing
+between the two requires common proper motion analysis or, ideally, measurement of orbital
+curvature over a sufficient arc of the orbit.
+
+For physical binaries with well-determined orbits, the combination of angular separation,
+orbital period, and parallax yields dynamical masses through Kepler's third law. These
+direct mass measurements are the gold standard for calibrating the mass-luminosity relation
+and testing stellar structure models across spectral types from O-type supergiants to
+late M-dwarfs. The position angle and separation measurements recorded at the first and
+last epochs in this catalog encode information about orbital motion: systems showing
+significant changes in these quantities over the observing baseline are strong candidates
+for orbit determination, while those with negligible change may be either very long-period
+binaries or optical pairs.
+
+The WDS encompasses an enormous diversity of systems, from pairs separated by fractions
+of an arcsecond -- resolvable only by interferometric techniques -- to wide common proper
+motion companions separated by arcminutes or more. Wide binaries (separations > 1000 AU)
+are particularly interesting as probes of the Galactic gravitational potential, since their
+weakly bound orbits are sensitive to perturbations from passing stars, giant molecular
+clouds, and the Galactic tidal field. Hierarchical multiple systems (triples, quadruples,
+and higher-order multiples) recorded in the WDS provide constraints on star formation
+theories and the dynamical stability of few-body stellar configurations.
 
 ## Schema
 

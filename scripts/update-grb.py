@@ -187,6 +187,12 @@ GRBs across the full unocculted sky since 2008.
 This dataset includes duration measurements (T90, T50), fluence, peak flux, and Band
 function spectral parameters for each burst.
 
+The physical dichotomy between short and long GRBs reflects fundamentally different progenitor systems. Short GRBs (T90 < 2 s) arise from the coalescence of compact binary systems — neutron star-neutron star or neutron star-black hole mergers — as spectacularly confirmed by the joint gravitational-wave and electromagnetic detection of GRB 170817A / GW170817. Long GRBs (T90 > 2 s) are produced by the core collapse of massive Wolf-Rayet stars, where a newly formed black hole launches ultra-relativistic jets that punch through the stellar envelope. In both cases, the observed gamma-ray emission originates from internal shocks or magnetic dissipation within jets moving at Lorentz factors of 100-1000.
+
+The Fermi GBM is one of the workhorses of modern GRB astronomy, detecting roughly 240 bursts per year across its 12 sodium iodide (NaI, 8 keV - 1 MeV) and 2 bismuth germanate (BGO, 200 keV - 40 MeV) detectors. Its near all-sky field of view (roughly 8 steradians unocculted) makes it the most prolific GRB detector currently operating. The Band function spectral parameters included here (amplitude, peak energy E_peak, and low/high-energy power-law indices alpha and beta) characterize the canonical non-thermal GRB spectrum and are essential for computing energetics, testing emission models, and calibrating the E_peak-E_iso (Amati) relation used as a cosmological distance indicator.
+
+This catalog is a cornerstone for multi-messenger astrophysics: GBM triggers initiate rapid follow-up campaigns across the electromagnetic spectrum and provide temporal coincidence windows for searches in gravitational-wave and neutrino data from LIGO/Virgo/KAGRA and IceCube.
+
 ## Schema
 
 | Column | Type | Description |

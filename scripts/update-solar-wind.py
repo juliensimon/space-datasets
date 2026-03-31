@@ -146,6 +146,12 @@ power grids, and GPS.
 This dataset is the **missing link** in the Sun-to-Earth causal chain:
 solar flare → CME → **solar wind** → Dst/Kp storm → orbital drag.
 
+The measurements come from the DSCOVR (Deep Space Climate Observatory) and ACE (Advanced Composition Explorer) spacecraft orbiting the Sun-Earth L1 Lagrange point, approximately 1.5 million km upstream of Earth. At this vantage point, the instruments sample the solar wind roughly 15-60 minutes before it reaches the magnetopause, providing a critical lead time for geomagnetic storm prediction. DSCOVR's Faraday Cup measures the bulk plasma properties (proton density, speed, and temperature), while its fluxgate magnetometer measures the interplanetary magnetic field (IMF) vector in Geocentric Solar Magnetospheric (GSM) coordinates.
+
+The Bz component of the IMF in GSM coordinates is the single most important parameter for geomagnetic coupling. When Bz is strongly southward (negative), the IMF opposes Earth's northward magnetic field at the dayside magnetopause, enabling magnetic reconnection that transfers solar wind energy into the magnetosphere. Sustained Bz below -10 nT typically produces moderate geomagnetic storms (Kp 6-7, Dst below -100 nT), while extreme events with Bz below -30 nT can trigger severe storms affecting power grids and satellite operations. The combination of solar wind speed, density, and southward Bz determines the rate of energy input, often parameterized by the epsilon coupling function or the Newell universal coupling function.
+
+Typical quiet-time solar wind conditions show speeds of 300-450 km/s and densities of 3-10 protons/cm^3. Coronal hole high-speed streams elevate speeds to 600-800 km/s, while interplanetary CMEs can drive transient speeds above 1,000 km/s with enhanced magnetic fields. These signatures are directly usable for real-time Dst forecasting models such as the Burton equation and its successors.
+
 ## Schema
 
 | Column | Type | Description |

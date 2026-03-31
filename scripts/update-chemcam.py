@@ -217,6 +217,12 @@ typically measured per target to characterize compositional variability.
 Uncertainty estimates (RMSEP and shot-to-shot standard deviation) are
 provided for each oxide.
 
+Laser-Induced Breakdown Spectroscopy (LIBS) is a technique where a focused pulsed laser ablates a small amount of material from a target surface, generating a high-temperature plasma whose optical emission lines reveal the elemental composition. ChemCam was the first LIBS instrument deployed on another planet and has been operating on Curiosity since its landing in Gale Crater in August 2012. The ability to analyze rocks and soils remotely — without requiring the rover to drive to and physically contact each target — has dramatically increased the pace of geochemical exploration, enabling thousands of analyses across Curiosity's multi-kilometer traverse from the crater floor up through the sedimentary strata of Mount Sharp (Aeolis Mons).
+
+The major oxide compositions in this dataset provide a window into the igneous, sedimentary, and alteration history of the Martian crust. The mean SiO2 content of typical Martian basaltic targets falls near 45-50 wt%, consistent with the tholeiitic basalt composition expected for Mars. However, ChemCam has also identified several unexpected lithologies along the traverse, including high-silica compositions (>60 wt% SiO2) interpreted as evolved igneous rocks or silica-enriched diagenetic features, high-manganese-oxide coatings suggesting oxidizing aqueous conditions, and alkali-rich compositions that have no direct terrestrial analog. The iron content (reported as total FeO) is a key discriminant between mafic and felsic compositions and varies substantially across different geological units.
+
+The stratigraphic context of these measurements is central to understanding the habitability history of Gale Crater. As Curiosity ascends Mount Sharp, it traverses a sequence of sedimentary layers deposited in lacustrine, fluvial, and aeolian environments — the geochemical record preserved in this dataset tracks the evolving chemistry of those environments over geological time. Variations in MgO, CaO, and alkali element ratios across stratigraphic boundaries constrain changes in sediment provenance, water-rock interaction intensity, and diagenetic overprinting. This makes the ChemCam MOC dataset one of the most detailed geochemical transects ever measured on another planet.
+
 ## Schema
 
 | Column | Type | Description |

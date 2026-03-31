@@ -190,6 +190,10 @@ The catalog includes best-fit sky coordinates (RA/Dec with asymmetric errors),
 energy estimates, signalness (probability of astrophysical origin), false-alarm
 rates, and CNN-based topology classification scores.
 
+High-energy neutrinos are uniquely powerful messengers for probing the non-thermal universe. Unlike photons, they are electrically neutral and weakly interacting, so they travel undeflected by magnetic fields and unabsorbed by intervening matter, pointing directly back to their production sites. The neutrino energies in ICECAT-1 (typically hundreds of TeV to several PeV) imply hadronic acceleration processes -- proton-proton or proton-photon interactions -- occurring in environments such as relativistic jets of blazars, tidal disruption events, or the cores of starburst galaxies. The 2017 coincidence of IceCube-170922A with the flaring blazar TXS 0506+056 provided the first compelling evidence for an extragalactic neutrino point source and inaugurated the era of multi-messenger astronomy with neutrinos.
+
+The "signalness" parameter is central to astrophysical interpretation: it quantifies the probability that a given track event originates from an astrophysical neutrino rather than an atmospheric background muon or atmospheric neutrino. Gold alerts (signalness > 50%) are the highest-confidence candidates for follow-up by electromagnetic and gravitational-wave observatories worldwide. The CNN topology scores classify events by their interaction morphology in the ice -- throughgoing muon tracks provide the best angular resolution (~0.5 degrees) while cascade and starting events offer better energy reconstruction, enabling complementary searches for transient and steady-state sources.
+
 ## Quick stats
 
 - **{n_total:,}** neutrino alert events ({year_min}–{year_max})

@@ -217,6 +217,10 @@ contains the six Keplerian orbital elements (perihelion distance, eccentricity,
 argument of perihelion, longitude of the ascending node, inclination, and
 perihelion date), plus absolute magnitude and slope parameter.
 
+Comets occupy a special place in solar system dynamics. Short-period comets (P < 200 years) predominantly originate in the Kuiper Belt and scattered disk beyond Neptune, while long-period comets fall inward from the Oort Cloud at distances of 10,000--100,000 AU. As a comet approaches perihelion, solar heating sublimates volatile ices, producing the characteristic coma and tail. The eccentricity distribution in this catalog reveals the dynamical boundary between bound elliptical orbits (e < 1) and hyperbolic trajectories (e >= 1) that indicate interstellar origin or strong planetary perturbation.
+
+The absolute magnitude H and slope parameter G characterize a comet's intrinsic brightness and how it varies with phase angle. Unlike asteroids, cometary magnitudes are notoriously difficult to predict because activity levels depend on volatile inventory, nucleus size, and heliocentric distance in complex ways. Sun-grazing comets with perihelion distances below 0.05 AU belong primarily to the Kreutz group, fragments of a single progenitor that broke apart centuries ago. The orbital elements in this catalog are osculating elements referred to the J2000.0 ecliptic, suitable for short-term ephemeris computation but subject to non-gravitational forces from outgassing that make long-term orbit prediction challenging.
+
 ## Schema
 
 | Column | Type | Description |

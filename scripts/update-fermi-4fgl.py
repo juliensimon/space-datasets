@@ -166,6 +166,12 @@ Each record includes sky position, spectral properties, flux measurements,
 variability information, and source associations with counterparts at other
 wavelengths.
 
+The 4FGL-DR4 represents the culmination of 14 years of continuous all-sky monitoring by the Fermi LAT, a pair-conversion telescope sensitive to gamma rays from roughly 20 MeV to more than 1 TeV. The LAT detects gamma rays by tracking the electron-positron pairs produced when incoming photons interact with tungsten converter foils, yielding both the direction and energy of the incident photon. With Pass 8 event reconstruction and 14 years of exposure, the catalog reaches a point-source sensitivity of approximately 2 x 10^-12 erg/cm^2/s in energy flux — deep enough to detect faint pulsars, distant blazars, and diffuse emission from star-forming regions.
+
+The source population is remarkably diverse. Blazars (BL Lac objects and flat-spectrum radio quasars) dominate the extragalactic sky, their relativistic jets producing variable gamma-ray emission through inverse-Compton scattering of synchrotron photons or external radiation fields. Pulsars — rapidly rotating neutron stars — are the most numerous Galactic source class, emitting pulsed gamma rays from magnetospheric particle acceleration and curvature radiation in their extreme magnetic fields (10^8-10^13 Gauss). Supernova remnants and pulsar wind nebulae trace cosmic-ray acceleration sites, while the Galactic diffuse emission encodes information about cosmic-ray propagation and interstellar gas distribution. Over a thousand sources remain unassociated with known counterparts, representing active classification targets for machine learning and multi-wavelength follow-up.
+
+The variability index and monthly light curves in 4FGL are particularly powerful for time-domain astrophysics. Blazar flares can brighten by factors of 10-100 on timescales of hours to weeks, driven by shock propagation or magnetic reconnection in their jets. These flares trigger multi-wavelength and multi-messenger campaigns, and the 4FGL variability data serve as the baseline for identifying and characterizing such events across the entire Fermi mission.
+
 ## Schema
 
 | Column | Type | Description |

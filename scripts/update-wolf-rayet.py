@@ -192,6 +192,10 @@ Galactic WR stars with Gaia DR2 parallaxes to derive distances, luminosities, an
 distribution. The dataset includes astrometric positions, spectral classifications, Gaia and
 infrared photometry, and distance estimates.
 
+Wolf-Rayet stars represent a fleeting but critical phase in massive star evolution. Stars born with initial masses above roughly 25 solar masses shed their hydrogen envelopes through powerful radiation-driven winds and episodic mass loss, exposing first the products of CNO-cycle hydrogen burning (nitrogen-rich WN phase) and then the products of helium burning (carbon- and oxygen-rich WC/WO phases). This evolutionary sequence — O star to WN to WC to core collapse — lasts only a few hundred thousand years, making WR stars extremely rare: fewer than 700 are known in the entire Milky Way. Their powerful winds, with terminal velocities of 1,000-3,000 km/s, inject enormous mechanical energy and chemically enriched material into the surrounding interstellar medium, sculpting ring nebulae and contributing to Galactic chemical evolution.
+
+The WR population is a key diagnostic of massive star formation and evolution in galaxies. The ratio of WC to WN stars varies with metallicity — higher metallicity environments produce more WC stars because stronger winds strip the envelope more efficiently — making this ratio a test of stellar evolution models and a tracer of metallicity gradients across galactic disks. WR stars in binary systems are of particular interest as likely progenitors of double compact object mergers: a WR star paired with a neutron star or black hole may eventually produce the binary neutron star or black hole mergers detected by LIGO/Virgo. The catalog's combination of spectral classification, photometry, and Gaia-derived distances enables direct comparison of the observed Galactic WR population with predictions from population synthesis models, constraining mass-loss prescriptions and binary interaction physics.
+
 ## Schema
 
 | Column | Type | Description |

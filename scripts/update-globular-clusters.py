@@ -421,6 +421,37 @@ This dataset combines Harris (2010) photometric and chemical data with Baumgardt
 parameters derived from N-body fits to modern astrometric and spectroscopic data, providing
 the most complete per-cluster view available.
 
+Globular clusters formed in the early universe, within the first few billion years after the
+Big Bang, and their metallicity distribution preserves a fossil record of the chemical
+enrichment conditions at that epoch. The bimodal metallicity distribution observed in many
+galaxies -- with a metal-poor peak near [Fe/H] ~ -1.5 and a metal-rich peak near
+[Fe/H] ~ -0.5 -- is widely interpreted as evidence for two distinct formation channels:
+an in-situ population formed during the early collapse of the proto-Galaxy, and an accreted
+population brought in by satellite galaxies that were subsequently tidally disrupted. The
+combination of metallicity, age, and orbital parameters in this catalog enables assignment
+of individual clusters to these formation channels, linking them to specific accretion
+events identified in the Gaia era such as the Gaia-Enceladus/Sausage merger and the
+Sequoia and Helmi streams.
+
+The dynamical parameters from the Baumgardt database are derived from sophisticated N-body
+models fit simultaneously to Gaia proper motion profiles and HST/ground-based velocity
+dispersion profiles. These fits yield not only total masses but also the internal mass
+function slope, which encodes the degree to which a cluster has been stripped of its
+low-mass stars by two-body relaxation and tidal interactions. Clusters with flat or
+inverted mass functions have lost a large fraction of their initial low-mass population,
+while those retaining steep mass functions are dynamically younger. The dissolution
+timescale provided in this catalog predicts how long each cluster will survive before
+being fully disrupted by the Galactic tidal field.
+
+Core-collapsed clusters -- flagged in this catalog from the Harris compilation -- represent
+systems that have undergone gravothermal catastrophe, a runaway contraction of the core
+driven by the negative heat capacity of self-gravitating systems. In these clusters, the
+core has contracted to a cusp-like density profile sustained by binary star heating, and
+the central density can exceed 10^6 solar masses per cubic parsec. The structural parameters
+(core radius, half-light radius, tidal radius, concentration) together with the velocity
+dispersion and anisotropy profiles provide a complete dynamical portrait of each cluster,
+suitable for comparison with theoretical models and numerical simulations.
+
 ## Schema
 
 | Column | Type | Description |

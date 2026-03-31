@@ -241,6 +241,12 @@ parent launch, identifying the primary spacecraft or rocket body involved and co
 statistics. It is inspired by the methodology used in NASA's "History of On-Orbit Satellite
 Fragmentations" technical report series published by the Orbital Debris Program Office.
 
+Orbital fragmentation is the single largest source of space debris. The most consequential events in history include China's 2007 Fengyun-1C anti-satellite missile test (which created over 3,500 trackable fragments, many in long-lived orbits above 800 km), the 2009 accidental collision between Iridium 33 and the defunct Cosmos 2251 (producing roughly 2,300 cataloged pieces), and the 2021 Russian ASAT test against Cosmos 1408. Together, a handful of major breakups account for a disproportionate share of the total tracked debris population. The debris_on_orbit field reveals which events continue to pollute the space environment: high-altitude fragmentations produce debris that can persist for decades or centuries, while low-altitude events clear relatively quickly through atmospheric drag.
+
+The root causes of fragmentation events have shifted over time. In the early decades of spaceflight, the dominant cause was accidental explosions of rocket upper stages that retained residual propellant or pressurized tanks after completing their mission. This led to the adoption of passivation requirements -- venting residual fuel and depressurizing batteries -- in modern launch vehicle designs. More recently, deliberate destruction (ASAT tests) and accidental collisions have become prominent causes. The Kessler syndrome hypothesis warns that above a critical density threshold, collisional cascading could make certain orbital bands unusable -- a concern that fragmentation event data directly informs.
+
+This dataset enables researchers to study fragmentation event rates over time, assess the long-term debris environment contribution by orbit altitude and event type, evaluate the effectiveness of debris mitigation policies, and identify which nations and operators have generated the most orbital debris. The decay percentage field provides a measure of how effectively atmospheric drag is cleaning up after each event.
+
 ## Schema
 
 | Column | Type | Description |

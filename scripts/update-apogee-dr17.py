@@ -371,6 +371,12 @@ elemental abundances by comparing observed spectra against synthetic spectral
 libraries. The catalog covers a wide range of stellar types including red giants,
 red clump stars, and main-sequence stars across the Galactic disk, bulge, and halo.
 
+APOGEE's choice of the near-infrared H-band is what sets it apart from optical spectroscopic surveys. Dust extinction at 1.6 microns is roughly one-tenth of the extinction in the optical V-band, allowing APOGEE to observe stars deep into the Galactic plane, bulge, and heavily obscured star-forming regions that are essentially invisible to optical surveys like RAVE and GALAH. This capability is essential for building a truly Galaxy-wide picture of stellar chemistry and dynamics, including the chemically distinct thin disk, thick disk, bulge, and halo populations.
+
+The 20+ individual elemental abundances measured by APOGEE span multiple nucleosynthetic channels: alpha-elements (O, Mg, Si, S, Ca, Ti) produced primarily in core-collapse supernovae, iron-peak elements (Fe, Mn, Ni, Co, V, Cr) from Type Ia supernovae, odd-Z elements (Na, Al, K) sensitive to neutron excess during hydrostatic burning, light elements (C, N) altered by internal stellar mixing processes, and neutron-capture elements (Ce, Nd) from the s-process in AGB stars. This chemical dimensionality makes APOGEE the premier dataset for chemical tagging -- the attempt to identify stars born in the same molecular cloud by their shared abundance fingerprint -- and for constraining Galactic chemical evolution models.
+
+The dual-hemisphere observing strategy, with identical spectrographs at Apache Point Observatory (New Mexico) and Las Campanas Observatory (Chile), provides all-sky coverage that is critical for studying Galactic structure. Red giant stars observed by APOGEE serve as distance tracers visible to 10-20 kpc, mapping the radial and vertical abundance gradients of the Milky Way disk and revealing chemically peculiar substructures such as accreted dwarf galaxy debris in the stellar halo.
+
 ## Schema
 
 | Column | Type | Description |

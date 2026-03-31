@@ -217,6 +217,10 @@ Harvard Revised (HR) photometry numbers, Henry Draper (HD) numbers, UBVRI broadb
 MK spectral classification, proper motions, trigonometric parallaxes, radial velocities,
 rotational velocities (v sin i), and flags for variability and multiplicity.
 
+The BSC5 occupies a unique niche among stellar catalogs: it is magnitude-complete to V ~ 6.5, meaning it contains essentially every star the human eye can see under ideal conditions. This completeness makes it invaluable for statistical studies of the solar neighborhood's stellar population. The catalog spans the full range of spectral types from hot O and B stars to cool M giants, including main-sequence dwarfs, subgiants, giants, supergiants, and white dwarfs. Its UBVRI photometry enables construction of color-magnitude and color-color diagrams, while MK spectral classifications provide independent temperature and luminosity class determinations. The rotational velocity (v sin i) data, available for a large fraction of entries, supports studies of stellar angular momentum evolution across spectral types.
+
+Despite its relatively modest size compared to modern survey catalogs containing billions of stars, the BSC5 remains widely used in observational astronomy, spacecraft attitude determination, planetarium software, and educational contexts. Many entries carry common star names (Sirius, Betelgeuse, Vega) alongside their HR and HD numbers, bridging traditional naked-eye astronomy with the modern catalog system. The multiplicity and variability flags identify binary and multiple star systems as well as known variable stars, making the catalog a practical starting point for targeted follow-up observations. For bright-star science — where saturation limits modern CCD surveys — the BSC5 photometry and spectroscopy remain authoritative reference data.
+
 ## Schema
 
 | Column | Type | Description |

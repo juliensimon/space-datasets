@@ -202,6 +202,12 @@ to ~23 km altitude) where measurements are derived from probe deceleration. The 
 covers the lower troposphere (~17 km down to ~-133 km, i.e., from 0.4 bar to ~22 bar) using
 direct temperature and pressure sensors under parachute.
 
+Jupiter's atmosphere is composed primarily of hydrogen (~86%) and helium (~13%) by volume, with trace amounts of methane, ammonia, water, and other species. The Galileo Probe provided the first and only in-situ measurements of a giant planet's atmospheric structure, revealing several unexpected findings. The helium abundance was measured at approximately 0.234 by mass fraction — significantly depleted relative to the protosolar value — confirming theoretical predictions that helium has been raining out into Jupiter's deep interior as the planet cools. The probe also found that heavy elements (C, N, S, and noble gases) were enriched by a factor of 2-4 relative to solar composition, a key constraint on Jupiter's formation mechanism.
+
+The probe entered a 5-micron hot spot — a region of anomalously low cloud opacity in Jupiter's North Equatorial Belt where infrared radiation escapes from deeper, warmer layers. This fortuitous entry site meant the probe descended through unusually dry and cloud-free conditions, encountering far less water vapor than global models predicted. The question of Jupiter's bulk water abundance, critical for distinguishing between formation models (core accretion versus disk instability), remained unresolved until the Juno mission's microwave radiometer provided complementary constraints decades later.
+
+The temperature profile measured during descent revealed the expected transition from the radiatively controlled stratosphere through the tropopause (near 110 K at approximately 100 mbar) into the convective troposphere, where temperatures increased along a nearly dry adiabatic gradient. Below the 1-bar level, temperatures rise steadily, reaching over 400 K at the deepest measurement point near 22 bar. The temperature lapse rate and its deviations from the dry adiabat carry information about condensation processes, latent heat release, and vertical mixing that remain central to giant planet atmospheric dynamics.
+
 ## Schema
 
 | Column | Type | Description |

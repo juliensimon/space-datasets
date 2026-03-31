@@ -135,6 +135,34 @@ curve parameters, metallicity estimates from the light curve shape, and photomet
 This dataset is a cornerstone for Galactic archaeology, enabling studies of the Milky Way's
 stellar halo substructure, tidal streams, and satellite galaxies.
 
+RR Lyrae stars occupy the horizontal branch of the Hertzsprung-Russell diagram, burning
+helium in their cores after ascending the red giant branch. They are exclusively old
+(> 10 Gyr) and metal-poor to moderately metal-rich, with masses near 0.6--0.8 solar masses
+and luminosities around 40--50 times that of the Sun. Their pulsation is driven by the
+kappa mechanism operating in the partial ionization zone of helium, producing the
+characteristic rapid brightness variations with periods typically between 0.2 and 1.0 days.
+Three pulsation modes are recognized: RRab stars pulsate in the radial fundamental mode with
+large, asymmetric light curves and periods around 0.5--0.7 days; RRc stars pulsate in the
+first overtone with smaller amplitudes and more sinusoidal variations near 0.25--0.40 days;
+and RRd stars pulsate simultaneously in both modes, providing strong constraints on stellar
+structure models.
+
+The Bailey diagram -- plotting light-curve amplitude against period -- cleanly separates
+these subclasses and encodes information about metallicity: at a given period, more
+metal-poor RRab stars tend to have larger amplitudes. Gaia DR3 exploits this by deriving
+photometric metallicities from the light-curve shape, providing [Fe/H] estimates for
+hundreds of thousands of stars across the Galaxy without the need for spectroscopy. Combined
+with the photometric distances in this catalog, these metallicities enable three-dimensional
+chemical mapping of the Milky Way's oldest stellar populations.
+
+RR Lyrae stars are particularly powerful tracers of Galactic substructure because they are
+luminous enough to be detected at distances of over 100 kpc, well into the outer halo where
+the debris of accreted dwarf galaxies is found. They have been instrumental in the discovery
+of the Sagittarius stream, the Virgo overdensity, and numerous other halo substructures.
+The Gaia DR3 catalog, with its combination of all-sky coverage, uniform photometry, and
+precise astrometry, provides the definitive census of RR Lyrae populations throughout the
+Milky Way system.
+
 ## Schema
 
 | Column | Type | Description |

@@ -139,6 +139,12 @@ NOAA's Space Weather Prediction Center (SWPC). These notifications cover:
 These alerts are critical for satellite operators, power grid managers, aviation,
 and anyone affected by space weather.
 
+SWPC operates as the United States' official source for space weather forecasts and warnings, analogous to the National Weather Service for terrestrial weather. The alert system follows a structured hierarchy: **watches** are issued 1-3 days in advance when conditions favor a significant event (e.g., an Earth-directed CME has been observed), **warnings** indicate that an event is imminent or already in progress (e.g., a geomagnetic storm threshold has been crossed), and **alerts** notify when specific thresholds are exceeded in real-time. Summaries provide post-event documentation. Each alert references the NOAA scales: G1-G5 for geomagnetic storms (based on Kp), S1-S5 for solar radiation storms (based on >10 MeV proton flux), and R1-R5 for radio blackouts (based on X-ray flare class).
+
+The alert messages contain rich unstructured information beyond what numeric indices capture: analyst assessments of CME morphology, expected arrival windows, confidence levels, affected sectors (HF radio, GPS, power systems, satellite operations, aviation radiation), and references to specific active regions responsible for the activity. This makes the dataset valuable for natural language processing research, including text classification of alert severity, named entity recognition of solar features, and temporal relation extraction linking warnings to subsequent observed impacts.
+
+From an operational standpoint, these alerts drive real-world responses: satellite operators may postpone maneuvers during geomagnetic storm warnings, airlines reroute polar flights during solar radiation storms to reduce crew radiation exposure, and power grid operators increase reactive power reserves when G3+ storms are forecast. The timestamp and type distribution in this dataset reflects the cadence of space weather operations and can be correlated with the numeric index datasets (Kp, Dst, solar wind) to study forecast accuracy and lead times.
+
 ## Schema
 
 | Column | Type | Description |

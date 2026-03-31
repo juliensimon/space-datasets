@@ -208,6 +208,12 @@ official IAU gazetteer of planetary feature names.
 Each record includes the feature name, geographic coordinates (center point and bounding
 box), diameter, feature type, approval status, and cultural origin/ethnicity metadata.
 
+The naming of planetary surface features is governed by the International Astronomical Union (IAU), which established the Working Group for Planetary System Nomenclature in 1973 to bring consistency to the rapidly growing catalog of features revealed by spacecraft exploration. Each planetary body follows a distinct naming theme: lunar craters honor deceased scientists and scholars, Martian craters larger than 60 km are named for deceased scientists and writers while smaller ones take the names of villages on Earth, Venusian features are named exclusively for women and female mythological figures, and Mercurian craters honor deceased artists, musicians, and authors. These conventions reflect both scientific tradition and a deliberate effort to represent diverse cultures in the planetary record.
+
+Feature types in the nomenclature span a rich taxonomy of geological landforms. Craters (impact structures) dominate most bodies, but the catalog also includes montes (mountains), planitiae (low-lying plains), valles (valleys), rupes (scarps), fossae (long narrow depressions), and many other morphological categories. Each feature type carries information about the geological processes that shaped a world — volcanic resurfacing, tectonic deformation, fluvial erosion, or impact bombardment. The spatial distribution and size statistics of named features provide a curated view of planetary geology that complements the raw crater databases.
+
+The approval dates in this dataset trace the history of planetary exploration itself. Early entries correspond to features visible through ground-based telescopes, while waves of new approvals track the arrival of data from Mariner, Viking, Magellan, MESSENGER, and modern orbiters. The nomenclature database is a living record, with new features still being named as high-resolution imaging reveals previously uncharacterized terrain, particularly on Mercury following MESSENGER and BepiColombo observations.
+
 ## Features per body
 
 {body_stats}

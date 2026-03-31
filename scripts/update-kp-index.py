@@ -143,6 +143,12 @@ It is the basis for the NOAA G-scale storm classification:
 | 8 | G4 Severe | Widespread voltage control problems, satellite charging |
 | 9 | G5 Extreme | Grid collapse risk, satellite damage, GPS degraded |
 
+The Kp index was introduced by Julius Bartels in 1949 and remains one of the most widely used geomagnetic activity measures in space physics and space operations. It is computed every 3 hours from the maximum deviation of the horizontal magnetic field component at each of 13 subauroral magnetometer stations (e.g., Niemegk, Canberra, Ottawa), after removing the quiet-day baseline variation. Each station produces a local K index on a quasi-logarithmic 0-9 scale, and Kp is the weighted mean standardized to the Niemegk reference. The conversion from linear nanotesla deviations to the quasi-logarithmic K scale means that each unit step represents roughly a doubling of disturbance amplitude: K=5 corresponds to about 70 nT variation, while K=9 corresponds to over 500 nT.
+
+Operationally, Kp is the primary input to the NOAA G-scale storm classification used by satellite operators, power grid managers, and aviation authorities. It also feeds directly into atmospheric density models: the associated Ap index (a linearized daily average derived from Kp) is a required input for NRLMSISE-00 and JB2008 thermospheric density models, which in turn drive satellite drag computation in SGP4/SDP4 orbit propagators. During a G3 storm (Kp=7), atmospheric drag at 400 km altitude can increase by a factor of 2-3, causing significant orbital decay for LEO assets including the ISS and Starlink satellites.
+
+The 3-hourly cadence of Kp captures the temporal evolution of geomagnetic storms: a typical storm driven by a CME impact shows Kp rising sharply over 1-2 intervals during the main phase, sustained elevated values during the recovery, and a gradual return to quiet levels over 12-48 hours. This cadence complements the hourly Dst index, which better resolves the storm main phase, and the minute-resolution AE index, which tracks substorm-scale auroral activity.
+
 ## Schema
 
 | Column | Type | Description |

@@ -190,6 +190,33 @@ photometric survey identified these candidates through automated variability cla
 and Fourier-based light-curve modeling. The `global_ranking` score (0-1) indicates the
 confidence that a source is a genuine eclipsing binary.
 
+Eclipsing binaries are among the most astrophysically valuable variable stars because they
+provide model-independent measurements of fundamental stellar properties. When combined with
+radial velocity curves, the eclipse geometry yields absolute masses and radii of both
+components to precisions of a few percent -- the only direct method for calibrating stellar
+evolution models across a wide range of masses, ages, and compositions. Detached eclipsing
+binaries in particular serve as primary distance indicators: their physical radii and
+effective temperatures give an absolute luminosity that, compared with the observed flux,
+directly yields the distance without recourse to the period-luminosity relations used for
+pulsating stars.
+
+The sheer scale of this Gaia catalog -- over a million candidates identified from the
+spacecraft's all-sky photometric time series -- represents an order-of-magnitude increase
+over previous compilations such as the Kepler Eclipsing Binary Catalog (~2,900 systems) or
+the OGLE collection (~450,000 systems in the Magellanic Clouds and bulge). The orbital
+periods span from ultra-short contact binaries completing a revolution in a few hours to
+long-period detached systems with periods of hundreds of days. The Fourier-based light curve
+decomposition provided in the catalog (fundamental and second-reference amplitudes, number
+of harmonics, reduced chi-squared) enables automated morphological classification into
+detached, semi-detached, and contact configurations without requiring manual inspection of
+individual light curves.
+
+Because Gaia surveys the entire sky uniformly, this catalog is free from the spatial
+selection biases inherent in pointed surveys. It therefore provides the first statistically
+complete view of the eclipsing binary population across the full Milky Way disk, halo, and
+satellite system, enabling population studies of binary fraction, period distribution, and
+mass-ratio statistics as a function of Galactic environment.
+
 ## Key columns
 
 | Column | Type | Description |

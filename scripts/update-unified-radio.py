@@ -180,6 +180,12 @@ The catalog contains **{n_sources:,}** unique radio sources with measurements fr
 including NVSS (1.4 GHz), FIRST (1.4 GHz), SUMSS (843 MHz), TGSS (150 MHz), GLEAM (200 MHz),
 and many others.
 
+The radio spectrum of a source encodes fundamental information about its emission mechanism. Synchrotron radiation from relativistic electrons in magnetic fields produces a power-law spectrum S(nu) proportional to nu^alpha, where alpha is the spectral index. Typical values range from alpha ~ -0.7 for optically thin synchrotron (radio lobes, supernova remnants) to alpha ~ 0 or positive for self-absorbed compact sources (AGN cores, young radio sources). By fitting spectra across multiple frequencies, SPECFIND enables systematic classification of radio source populations and identification of unusual spectral shapes that signal physical transitions such as spectral aging, restarted AGN activity, or free-free absorption.
+
+SPECFIND's cross-identification algorithm matches sources across catalogs with very different angular resolutions, from the 25-arcsecond beam of TGSS to the 45-arcsecond beam of NVSS and the arcminute-scale beams of older low-frequency surveys. This positional matching accounts for resolution-dependent blending, where a single source in a low-resolution survey may correspond to multiple components in a higher-resolution catalog. The fitted spectral parameters are most reliable for sources detected at three or more frequencies, where the power-law fit is well constrained.
+
+This unified catalog is a natural starting point for multi-frequency radio population studies, spectral index mapping of extended sources, and identification of sources with anomalous radio spectra. It complements the individual survey catalogs (NVSS, FIRST, SUMSS, TGSS, VLASS) by providing the cross-matched associations and fitted spectral parameters that would otherwise require significant effort to compute independently.
+
 ## Key columns
 
 | Column | Type | Description |

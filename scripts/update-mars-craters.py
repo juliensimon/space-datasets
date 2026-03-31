@@ -163,6 +163,12 @@ This database was compiled by Stuart J. Robbins and Brian M. Hynek (2012) using 
 and other Mars imagery. Every crater >= 1 km in diameter on the Martian surface was identified
 and measured, including ejecta morphology classification and depth measurements where available.
 
+Impact craters are the dominant geological landform on Mars, recording billions of years of bombardment history across the planet's surface. The size-frequency distribution of craters is a primary tool for estimating the ages of geological units on Mars and other planetary bodies — a technique known as crater counting chronology. Larger craters excavate deeper into the crust, exposing subsurface materials and creating central peaks, while smaller craters probe the mechanical properties of surface layers. The transition diameter between simple (bowl-shaped) and complex (terraced, central-peak) craters on Mars occurs near 6-8 km, reflecting the lower surface gravity compared to Earth.
+
+Ejecta morphology is particularly diagnostic on Mars because many craters display layered or fluidized ejecta blankets — rampart craters — that are interpreted as evidence for subsurface volatiles (water ice or liquid water) at the time of impact. The number of ejecta layers and their morphological classification correlate with crater size, latitude, and inferred subsurface ice distribution. This makes the Robbins database an essential resource for mapping the planet's volatile inventory and understanding the evolution of Mars's climate and hydrological cycle.
+
+The depth-to-diameter ratios recorded in this catalog also carry important information. Fresh craters follow a predictable scaling relationship between depth and diameter, while degraded craters exhibit shallower profiles due to infilling by sediments, lava, or aeolian deposits. Systematic deviations from the fresh-crater scaling law across different regions of Mars reveal patterns of resurfacing and erosion that constrain the geological history of the Martian surface.
+
 ## Schema
 
 | Column | Type | Description |

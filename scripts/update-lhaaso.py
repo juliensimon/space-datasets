@@ -169,6 +169,10 @@ may have separate entries for the KM2A (above ~25 TeV) and WCDA (1--25 TeV) dete
 spectral measurements. The catalog includes positions, extensions, spectral parameters, and associations
 with known sources.
 
+LHAASO has fundamentally reshaped ultra-high-energy gamma-ray astronomy by demonstrating that the Milky Way contains numerous sources capable of accelerating particles beyond 1 PeV (10^15 eV), the so-called "PeVatron" threshold. Before LHAASO, only a handful of sources had been detected above 100 TeV; the 1LHAASO catalog reveals a rich population of UHE emitters concentrated along the Galactic plane, many associated with pulsar wind nebulae, supernova remnants, and massive stellar clusters. These detections directly constrain the origin of Galactic cosmic rays, one of the oldest unsolved problems in astrophysics.
+
+The two detector sub-systems provide complementary energy coverage: WCDA (Water Cherenkov Detector Array) is sensitive from ~1 to 25 TeV with a large effective area for survey work, while KM2A (the square-kilometer particle detector array) achieves unprecedented sensitivity above 25 TeV and extends to the PeV regime. The spectral index measured for each source encodes the energy distribution of the parent particle population, and the presence or absence of spectral cutoffs above 100 TeV distinguishes hadronic PeVatrons from leptonic emitters limited by synchrotron and inverse-Compton cooling. Source extension measurements further constrain the diffusion of accelerated particles away from their acceleration sites.
+
 - **{n_km2a}** KM2A entries, **{n_wcda}** WCDA entries
 - **{n_extended}** extended sources, **{n_associated}** with known associations
 

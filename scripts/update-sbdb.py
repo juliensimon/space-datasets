@@ -187,6 +187,12 @@ physical properties (absolute magnitude, diameter, albedo, spectral type where m
 and metadata (observation arc, number of observations, orbit uncertainty). It covers
 numbered and unnumbered asteroids, periodic and non-periodic comets.
 
+The six Keplerian orbital elements in this dataset -- semimajor axis, eccentricity, inclination, longitude of ascending node, argument of perihelion, and mean anomaly -- define each object's instantaneous orbit at the reference epoch. These osculating elements change over time due to gravitational perturbations from the planets, so they represent a snapshot rather than a permanent orbit. The condition code (0 through 9) quantifies how well-determined the orbit is: objects with decades of observations and hundreds of astrometric measurements receive a 0, while single-apparition objects with short arcs may have codes of 7 or higher. The orbit fit RMS indicates the residual scatter between predicted and observed positions, typically a fraction of an arcsecond for well-observed objects.
+
+The physical parameters -- absolute magnitude H, diameter, albedo, and spectral type -- are far sparser than the orbital data. Fewer than 2% of known asteroids have directly measured diameters (primarily from thermal infrared surveys like WISE/NEOWISE, radar observations, or stellar occultations). Absolute magnitude serves as a proxy for size but depends on the unknown albedo: a bright, reflective S-type asteroid and a dark, carbonaceous C-type asteroid with identical H values can differ in diameter by a factor of two or more. The two spectral taxonomy columns (Bus-DeMeo and Tholen systems) encode surface composition information derived from visible and near-infrared reflectance spectroscopy, available for only a few thousand objects.
+
+The Minimum Orbit Intersection Distance (MOID) columns are critical for hazard assessment. Earth MOID measures the closest possible geometric approach between two orbits, independent of where the objects actually are at any given time. An asteroid is classified as a Potentially Hazardous Asteroid (PHA) if its Earth MOID is below 0.05 AU and its absolute magnitude is 22.0 or brighter (roughly 140 meters in diameter assuming typical albedos). The Jupiter MOID is relevant for understanding dynamical evolution, as close encounters with Jupiter are the primary mechanism driving objects from the main belt into near-Earth space.
+
 ## Schema
 
 | Column | Type | Description |

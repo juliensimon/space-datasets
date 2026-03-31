@@ -253,6 +253,10 @@ The fill factor varies by property: orbital elements are available for nearly al
 while physical measurements like mass ({n_with_mass:,} objects) and density
 ({n_with_density:,} objects) are known for far fewer.
 
+The physical properties in this catalog reveal the extraordinary diversity of the small body population. Diameters range from sub-kilometer near-Earth asteroids to dwarf planets like Ceres (940 km). Albedos span two orders of magnitude, from the coal-dark surfaces of primitive C-type asteroids (albedo ~0.03) to the highly reflective ice-rich surfaces of some outer solar system objects (albedo >0.5). Bulk densities are equally diagnostic: metallic M-type asteroids can exceed 5 g/cm3, stony S-types cluster around 2.5--3.5 g/cm3, and porous rubble-pile C-types often fall below 1.5 g/cm3. These density measurements, derived from mass estimates via spacecraft encounters, mutual orbits of binary asteroids, or gravitational deflection of neighboring bodies, constrain internal structure and macro-porosity.
+
+Dynamical family membership, included for objects with computed proper orbital elements, connects individual asteroids to their collisional history. Families are clusters in proper element space (semi-major axis, eccentricity, inclination) produced by catastrophic disruption or cratering events. The Tisserand parameter with respect to Jupiter serves as a dynamical discriminant: values below 3.0 indicate Jupiter-family comet-like orbits, while main-belt asteroids typically have values above 3.0. The minimum orbit intersection distance (MOID) with Earth flags potentially hazardous objects and is essential for planetary defense assessments.
+
 ## Schema
 
 | Column | Type | Description |

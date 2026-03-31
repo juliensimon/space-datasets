@@ -119,6 +119,12 @@ in Earth orbit and beyond — active satellites, defunct spacecraft, rocket bodi
 debris. Each entry includes launch metadata, orbital parameters, operational status,
 and physical characteristics. This dataset mirrors the full catalog daily from CelesTrak.
 
+The satellite catalog traces its origins to the dawn of the Space Age: the first entry is Sputnik 1, launched on October 4, 1957. Every object large enough to be tracked by the US Space Surveillance Network (typically >10 cm in LEO, >1 m in GEO) receives a NORAD catalog number and an international designator (COSPAR ID) that encodes its launch year, launch sequence number, and piece letter. The catalog includes not just active satellites but the full historical record of rocket upper stages, mission-related debris, and fragments from breakup events. As of the mid-2020s, the catalog has grown dramatically due to mega-constellation deployments, with Starlink alone accounting for a substantial fraction of all tracked payloads.
+
+The operational status codes provide a coarse but useful picture of spacecraft health. A satellite marked "+" is actively controlled, while "-" indicates it has ceased operations but remains in orbit. Codes like "P" (partially operational), "B" (backup/standby), and "X" (extended mission beyond design life) capture the nuanced states of aging spacecraft fleets. The radar cross-section (RCS) field, while often approximate, gives insight into object size -- critical for collision probability assessments. Orbital parameters (period, inclination, apogee, perigee) describe the object's trajectory and are updated as new tracking observations are processed.
+
+This dataset underpins a wide range of applications: space traffic management, conjunction assessment and collision avoidance, orbital debris population studies, launch history analysis, spectrum management, and insurance risk modeling. Cross-referencing SATCAT entries with TLE orbital elements enables precise orbit determination, while the launch site and owner fields support geopolitical analysis of space activity trends.
+
 ## Schema
 
 | Column | Type | Description |

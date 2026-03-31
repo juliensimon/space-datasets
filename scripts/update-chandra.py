@@ -207,6 +207,12 @@ CSC 2.1 covers roughly 560 square degrees of sky and includes sources from over
 studies of active galactic nuclei, X-ray binaries, supernova remnants, galaxy clusters,
 and stellar coronae.
 
+Chandra's angular resolution of approximately 0.5 arcseconds — comparable to optical ground-based telescopes and an order of magnitude sharper than any other X-ray observatory — is achieved by its four nested pairs of grazing-incidence Wolter Type-I mirrors (the High Resolution Mirror Assembly). This exquisite resolution is what makes the Chandra Source Catalog uniquely powerful: it resolves individual X-ray sources in crowded fields such as the Galactic center, globular clusters, and nearby galaxies where other X-ray telescopes would see only confused blends. The ACIS CCD detectors provide simultaneous imaging and moderate spectral resolution (E/dE ~ 10-50) across the 0.5-7 keV band, while the HRC microchannel plate detector extends timing and imaging capabilities.
+
+The multi-band photometry in the catalog — split into soft (0.5-1.2 keV), medium (1.2-2.0 keV), hard (2.0-7.0 keV), broad (0.5-7.0 keV), and ultrasoft (0.2-0.5 keV) bands — encodes critical physical information. Hardness ratios derived from these bands serve as low-resolution spectral diagnostics: soft sources are typically stellar coronae or supersoft sources (white dwarfs undergoing steady nuclear burning), while hard sources tend to be heavily absorbed AGN or magnetic cataclysmic variables. The variability flags identify transient and variable sources such as X-ray binaries undergoing outbursts, flaring stars, and tidal disruption events where a star is torn apart by a supermassive black hole.
+
+The catalog's value extends well beyond X-ray astronomy. Cross-matching CSC positions with optical surveys (SDSS, Gaia, LSST), infrared catalogs (WISE, 2MASS), and radio surveys (VLASS, FIRST) is a standard technique for identifying the nature of X-ray sources and building multi-wavelength spectral energy distributions. The sub-arcsecond positions minimize false matches, making CSC one of the cleanest catalogs for statistical cross-identification studies and machine learning classification of astronomical source types.
+
 ## Quick stats
 
 - **{n_total:,}** unique X-ray sources{sig_line}{flux_line}

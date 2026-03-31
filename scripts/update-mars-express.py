@@ -257,6 +257,10 @@ This dataset contains the full observation metadata from the ESA Planetary Scien
 (PSA), conforming to the EPN-TAP standard. Each row represents one observation or data
 granule, with timing, spatial coverage, instrument parameters, and access URLs.
 
+Mars Express has been one of the most scientifically productive Mars missions ever flown. HRSC has produced the most complete high-resolution stereo topographic map of Mars, essential for geological mapping and landing site characterization. MARSIS, a subsurface radar sounder, detected reflections consistent with liquid water beneath the south polar layered deposits — a finding that reshaped understanding of present-day Mars hydrology. OMEGA mapped the global mineralogy of the Martian surface, identifying phyllosilicates, sulfates, and other aqueous alteration minerals that constrain the planet's climatic history. SPICAM and PFS have tracked the seasonal behavior of water vapor, ozone, and dust in the Martian atmosphere across multiple Mars years.
+
+The longevity of the mission — over two decades in Mars orbit — makes this observation catalog uniquely valuable for studying long-term variability. It captures multiple complete Martian years of atmospheric monitoring, seasonal polar cap evolution, and dust storm cycles, including the planet-encircling dust event of 2018. The temporal baseline also enables detection of surface changes such as fresh impact craters, slope streaks, and CO2 geyser activity at the south pole. Cross-referencing observations from different instruments at the same location and time supports multi-wavelength analysis that no single instrument could achieve alone.
+
 ## Instruments
 
 {inst_lines}

@@ -272,6 +272,12 @@ Key economic fields:
 - **closeness_score** -- accessibility metric (lower delta-v = higher closeness)
 - **asterank_score** -- composite ranking combining value, profit, and accessibility
 
+Asteroid mining economics rest on three pillars: what an object is made of, how large it is, and how much energy is needed to reach it. Spectral classification provides the primary compositional constraint -- C-type (carbonaceous) asteroids are rich in water and organic compounds, S-type (silicaceous) asteroids contain iron-nickel metal and silicate minerals, and M-type (metallic) asteroids may be fragments of differentiated planetesimal cores with high concentrations of iron, nickel, cobalt, and platinum-group elements. A single kilometer-scale M-type asteroid could contain more platinum-group metals than have ever been mined on Earth. The estimated values in this dataset are derived by mapping spectral types to expected bulk compositions and scaling by volume, producing order-of-magnitude resource valuations.
+
+The economic viability of asteroid mining depends critically on the delta-v cost of reaching a target, which determines propellant mass and thus mission cost. The closeness score in Asterank encodes this accessibility: objects in Earth-like orbits (low eccentricity, low inclination, semimajor axis near 1 AU) require minimal orbital energy to rendezvous with and return material from. The most economically interesting asteroids are therefore not necessarily the largest or most resource-rich, but those that combine moderate resource value with exceptionally low access cost -- typically small near-Earth asteroids in low-inclination, low-eccentricity orbits.
+
+The profit estimates should be understood as theoretical upper bounds under optimistic assumptions about extraction technology, launch costs, and market dynamics. In practice, returning even kilograms of asteroid material to Earth requires solving formidable engineering challenges in autonomous mining, ore processing in microgravity, and deep-space transportation. Nevertheless, the dataset captures a meaningful ranking of relative economic potential and serves as a starting point for trade studies comparing mission architectures, target selection, and resource utilization strategies for the emerging space resource economy.
+
 ## Schema
 
 | Column | Type | Description |

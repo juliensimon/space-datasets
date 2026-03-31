@@ -121,6 +121,10 @@ stars, X-ray binaries, and other X-ray-emitting objects.
 Released in January 2024, the eRASS1 catalog represents a four-fold increase
 over the total number of X-ray sources known before eROSITA.
 
+The soft X-ray band (0.2--2.3 keV) surveyed by eROSITA is dominated by emission from hot plasmas in galaxy clusters, coronally active stars, and accretion onto compact objects. The sheer scale of eRASS1 transforms X-ray astronomy from a regime of targeted observations into genuine survey science: the catalog contains roughly four times more sources than the cumulative total from all previous X-ray missions combined, including ROSAT, XMM-Newton, and Chandra. For the first time, statistical studies of the X-ray luminosity function, AGN obscuration fractions, and cluster mass functions can be performed with sample sizes comparable to optical surveys.
+
+Extended sources in this catalog are predominantly galaxy clusters, where the X-ray emission traces the intracluster medium heated to tens of millions of kelvin. These detections are central to precision cosmology: the cluster mass function and its evolution with redshift constrain the matter density parameter and the dark energy equation of state. Point-like sources are largely active galactic nuclei powered by supermassive black hole accretion, along with stellar coronae and compact binary systems in the Milky Way. The positional accuracy (typically a few arcseconds) enables efficient multi-wavelength cross-matching for source classification and redshift determination.
+
 ## Schema
 
 | Column | Type | Description |

@@ -177,6 +177,10 @@ Antarctic ice at the South Pole. It detects high-energy neutrinos from astrophys
 sources such as active galactic nuclei, blazars, and other extreme cosmic environments.
 This catalog lists point sources identified in IceCube neutrino data.
 
+The point source catalog represents the result of searches for statistically significant clustering of neutrino arrival directions above the isotropic atmospheric background. Each candidate source is characterized by a test statistic (TS) reflecting the likelihood of a genuine astrophysical signal versus the null hypothesis, along with a best-fit number of signal events and spectral index. These searches are sensitive to both steady emitters and time-integrated emission from variable sources, probing hadronic acceleration in jets, accretion flows, and shock environments across the sky.
+
+Neutrino point source detection is inherently challenging because the atmospheric neutrino background is orders of magnitude larger than the astrophysical signal, and the angular resolution of muon track reconstruction in ice (~0.5--1 degree at TeV energies) limits the ability to resolve individual sources. The catalog therefore includes both high-confidence detections and sub-threshold candidates that may become significant with additional exposure. Cross-correlation with gamma-ray, X-ray, and radio catalogs is a key strategy for identifying the astrophysical counterparts and understanding the relative contributions of leptonic and hadronic processes in candidate source populations such as blazars, Seyfert galaxies, and starburst galaxies.
+
 ## Schema
 
 | Column | Type | Description |

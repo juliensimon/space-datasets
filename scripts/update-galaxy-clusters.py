@@ -168,6 +168,12 @@ the second and final Planck SZ source catalog, based on the full mission data.
 This dataset includes positions, redshifts, SZ-derived mass proxies, integrated SZ
 signal, signal-to-noise ratio, and detection pipeline information.
 
+Galaxy clusters occupy a unique position in cosmology: they sit at the intersection of structure formation theory and observational cosmology. As the most massive virialized objects in the universe, their abundance as a function of mass and redshift is exquisitely sensitive to the matter density parameter, the amplitude of density fluctuations (sigma_8), and the dark energy equation of state. Counting clusters at different epochs therefore provides independent constraints on cosmological parameters complementary to those from the CMB power spectrum, baryon acoustic oscillations, and Type Ia supernovae.
+
+The thermal Sunyaev-Zel'dovich effect exploited by Planck arises when CMB photons inverse-Compton scatter off the hot electrons in the intracluster medium, which can reach temperatures of 10^7 to 10^8 K. This produces a characteristic spectral distortion -- a decrement below ~217 GHz and an increment above -- that is independent of redshift, making SZ surveys uniquely capable of detecting massive clusters at any distance. The integrated SZ signal (Y_5R500) is tightly correlated with total cluster mass, providing a nearly mass-limited sample that is essential for cluster cosmology.
+
+The PSZ2 catalog has served as the definitive SZ-selected cluster sample for nearly a decade, anchoring studies of cluster scaling relations, gas physics, and the calibration of weak-lensing mass estimates. It also provides the reference sample for follow-up observations with X-ray telescopes (Chandra, XMM-Newton) and optical/infrared surveys that measure galaxy populations, velocity dispersions, and strong-lensing features within these massive structures.
+
 ## Schema
 
 | Column | Type | Description |

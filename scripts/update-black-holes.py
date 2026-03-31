@@ -131,6 +131,14 @@ Catalog of **{n}** known black hole systems from [SIMBAD](https://simbad.u-stras
 **{n_confirmed}** confirmed black holes, **{n_candidate}** candidates, and
 **{n_xrb}** X-ray binary systems hosting black hole companions.
 
+## Dataset description
+
+Black holes are regions of spacetime where gravity is so extreme that nothing -- not even light -- can escape once past the event horizon. Stellar-mass black holes, the primary focus of this catalog, form when massive stars (typically above 20-25 solar masses) exhaust their nuclear fuel and undergo gravitational collapse. They are most readily detected when they exist in binary systems with a companion star, accreting material that heats to millions of degrees and emits intense X-radiation. The SIMBAD classification system distinguishes confirmed black holes (BH), candidates awaiting definitive mass measurements (BH?), and the X-ray binary systems (XB*, HXB, LXB) in which black holes are found.
+
+The distinction between high-mass X-ray binaries (HXBs) and low-mass X-ray binaries (LXBs) reflects fundamentally different evolutionary pathways and accretion physics. HXBs contain young, massive companion stars and are powered primarily by wind accretion, while LXBs involve older, low-mass companions that transfer material through Roche lobe overflow, often producing characteristic transient outbursts separated by years of quiescence. Dynamical mass measurements from radial velocity curves of the companion star are the gold standard for confirming a compact object as a black hole -- any compact object exceeding roughly 3 solar masses (the Tolman-Oppenheimer-Volkoff limit for neutron stars) is classified as a black hole.
+
+This catalog is valuable for studying the mass distribution of stellar-mass black holes, the spatial distribution of compact objects in the Galaxy, and the population statistics that constrain binary stellar evolution models. It complements the gravitational wave event catalog, which probes the merging population, by providing the census of black holes detected through electromagnetic radiation in accreting systems.
+
 ## Schema
 
 | Column | Type | Description |

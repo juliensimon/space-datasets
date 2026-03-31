@@ -228,6 +228,12 @@ most comprehensive census of gamma-ray AGN. It includes BL Lac objects, flat-spe
 quasars (FSRQs), and other AGN types, with spectral parameters, variability indices, and
 multiwavelength counterpart associations.
 
+The two dominant blazar subclasses — BL Lac objects and FSRQs — represent fundamentally different accretion regimes onto supermassive black holes. FSRQs are high-luminosity sources with strong broad emission lines, radiatively efficient accretion disks, and gamma-ray spectra that tend to be soft (steep spectral indices) due to dominant external Compton scattering off photons from the broad-line region or dusty torus. BL Lac objects have weak or absent emission lines, radiatively inefficient accretion flows, and harder gamma-ray spectra produced primarily by synchrotron self-Compton emission within the jet. This spectral dichotomy underpins the "blazar sequence" — the observed anti-correlation between bolometric luminosity and the peak frequency of the synchrotron spectral component — though its physical origin remains debated.
+
+The 4LAC is a cornerstone for AGN unification studies and jet physics. The redshift distribution encodes the cosmological evolution of the blazar population: FSRQs show strong positive evolution (more numerous and luminous at higher redshifts, peaking around z ~ 1-2), tracing the epoch of peak supermassive black hole growth, while BL Lac objects show weaker or negative evolution. The spectral parameters — power-law indices, log-parabola curvatures, and pivot energies — constrain particle acceleration mechanisms and the jet magnetic field structure. Variability indices identify flaring sources that are prime targets for very-long-baseline interferometry (VLBI) imaging of superluminal jet components and for multi-messenger searches in neutrino data.
+
+The gamma-ray properties in 4LAC, combined with radio, optical, and X-ray data, enable construction of broadband spectral energy distributions (SEDs) spanning over 15 decades in frequency. These SEDs are the primary observational tool for constraining physical jet models — distinguishing between leptonic scenarios (where electrons and positrons radiate via synchrotron and inverse-Compton processes) and hadronic models (where protons accelerated in the jet produce gamma rays through pion cascades, with accompanying neutrino emission).
+
 ## Schema
 
 | Column | Type |

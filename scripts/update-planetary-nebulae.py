@@ -140,6 +140,12 @@ stellar populations and chemical enrichment. This catalog from Jacoby et al. (20
 presents PNe identified and characterized using the MUSE integral-field spectrograph
 on ESO's Very Large Telescope, providing unprecedented spectroscopic detail.
 
+Planetary nebulae occupy a brief but astrophysically critical phase in the life cycle of stars between roughly 1 and 8 solar masses. After exhausting helium in their cores, these stars ascend the asymptotic giant branch (AGB) and shed their outer envelopes through stellar winds. The exposed hot core -- destined to become a white dwarf -- ionizes the surrounding gas, producing the characteristic emission lines of a planetary nebula. The [OIII] 5007 Angstrom line is the single brightest emission feature and serves as the standard detection and distance measurement tool through the planetary nebula luminosity function (PNLF), one of the most reliable secondary distance indicators in extragalactic astronomy.
+
+The MUSE integral-field spectrograph provides simultaneous imaging and spectroscopy over a 1 x 1 arcminute field of view with 0.2-arcsecond spatial sampling, enabling detection of PNe that would be missed by traditional narrow-band imaging surveys. MUSE's spectral coverage from 4700 to 9300 Angstroms captures not only [OIII] and H-alpha but also diagnostic lines such as [NII], [SII], and HeII that constrain the nebular excitation, chemical abundances, and central star temperature. This makes the catalog particularly valuable for studying the chemical enrichment history of their host galaxies, since PNe trace the oxygen and nitrogen yields from intermediate-mass stellar nucleosynthesis.
+
+PNe in this catalog span multiple host galaxies, providing distance-independent samples for comparative studies of stellar population properties. The PNLF bright-end cutoff at M* ~ -4.5 mag in [OIII] is empirically constant across galaxy types, making these objects powerful standardizable candles for measuring distances out to approximately 20 Mpc.
+
 ## Quick stats
 
 - **{n_total:,}** planetary nebulae

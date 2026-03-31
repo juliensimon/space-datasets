@@ -152,6 +152,10 @@ characterizing these systems. This catalog from Slawson et al. (2011) provides t
 definitive Kepler eclipsing binary list with orbital periods, eclipse morphology
 parameters, and derived stellar properties.
 
+Eclipsing binaries are astrophysical laboratories of extraordinary precision. Because the geometry of mutual eclipses is tightly constrained by Kepler's laws and photometric observations, these systems yield direct, model-independent measurements of stellar masses and radii -- the fundamental benchmarks against which all stellar evolution theory is calibrated. The morphology parameter in this catalog quantifies the light curve shape on a continuous scale, distinguishing well-detached systems (two distinct eclipses) from contact binaries where both stars overflow their Roche lobes and share a common envelope.
+
+The Kepler eclipsing binary catalog is a cornerstone of binary star research. Its uniform four-year photometric baseline and micro-magnitude precision enabled the discovery of systems with period changes, apsidal motion, third-body eclipse timing variations, and pulsating components (e.g., tidally excited oscillations in heartbeat stars). These phenomena probe tidal dissipation, stellar interior structure, and hierarchical triple-star dynamics in ways that ground-based surveys cannot match. The catalog also provides a critical training set for machine learning classifiers designed to identify eclipsing binaries in TESS, LSST, and other modern surveys.
+
 ## Quick stats
 
 - **{n_total:,}** eclipsing binaries

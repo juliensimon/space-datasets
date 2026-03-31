@@ -135,6 +135,12 @@ Ap indices, F10.7 solar radio flux, and other solar/geomagnetic parameters essen
 - **Conjunction screening** — collision avoidance maneuver planning
 - **Space weather research** — solar cycle analysis, geomagnetic storm studies
 
+The CelesTrak space weather file, maintained by Dr. T.S. Kelso, is the de facto standard input file for operational orbit determination and propagation in the space surveillance community. It consolidates data from multiple agencies -- NOAA SWPC for Kp/Ap indices and solar flux, GFZ Potsdam for definitive geomagnetic indices, and the NRC Herzberg Institute for F10.7 measurements -- into a single, consistently formatted daily time series. The file includes both historical observations and near-term predictions (typically 45 days ahead), using the same format conventions expected by legacy Fortran propagators and modern Python/C++ SGP4 implementations alike.
+
+For orbit propagation, the key parameters are the daily and 3-hourly Ap indices (which drive geomagnetic heating in thermospheric density models) and the F10.7 solar radio flux with its 81-day running averages (which drive solar EUV heating). The NRLMSISE-00 model, for example, requires daily Ap, the 3-hourly Ap for the current and preceding 33 hours, daily F10.7, and the 81-day centered average F10.7bar. JB2008 uses additional solar indices (S10.7, M10.7, Y10.7) that are available in extended versions of this file. Errors in these space weather inputs propagate directly into drag coefficient estimates, making the quality and timeliness of this data critical for conjunction assessment and collision avoidance maneuvers.
+
+The dataset spans the full modern era of satellite operations, with the historical record reaching back to 1957 (International Geophysical Year). This long baseline captures multiple complete solar cycles (cycles 19 through 25), enabling statistical studies of solar cycle variability and its impact on the orbital environment. The inclusion of predicted values supports operational planning for satellite constellation managers who need to anticipate drag conditions for orbit maintenance scheduling.
+
 ## Schema
 
 | Column | Type |

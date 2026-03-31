@@ -138,6 +138,12 @@ SUMSS is a deep radio survey at 843 MHz covering 8,100 square degrees of the sou
 by northern-hemisphere surveys like NVSS and FIRST, providing a matched-sensitivity southern
 radio catalog essential for all-sky studies.
 
+The Molonglo Observatory Synthesis Telescope (MOST) is a large east-west Earth-rotation aperture synthesis telescope located near Canberra, Australia. Originally built for pulsar research, it was reconfigured for continuum survey work at 843 MHz, a frequency chosen to complement the 1.4 GHz NVSS in the north. SUMSS achieves a limiting peak brightness of approximately 6 mJy/beam at declination -50 degrees, with sensitivity scaling as the cosecant of declination due to the telescope's cylindrical geometry. The catalog reaches roughly the same source density as NVSS, enabling seamless all-sky radio source studies when the two surveys are combined.
+
+SUMSS is particularly important for studying radio sources in the Magellanic Clouds, the Galactic bulge at southern latitudes, and southern galaxy clusters that are inaccessible to VLA-based surveys. The 843 MHz observing frequency also provides a longer lever arm for spectral index measurements when combined with 1.4 GHz (NVSS/FIRST) or 150 MHz (TGSS) data, improving constraints on the emission mechanisms of individual sources. Steep-spectrum sources identified through SUMSS-NVSS spectral indices have been used to discover high-redshift radio galaxies and dying radio AGN.
+
+The survey has been cross-matched extensively with X-ray catalogs (ROSAT, eROSITA), infrared surveys (2MASS, WISE), and optical redshift surveys to build multi-wavelength samples of AGN, star-forming galaxies, and galaxy clusters across the southern sky.
+
 ## Schema
 
 | Column | Type | Description |

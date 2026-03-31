@@ -151,6 +151,12 @@ celestial and terrestrial reference frames, which is critical for:
 The IERS finals2000A series combines observed values (from VLBI, SLR, GPS) with
 predictions extending ~1 year into the future.
 
+Earth's rotation is not uniform. The planet's spin axis wanders relative to both the crust (polar motion) and the celestial reference frame (precession and nutation), while the rotation rate itself fluctuates on timescales from hours to millennia. Polar motion consists of two main components: the Chandler wobble (a free oscillation with a period of approximately 433 days and amplitude of 0.1-0.2 arcseconds, equivalent to 3-6 meters at the pole) and an annual oscillation driven by seasonal redistribution of atmospheric and oceanic mass. Superimposed on these is a secular drift of the pole toward roughly 80 degrees W longitude at about 10 cm/year, driven by post-glacial rebound of the mantle.
+
+The UT1-UTC difference tracks the accumulated departure of Earth's rotational angle from atomic time. Earth's rotation is gradually slowing due to tidal dissipation (primarily lunar tides in the oceans), causing UT1 to drift behind UTC at an average rate of roughly 2 milliseconds per day. This secular trend is punctuated by irregular decadal fluctuations attributed to core-mantle coupling, and by shorter-period variations from atmospheric angular momentum exchange. When |UT1-UTC| approaches 0.9 seconds, the IERS directs the insertion of a leap second. The length-of-day (LOD) excess, also provided in this dataset, is the time derivative of UT1-UTC and directly reflects these torques.
+
+These parameters are not merely of academic interest -- they are operationally critical. A 1-milliarcsecond error in polar motion corresponds to roughly 3 cm of positioning error on Earth's surface, which propagates directly into satellite orbit determination, GNSS navigation solutions, and synthetic aperture radar interferometry. Deep-space missions require UT1-UTC to millimetre-equivalent accuracy for precise antenna pointing and Doppler tracking. The nutation offsets (dX, dY) correct the IAU 2000A precession-nutation model for the unpredictable influence of the fluid core's free core nutation, with a period near 430 days and amplitudes of order 0.1-0.3 milliarcseconds.
+
 ## Schema
 
 | Column | Type | Description |

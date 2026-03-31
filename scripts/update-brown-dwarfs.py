@@ -142,6 +142,12 @@ giant planets. This volume-complete 40 pc sample from Sebastian et al. (2021) pr
 the most comprehensive census of the solar neighborhood's ultracool population, including
 L, T, and Y dwarfs ideal for JWST follow-up.
 
+Brown dwarfs occupy a unique region of parameter space between the coolest hydrogen-burning stars (spectral type ~M9, effective temperatures around 2300 K) and the most massive giant planets (~13 Jupiter masses). They form like stars through gravitational collapse of molecular cloud fragments, but their masses (roughly 13-80 Jupiter masses) are insufficient to sustain stable hydrogen fusion. Instead, they cool monotonically over billions of years, passing through the L, T, and Y spectral classes as their atmospheres transition from dust-dominated (L dwarfs, ~1400-2200 K) to methane-dominated (T dwarfs, ~500-1400 K) to ammonia- and water-ice-dominated (Y dwarfs, below ~500 K). This cooling sequence makes brown dwarfs natural laboratories for studying atmospheric physics under conditions intermediate between stellar photospheres and planetary atmospheres.
+
+A volume-complete sample like this 40 pc census is essential for determining the substellar mass function -- the number of brown dwarfs formed per unit mass interval -- which constrains theories of star and planet formation. The space density of brown dwarfs in the solar neighborhood informs estimates of the total baryonic mass budget of the Galaxy and the frequency of free-floating planetary-mass objects. The 40 pc distance limit ensures that even the faintest known Y dwarfs (absolute magnitudes fainter than 20 in the J-band) are detectable with current infrared surveys such as WISE, 2MASS, and UKIDSS.
+
+JWST has transformed brown dwarf science by resolving molecular absorption features in the mid-infrared (3-28 microns) that are inaccessible from the ground, including water, methane, ammonia, carbon dioxide, and phosphine. The nearby brown dwarfs in this catalog are the highest signal-to-noise targets for JWST atmospheric retrieval studies, providing benchmark objects against which atmospheric models are calibrated before being applied to the much fainter directly imaged exoplanets.
+
 ## Quick stats
 
 - **{n_total:,}** ultracool dwarfs within 40 pc

@@ -131,6 +131,12 @@ It provides 25 arcsecond resolution and a median rms noise of ~3.5 mJy/beam. The
 essential for low-frequency radio spectral studies, identifying steep-spectrum sources such as
 pulsars, high-redshift radio galaxies, and galaxy cluster relics.
 
+The Giant Metrewave Radio Telescope (GMRT) near Pune, India, is one of the world's premier low-frequency radio interferometers, consisting of 30 fully steerable 45-meter dishes spread over a 25-kilometer baseline. TGSS ADR1 exploits the GMRT's unique sensitivity at 150 MHz to produce the deepest wide-field survey at this frequency, surpassing earlier efforts like the 7C survey and the Westerbork Northern Sky Survey (WENSS) at 325 MHz. The 150 MHz band is scientifically rich because synchrotron emission from relativistic electrons is strongest at low frequencies, making TGSS especially sensitive to aged electron populations that fade at higher frequencies.
+
+TGSS has proven invaluable for discovering and characterizing diffuse radio emission in galaxy clusters, including radio halos, relics, and mini-halos that trace merger shocks and turbulence in the intracluster medium. The catalog is also a primary resource for identifying ultra-steep-spectrum (USS) radio sources, which are among the best tracers of high-redshift radio galaxies at z > 2. By computing spectral indices between TGSS (150 MHz) and NVSS or FIRST (1.4 GHz), researchers can efficiently select USS candidates for targeted follow-up with optical and infrared telescopes.
+
+At 150 MHz, the ionosphere introduces direction-dependent phase errors that must be carefully calibrated. The ADR1 processing pipeline applied facet-based self-calibration to correct these effects, achieving a median positional accuracy of approximately 2 arcseconds and reliable flux densities above 7 sigma. TGSS ADR1 serves as the primary comparison catalog for next-generation low-frequency surveys from LOFAR and the future SKA-Low.
+
 ## Schema
 
 | Column | Type | Description |

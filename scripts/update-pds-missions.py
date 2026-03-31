@@ -333,6 +333,10 @@ The NASA [Planetary Data System](https://pds.nasa.gov/) is the official archive 
 
 Each entity includes its PDS Logical Identifier (LID), which serves as a stable cross-reference key. Target bodies, instruments, and spacecraft are linked via semicolon-separated reference columns that can be split and joined across the three configs.
 
+The Planetary Data System was established in 1989 to ensure the long-term preservation and accessibility of NASA's planetary science data. It is organized into discipline nodes — Atmospheres, Geosciences, Imaging, Plasma Interactions, Ring-Moon Systems, and Small Bodies — each responsible for archiving data from relevant instruments and missions. The context catalog captured in this dataset serves as the master registry that links every archived data product back to its originating mission, spacecraft, and instrument, forming the backbone of the PDS metadata infrastructure.
+
+This catalog spans the entire history of NASA's planetary exploration program, from early flyby missions like Mariner and Pioneer through flagship orbiters (Cassini, Juno, Mars Reconnaissance Orbiter), landers and rovers (Viking, Phoenix, Curiosity, Perseverance), sample return missions (Stardust, OSIRIS-REx, Genesis), and ground-based observing campaigns. The mission dates, target body references, and instrument cross-links enable systematic analysis of how planetary exploration has evolved over six decades — which bodies have been studied, with what instrument types, and over what time periods. For data scientists, the linked structure of missions, spacecraft, and instruments provides a natural knowledge graph for building recommendation systems, planning future investigations, or simply navigating the vast PDS archive.
+
 ## Configs
 
 This dataset has three configs (tables):

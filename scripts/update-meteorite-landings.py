@@ -183,6 +183,10 @@ sourced from The Meteoritical Society. Each record includes the meteorite's name
 classification, mass (where known), geographic coordinates, and whether the meteorite
 was observed falling ("Fell") or found after the fact ("Found").
 
+Meteorites are the only extraterrestrial materials available for direct laboratory analysis, making them indispensable for understanding solar system formation and evolution. The classification system reflects mineralogy and petrogenesis: ordinary chondrites (H, L, LL groups) are the most common falls and sample undifferentiated material from the inner asteroid belt, while carbonaceous chondrites (CI, CM, CV, CO, CR groups) preserve pre-solar grains and organic molecules dating to before the Sun's formation. Iron meteorites (e.g., Iron-IVA, Iron-IIIAB) are fragments of the metallic cores of differentiated asteroids that were disrupted by collisions, and achondrites (e.g., HED meteorites from 4 Vesta, SNC meteorites from Mars, and lunar meteorites) sample the crusts and mantles of differentiated bodies.
+
+The distinction between "Fell" and "Found" meteorites has important implications for collection bias. Observed falls provide an unbiased sample of the meteorite flux at Earth, dominated by ordinary chondrites (~80% of falls). Found meteorites are biased toward durable iron-rich specimens that survive weathering and are visually distinctive, which is why iron meteorites are overrepresented in "Found" collections relative to their actual fall rate (~5%). The geographic distribution of finds is heavily concentrated in deserts (the Sahara, Antarctica, the Nullarbor Plain) where dark meteorites contrast against light terrain and minimal weathering preserves specimens for thousands of years. Antarctic meteorite collection programs alone have recovered over 60,000 specimens since the 1960s.
+
 ## Schema
 
 | Column | Type | Description |

@@ -175,6 +175,12 @@ position, duration, fluence, and redshift.
 Currently **{n_total:,}** GRBs ({n_short:,} short, {n_long:,} long), of which
 **{n_with_z:,}** have measured redshifts. Date range: **{date_range}**.
 
+The challenge of GRB astronomy has always been fragmentation: CGRO/BATSE (1991-2000) detected over 2,700 bursts in the 20 keV - 2 MeV range but could not localize them precisely enough for afterglow follow-up. BeppoSAX (1996-2002) provided the first arcminute X-ray localizations that enabled the redshift revolution. Swift (2004-present) added rapid autonomous slewing and arcsecond localizations via its X-ray and UV/optical telescopes. Fermi GBM (2008-present) restored near all-sky coverage with superior spectral capabilities. Each mission contributes a different piece of the puzzle — sky coverage, energy band, localization precision, spectral resolution, or temporal cadence — and no single instrument catalog tells the complete story.
+
+GRBweb solves this by cross-matching triggers across missions, deduplicating events, and presenting a unified record for each burst. The inclusion of redshifts is particularly valuable: only a small fraction of GRBs have spectroscopic or photometric redshifts (typically those localized well enough for optical afterglow spectroscopy), but these are the events that anchor our understanding of GRB luminosity functions, host galaxy properties, and the use of GRBs as probes of star formation in the high-redshift universe. The redshift distribution extends from z ~ 0.01 for nearby events to z > 8 for the most distant GRBs, which probe the epoch of reionization.
+
+This unified catalog is maintained by the IceCube Collaboration because GRBs are prime candidate sources of high-energy cosmic neutrinos. The temporal and spatial coincidence between GRB triggers and IceCube muon-track events is a key channel in the search for hadronic acceleration in relativistic jets, connecting gamma-ray astronomy to the emerging field of multi-messenger astrophysics.
+
 ## Schema
 
 | Column | Type | Description |

@@ -196,6 +196,12 @@ The catalog is particularly useful for identifying host galaxies of transient ev
 (gravitational waves, neutrinos, gamma-ray bursts) and for statistical studies of galaxy
 properties in the local volume.
 
+The local universe within 200 Mpc provides the highest-resolution view of the galaxy population and serves as the calibration anchor for cosmological studies at greater distances. HECATE is specifically optimized for this volume, drawing on the HyperLEDA database for homogenized distances and photometry, and augmenting it with infrared luminosities from IRAS, near-infrared magnitudes from 2MASS, and stellar masses derived from K-band mass-to-light ratios. The inclusion of nuclear activity classifications (Seyfert, LINER, HII, and composite) makes it possible to study how AGN prevalence varies with galaxy mass, morphology, and environment in a volume-complete sample.
+
+A key motivation for HECATE is multi-messenger astrophysics. Gravitational-wave detectors such as LIGO and Virgo localize merging compact binaries to sky areas of tens to hundreds of square degrees, and identifying the host galaxy requires a comprehensive census of all galaxies within the relevant distance range. Similarly, high-energy neutrino events detected by IceCube and gamma-ray transients from Fermi and Swift require rapid cross-matching against known galaxy catalogs to identify electromagnetic counterparts. HECATE provides the galaxy stellar mass, star formation rate, and morphological type needed to rank candidate host galaxies by their likelihood of hosting different types of transient events.
+
+The catalog also supports studies of galaxy scaling relations in the nearby universe, including the stellar mass--metallicity relation, the star formation main sequence, and the correlation between morphological type and gas content. With HI mass measurements available for a substantial fraction of entries, HECATE enables investigations of the cold gas reservoir and its relationship to star formation efficiency across the Hubble sequence.
+
 ## Quick stats
 
 - **{n_total:,}** galaxies within 200 Mpc

@@ -164,6 +164,12 @@ astrophysics.
 This dataset contains summary-level event data from the Auger open data release
 on Zenodo.
 
+Ultra-high-energy cosmic rays (UHECRs) are the most energetic particles observed in nature, with individual events carrying macroscopic amounts of kinetic energy -- a single particle at 10^20 eV has roughly the energy of a tennis ball served at 150 km/h, compressed into a single subatomic particle. When such a particle strikes the atmosphere, it triggers a cascade of billions of secondary particles called an extensive air shower, spreading over several square kilometers at ground level. The Pierre Auger Observatory detects these showers through a hybrid technique: the surface detector array measures the lateral distribution and timing of shower particles on the ground, while fluorescence telescopes observe the ultraviolet glow of atmospheric nitrogen excited by the shower as it develops. This combination provides both the energy and the atmospheric depth of shower maximum (Xmax), a key observable for inferring the mass composition of the primary cosmic ray.
+
+Auger's major scientific results include the confirmation of the GZK suppression (the steepening of the cosmic ray spectrum above ~5x10^19 eV, expected from interactions with the cosmic microwave background), evidence for a dipole anisotropy in arrival directions above 8x10^18 eV suggesting an extragalactic origin, and measurements of Xmax distributions that indicate a transition from light (proton-like) to heavier (iron-like) composition at the highest energies. These findings constrain models of cosmic ray acceleration in astrophysical sources such as active galactic nuclei, gamma-ray bursts, and starburst galaxies.
+
+This open dataset enables independent analyses of arrival direction distributions, energy spectrum features, and composition-sensitive observables. It is used in multi-messenger astrophysics studies correlating UHECR directions with neutrino and gamma-ray source catalogs, and for validating hadronic interaction models that describe particle physics at center-of-mass energies far beyond the reach of the LHC.
+
 ## Schema
 
 | Column | Type | Description |

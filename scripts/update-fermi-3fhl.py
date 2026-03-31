@@ -204,6 +204,12 @@ Sources include blazars, pulsar wind nebulae, supernova remnants, and unidentifi
 gamma-ray emitters. The catalog is essential for planning observations with current
 and future TeV observatories like CTA.
 
+The 10 GeV - 2 TeV energy range probed by 3FHL occupies a critical frontier in high-energy astrophysics. Below ~10 GeV, the Fermi LAT standard catalogs (3FGL, 4FGL) provide comprehensive coverage with large photon statistics. Above ~100 GeV, imaging atmospheric Cherenkov telescopes (IACTs) like H.E.S.S., MAGIC, and VERITAS achieve superior sensitivity but with limited fields of view and duty cycles. The 3FHL catalog bridges this gap using Fermi LAT's Pass 8 event reconstruction, which dramatically improved the instrument's effective area and point-spread function at high energies, enabling detection of hard-spectrum sources that were previously buried in background.
+
+The source population in 3FHL is dominated by blazars — active galactic nuclei whose relativistic jets point close to our line of sight, producing Doppler-boosted emission that peaks in the GeV-TeV band. The catalog also contains Galactic sources such as pulsar wind nebulae (where ultra-relativistic electron-positron winds from young pulsars produce inverse-Compton emission), supernova remnants (candidate sites of cosmic-ray acceleration up to PeV energies), and a significant fraction of unidentified sources that may represent entirely new source classes. For extragalactic sources, the interaction of TeV photons with the extragalactic background light (EBL) via pair production imprints a redshift-dependent spectral cutoff, making this catalog a powerful probe of the EBL intensity and its evolution.
+
+The 3FHL is the primary seed catalog for the Cherenkov Telescope Array (CTA), the next-generation ground-based gamma-ray observatory. Nearly every 3FHL source above the CTA sensitivity threshold is expected to be detected, and the catalog's uniform sky coverage helps define CTA's key science programs including surveys of the Galactic plane and extragalactic deep fields.
+
 ## Quick stats
 
 - **{n_total:,}** gamma-ray sources above 10 GeV

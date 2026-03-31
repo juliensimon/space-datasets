@@ -136,6 +136,12 @@ HSC, CLASH, RELICS, and many others into a single machine-readable table.
 Each entry records the lens name, sky coordinates, lens redshift (when measured), morphological
 type (galaxy or cluster), a confidence grading, and a literature reference.
 
+Gravitational lensing is one of the most striking predictions of general relativity: the curvature of spacetime around a massive object deflects the paths of photons from background sources, acting as a natural telescope. In the strong lensing regime, the deflection is large enough to produce multiple resolved images, giant luminous arcs, or complete Einstein rings. The geometry of these configurations depends on the mass distribution of the lens, the distances involved, and the cosmological model, making strong lenses powerful tools for measuring galaxy and cluster masses, constraining the Hubble constant through time-delay cosmography, and probing the substructure of dark matter halos.
+
+Galaxy-scale lenses, which dominate this catalog by number, typically involve a massive elliptical galaxy deflecting the light of a more distant galaxy or quasar. The image separations are on the order of 1-2 arcseconds, and the Einstein radius directly constrains the total projected mass within it. Cluster-scale lenses produce much larger image separations (tens of arcseconds to arcminutes) and can magnify background galaxies by factors of 10-100, enabling the study of intrinsically faint, high-redshift galaxies that would otherwise be undetectable. Some of the most distant galaxies known were discovered behind massive lensing clusters.
+
+The number of known strong lenses has grown dramatically in recent years thanks to systematic searches in wide-field imaging surveys (DES, HSC, KiDS) and machine-learning algorithms trained to identify lensing features. This catalog consolidates these discoveries into a uniform format. The coming decade will see an explosion in lens discoveries from Euclid, the Vera Rubin Observatory, and the Roman Space Telescope, potentially increasing the known population from tens of thousands to hundreds of thousands of systems.
+
 ## Schema
 
 | Column | Type | Description |

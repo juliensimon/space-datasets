@@ -38,6 +38,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![NHATS](https://github.com/juliensimon/space-datasets/actions/workflows/update-nhats.yml/badge.svg)
 ![SatNOGS](https://github.com/juliensimon/space-datasets/actions/workflows/update-satnogs.yml/badge.svg)
 ![UCS](https://github.com/juliensimon/space-datasets/actions/workflows/update-ucs.yml/badge.svg)
+![Reentry Events](https://github.com/juliensimon/space-datasets/actions/workflows/update-reentry-events.yml/badge.svg)
 <!-- Space Weather -->
 ![CelesTrak SW](https://github.com/juliensimon/space-datasets/actions/workflows/update-celestrak-sw.yml/badge.svg)
 ![Space Weather](https://github.com/juliensimon/space-datasets/actions/workflows/update-space-weather.yml/badge.svg)
@@ -52,6 +53,8 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![Solar Radio](https://github.com/juliensimon/space-datasets/actions/workflows/update-solar-radio.yml/badge.svg)
 ![IERS EOP](https://github.com/juliensimon/space-datasets/actions/workflows/update-iers-eop.yml/badge.svg)
 ![AE Index](https://github.com/juliensimon/space-datasets/actions/workflows/update-ae-index.yml/badge.svg)
+![Neutron Monitor](https://github.com/juliensimon/space-datasets/actions/workflows/update-neutron-monitor.yml/badge.svg)
+![OMNI](https://github.com/juliensimon/space-datasets/actions/workflows/update-omni.yml/badge.svg)
 <!-- Astronomy -->
 ![Exoplanets](https://github.com/juliensimon/space-datasets/actions/workflows/update-exoplanets.yml/badge.svg)
 ![GRB](https://github.com/juliensimon/space-datasets/actions/workflows/update-grb.yml/badge.svg)
@@ -69,6 +72,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![CHIME/FRB](https://github.com/juliensimon/space-datasets/actions/workflows/update-chime-frb.yml/badge.svg)
 ![TESS TOI](https://github.com/juliensimon/space-datasets/actions/workflows/update-tess-toi.yml/badge.svg)
 ![WDS](https://github.com/juliensimon/space-datasets/actions/workflows/update-wds.yml/badge.svg)
+![Supernovae](https://github.com/juliensimon/space-datasets/actions/workflows/update-supernovae.yml/badge.svg)
 <!-- Space Probes -->
 ![Deep Space Probes](https://github.com/juliensimon/space-datasets/actions/workflows/update-deep-space-probes.yml/badge.svg)
 ![Mars Express](https://github.com/juliensimon/space-datasets/actions/workflows/update-mars-express.yml/badge.svg)
@@ -99,6 +103,7 @@ Track every object orbiting Earth and beyond. This collection covers the complet
 | [fireball-bolide-events](https://huggingface.co/datasets/juliensimon/fireball-bolide-events) | Fireball and bolide atmospheric impact events detected by US government sensors | ![Fireballs](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.fireballs&label=updated&color=brightgreen) | Weekly | <1 MB |
 | [nhats-accessible-asteroids](https://huggingface.co/datasets/juliensimon/nhats-accessible-asteroids) | 4,800+ asteroids accessible for human space missions with delta-v requirements | ![NHATS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.nhats&label=updated&color=brightgreen) | Daily | <1 MB |
 | [satnogs-transmitters](https://huggingface.co/datasets/juliensimon/satnogs-transmitters) | 10K+ satellite radio transmitters and frequencies from SatNOGS | ![SatNOGS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.satnogs&label=updated&color=brightgreen) | Weekly | 5 MB |
+| [reentry-events](https://huggingface.co/datasets/juliensimon/reentry-events) | 35K satellite and debris reentry events with decay dates and locations | ![Reentry](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['reentry-events']&label=updated&color=brightgreen) | Daily | <1 MB |
 | [ucs-satellite-database](https://huggingface.co/datasets/juliensimon/ucs-satellite-database) | 7,500+ active satellites with purpose, operator, and orbit metadata | ![UCS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.ucs&label=updated&color=brightgreen) | Quarterly | 5 MB |
 | [iau-meteor-showers](https://huggingface.co/datasets/juliensimon/iau-meteor-showers) | 2,163 meteor shower records from the IAU Meteor Data Center | — | Static | <1 MB |
 | [gcat-launch-vehicles](https://huggingface.co/datasets/juliensimon/gcat-launch-vehicles) | 4,875 launch vehicles, engines, and stages from GCAT | — | Static | <1 MB |
@@ -152,6 +157,8 @@ Monitor the Sun-Earth connection in near real-time. These datasets track solar f
 | [iers-earth-orientation](https://huggingface.co/datasets/juliensimon/iers-earth-orientation) | Daily Earth orientation parameters (polar motion, UT1-UTC, LOD) since 1973 | ![IERS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['iers-eop']&label=updated&color=brightgreen) | Daily | 5 MB |
 | [celestrak-space-weather](https://huggingface.co/datasets/juliensimon/celestrak-space-weather) | Consolidated space weather data for orbit propagation (Kp, Ap, F10.7) | ![CelesTrak SW](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['celestrak-sw']&label=updated&color=brightgreen) | Daily | 5 MB |
 | [auroral-electrojet-index](https://huggingface.co/datasets/juliensimon/auroral-electrojet-index) | Hourly AE/AU/AL/AO auroral electrojet indices from Kyoto WDC | ![AE](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['ae-index']&label=updated&color=brightgreen) | Daily | 2 MB |
+| [neutron-monitor-cosmic-rays](https://huggingface.co/datasets/juliensimon/neutron-monitor-cosmic-rays) | Hourly cosmic ray intensity from the global neutron monitor network | ![Neutron](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['neutron-monitor']&label=updated&color=brightgreen) | Daily | <1 MB |
+| [omni-solar-wind-parameters](https://huggingface.co/datasets/juliensimon/omni-solar-wind-parameters) | 561K+ hourly solar wind parameters (velocity, density, IMF) from NASA OMNI | ![OMNI](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.omni&label=updated&color=brightgreen) | Daily | 20 MB |
 
 ### Astronomy & Reference
 
@@ -185,6 +192,7 @@ A broad survey of the observable universe — from exoplanets in our galactic ne
 | [gaia-dr3-rrlyrae](https://huggingface.co/datasets/juliensimon/gaia-dr3-rrlyrae) | 272K RR Lyrae pulsating stars from Gaia DR3 — distance ladder | — | Static | 50 MB |
 | [rc3-galaxy-morphology](https://huggingface.co/datasets/juliensimon/rc3-galaxy-morphology) | 23K bright galaxies with Hubble morphological types from RC3 | — | Static | 10 MB |
 | [wds-double-stars](https://huggingface.co/datasets/juliensimon/wds-double-stars) | 157K visual double star systems from the Washington Double Star Catalog | ![WDS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.wds&label=updated&color=brightgreen) | Weekly | 50 MB |
+| [open-supernova-catalog](https://huggingface.co/datasets/juliensimon/open-supernova-catalog) | 72K supernovae with light curves, spectra references, and host galaxies | ![Supernovae](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.supernovae&label=updated&color=brightgreen) | Weekly | 10 MB |
 | [astronaut-database](https://huggingface.co/datasets/juliensimon/astronaut-database) | Every person who has been to space — 560 astronauts/cosmonauts | — | Static | <1 MB |
 | [icecube-neutrino-catalog](https://huggingface.co/datasets/juliensimon/icecube-neutrino-catalog) | IceCube neutrino point sources from HEASARC | — | Static | <1 MB |
 | [brown-dwarf-catalog](https://huggingface.co/datasets/juliensimon/brown-dwarf-catalog) | 14K ultracool and brown dwarfs within 40 pc | — | Static | 10 MB |

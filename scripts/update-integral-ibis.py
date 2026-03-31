@@ -178,6 +178,10 @@ hard X-ray band to date. Sources were detected using the IBIS/ISGRI detector ove
 INTEGRAL observations (2003--2020). The catalog provides flux measurements in 8 energy sub-bands
 spanning 17--290 keV, plus source classifications, redshifts, and transient/extended flags.
 
+The hard X-ray band (above ~15 keV) is uniquely valuable because it penetrates the dense columns of gas and dust that obscure many astrophysical sources at softer energies. INTEGRAL's coded-mask imaging technique allows the IBIS/ISGRI detector to achieve arcminute-level localization across the entire sky, revealing populations of heavily absorbed active galactic nuclei (AGN), high-mass X-ray binaries, cataclysmic variables, and isolated pulsars that are invisible to soft X-ray telescopes. The 17-year integration time makes this the most sensitive hard X-ray all-sky survey from any coded-mask instrument.
+
+The multi-band flux decomposition across 8 sub-bands from 17 to 290 keV enables broadband spectral characterization without requiring pointed follow-up observations. For extragalactic sources, the combination of hard X-ray flux and redshift constrains intrinsic luminosities and absorption column densities, key parameters for understanding the obscured AGN population that dominates the cosmic X-ray background. Transient flags identify sources such as X-ray novae and supergiant fast X-ray transients whose variable emission traces accretion instabilities in binary systems.
+
 ## Schema
 
 | Column | Type | Description |

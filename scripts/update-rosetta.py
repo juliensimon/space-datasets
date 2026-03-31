@@ -291,6 +291,12 @@ This dataset contains the full EPN-TAP metadata for every Rosetta observation in
 Planetary Science Archive, including observation times, target information, spatial coverage,
 instrument parameters, and data product access URLs.
 
+Comets are among the most primitive objects in the solar system, preserving volatile ices and organic molecules largely unchanged since the formation of the protoplanetary disk 4.6 billion years ago. Rosetta's unprecedented two-year close escort of comet 67P revealed a bilobed nucleus approximately 4 km across, with a bulk density of only 0.533 g/cm3 — indicating high porosity and a composition dominated by water ice, dust, and organic material. ROSINA mass spectrometer measurements detected molecular oxygen, glycine (the simplest amino acid), and phosphorus in the coma, establishing that comets carry the fundamental building blocks of biochemistry. The deuterium-to-hydrogen ratio measured in 67P's water was significantly higher than Earth's ocean water, complicating the hypothesis that comets delivered the bulk of Earth's water.
+
+The Philae lander's bouncing touchdown on the nucleus surface provided the first direct measurements of a comet's mechanical and electrical properties, revealing a surprisingly hard surface layer beneath a few centimeters of dust. OSIRIS camera observations tracked the evolution of surface features as the comet approached perihelion, documenting cliff collapses, expanding fractures, and the formation of circular pits through sublimation-driven erosion. The activity pattern was highly heterogeneous, with jets concentrated in the neck region between the two lobes and strongly modulated by solar illumination geometry and local topography.
+
+The breadth of Rosetta's instrument suite makes this observation catalog a unique resource for multi-disciplinary cometary science. Cross-correlating ROSINA gas measurements with OSIRIS imaging, VIRTIS infrared spectroscopy, and GIADA dust flux data enables studies of the coupling between nucleus outgassing, dust emission, and coma chemistry that were previously impossible. The catalog also covers Rosetta's flybys of asteroids 2867 Steins (2008) and 21 Lutetia (2010), adding small-body characterization data to the archive.
+
 ## Quick stats
 
 - **{n:,}** total observations

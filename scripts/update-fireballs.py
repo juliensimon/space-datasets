@@ -134,6 +134,10 @@ Fireballs are exceptionally bright meteors caused by small asteroids or large
 meteoroids entering the atmosphere at high speed. The largest events can release
 energy equivalent to tens or hundreds of kilotons of TNT.
 
+The detection threshold for these sensors corresponds roughly to bolides with impact energies above 0.1 kilotons of TNT, equivalent to a meteoroid roughly 1 meter in diameter striking the atmosphere at typical velocities of 15--25 km/s. The largest event in the modern record is the Chelyabinsk airburst of February 2013, which released approximately 440 kilotons and produced a shockwave that injured over 1,500 people. Events of this magnitude (10-20 meter impactors) are estimated to occur roughly once per century, while meter-scale impacts happen several times per year. The velocity components (Vx, Vy, Vz) in the Earth-Centered Earth-Fixed (ECEF) frame allow reconstruction of the pre-atmospheric orbit, connecting individual bolides to their parent populations in the asteroid or cometary reservoirs.
+
+The geographic distribution of detected fireballs reflects both the true impact flux and sensor coverage biases. Most events are detected over open ocean or unpopulated regions, and coordinate data may be withheld for events near politically sensitive areas. The radiated energy represents only a fraction of the total kinetic energy, with the remainder partitioned into the shockwave, fragmentation, heating, and deceleration. The empirical conversion from optical radiated energy to total impact energy uses calibration factors derived from infrasound measurements and satellite data, carrying uncertainties of roughly a factor of two for individual events.
+
 ## Schema
 
 | Column | Type | Description |

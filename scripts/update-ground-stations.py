@@ -283,6 +283,14 @@ size_categories:
 
 Starlink ground infrastructure data: gateway earth stations and internet Points of Presence (PoPs).
 
+## Dataset description
+
+Starlink's ground segment is as critical to its operation as the satellites themselves. Each gateway earth station houses multiple parabolic antennas (typically 2-4 dishes per site) that maintain continuous Ka-band and Ku-band links with the overhead satellite constellation. When a user terminal communicates with a Starlink satellite, the signal is relayed down to the nearest gateway, which connects to the terrestrial internet backbone. The geographic distribution of gateways directly determines service quality: users far from any gateway experience higher latency because their traffic must hop across multiple satellites via inter-satellite laser links before reaching a ground connection point.
+
+SpaceX has been aggressively expanding its gateway network worldwide to reduce this "bent-pipe" latency and increase aggregate network capacity. Early service relied on a handful of US gateways, but the network now spans six continents. Each gateway site requires regulatory approval from the host country's telecommunications authority -- in the US, this means FCC International Bureau (IBFS) earth station license filings, which are public record and provide precise geographic coordinates. The Points of Presence (PoPs) serve a different function: these are internet exchange points in major cities where Starlink peers with other networks and content delivery providers, determining the last-mile routing of user traffic after it exits the Starlink network.
+
+This dataset is valuable for network performance modeling (estimating latency based on user-to-gateway distance), regulatory analysis of Starlink's global expansion strategy, competitive intelligence in the satellite broadband market, and visualization of the ground infrastructure that supports the world's largest satellite constellation.
+
 ## Configs
 
 ### `gateways` — {n_gateways} ground stations ({n_operational} operational, {n_planned} planned)

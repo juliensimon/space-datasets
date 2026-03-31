@@ -258,6 +258,10 @@ This dataset contains the persistent (quiescent) properties of every known magne
 spin period, period derivative, inferred dipolar magnetic field strength, characteristic age,
 X-ray flux and luminosity, spectral parameters, distance, and SNR/cluster associations.
 
+Magnetar magnetic fields — reaching 10^14 to 10^15 Gauss, a thousand times stronger than ordinary pulsars — are the strongest known in the universe. These fields exceed the quantum electrodynamic critical field (B_QED ~ 4.4e13 G) at which the vacuum itself becomes birefringent and photon splitting becomes possible. The decay of these colossal fields powers persistent X-ray emission at luminosities of 10^33-36 erg/s, far exceeding what rotational energy alone can supply. During outbursts, magnetars can release up to 10^46 erg in giant flares, rivaling the luminosity of the entire Galaxy for a fraction of a second. The 2004 December 27 giant flare from SGR 1806-20 was so energetic it measurably disturbed Earth's ionosphere from 50,000 light-years away.
+
+The magnetar population bridges several areas of astrophysics. Their connection to fast radio bursts (FRBs) was dramatically confirmed in 2020 when SGR 1935+2154 emitted a millisecond radio burst bright enough to be detected at extragalactic distances. Magnetars are also candidate central engines for some gamma-ray bursts and super-luminous supernovae. Their spin-down behavior — often complicated by timing noise, glitches, and anti-glitches — probes the internal structure of neutron stars and the coupling between the superfluid core and the solid crust. Associations with supernova remnants provide independent age constraints, revealing that magnetar fields decay on timescales of roughly 10,000 years, consistent with theoretical predictions for ambipolar diffusion and Hall drift in the neutron star crust.
+
 ## Schema
 
 | Column | Type | Description |

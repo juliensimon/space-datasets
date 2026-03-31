@@ -230,6 +230,12 @@ spacecraft Framing Camera 2. Every crater >= 1 km in diameter on Ceres was ident
 providing positions, diameters, and depth measurements where available. Ceres is the largest object in the
 asteroid belt and the only dwarf planet in the inner solar system.
 
+Ceres occupies a unique position in solar system science as a volatile-rich body that has remained largely intact since the early stages of planetary formation. With a mean diameter of approximately 940 km and a bulk density of about 2.16 g/cm3, Ceres is thought to harbor a substantial water ice component beneath its regolith, and possibly a residual subsurface brine layer. The Dawn spacecraft's orbital observations revealed bright deposits of sodium carbonate and ammonium-bearing minerals in several craters — most famously in Occator crater — interpreted as recent or ongoing cryovolcanic activity where brines have migrated to the surface.
+
+The crater population on Ceres provides key constraints on the age and evolution of the asteroid belt. Notably, Ceres has a deficit of large craters (greater than 100 km) compared to predictions from collisional models, suggesting that viscous relaxation of the ice-rich crust has erased large basins over geological time. The depth-to-diameter ratios of Cerean craters are systematically shallower than those on Vesta or the Moon, consistent with a mechanically weak, ice-bearing lithosphere. This relaxation signature offers a window into the thermal history and internal structure of the largest main-belt body.
+
+Crater degradation states recorded in this catalog trace the geological evolution of Ceres's surface, from fresh, sharp-rimmed impacts to heavily degraded structures partially buried by mass wasting and possible cryovolcanic resurfacing. The spatial distribution of fresh versus degraded craters, combined with depth measurements, enables age dating of distinct geological provinces and constrains the timescales over which Ceres's surface has been reworked by both external bombardment and internal processes.
+
 ## Schema
 
 | Column | Type | Description |

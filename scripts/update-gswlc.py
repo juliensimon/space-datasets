@@ -208,6 +208,12 @@ The GSWLC is the definitive catalog for physical properties of low-redshift gala
 
 Physical properties are derived using the CIGALE SED fitting code with Bayesian estimation of stellar mass, star formation rate, and dust attenuation.
 
+Understanding how galaxies form stars and build up their stellar mass is one of the central questions in extragalactic astronomy. The star formation rate and stellar mass of a galaxy are linked through a remarkably tight correlation known as the star formation main sequence, whose slope, normalization, and scatter encode the physics of gas accretion, feedback, and quenching. GSWLC provides the definitive measurement of these quantities for the low-redshift galaxy population, with the critical advantage that mid-infrared photometry from WISE captures dust-reprocessed emission that would otherwise be missed by UV and optical observations alone.
+
+Dust attenuation is one of the largest systematic uncertainties in galaxy SED modeling. Dust grains absorb ultraviolet and optical photons from young stars and re-emit the energy in the far-infrared, meaning that purely optical surveys systematically underestimate star formation rates in dusty galaxies. By jointly fitting the UV (GALEX), optical (SDSS), and mid-IR (WISE) photometry, GSWLC-2 breaks the age-dust-metallicity degeneracy that plagues single-band analyses and delivers attenuation curves alongside physical properties. The A_FUV values in this catalog directly quantify how much UV light each galaxy has lost to dust.
+
+This catalog is the standard reference for calibrating star formation rate indicators, studying the quenching of star formation in massive galaxies, and constructing volume-limited galaxy samples for environmental studies. The specific star formation rate (sSFR) cleanly separates the star-forming blue cloud from the quiescent red sequence, making GSWLC a natural training set for galaxy classification problems in machine learning.
+
 ## Quick stats
 
 - **{len(df):,}** galaxies in the catalog

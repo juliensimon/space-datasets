@@ -145,6 +145,10 @@ Sources are identified as statistically significant excesses above the cosmic-ra
 The catalog includes source positions, test statistics, differential fluxes at 7 TeV, and
 spectral indices assuming a simple power-law model.
 
+HAWC operates at 4,100 m altitude on the Sierra Negra volcano in Mexico, using 300 water Cherenkov detectors to sample the particle cascades initiated by gamma rays and cosmic rays in the atmosphere. Unlike pointed Cherenkov telescopes, HAWC observes continuously with a ~2 steradian instantaneous field of view, surveying two-thirds of the sky every 24 hours. This makes HAWC uniquely sensitive to extended emission regions and transient phenomena at TeV energies, complementing the deeper but narrower observations of IACTs like H.E.S.S., MAGIC, and VERITAS.
+
+The 3HWC catalog's flux normalization at 7 TeV provides a standardized reference point in the heart of HAWC's sensitivity range, enabling direct comparison across the source population. The Galactic plane dominates the catalog, with detections tracing pulsar wind nebulae, supernova remnants, and unidentified sources that may represent new classes of TeV emitters. TeVCat cross-matches included in the catalog facilitate multi-instrument spectral energy distribution construction, critical for distinguishing leptonic (inverse-Compton) from hadronic (pion-decay) emission mechanisms and identifying candidate sites of PeV cosmic ray acceleration.
+
 ## Schema
 
 | Column | Type | Description |

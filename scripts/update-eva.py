@@ -162,6 +162,12 @@ number, date, crew members, vehicle (Gemini, Apollo, Skylab, Shuttle, ISS,
 etc.), duration in H:MM format plus a computed `duration_minutes` column, and
 a free-text description of the purpose and activities.
 
+Extravehicular activity -- spacewalking -- is among the most demanding and dangerous operations in human spaceflight. Every EVA requires hours of pre-breathing pure oxygen to avoid decompression sickness, careful choreography of tasks in microgravity, and constant monitoring of suit pressure, oxygen reserves, and CO2 levels. The first EVA was performed by Alexei Leonov in March 1965 during Voskhod 2, lasting just 12 minutes; today, ISS maintenance EVAs routinely exceed six hours and involve complex hardware installation, thermal blanket repairs, and robotic arm operations.
+
+The chronological record of EVAs traces the evolution of spacesuit technology, from the rudimentary Berkut suit through NASA's Extravehicular Mobility Unit (EMU) to the Orlan series used on the Russian segment of the ISS. The data captures every phase of spacewalking history: the Gemini program's early experiments with working in vacuum, the Apollo lunar surface EVAs, Skylab exterior repairs, Shuttle-era satellite servicing missions (including the iconic Hubble Space Telescope repairs), and the ongoing ISS assembly and maintenance campaign that has consumed thousands of crew-hours.
+
+This dataset supports research into EVA scheduling efficiency, crew workload analysis, the reliability of spacesuit systems, and risk assessment for future lunar and Mars surface operations. The purpose field provides a rich free-text description of activities performed during each EVA, enabling natural language analysis of how spacewalk tasks have shifted from exploration to construction to maintenance over six decades of human spaceflight.
+
 ## Schema
 
 | Column | Type | Description |

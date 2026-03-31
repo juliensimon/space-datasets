@@ -118,6 +118,12 @@ declination -40 degrees at 1.4 GHz with ~45" resolution and a completeness limit
 2.5 mJy. The resulting catalog is the primary reference for radio source populations and
 is widely used for cross-matching with optical, infrared, and X-ray catalogs.
 
+NVSS remains the single most cited radio survey in astronomy, serving as the backbone for virtually all statistical studies of the radio source population at centimeter wavelengths. Its uniform sensitivity across more than three-quarters of the celestial sphere makes it the standard reference for radio source counts, luminosity functions, and large-scale structure analyses. The catalog spans the full range of radio source types, from nearby star-forming galaxies and supernova remnants to powerful radio galaxies and quasars at cosmological distances.
+
+The survey's 45-arcsecond resolution means that most extragalactic sources appear unresolved, making NVSS particularly well suited for measuring total flux densities of compact and moderately extended sources. For extended sources like giant radio galaxies or cluster halos, the VLA's D-configuration sensitivity to large angular scales ensures that diffuse emission is not resolved out, a critical advantage over higher-resolution surveys like FIRST or VLASS. NVSS flux densities are the standard reference point for computing radio spectral indices when combined with catalogs at other frequencies.
+
+NVSS is widely used as a finding chart for radio follow-up observations, as a positional cross-matching reference for multi-wavelength catalogs (SDSS, 2MASS, WISE, eROSITA), and as a training set for machine learning classification of radio sources. Its declination limit of -40 degrees makes it complementary to the Sydney University Molonglo Sky Survey (SUMSS), which covers the southern sky at 843 MHz with comparable sensitivity and resolution.
+
 ## Schema
 
 | Column | Type | Description |

@@ -123,6 +123,12 @@ The FIRST survey used the VLA in its B-configuration to produce a map of the rad
 1.4 GHz with ~5" resolution and a typical rms of 0.15 mJy/beam. The catalog includes
 source positions, peak and integrated flux densities, and fitted source sizes.
 
+The FIRST survey was designed as a radio counterpart to the Palomar Observatory Sky Survey, targeting the north and south Galactic caps where optical and infrared surveys provide the richest multi-wavelength context. Its combination of sub-arcsecond positional accuracy and milliJansky sensitivity makes it ideally suited for identifying the radio counterparts of optically selected quasars, galaxies, and other extragalactic objects. The catalog has been instrumental in studies of active galactic nuclei, radio-loud quasar demographics, and the faint radio source population.
+
+Unlike the broader but lower-resolution NVSS, FIRST resolves the internal structure of extended radio sources, revealing jets, lobes, and hotspots in radio galaxies. The survey's 5-arcsecond beam allows morphological classification of sources and reliable separation of core-dominated and lobe-dominated radio AGN. Cross-matching FIRST with optical surveys such as SDSS has produced some of the largest samples of radio-identified AGN ever assembled, enabling statistical studies of the relationship between radio activity and host galaxy properties.
+
+The catalog also serves as a key input for spectral index studies when combined with surveys at other frequencies such as TGSS (150 MHz), VLASS (3 GHz), or SUMSS (843 MHz). Sources detected in FIRST but absent from lower-frequency catalogs may have flat or inverted spectra, often indicating compact, self-absorbed synchrotron emission from AGN cores or young radio sources.
+
 ## Schema
 
 | Column | Type | Description |

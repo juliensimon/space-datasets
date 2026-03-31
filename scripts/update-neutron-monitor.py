@@ -305,6 +305,12 @@ Higher-latitude and higher-altitude stations have lower geomagnetic cutoff rigid
 more sensitive to lower-energy cosmic rays. This dataset includes stations spanning a range of
 latitudes and altitudes for cross-comparison.
 
+Galactic cosmic rays (GCRs) are relativistic charged particles -- predominantly protons and heavier nuclei -- accelerated to GeV-TeV energies by supernova remnant shocks and other astrophysical processes. As they enter the heliosphere, their flux is modulated by the solar wind's outward-convecting magnetic field: during solar maximum, enhanced magnetic turbulence and more frequent coronal mass ejections scatter and decelerate incoming GCRs, reducing the count rate at Earth by 15-25% compared to solar minimum. This anti-correlation with the sunspot cycle makes neutron monitors a direct probe of heliospheric magnetic conditions integrated over the entire path from the heliopause to Earth.
+
+On shorter timescales, neutron monitors are the primary ground-based detectors for Forbush decreases -- sudden drops in cosmic ray intensity (typically 3-15% over hours) caused by the passage of interplanetary CMEs and their associated magnetic sheaths. These transient depressions can last days to weeks and serve as markers of large-scale heliospheric disturbances. Conversely, ground-level enhancements (GLEs) -- rare but dramatic increases in count rate -- signal the arrival of GeV-energy solar energetic particles from the most powerful solar flares, and are of particular concern for radiation dosimetry in aviation and human spaceflight.
+
+Each station's sensitivity to cosmic rays depends on its geomagnetic cutoff rigidity, determined primarily by geographic latitude. High-latitude stations like Oulu (cutoff ~0.8 GV) and Thule (~0.3 GV) respond to lower-energy primaries and thus show larger solar-cycle modulation, while mid-latitude stations like Rome (~6.3 GV) are sensitive only to higher-energy particles and exhibit a more muted response. The high-altitude Jungfraujoch station (3475 m) benefits from reduced atmospheric absorption, enhancing its counting statistics. Comparing stations with different cutoff rigidities enables spectral analysis of the cosmic ray modulation -- extracting information about the rigidity dependence of heliospheric transport.
+
 ## Stations
 
 | Code | Location |

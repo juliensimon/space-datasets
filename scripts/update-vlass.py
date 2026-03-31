@@ -213,6 +213,12 @@ its B-configuration at S-band (2-4 GHz). The survey covers the entire sky visibl
 component detections from Epoch 1, processed by the Canadian Initiative for Radio Astronomy
 Data Analysis (CIRADA). Each row is a Gaussian component fitted to a radio detection using PyBDSF.
 
+VLASS represents a generational leap over its predecessors NVSS and FIRST, combining NVSS-like sky coverage with FIRST-like angular resolution at a higher frequency (3 GHz vs. 1.4 GHz). The survey's three-epoch design, with observations spanning 2017 to 2024, enables systematic studies of radio variability and transient phenomena on timescales of months to years. This makes VLASS uniquely powerful for discovering tidal disruption events, newborn radio AGN, and orphan gamma-ray burst afterglows that would be missed by single-epoch surveys.
+
+The S-band frequency coverage (2-4 GHz) provides sensitivity to flat-spectrum and inverted-spectrum sources such as compact AGN cores, while still detecting the steep-spectrum synchrotron emission from radio lobes and jets. The 2.5-arcsecond resolution enables morphological classification of radio sources and reliable cross-identification with optical and infrared counterparts from surveys like the Legacy Survey (DECaLS), Pan-STARRS, and WISE. The CIRADA component catalog used here includes pre-computed cross-match distances to NVSS and FIRST, facilitating multi-epoch and multi-frequency radio studies.
+
+The Quick Look images from which this catalog is derived have somewhat higher noise and poorer calibration than the final Single Epoch images, but they cover the full survey footprint and provide the most complete source inventory available from Epoch 1. The main sample flag identifies the curated subset of unique, quality-filtered detections recommended for most scientific analyses, while the full catalog retains all detections for completeness-sensitive studies.
+
 Of the {n_total:,} total detections, **{n_main:,}** are in the curated main sample
 (duplicate-free, quality-filtered) and **{n_resolved:,}** are resolved sources.
 

@@ -189,6 +189,10 @@ surface magnetic field, and spin-down luminosity.
 from a companion star. They are among the most precise clocks in the universe and are
 used for pulsar timing arrays to detect gravitational waves.
 
+The physics encoded in this catalog is remarkably rich. The spin period P and its time derivative P-dot together constrain the pulsar's magnetic field strength (B ~ 3.2e19 sqrt(P * P-dot) Gauss), characteristic age (tau ~ P / 2P-dot), and spin-down luminosity. Plotting P vs. P-dot produces the famous pulsar "island diagram," revealing distinct populations: normal pulsars clustered around P ~ 0.5 s with B ~ 10^12 G, millisecond pulsars in the lower-left corner with B ~ 10^8-9 G and ages exceeding the Hubble time, and magnetars in the upper-right with B > 10^14 G. The dispersion measure (DM) — the integrated column density of free electrons along the line of sight — serves as a proxy for distance when combined with Galactic electron density models such as NE2001 or YMW16.
+
+Pulsars are natural laboratories for fundamental physics. Their extraordinary rotational stability enables tests of general relativity in strong-field regimes, particularly in relativistic binary systems where post-Keplerian orbital parameters can be measured with exquisite precision. The double pulsar PSR J0737-3039A/B provided the most stringent test of GR to date. Pulsar timing arrays — networks of millisecond pulsars monitored over decades — have recently achieved the first evidence for a nanohertz gravitational wave background, likely produced by supermassive black hole binaries. The catalog also underpins studies of neutron star equations of state, Galactic magnetic field structure (via rotation measures), and the interstellar medium.
+
 ## Schema
 
 | Column | Type | Description |

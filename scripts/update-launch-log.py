@@ -112,6 +112,14 @@ Complete global launch history from [GCAT](https://planet4589.org/space/gcat/)
 Currently **{len(df):,}** launches ({n_orbital:,} orbital, {n_suborbital:,} suborbital)
 from **{len(sites):,}** sites, spanning {first_year}–{latest_year}.
 
+## Dataset description
+
+This dataset captures the complete record of humanity's attempts to reach space, from the first Sputnik launch in 1957 to present-day commercial missions. Every orbital and suborbital launch attempt is cataloged with its vehicle type, launch site, mission objective, operating agency, and outcome code. The companion sites table provides geographic coordinates and operational history for every launch facility worldwide, from Cape Canaveral and Baikonur to mobile sea-launch platforms.
+
+The data originates from Jonathan McDowell's General Catalog of Artificial Space Objects (GCAT), widely regarded as the most meticulous independent accounting of spaceflight activity. McDowell, an astrophysicist at the Harvard-Smithsonian Center for Astrophysics, cross-references official government records, regulatory filings, tracking data, and open-source intelligence to maintain a launch log that frequently corrects errors in official databases. GCAT distinguishes between orbital and suborbital attempts, records partial failures where payloads reached unintended orbits, and assigns standardized vehicle designations across different naming conventions.
+
+This dataset is valuable for trend analysis in launch cadence, vehicle reliability, and the geographic distribution of spaceport activity. Researchers use it to study launch failure rates, the evolution of launch vehicle families, the emergence of new spacefaring nations, and the accelerating commercialization of orbital access. When joined with the sites table, it enables geospatial analysis of global launch infrastructure and its expansion over seven decades.
+
 ## Configs
 
 ### `launches` — {len(df):,} launch records

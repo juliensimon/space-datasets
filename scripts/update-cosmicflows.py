@@ -169,6 +169,12 @@ Each entry includes the PGC galaxy identifier, coordinates (equatorial, galactic
 supergalactic), CMB-frame velocity, a best-estimate distance modulus, and individual
 distance moduli from each method where available.
 
+Accurate galaxy distances are the foundation of the extragalactic distance ladder and one of the most challenging measurements in observational astronomy. The Hubble constant H0, which sets the expansion rate of the universe, can only be determined by measuring both the recession velocity and the true distance of galaxies. The current "Hubble tension" -- a persistent 4-5 sigma discrepancy between the local measurement of H0 (approximately 73 km/s/Mpc from Cepheids and supernovae) and the value inferred from the cosmic microwave background (approximately 67 km/s/Mpc from Planck) -- is one of the most important open problems in cosmology. Cosmicflows-4 provides the data needed to calibrate and cross-check each rung of the distance ladder.
+
+Beyond the Hubble constant, galaxy distances reveal the peculiar velocity field -- the deviations from smooth Hubble expansion caused by the gravitational pull of large-scale structure. By subtracting the Hubble flow from observed recession velocities, CF4 enables the reconstruction of the three-dimensional matter density field, revealing superclusters, voids, and the Great Attractor region. These peculiar velocity maps provide a direct measurement of the total matter distribution (including dark matter) that is complementary to galaxy redshift surveys, which trace only luminous matter.
+
+The eight independent distance methods consolidated in CF4 each have different systematic uncertainties, distance ranges, and host galaxy requirements. The Tully-Fisher relation (luminosity vs. rotation width for spirals) and the fundamental plane (for ellipticals) dominate the sample by number and reach hundreds of megaparsecs. TRGB and Cepheid distances provide the most precise individual measurements but are limited to the nearby universe (within approximately 30 Mpc). Type Ia supernovae bridge the gap to cosmological distances. The availability of multiple independent distance estimates for many galaxies allows rigorous assessment of systematic errors and zero-point calibrations.
+
 ## Schema
 
 | Column | Type | Description |

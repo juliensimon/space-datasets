@@ -218,6 +218,10 @@ This dataset is the reference classification set -- the {n_total} asteroids whos
 used to define and validate the taxonomy. It includes the taxonomic class, observation date,
 spectral slope, and the five principal component scores from the PCA decomposition.
 
+Asteroid taxonomy provides the critical link between remote spectroscopic observations and surface mineralogy. The S-complex, dominated by olivine and pyroxene silicates, is most common in the inner main belt (2.0--2.5 AU) and includes the parent bodies of ordinary chondrite meteorites. The C-complex, with its low albedo and relatively featureless spectra, dominates the outer belt (beyond 2.7 AU) and is associated with carbonaceous chondrite meteorites rich in hydrated minerals and organic compounds. The X-complex encompasses spectrally degenerate objects whose flat, featureless reflectance can indicate metallic iron-nickel surfaces (M-type), enstatite-rich compositions (E-type), or primitive organic-rich material (P-type), which cannot be distinguished by reflectance alone.
+
+The principal component scores (PC1--PC5) in this dataset encode the full spectral shape in a compact form. PC1 captures the overall spectral slope, PC2 the depth of the 1-micron absorption band (diagnostic of olivine and pyroxene), and higher components capture subtler features like the 2-micron pyroxene band and UV dropoff. This PCA decomposition enables quantitative comparison between asteroids and is widely used in machine learning applications for automated taxonomic classification of newly observed objects.
+
 ## Schema
 
 | Column | Type | Description |

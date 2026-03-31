@@ -121,6 +121,12 @@ physical and orbital parameters, host star properties, and discovery information
 Planetary Systems (`ps`) table with `default_flag=1` to select one row per planet with the default
 parameter set.
 
+The discovery of exoplanets has transformed our understanding of planetary systems and the prevalence of worlds beyond our own. The first confirmed detection around a Sun-like star came in 1995 with 51 Pegasi b, a "hot Jupiter" whose unexpectedly close orbit challenged existing theories of planet formation. Since then, the transit method -- measuring the tiny dip in stellar brightness as a planet crosses its host star -- has become the dominant discovery technique, largely thanks to the Kepler and TESS space telescopes, which together account for the vast majority of known exoplanets.
+
+The dataset includes key physical parameters such as orbital period, planet radius and mass, equilibrium temperature, orbital eccentricity, and semi-major axis, alongside host star properties like effective temperature, radius, mass, and distance. These parameters are fundamental to characterizing planetary systems: radius and mass together constrain bulk composition (rocky vs. gaseous), equilibrium temperature indicates potential habitability, and eccentricity reveals dynamical history. The discovery method and facility fields enable analysis of detection biases, since different techniques are sensitive to different regions of planet parameter space.
+
+This data underpins a wide range of astrophysical research, from occurrence rate calculations (how common are Earth-like planets?) to atmospheric characterization target selection for JWST and future missions. It is also heavily used in machine learning applications for transit signal classification, planetary radius prediction, and habitability scoring. The weekly update cadence ensures new confirmations from ongoing surveys are reflected promptly.
+
 ## Schema
 
 | Column | Type | Description |

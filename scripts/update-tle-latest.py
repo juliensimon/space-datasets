@@ -127,6 +127,14 @@ Latest Two-Line Element (TLE) orbital data for the **Starlink** ({len(starlink_d
 **GPS** ({len(gps_df):,} satellites) constellations, sourced daily from
 [CelesTrak](https://celestrak.org/).
 
+## Dataset description
+
+Two-Line Element sets (TLEs) are the standard format for representing satellite orbital elements, developed by NORAD in the 1960s and still used universally today. Each TLE encodes six Keplerian orbital elements plus drag terms in a compact two-line ASCII format designed for use with the SGP4/SDP4 analytical propagation model. When fed into an SGP4 propagator, a TLE can predict a satellite's position and velocity for several days forward or backward from its epoch, with accuracy typically within a few kilometers for well-tracked objects.
+
+This dataset provides daily-fresh TLEs for two critical constellations. The Starlink TLEs enable tracking of the largest object population in LEO -- essential for conjunction screening, RF interference analysis, and constellation operations research. The GPS TLEs cover the NAVSTAR constellation in MEO, which serves as the backbone of the Global Positioning System used by billions of devices worldwide. GPS orbital elements are particularly important for precision timing applications, geodetic surveys, and as reference orbits for validating propagation models.
+
+The raw `.tle` files are provided alongside Parquet for maximum compatibility: orbit propagation libraries like `python-sgp4`, `orekit`, and STK consume the standard three-line TLE format directly. The Parquet format is better suited for bulk analysis, filtering, and integration with data science workflows. Because TLE accuracy degrades rapidly with time (especially for LEO objects experiencing variable atmospheric drag), daily updates are essential for any operational application.
+
 ## Raw TLE files
 
 For applications that consume standard 3-line TLE format (e.g., SGP4 propagators):

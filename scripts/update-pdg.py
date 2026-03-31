@@ -184,6 +184,12 @@ elementary particles, hadrons, and nuclei.
 Data is sourced via the `particle` Python package which provides clean,
 programmatic access to the full PDG dataset.
 
+The Particle Data Group, based at Lawrence Berkeley National Laboratory, has published its Review of Particle Physics since 1957 -- the single most cited publication in high-energy physics. The PDG compiles and critically evaluates measurements from thousands of experiments at facilities like CERN's Large Hadron Collider, Fermilab, KEK, and SLAC to produce world-average values for particle masses, widths, lifetimes, and quantum numbers. Every experimentalist and theorist in particle physics relies on PDG values as the authoritative reference when designing experiments, comparing predictions, or setting limits on new physics.
+
+The dataset covers the full spectrum of known particles: the six quarks, six leptons, and gauge bosons of the Standard Model; the Higgs boson discovered at CERN in 2012; hundreds of mesons (quark-antiquark bound states) and baryons (three-quark bound states) organized by flavor quantum numbers; and light nuclei. Each entry carries quantum numbers (spin, parity, isospin, G-parity, C-parity) that encode the particle's transformation properties under fundamental symmetries. The mass uncertainty and decay width together constrain how precisely a particle can be identified in detector data and how quickly it decays -- from stable particles like the proton (lifetime exceeding 10^34 years) to resonances that exist for barely 10^-24 seconds.
+
+This machine-readable version of the PDG listings supports automated analysis pipelines in high-energy physics, Monte Carlo event generators that simulate particle collisions, detector simulation frameworks, and educational tools. It is also valuable for machine learning applications in particle identification, anomaly detection in collider data, and studies of mass spectrum patterns that may reveal deeper organizational principles beyond the Standard Model.
+
 ## Schema
 
 | Column | Type | Description |

@@ -223,6 +223,10 @@ independent analyses by different research groups.
 
 **{n_established}** showers have the "established" status, verified by the IAU Commission F1.
 
+Meteor showers occur when Earth passes through a stream of debris shed by a comet or, less commonly, an asteroid along its orbit. The radiant -- the apparent point on the sky from which shower meteors diverge -- is determined by the intersection geometry of Earth's orbit with the meteoroid stream. The geocentric velocity depends on the encounter geometry and the stream's own orbital velocity: head-on encounters with retrograde streams (like the Perseids, from comet 109P/Swift-Tuttle) produce fast meteors at 59 km/s, while overtaking encounters with prograde streams (like the Taurids) yield slower meteors near 27 km/s. The radiant position drifts daily as Earth's motion changes the apparent approach direction, captured by the `ra_daily_motion` and `dec_daily_motion` columns.
+
+The orbital elements of each shower constrain the identity of its parent body. Established parent-shower associations are well-determined for major showers (e.g., 1P/Halley for the Eta Aquariids and Orionids, 21P/Giacobini-Zinner for the Draconids), but many working-list showers lack confirmed parents. The solar longitude at peak activity provides a more precise timing reference than calendar date, as it accounts for the irregularities of Earth's elliptical orbit. Multiple records per IAU shower number reflect independent analyses using different observational techniques (visual, video, radar), each contributing orbital element solutions with varying precision and sample sizes recorded in the `n_meteors` column.
+
 ## Schema
 
 | Column | Type | Description |

@@ -370,6 +370,12 @@ classified by peak X-ray flux in the 1-8 Angstrom band: **B** (< 10⁻⁶ W/m²)
 cause radio blackouts, GPS errors, satellite anomalies, and geomagnetic storms
 that increase atmospheric drag on LEO satellites.
 
+Solar flares originate in magnetically complex active regions where stressed field lines reconnect explosively, converting stored magnetic energy into thermal radiation, accelerated particles, and bulk plasma motion in a matter of minutes. The GOES X-Ray Sensor (XRS) measures the Sun-integrated soft X-ray flux in two broadband channels (0.5-4 A and 1-8 A), with the 1-8 A band used for the standard classification system. The classification is logarithmic: an X1.0 flare has 10 times the peak flux of an M1.0 flare. Within each letter class, the numeric suffix scales linearly, so an X10 event (historically rare, roughly once per solar cycle) delivers 100 times the flux of an M1.0. The most powerful flares on record have exceeded X20, though the detectors saturate at X17.1 on older GOES satellites.
+
+The timing profile of a flare -- start, peak, and end -- encodes physically meaningful information. The impulsive phase (start to peak) typically lasts 5-20 minutes and corresponds to the primary energy release via magnetic reconnection. The gradual phase (peak to end) can extend for hours as post-flare loops cool and the arcade of reconnected field lines grows. Short-duration impulsive flares tend to be confined events, while long-duration events (LDEs) are more often associated with coronal mass ejections and solar energetic particle events, making flare duration a useful predictor of downstream space weather impacts.
+
+This dataset supports research in flare prediction, solar cycle statistics, and space weather impact assessment. Active region productivity analysis (which regions produce the most M/X-class flares) is a key input to operational forecasting. The GOES-16 era (2017-present) benefits from improved XRS sensitivity and 1-second cadence, enabling detection of smaller B-class microflares that were below the noise floor of earlier GOES instruments.
+
 ## Schema
 
 | Column | Type | Description |

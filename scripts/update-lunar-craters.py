@@ -163,6 +163,12 @@ This database was compiled by Stuart J. Robbins (2019) using Lunar Reconnaissanc
 imagery and LOLA topography. It is the most comprehensive catalog of lunar impact craters,
 covering the entire lunar surface with consistent methodology.
 
+The Moon preserves a cratering record stretching back over four billion years, largely unmodified by the plate tectonics, erosion, and volcanism that have resurfaced Earth. This makes lunar craters an indispensable calibration standard for crater counting chronology across the inner solar system. The size-frequency distribution of lunar craters anchors the absolute age scale used to date geological units on Mars, Mercury, and other airless bodies, linking radiometric ages from returned Apollo and Luna samples to crater density measurements.
+
+Crater morphology on the Moon transitions from simple bowl-shaped structures below about 15 km diameter to complex craters with central peaks, terraced walls, and flat floors at larger sizes. The largest impacts produced multi-ring basins — such as South Pole-Aitken (roughly 2,500 km diameter), the largest confirmed impact structure in the solar system. Depth-to-diameter measurements reveal the mechanical properties of the lunar crust and upper mantle, with the transition from simple to complex morphology reflecting the strength and layering of subsurface materials under the Moon's 1.62 m/s2 surface gravity.
+
+This database is directly relevant to NASA's Artemis program and international lunar exploration efforts. Crater catalogs are critical for landing site selection, hazard assessment, and traverse planning, particularly in the permanently shadowed regions near the south pole where water ice deposits have been detected. Understanding the local crater population constrains regolith thickness, boulder abundance, and slope stability — factors that directly affect lander and rover safety.
+
 ## Schema
 
 | Column | Type | Description |

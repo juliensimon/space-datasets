@@ -122,6 +122,12 @@ maintains a comprehensive database of satellite transmitters, including uplink a
 downlink frequencies, modulation modes, baud rates, and operational status. The data
 is crowdsourced from a global network of ground station operators and is freely available.
 
+The SatNOGS network represents one of the most ambitious citizen science projects in space operations. Hundreds of volunteer-operated ground stations around the world automatically schedule satellite passes, record RF signals, and upload observations to a central database. This distributed approach provides something no single ground station can: near-continuous coverage of satellites in low Earth orbit, capturing telemetry and beacon transmissions that would otherwise go unrecorded. The transmitter database is the curated knowledge base that makes this possible, documenting the exact frequencies, modulation schemes, and data rates needed to decode each satellite's signals.
+
+The database spans the full radio spectrum used by satellites, from VHF (around 145 MHz, used by many amateur and CubeSat missions) through UHF (435 MHz, the most common amateur satellite band) to S-band (2.4 GHz) and beyond. Modulation modes range from simple FM voice and CW (Morse code) beacons to digital modes like BPSK, AFSK, GMSK, and LoRa used by modern small satellites. The baud rate field indicates data throughput capability, from slow 1200-baud packet radio to high-speed downlinks at 9600 baud and above. Each transmitter entry is linked to its parent satellite via NORAD ID, enabling cross-referencing with orbital elements for pass prediction.
+
+This dataset is essential for amateur radio satellite operators planning contacts, university teams commissioning new CubeSat missions, RF spectrum managers identifying potential interference sources, and researchers studying the growing congestion of satellite frequency bands. The alive/status fields provide a real-time view of which satellites are still transmitting, often more current than official status databases.
+
 ## Schema
 
 | Column | Type | Description |

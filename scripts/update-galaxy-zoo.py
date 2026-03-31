@@ -164,6 +164,12 @@ The decision tree covers: smooth vs. featured, edge-on disk, bar presence, spira
 structure, bulge prominence, oddities (ring, lens, disturbed, irregular, merger, dust
 lane), roundedness, bulge shape, and spiral arm properties (tightness, count).
 
+Galaxy morphology is one of the oldest and most fundamental classification problems in astronomy, dating back to Edwin Hubble's tuning-fork diagram in 1926. A galaxy's visual appearance encodes crucial information about its formation history, dynamical state, and stellar populations. Elliptical galaxies are generally old, red, and gas-poor systems that formed through major mergers, while spiral galaxies retain organized rotation, ongoing star formation, and complex substructure including bars, rings, and spiral arms of varying tightness. The relative prevalence of these features as a function of environment and redshift provides direct constraints on models of galaxy evolution, ram-pressure stripping, and tidal interactions.
+
+Galaxy Zoo 2 represents a landmark in citizen-science astronomy, demonstrating that the collective visual pattern recognition of hundreds of thousands of volunteers can produce morphological classifications of comparable quality to expert astronomers, but at vastly greater scale. The debiased vote fractions correct for the tendency of distant, smaller galaxies to appear smoother than they truly are, enabling robust statistical comparisons across the redshift range of the sample. These classifications have been used in hundreds of published studies, from investigating the role of bars in quenching star formation to identifying rare morphological features such as tidal streams and polar rings.
+
+The dataset is also widely used as a benchmark for machine-learning approaches to galaxy classification. Convolutional neural networks trained on Galaxy Zoo labels have achieved human-level accuracy and have been applied to classify galaxies in surveys far larger than what citizen science alone could handle, including upcoming datasets from the Vera Rubin Observatory and Euclid.
+
 ## Quick stats
 
 - **{len(df):,}** galaxies classified

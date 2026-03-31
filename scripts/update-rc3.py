@@ -146,6 +146,12 @@ total B magnitudes, colors, diameters, axis ratios, luminosity classes, surface 
 and heliocentric radial velocities. RC3 remains the standard reference for galaxy morphology
 and is widely used for training galaxy classification models.
 
+The revised Hubble classification system used by RC3 assigns each galaxy a numerical type T that runs continuously from -5 for giant ellipticals through 0 for lenticulars (S0) to +10 for irregular galaxies, with spirals occupying the range +1 to +9 and subdivided by bar strength (SA, SAB, SB) and arm openness (a, b, c, d, m). This quantitative encoding of morphology has proven remarkably effective at predicting galaxy properties: T-type correlates strongly with color, gas fraction, star formation rate, bulge-to-disk ratio, and stellar population age. The RC3 morphological types remain the gold standard training labels for automated galaxy classification.
+
+The luminosity classes, surface brightnesses, and total B magnitudes provided by RC3 complement the morphological data and are essential for constructing luminosity functions and studying the Malmquist bias in magnitude-limited surveys. The color indices (B-V and U-B) trace stellar population age and metallicity, while the isophotal diameters and axis ratios encode information about galaxy size, inclination, and the distribution of luminous matter. Heliocentric radial velocities, corrected to various reference frames, provide the kinematic data needed for studies of galaxy groups, the local velocity field, and deviations from the Hubble flow.
+
+Although compiled in 1991, RC3 remains widely cited because no subsequent catalog has matched its combination of completeness, homogeneity, and morphological detail for bright galaxies. It serves as the primary cross-reference for the PGC (Principal Galaxies Catalogue) numbering system used by HyperLEDA and many modern galaxy catalogs, and it provides the foundational morphological classifications that downstream catalogs like HECATE inherit.
+
 ## Schema
 
 | Column | Type | Description |

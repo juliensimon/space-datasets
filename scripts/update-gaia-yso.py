@@ -182,6 +182,34 @@ This dataset joins three Gaia DR3 tables:
 - **`vari_summary`** — variability statistics (mean/median magnitudes, amplitudes, scatter)
 - **`gaia_source`** — astrometry (ra, dec, parallax, proper motion) and catalog photometry
 
+Young stellar objects span a broad evolutionary sequence from deeply embedded protostars
+(Class 0/I) still accreting from their natal envelopes, through classical T Tauri stars
+(Class II) with optically thick circumstellar disks, to weak-lined T Tauri stars (Class III)
+whose disks have largely dissipated. Their photometric variability arises from multiple
+physical mechanisms operating simultaneously: hot spots at the base of magnetospheric
+accretion columns produce periodic modulation tied to the stellar rotation period; variable
+accretion rates cause irregular flickering on timescales of hours to weeks; disk warps and
+orbiting dust structures create quasi-periodic extinction dips; and powerful magnetic
+reconnection events drive flares with amplitudes of several magnitudes in extreme cases.
+
+The Gaia variability classifier identifies YSO candidates primarily through their
+characteristic aperiodic and semi-periodic brightness fluctuations, which differ statistically
+from the variability signatures of eclipsing binaries, pulsating stars, and AGN. The
+variability statistics in this catalog -- standard deviation, trimmed range, skewness,
+kurtosis, and the Abbe value (a measure of smoothness) -- capture these distinctive patterns
+and are particularly useful for separating accretion-dominated variability (typically
+asymmetric, with negative skewness from fading events) from spot-dominated variability
+(more symmetric and periodic).
+
+Because Gaia operates at optical wavelengths, this catalog is most complete for the more
+evolved, less embedded YSO populations (Class II and III) and is naturally biased against
+the youngest, most heavily obscured protostars that are better detected at infrared and
+submillimeter wavelengths. Nevertheless, the combination of precise Gaia astrometry
+(parallaxes and proper motions) with the variability metrics makes this catalog uniquely
+powerful for identifying co-moving groups of young stars, mapping the three-dimensional
+structure of nearby star-forming regions, and studying the dependence of variability
+properties on stellar age, mass, and disk evolutionary state.
+
 ## Key columns
 
 | Column | Type | Description |

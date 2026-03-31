@@ -242,6 +242,30 @@ for measuring distances -- from the Milky Way disk to galaxies tens of megaparse
 Gaia parallaxes provide a geometric anchor for calibrating this relation with unprecedented
 precision.
 
+The three major Cepheid families in this catalog occupy distinct regions of the
+instability strip and trace very different stellar populations. Classical Cepheids (DCEP)
+are young, massive (3--12 solar masses) supergiants crossing the instability strip during
+helium-core or helium-shell burning, with periods ranging from about 1 to over 100 days.
+They are concentrated in the thin disk and spiral arms, making them ideal tracers of Galactic
+structure and recent star formation. Type II Cepheids (T2CEP) -- subdivided into BL Herculis
+(short-period), W Virginis (intermediate), and RV Tauri (long-period) subclasses -- are old,
+low-mass stars evolving through the instability strip on post-horizontal-branch tracks. They
+inhabit the Galactic bulge, thick disk, and halo, and follow a period-luminosity relation
+that is fainter than that of classical Cepheids at the same period. Anomalous Cepheids (ACEP)
+are intermediate in luminosity and are thought to arise from mass transfer in binary systems
+or from relatively metal-poor intermediate-age populations; they are most commonly found in
+dwarf spheroidal galaxies.
+
+Gaia's contribution to Cepheid science is transformative. Prior to Gaia, geometric parallaxes
+were available for only a handful of nearby Cepheids, and the zero-point calibration of the
+Leavitt law relied heavily on indirect methods such as main-sequence fitting of host clusters
+or the Baade-Wesselink technique. Gaia DR3 provides trigonometric parallaxes for thousands
+of Cepheids across the Milky Way, enabling a purely geometric calibration of the
+period-luminosity relation and tightening the first rung of the cosmic distance ladder. The
+Fourier decomposition parameters (R21, R31, phi21, phi31) included in this catalog encode
+the detailed shape of each star's light curve and serve as powerful diagnostics for
+distinguishing pulsation modes and Cepheid subtypes.
+
 ## Quick stats
 
 - **{n_total:,}** Cepheid variables

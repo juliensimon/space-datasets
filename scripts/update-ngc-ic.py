@@ -128,6 +128,12 @@ deep-sky objects beyond the Messier catalog. This dataset is built from the comm
 OpenNGC database, which provides accurate positions, magnitudes, dimensions, and classifications
 for all NGC/IC entries.
 
+The New General Catalogue was compiled by John Louis Emil Dreyer in 1888, consolidating and correcting the observations of William Herschel, his son John Herschel, and other nineteenth-century visual observers. The two Index Catalogues (IC I in 1895 and IC II in 1908) extended the NGC with additional discoveries, many made with the new generation of photographic telescopes. Together, the NGC and IC catalogs defined the standard reference system for deep-sky objects for over a century and remain in daily use by professional and amateur astronomers alike. Every major observatory and planetarium software system uses NGC/IC designations as primary identifiers.
+
+The objects in this catalog span an extraordinary range of astrophysical phenomena. The galaxies include everything from nearby dwarf irregulars to giant ellipticals at the centers of rich clusters, with Hubble types recorded for the brighter entries. The nebulae encompass star-forming HII regions where new stars are being born, planetary nebulae ejected by dying low-mass stars, supernova remnants marking the explosive deaths of massive stars, and reflection nebulae illuminated by nearby hot stars. The star clusters range from young open clusters of a few hundred stars in the Galactic disk to ancient globular clusters containing hundreds of thousands of stars in the Galactic halo, with ages spanning from a few million to over 12 billion years.
+
+The OpenNGC project has corrected many historical errors in position and classification that accumulated over more than a century of visual observation, and has added modern multi-band photometry (B, V, J, H, K) that enables quantitative analysis of stellar populations, dust content, and distance estimates. This makes the catalog valuable not only as a reference for identification and pointing, but also as a dataset for statistical studies of the nearby deep-sky object population.
+
 ## Quick stats
 
 - **{len(df):,}** cataloged objects

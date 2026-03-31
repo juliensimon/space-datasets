@@ -311,6 +311,10 @@ The `classification` column gives the best overall class per asteroid (from the 
 summary table), chosen as either the most frequent or highest-scoring class across all
 SDSS observations of that object.
 
+The SDSS taxonomy dramatically expanded the number of compositionally characterized asteroids from a few thousand (spectroscopic surveys) to over 60,000 unique objects, making it the largest photometric taxonomy ever produced. While broadband photometry cannot resolve the fine spectral features visible in spectroscopy, the five SDSS filters span a wavelength range (0.35--0.91 microns) that captures the key diagnostic features: the UV absorption shortward of 0.5 microns that separates C- and X-types, the 1-micron silicate band wing that identifies S- and V-types, and the overall spectral slope. The probabilistic classification approach assigns a confidence score to each observation, enabling users to filter for high-confidence assignments or study objects near taxonomic boundaries.
+
+This dataset is particularly valuable for studying compositional gradients across the main asteroid belt. The heliocentric distribution of taxonomic types records the thermal and chemical conditions of the protoplanetary disk at the time of planetesimal formation: silicate-rich S-types dominate the warm inner belt, carbonaceous C-types prevail in the cooler outer belt, and the transition zone near 2.7 AU marks the approximate location of the primordial snow line. Orbital elements merged from the asteroid summary table enable direct analysis of taxonomy as a function of semi-major axis, eccentricity, and inclination, as well as identification of dynamical family members sharing a common collisional origin.
+
 ## Schema
 
 | Column | Type | Description |

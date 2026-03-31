@@ -205,6 +205,10 @@ detectors.
 This dataset is sourced from the HEASARC mirror of TeVCat and includes sky
 coordinates, flux measurements, redshifts, and source classifications.
 
+Ground-based VHE gamma-ray astronomy relies on detecting the Cherenkov light produced when gamma rays interact with the atmosphere, creating cascades of relativistic particles. Imaging Atmospheric Cherenkov Telescopes (IACTs) such as H.E.S.S., MAGIC, and VERITAS achieve angular resolutions of a few arcminutes and energy thresholds as low as ~30 GeV, while water Cherenkov detectors like HAWC and LHAASO provide continuous wide-field monitoring at higher energies. The TeV source population is dominated by Galactic objects -- supernova remnants, pulsar wind nebulae, and binary systems -- alongside extragalactic blazars and radio galaxies whose TeV emission constrains jet physics and the extragalactic background light.
+
+TeV gamma rays are produced by the highest-energy particles in the universe, either through inverse-Compton scattering of ambient photon fields by ultra-relativistic electrons or through the decay of neutral pions created in hadronic interactions. Distinguishing between these leptonic and hadronic scenarios is one of the central goals of VHE astrophysics, as hadronic emission would identify the long-sought sites of cosmic ray acceleration. The redshifts of extragalactic TeV sources are particularly valuable because TeV photons are absorbed by pair production on the extragalactic background light (EBL), enabling independent constraints on the EBL density and its evolution with cosmic time.
+
 ## Quick stats
 
 - **{n_total:,}** TeV gamma-ray sources

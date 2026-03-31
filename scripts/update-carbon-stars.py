@@ -197,6 +197,10 @@ into several subtypes based on their spectra:
 - **C-H** — high-velocity (halo) carbon stars, often CH stars
 - **C-Hd** — hydrogen-deficient carbon stars (R CrB type)
 
+Carbon stars occupy a pivotal role in stellar evolution and galactic chemical enrichment. The defining characteristic — a C/O ratio greater than unity in the stellar atmosphere — arises primarily through the third dredge-up process on the asymptotic giant branch (AGB), where convective mixing carries freshly synthesized carbon-12 from the helium-burning shell to the surface. This nucleosynthetic pathway is one of the principal channels by which carbon, a key element for life, is returned to the interstellar medium. AGB carbon stars also produce significant quantities of s-process elements (barium, strontium, zirconium) through slow neutron capture, making them important contributors to the chemical evolution of galaxies.
+
+As luminous infrared sources (M_bol typically -3 to -6), carbon stars are detectable at large distances and serve as excellent tracers of intermediate-age stellar populations (1-4 Gyr) and Galactic structure. Their strong molecular absorption bands — particularly C_2, CN, and SiC — give them extremely red colors, making them easy to identify photometrically. In external galaxies, carbon star luminosity functions have been used as distance indicators. Within the Milky Way, the spatial distribution of carbon stars maps the disk and halo populations: the cool C-N giants trace the thin and thick disk, while the C-H and C-R subtypes include high-velocity halo members that are likely the products of mass transfer in binary systems rather than intrinsic dredge-up. The catalog's spectral subtype classifications thus encode both evolutionary state and population membership.
+
 ## Schema
 
 | Column | Type | Description |

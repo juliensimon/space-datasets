@@ -197,6 +197,12 @@ discoveries, and historical records.
 Each record includes sky coordinates, spectroscopic classification,
 redshift, host galaxy, peak apparent magnitude, and extinction (E(B-V)).
 
+Supernovae are among the most energetic events in the universe, releasing roughly 10^44 joules of kinetic energy and briefly outshining their entire host galaxy. They divide into two fundamental classes by physical mechanism: thermonuclear supernovae (Type Ia), in which a carbon-oxygen white dwarf is completely disrupted by runaway nuclear burning, and core-collapse supernovae (Types II, Ib, Ic, and their subtypes), in which the iron core of a massive star (>8 solar masses) collapses to form a neutron star or black hole. Type Ia supernovae serve as standardizable candles for measuring cosmological distances, providing the original evidence for the accelerating expansion of the universe and dark energy. Core-collapse supernovae are the primary sites of heavy element nucleosynthesis, enriching the interstellar medium with oxygen, silicon, calcium, and iron-group elements essential for planet formation and life.
+
+The Open Supernova Catalog has become the standard aggregation point for supernova discoveries and metadata, incorporating data from modern time-domain surveys such as the Zwicky Transient Facility (ZTF), the All-Sky Automated Survey for Supernovae (ASAS-SN), Pan-STARRS, and the Asteroid Terrestrial-impact Last Alert System (ATLAS), as well as historical records dating back centuries. The catalog captures the explosion of discovery rates driven by wide-field CCD surveys: from a few dozen supernovae per year in the 1980s to thousands per year in the 2020s. The upcoming Vera C. Rubin Observatory's Legacy Survey of Space and Time (LSST) is expected to discover millions of supernovae, making catalogs like this essential for contextualizing and cross-referencing transient events.
+
+The spectroscopic classification, redshift, and peak magnitude data in this catalog enable population studies of supernova rates as a function of redshift, host galaxy type, and environment. These rates constrain the delay-time distribution of Type Ia progenitors, the initial mass function of massive stars, and the star formation history of the universe.
+
 ## Schema
 
 | Column | Type | Description |

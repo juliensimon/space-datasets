@@ -145,6 +145,12 @@ running solar activity indices. It is used in:
 Values are measured in Solar Flux Units (SFU), where 1 SFU = 10^-22 W/m^2/Hz.
 Quiet-Sun values are around 65-70 SFU; solar maximum can exceed 300 SFU.
 
+The F10.7 index originates from thermal bremsstrahlung and gyroresonance emission in the solar corona and chromosphere, primarily above active regions. Unlike direct EUV measurements -- which require space-based instruments and have only been available since the 1990s -- the 10.7 cm wavelength penetrates Earth's atmosphere, allowing ground-based observation. The measurement has been made at local noon at the Dominion Radio Astrophysical Observatory (DRAO) in Penticton, British Columbia since 1947, first with the original Covington antenna and now with modernized flux monitors. This unbroken 75+ year record makes F10.7 the longest continuous solar activity proxy available, surpassed in length only by the sunspot number (which has lower physical fidelity for EUV modeling).
+
+Three variants are provided: the observed flux (as measured), the adjusted flux (corrected to 1 AU to remove the ~3.3% variation from Earth's orbital eccentricity), and the absolute flux (tied to the calibration scale). For atmospheric modeling, the adjusted value is standard. Most density models also require the 81-day centered average (F10.7bar), which smooths out the 27-day solar rotation modulation and better represents the background EUV irradiance level. The combination of daily F10.7 and F10.7bar captures both the slowly-varying solar cycle baseline and the shorter-term active region contributions to thermospheric heating.
+
+During solar maximum, F10.7 can exceed 300 SFU for extended periods, increasing thermospheric density at 400 km by a factor of 10-20 compared to deep solar minimum (~65 SFU). This has enormous practical consequences: Starlink satellites at 550 km experienced unexpected orbital decay during the February 2022 geomagnetic storm, and ISS reboost frequency scales directly with F10.7 levels. Accurate F10.7 forecasting is therefore essential for constellation management, collision avoidance, and re-entry prediction.
+
 ## Schema
 
 | Column | Type | Description |

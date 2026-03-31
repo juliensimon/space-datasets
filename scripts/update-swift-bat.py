@@ -202,6 +202,12 @@ objects.
 Hard X-rays penetrate gas and dust that absorb softer X-rays, making BAT uniquely
 suited for finding obscured AGN and mapping the local hard X-ray universe.
 
+The BAT coded-aperture mask — a 2.7 m^2 array of 54,000 lead tiles in a random half-open, half-closed pattern — images the hard X-ray sky by casting modulated shadows onto a 5,200 cm^2 CdZnTe detector plane. This technique provides a wide field of view (approximately 60 x 100 degrees at partial coding) with arcminute-scale source localization, enabling the survey to accumulate deep exposure across the entire sky through the spacecraft's continuous repointing as it slews between GRB targets. The 157-month survey reaches a sensitivity of approximately 8 x 10^-12 erg/cm^2/s over most of the sky, probing the hard X-ray luminosity function down to Seyfert-level AGN in the local universe.
+
+The source population is dominated by active galactic nuclei — both unobscured (Seyfert 1) and obscured (Seyfert 2) — because the 14-195 keV band penetrates Compton-thin absorption (column densities up to N_H ~ 10^24 cm^-2) that renders these sources invisible to soft X-ray surveys. The BAT AGN sample has been foundational for measuring the intrinsic fraction of obscured AGN as a function of luminosity and redshift, directly constraining models of AGN unification and the cosmic X-ray background. The catalog also includes Galactic X-ray binaries (both high-mass and low-mass systems), cataclysmic variables, galaxy clusters detected via their inverse-Compton or thermal bremsstrahlung emission, and a handful of isolated pulsars.
+
+The spectral parameters — photon indices and fluxes — derived from the time-averaged BAT spectra provide a clean, absorption-independent measure of the intrinsic source luminosity. Combined with redshifts, these yield hard X-ray luminosities that anchor the X-ray luminosity function of AGN, a fundamental input to models of supermassive black hole growth and the synthesis of the cosmic X-ray background. The survey's uniform sky coverage also makes it the standard reference sample for volume-limited AGN demographic studies and for selecting targets for deeper pointed observations with NuSTAR, XMM-Newton, and Chandra.
+
 ## Quick stats
 
 - **{n_total:,}** hard X-ray sources (14-195 keV)

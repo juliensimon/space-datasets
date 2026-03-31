@@ -133,6 +133,34 @@ detection with careful validation.
 Each entry includes sky coordinates, distance, parallax, age, extinction, number of members,
 and radial velocity where available.
 
+Open clusters are born when a giant molecular cloud fragments and collapses, producing a
+gravitationally bound group of stars that share the same age, initial chemical composition,
+and distance. This makes them natural laboratories for stellar evolution: by comparing the
+color-magnitude diagram of a cluster to theoretical isochrones, astronomers can determine
+the cluster's age, distance, and reddening simultaneously. The main-sequence turnoff point
+-- the luminosity at which stars are just leaving the hydrogen-burning main sequence --
+shifts to fainter magnitudes with increasing age, providing a reliable chronometer spanning
+from a few million years (for clusters still embedded in their birth clouds) to several
+billion years (for ancient survivors like NGC 6791).
+
+The Hunt & Reffert (2024) catalog represents a major advance over earlier compilations.
+Using Gaia DR3 astrometry, the authors applied the HDBSCAN clustering algorithm to identify
+overdensities in the five-dimensional space of sky position, parallax, and proper motion,
+then validated each candidate through isochrone fitting. This approach recovers not only the
+well-known clusters from classical catalogs (Dias, MWSC, Kharchenko) but also hundreds of
+previously unknown, sparse, or partially dissolved associations that are invisible in
+two-dimensional sky projections but clearly distinct in astrometric phase space. The ages
+in this catalog are derived from Bayesian isochrone fitting using PARSEC stellar models,
+with the logarithmic age (log_age) expressed in years.
+
+Open clusters are the primary tracers of the Milky Way's spiral arm structure, radial
+metallicity gradient, and age-metallicity relation. Young clusters (< 10 Myr) delineate
+the current loci of spiral arms, while intermediate-age and old clusters map the disk's
+dynamical heating and radial migration history. The radial velocities available for a
+subset of clusters enable full three-dimensional kinematic analysis, including the
+determination of the Galactic rotation curve and the identification of kinematic groups
+that may share a common origin in the same star-forming complex.
+
 ## Schema
 
 | Column | Type | Description |

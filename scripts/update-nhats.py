@@ -139,6 +139,12 @@ total delta-v under 12 km/s, total mission duration under 450 days, and stay tim
 of at least 8 days. The dataset is continuously updated as new asteroids are
 discovered and orbits are refined.
 
+The delta-v requirement is the single most important metric for mission feasibility in space exploration. Unlike terrestrial travel where distance dominates cost, spaceflight cost scales with the velocity change needed to match orbits with a target. A round-trip delta-v under 6 km/s -- comparable to what is needed to reach the lunar surface and return -- makes an asteroid reachable with existing or near-term propulsion technology. The most accessible targets in this dataset have delta-v requirements below 5 km/s, making them energetically easier to reach than the Moon despite being millions of kilometers away. This counterintuitive result arises because these asteroids occupy orbits similar to Earth's, requiring only modest trajectory corrections.
+
+Mission duration and the number of viable trajectories provide complementary selection criteria. A target with thousands of viable trajectories offers scheduling flexibility -- crucial for mission planning that must account for launch window constraints, spacecraft readiness, and orbital mechanics. The NHATS study evaluates trajectories with launch dates spanning decades into the future, identifying objects that remain accessible across multiple launch opportunities. Short minimum mission durations (under 200 days) are preferred for crewed missions where life support consumables and radiation exposure impose hard limits.
+
+These asteroids are also prime candidates for in-situ resource utilization (ISRU) -- extracting water, metals, and volatiles from asteroid material to support deep-space operations. Carbonaceous (C-type) asteroids may contain up to 20% water by mass, which can be electrolyzed into hydrogen and oxygen propellant. Metallic (M-type) asteroids contain iron, nickel, cobalt, and platinum-group elements. The combination of low delta-v accessibility and potential resource richness makes NHATS targets central to long-term plans for a sustained human presence beyond low Earth orbit.
+
 ## Schema
 
 | Column | Type | Description |

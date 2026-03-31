@@ -533,6 +533,12 @@ The dataset merges three authoritative JPL tables:
 - **Mean orbital elements** \u2014 semi-major axis, eccentricity, inclination, period
 - **Physical parameters** \u2014 mean radius, GM, density (for {n_with_radius} major moons)
 
+The natural satellites of the solar system span an extraordinary range of sizes, compositions, and dynamical histories. At one extreme, Jupiter's Ganymede (radius ~2,634 km) is larger than Mercury and possesses its own intrinsic magnetic field. At the other, many recently discovered irregular satellites are only a few kilometers across and occupy distant, highly inclined or retrograde orbits that betray their origin as captured objects from the primordial small-body population. The dynamical groupings recorded in this dataset — Galilean, Himalia, Ananke, Carme, Pasiphae for Jupiter; Inuit, Gallic, Norse for Saturn — reflect distinct capture and collisional fragmentation events that occurred during the chaotic early evolution of the giant planet systems.
+
+Several moons in this catalog are among the most scientifically compelling worlds in the solar system. Europa's subsurface ocean beneath its icy shell is a prime target for astrobiology, while Enceladus actively vents water vapor and organic molecules through its south polar tiger stripes. Titan maintains a dense nitrogen-methane atmosphere with a complete hydrological cycle of methane rain, rivers, and lakes. Io is the most volcanically active body known, driven by intense tidal heating from its orbital resonance with Europa and Ganymede. Triton, captured by Neptune from the Kuiper Belt, exhibits active nitrogen geysers and a retrograde orbit that is gradually decaying.
+
+The orbital elements in this dataset encode fundamental information about satellite dynamics: resonant relationships (such as the 1:2:4 Laplace resonance of Io, Europa, and Ganymede), tidal evolution timescales, and the stability boundaries that separate regular from irregular satellite populations. Combined with physical parameters like density and radius, these data enable studies of satellite formation, internal structure, and the delivery of volatiles to the outer solar system.
+
 ## Quick stats
 
 {planet_summary}

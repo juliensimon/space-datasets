@@ -134,6 +134,10 @@ creating the first high-accuracy stellar reference frame from space. Hipparcos p
 remain the gold standard for nearby star distances and are the foundation for the cosmic
 distance ladder.
 
+Hipparcos achieved milliarcsecond-level astrometry — a factor of 100 improvement over ground-based catalogs — by observing from above Earth's atmosphere, which eliminates the turbulent seeing that limits ground-based parallax measurements. The mission's key deliverable, trigonometric parallax, provides the most direct and model-independent method of measuring stellar distances: a star at 1 parsec subtends a parallax of 1 arcsecond, and distance in parsecs is simply 1/parallax. With typical parallax uncertainties of 1 mas, Hipparcos yielded distances accurate to 10% out to about 100 pc, encompassing the solar neighborhood and enabling definitive calibration of the main sequence, giant branch, and key standard candles such as Cepheid variables and RR Lyrae stars.
+
+The scientific legacy of Hipparcos extends far beyond simple distance measurement. Proper motions from the catalog revealed the kinematic structure of nearby stellar streams and moving groups, constraining the dynamics of the Galactic disk. Combined with radial velocities, Hipparcos data enabled full three-dimensional space velocity determinations for thousands of stars, providing the first precise map of the local velocity field. The catalog's photometric data (Hp band, along with Tycho B_T and V_T) established luminosity calibrations for spectral types across the HR diagram. Although Gaia has since surpassed Hipparcos in depth and precision by orders of magnitude, the Hipparcos catalog retains enduring value: it provides an independent epoch (J1991.25) for long-baseline proper motion studies, and its bright-star astrometry remains a benchmark for validating Gaia's solutions at the bright end where CCD saturation effects become significant.
+
 ## Schema
 
 | Column | Type | Description |

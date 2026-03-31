@@ -215,6 +215,12 @@ The cheapest vehicle by cost/kg is **{cheapest["vehicle"]}** at **${cheapest["co
 while the most expensive is **{most_expensive["vehicle"]}** at **${most_expensive["cost_per_kg_usd"]:,.0f}/kg**.
 The median cost across all vehicles is **${median_cost_kg:,}/kg**.
 
+The cost of delivering payload to low Earth orbit is the single most important economic parameter in spaceflight. It determines the viability of satellite constellations, space station resupply, deep-space exploration architectures, and emerging industries like orbital manufacturing and space tourism. For decades, launch costs hovered around $10,000-$20,000 per kilogram, a figure that constrained space activity to government agencies and large defense contractors. The advent of reusable first stages -- pioneered by SpaceX's Falcon 9 -- broke this paradigm, driving costs below $3,000/kg and enabling mega-constellations like Starlink that would have been economically impossible a generation earlier.
+
+This dataset normalizes all costs to 2024 USD, enabling fair comparison across eras. Historical costs are adjusted using NASA and government inflation indices. For vehicles with both expendable and reusable configurations (Falcon 9, Falcon Heavy), separate entries capture the payload penalty of propellant reserved for booster recovery. The dataset spans the full range of lift capacity, from small solid-fuel rockets carrying a few hundred kilograms to super-heavy-lift vehicles designed for 100+ tonnes, reflecting the stratification of the modern launch market.
+
+Understanding launch cost trends is essential for space policy analysis, mission design trade studies, and investment decisions in the commercial space sector. The data reveals how competition, reusability, and manufacturing scale have reshaped the economics of orbital access, and provides a baseline for evaluating next-generation vehicles still in development.
+
 ## Schema
 
 | Column | Type | Description |

@@ -149,6 +149,12 @@ This dataset contains the fundamental indices used to characterize space weather
   directly affecting satellite drag and orbital decay rates.
 - **International Sunspot Number** — Long-running indicator of solar activity cycle.
 
+These indices together form the essential parameter set for characterizing the state of the heliosphere and its coupling to the terrestrial environment. The Kp index (quasi-logarithmic, 0-9 scale, 3-hourly) captures planetary-scale geomagnetic disturbances driven by solar wind-magnetosphere interactions, while the Ap index (its linearized daily equivalent in nanotesla) serves as the standard geomagnetic input to atmospheric density models. The F10.7 solar radio flux (measured daily at 2800 MHz in Penticton, Canada) is the primary proxy for solar extreme ultraviolet (EUV) radiation that heats the thermosphere -- the atmospheric layer where most satellites experience drag. The international sunspot number, recorded since 1749, provides the longest available record of solar activity and is used for solar cycle phase identification and long-term trend analysis.
+
+The physical connections between these indices reflect the chain of solar-terrestrial coupling. Solar active regions produce both elevated F10.7 emission (from coronal gyroresonance above sunspot magnetic fields) and eruptive events (flares, CMEs) that ultimately drive Kp/Ap disturbances days later. During solar maximum, F10.7 values typically range from 150-250 SFU and Kp regularly reaches 5-7 during CME-driven storms; during solar minimum, F10.7 drops to 65-70 SFU and Kp rarely exceeds 3. The 81-day running averages of F10.7 (provided as centered and trailing variants) smooth out the 27-day solar rotation modulation and represent the background EUV irradiance level that determines the baseline thermospheric density.
+
+For operational space weather applications, this dataset provides the complete set of inputs required by the major atmospheric density models: NRLMSISE-00 (F10.7, F10.7bar, Ap), JB2008 (F10.7 plus supplementary indices), and DTM (F10.7, Kp). These models are embedded in every operational orbit determination system worldwide, from the 18th Space Defense Squadron's high-accuracy catalog to commercial conjunction screening services. The storm classification (G1-G5) derived from Kp thresholds is the same scale used in NOAA space weather alerts that trigger operational responses by satellite operators, power utilities, and airlines.
+
 ## Schema
 
 | Column | Type | Description |

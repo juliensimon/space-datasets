@@ -135,6 +135,12 @@ SATCAT that has a recorded decay date, providing a comprehensive history of atmo
 reentries. It includes payloads, rocket bodies, and debris, with derived fields like
 time spent in orbit and decay year for trend analysis.
 
+Atmospheric reentry is governed by the interplay between an object's altitude, ballistic coefficient, and solar activity. Objects in low orbits (below ~400 km) experience enough atmospheric drag to decay within months or years, while those at 800+ km can persist for centuries. Solar maxima heat and expand the upper atmosphere, dramatically increasing drag on LEO objects -- a single active solar cycle can sweep thousands of debris fragments from orbit. The dataset captures this dynamic: objects launched during the 1960s space race that have only recently decayed, alongside modern satellites deliberately deorbited within weeks of mission completion to comply with the 25-year orbital debris mitigation guidelines.
+
+Controlled reentries of large objects (like space stations, upper stages, or defunct satellites) are carefully planned to target uninhabited ocean areas, typically the South Pacific Ocean Uninhabited Area (SPOUA), also known as the "spacecraft cemetery." Uncontrolled reentries are far more common and carry a small but nonzero risk of surviving debris reaching populated areas. The object type field is critical for risk assessment: large rocket bodies (R/B) and payloads (PAY) are more likely to produce surviving fragments than small debris pieces, which typically burn up completely during reentry heating.
+
+This dataset supports orbital lifetime prediction modeling, compliance monitoring for debris mitigation guidelines, reentry risk assessment, and historical analysis of how the space environment cleans itself through atmospheric drag. The days-in-orbit field enables actuarial-style survival analysis of different object populations, revealing how orbital altitude, size, and solar cycle timing determine an object's residence time in space.
+
 ## Schema
 
 | Column | Type | Description |

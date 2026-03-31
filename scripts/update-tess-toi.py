@@ -135,6 +135,12 @@ a planet crossing in front of it, it is flagged as a TESS Object of Interest (TO
 Each TOI undergoes follow-up observations to determine whether it is a genuine planet,
 a false positive (e.g., eclipsing binary), or remains an active candidate.
 
+TESS represents a fundamentally different survey strategy from its predecessor Kepler. While Kepler stared at a single patch of sky for four years to find small planets around faint stars, TESS surveys nearly the entire sky in 27-day sectors, optimized for finding planets around the nearest and brightest stars. This design choice means TESS planets are far more amenable to ground-based follow-up: radial velocity mass measurements, atmospheric characterization with JWST, and even direct imaging with next-generation telescopes. The TOI catalog is the primary pipeline output that feeds this follow-up ecosystem.
+
+Each TOI entry carries a disposition assigned by the TESS Follow-up Observing Program Working Group (TFOPWG): CP for confirmed planets that have passed rigorous vetting, FP for false positives ruled out by follow-up observations (commonly background eclipsing binaries or stellar variability), KP for known planets independently discovered, and PC for active planet candidates still awaiting confirmation. The transit depth, period, and estimated radius allow rapid triage of candidates by scientific interest -- from ultra-short-period rocky worlds to temperate sub-Neptunes in the habitable zone.
+
+The TOI catalog is essential for exoplanet demographics, enabling occurrence rate calculations that complement Kepler's results for different stellar populations and orbital period ranges. It is also a primary resource for selecting atmospheric characterization targets, planning radial velocity campaigns, and training machine learning classifiers for automated transit vetting. The weekly update cadence captures new candidates as TESS completes additional sky sectors in its extended mission.
+
 ## Schema
 
 | Column | Type | Description |

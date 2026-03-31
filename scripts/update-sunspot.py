@@ -138,6 +138,12 @@ SILSO (Sunspot Index and Long-term Solar Observations) at the Royal Observatory 
 serves as the World Data Center for sunspot number computation, collecting observations from
 a worldwide network of stations.
 
+Sunspots are regions where intense magnetic flux tubes (typically 0.1-0.3 T) emerge through the photosphere, inhibiting convective energy transport and creating dark spots roughly 1000-1500 K cooler than the surrounding ~5800 K surface. They range in size from small pores barely resolvable in modest telescopes to complex active regions spanning over 100,000 km. The daily sunspot number is computed using the Wolf formula (R = k(10g + s), where g is the number of sunspot groups, s is the total number of individual spots, and k is a station-dependent scaling factor), then combined across the observer network into a single international index.
+
+The approximately 11-year Schwabe cycle in sunspot number is the most visible manifestation of the solar magnetic dynamo operating in the Sun's convective zone. At solar minimum, the disk may be spotless for weeks; at maximum, daily counts can exceed 200-300. This cycle drives variations in the total solar irradiance (order 0.1%), extreme ultraviolet flux (factor of 10 or more), solar flare and CME rates, and the overall heliospheric magnetic field strength. These variations have direct consequences for satellite drag (through thermospheric heating), HF radio propagation, radiation exposure for astronauts and polar-route aviation, and the modulation of galactic cosmic ray flux at Earth.
+
+The SILSO Version 2.0 series, released in 2015, recalibrated the entire historical record back to 1818 to correct for discontinuities introduced by changes in the reference observer. This makes it the most homogeneous long-baseline solar activity record available, spanning over 200 years of daily observations and encompassing roughly 19 complete solar cycles -- an invaluable resource for studying long-term solar variability, cycle prediction, and Sun-climate relationships.
+
 ## Schema
 
 | Column | Type | Description |

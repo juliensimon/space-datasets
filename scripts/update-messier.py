@@ -144,6 +144,14 @@ The complete **Messier catalog** — {n} deep-sky objects catalogued by Charles 
 in the 18th century. Includes {n_galaxy} galaxies, {n_cluster} star clusters,
 and {n_nebula} nebulae/remnants.
 
+## Dataset description
+
+The Messier catalog holds a singular place in the history of astronomy. Charles Messier, an 18th-century French comet hunter, compiled this list of "nebulous objects" specifically to avoid confusing them with comets during his searches. Ironically, the catalog he intended as a nuisance list became one of the most celebrated collections in astronomy, encompassing some of the most spectacular and scientifically important objects visible from the Northern Hemisphere. The 110 entries span nearly every major class of deep-sky object: giant elliptical and spiral galaxies, globular and open star clusters, planetary nebulae, supernova remnants, and star-forming regions.
+
+Many Messier objects are cornerstones of modern astrophysics. M 31 (the Andromeda Galaxy) is the nearest large spiral galaxy to the Milky Way and the object that first demonstrated the existence of "island universes" beyond our own Galaxy. M 1 (the Crab Nebula) is the remnant of the supernova of 1054 AD and hosts one of the most studied pulsars in the sky. M 87 harbors the first black hole ever directly imaged by the Event Horizon Telescope. Globular clusters like M 13 and M 3 contain some of the oldest stars in the universe and constrain the age of the Milky Way. Open clusters such as the Pleiades (M 45) and Praesepe (M 44) serve as fundamental calibrators for stellar evolution theory and the cosmic distance ladder.
+
+Despite its small size, the Messier catalog remains the standard introduction to deep-sky observing and is widely used in education, outreach, and the annual "Messier Marathon" -- an attempt to observe all 110 objects in a single night near the spring equinox. For researchers, it provides a well-characterized sample of bright, nearby objects with extensive multi-wavelength data across the electromagnetic spectrum, from radio to gamma-ray.
+
 ## Schema
 
 | Column | Type | Description |

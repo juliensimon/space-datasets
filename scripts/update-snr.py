@@ -180,6 +180,10 @@ for Galactic SNRs, maintained since 1984.
 This dataset includes positions (equatorial and Galactic), angular sizes, morphological
 type, 1 GHz radio flux density, and radio spectral index for each remnant.
 
+Supernova remnants are among the most important objects in astrophysics. Their expanding blast waves are widely believed to be the primary accelerators of Galactic cosmic rays up to the "knee" of the cosmic ray spectrum (~3 PeV), a hypothesis supported by detections of TeV gamma-ray and non-thermal X-ray emission from young SNR shells. The three morphological types in Green's catalog -- shell, filled-centre (plerion), and composite -- reflect distinct physical configurations: shell-type remnants are dominated by the forward shock sweeping up the interstellar medium, filled-centre remnants are powered by a central pulsar wind nebula, and composites exhibit both features.
+
+The radio spectral index is a key diagnostic: shell-type SNRs typically show spectral indices around -0.5 (consistent with diffusive shock acceleration of electrons in the Sedov-Taylor phase), while filled-centre remnants powered by pulsar winds tend to have flatter spectra (-0.0 to -0.3). The 1 GHz flux density, combined with distance estimates from HI absorption or association with molecular clouds, constrains the total radio luminosity and energy budget of each remnant. Green's catalog, continuously maintained since 1984 and updated through careful literature review, remains the definitive census of the ~300 known Galactic SNRs -- a number thought to represent only a fraction of the true population, with many remnants hidden behind dense Galactic dust or too old and faint to detect at radio wavelengths.
+
 ## Schema
 
 | Column | Type | Description |

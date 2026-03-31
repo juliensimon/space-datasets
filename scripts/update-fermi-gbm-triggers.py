@@ -330,6 +330,12 @@ terrestrial gamma-ray flashes, particle events, and unclassified triggers.
 This broader view is valuable for studying the full population of high-energy transients,
 training trigger classifiers, and analyzing detection statistics.
 
+The GBM trigger system operates continuously on multiple timescales (16 ms to 4.096 s), flagging statistically significant count-rate increases above background in any of its 12 NaI detectors (8 keV - 1 MeV) or 2 BGO detectors (200 keV - 40 MeV). The resulting trigger population is a rich zoo of astrophysical and non-astrophysical transients. Beyond confirmed GRBs, the catalog contains solar flares (ranging from C-class microflares to X-class events that saturate the detectors), soft gamma repeaters (SGRs) and anomalous X-ray pulsars (magnetars emitting repeated bursts from magnetic field reconfiguration in neutron star crusts), terrestrial gamma-ray flashes (TGFs — millisecond bursts of bremsstrahlung radiation from thunderstorm electrical discharges), Cygnus X-1 flares, and charged particle events from passages through the South Atlantic Anomaly or solar energetic particle events.
+
+The classification of GBM triggers is itself an active area of research. Ground-based analysis refines the initial on-board classification using spectral and temporal properties, localization quality, and coincidence with known sources. Machine learning classifiers trained on this catalog can automate real-time triage of triggers, enabling faster alerts for genuine astrophysical events. The trigger significance, timescale, and localization metadata provide the feature space for such classification tasks, while the human-assigned classifications serve as training labels.
+
+For multi-messenger astrophysics, the complete trigger catalog is essential because sub-threshold events — triggers that fall below the formal GRB detection criteria — can become significant when combined with external coincidences. The landmark GW170817 / GRB 170817A detection demonstrated that even a weak, off-axis GRB can produce a marginal GBM trigger that becomes unambiguous only in the context of a gravitational-wave detection. Systematic searches through this catalog for temporal and spatial coincidences with gravitational-wave candidates, neutrino events, and fast radio bursts are a key component of multi-messenger pipelines.
+
 ## Schema
 
 | Column | Type | Description |

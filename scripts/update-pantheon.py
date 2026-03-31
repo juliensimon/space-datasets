@@ -130,6 +130,12 @@ providing stretch (x1) and color (c) parameters that transform raw apparent magn
 calibrated distance moduli. Combined with Cepheid-calibrated distances from SH0ES, this
 dataset yields the most precise local measurement of the Hubble constant.
 
+Type Ia supernovae are thermonuclear explosions of carbon-oxygen white dwarfs that have accreted matter from a companion star until they approach the Chandrasekhar mass limit of approximately 1.4 solar masses. The resulting detonation produces a characteristic light curve whose peak luminosity, after correction for the width-luminosity relation (the "Phillips relation"), is remarkably uniform -- making SNe Ia the premier "standardizable candles" for measuring cosmological distances. It was precisely this technique, applied to distant SNe Ia, that led to the 1998 discovery of the accelerating expansion of the universe and the inference of dark energy, earning Saul Perlmutter, Brian Schmidt, and Adam Riess the 2011 Nobel Prize in Physics.
+
+Pantheon+ builds on two decades of supernova cosmology by combining light curves from 18 different surveys spanning the full history of SN Ia observations, from nearby surveys like CfA and CSP to high-redshift programs on the Hubble Space Telescope. The SALT2 light-curve fitter parameterizes each supernova by its stretch (x1, related to the width of the light curve) and color (c, measuring reddening from dust and intrinsic color variation). The "mass step" correction accounts for the empirical finding that SNe Ia in more massive host galaxies are systematically brighter after standardization, a correlation whose physical origin remains debated but which must be included for accurate cosmological inference.
+
+The Hubble diagram constructed from this dataset -- distance modulus versus redshift -- is the most direct observational evidence for the accelerating expansion of the universe. At low redshifts, the relationship is nearly linear (Hubble's law), but at z > 0.5, the data deviate from a decelerating universe and are consistent with a cosmological constant (Lambda) comprising approximately 70% of the total energy density. Combined with CMB and BAO measurements, the Pantheon+ constraints on the dark energy equation of state parameter w are consistent with w = -1 (a cosmological constant) to within a few percent.
+
 ## Schema
 
 | Column | Type | Description |

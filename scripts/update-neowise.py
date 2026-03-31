@@ -307,6 +307,12 @@ Each record represents a single thermal-model fit for one object. The `fit_code`
 indicates which parameters were allowed to vary: D=diameter, V=visible albedo, B=beaming
 parameter (or F=fast-rotating model), I=infrared albedo.
 
+Thermal infrared observations fundamentally changed our understanding of asteroid sizes. In visible light, an asteroid's brightness depends on both its size and its surface reflectivity (albedo), creating a degeneracy that makes size estimation from optical data alone unreliable by factors of two or more. At thermal infrared wavelengths, however, brightness is dominated by the object's thermal emission -- essentially how much sunlight it absorbs and re-radiates as heat -- which depends primarily on its physical cross-section. By fitting the Near-Earth Asteroid Thermal Model (NEATM) to multi-band infrared photometry, WISE/NEOWISE broke this size-albedo degeneracy for over 164,000 minor planets, producing the largest uniform survey of asteroid physical properties ever conducted.
+
+The beaming parameter (eta) in the NEATM captures how thermal radiation is distributed across the surface. A perfectly smooth, non-rotating sphere in instantaneous thermal equilibrium would have eta = 1. Real asteroids show values ranging from about 0.8 to 2.5, reflecting the combined effects of surface roughness (craters and boulders create local hot spots that beam radiation preferentially toward the sub-solar point), thermal inertia (heat is conducted into the subsurface and re-radiated later as the body rotates), and spin rate. Low beaming parameters suggest rough, slowly rotating surfaces; high values indicate smooth, fast-rotating bodies or those observed at high phase angles.
+
+The visible geometric albedo measurements in this dataset reveal the compositional diversity of the asteroid belt. Dark objects (albedo below 0.10) are predominantly carbonaceous C-complex asteroids rich in organic compounds and hydrated minerals -- primitive material largely unchanged since the solar system's formation 4.6 billion years ago. Bright objects (albedo above 0.15) are typically silicaceous S-complex asteroids with stony, olivine-pyroxene surfaces, or more rarely the high-albedo E-types and V-types (basaltic fragments from differentiated parent bodies like Vesta). The population-level albedo distributions across main-belt, NEO, Hilda, Trojan, and Centaur groups encode the thermal and chemical gradient of the early solar nebula and subsequent dynamical mixing.
+
 ## Schema
 
 | Column | Type | Description |

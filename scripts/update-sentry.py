@@ -132,6 +132,12 @@ measure comparing the impact probability to the background risk), the Torino Sca
 rating (an integer 0-10 for public communication), the number of potential impact
 scenarios, estimated diameter, and the year range of possible impacts.
 
+The Sentry system works by propagating each asteroid's orbit forward in time while sampling the uncertainty region -- the cloud of possible positions and velocities consistent with the available observations. When any of these virtual asteroids pass close enough to Earth that an impact geometry exists, it registers as a potential impact event. The cumulative impact probability is the fraction of all sampled orbits that result in a collision, typically an extremely small number (most entries are below 1 in 10 million). Objects routinely enter and leave the Sentry watchlist as new observations refine their orbits: additional astrometry usually shrinks the uncertainty region enough to exclude all impact trajectories, removing the object from the list entirely.
+
+The Palermo Scale provides the key metric for assessing whether an impact scenario merits attention. It is defined as the logarithm of the ratio between the calculated impact probability and the background impact frequency for objects of similar energy. A Palermo Scale value of 0 means the event is exactly as likely as the average random impact risk; negative values (the vast majority) indicate risk below the background level. Only a Palermo Scale above -2 is generally considered noteworthy by the planetary defense community. The Torino Scale, by contrast, is designed for public communication: it combines impact probability and kinetic energy into a single integer from 0 (no hazard) to 10 (certain collision, globally catastrophic). Historically, only a handful of objects have ever briefly exceeded Torino 1.
+
+Understanding this dataset requires appreciating that the presence of an object on the Sentry list does not mean an impact is expected -- it means an impact cannot yet be ruled out. The most common outcome, by far, is that follow-up observations eliminate the risk entirely. The dataset therefore captures a snapshot of current orbital uncertainty as much as it captures genuine hazard, making it valuable for studying how observation quality, data arc length, and orbit determination methods affect impact probability assessments.
+
 ## Schema
 
 | Column | Type | Description |

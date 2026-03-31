@@ -305,6 +305,12 @@ DONKI tracks the chain of space weather events from Sun to Earth:
 Events are **cross-linked** via the `linked_events` column, enabling causal chain analysis
 (e.g., which CME caused which geomagnetic storm).
 
+The Sun-to-Earth propagation chain typically unfolds over 1-4 days. A CME erupts from the solar corona at speeds ranging from 250 to over 3,000 km/s, driving an interplanetary shock (IPS) ahead of it as it plows through the ambient solar wind. When the shock and CME arrive at Earth, they compress the magnetosphere and inject energy into the ring current, producing a geomagnetic storm (GST) measurable via the Kp and Dst indices. Separately, high-speed streams (HSS) from coronal holes produce recurring geomagnetic disturbances on a ~27-day cadence tied to solar rotation, while solar energetic particle (SEP) events deliver MeV-range protons within minutes to hours of the initiating flare or CME.
+
+DONKI is uniquely valuable because it preserves the causal linkages between these phenomena. Unlike raw index time series (Kp, Dst, F10.7), DONKI records which specific CME triggered which geomagnetic storm, making it possible to study transit times, geoeffectiveness as a function of CME speed and direction, and the statistical reliability of CME arrival forecasts. The dataset also includes analyst-curated CME parameters from coronagraph imagery (SOHO/LASCO, STEREO/COR), such as angular width and measurement technique, enabling research into the morphology of Earth-directed versus limb events.
+
+For space weather forecasting and machine learning applications, DONKI provides labeled training data connecting solar eruptions to their terrestrial impacts. Researchers use it to build CME arrival-time models (e.g., drag-based ensemble models), geomagnetic storm intensity predictors, and SEP event classifiers. Satellite operators rely on these event catalogs to correlate anomaly logs with specific space weather drivers.
+
 ## Schema
 
 | Column | Type | Description |

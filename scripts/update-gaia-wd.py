@@ -177,6 +177,34 @@ of the Hertzsprung-Russell diagram and assigning each a probability of being a g
 Atmospheric parameters (Teff, log g) and masses were derived by fitting Gaia photometry
 and parallaxes to hydrogen-atmosphere (DA) and helium-atmosphere (DB) white dwarf models.
 
+White dwarfs are remarkably compact objects, packing roughly the mass of the Sun into a
+volume comparable to the Earth. Their interiors are supported against gravitational collapse
+not by nuclear fusion but by electron degeneracy pressure -- a quantum mechanical effect that
+sets a theoretical upper mass limit near 1.4 solar masses (the Chandrasekhar limit). The
+mass distribution of white dwarfs peaks sharply near 0.6 solar masses, reflecting the
+initial-to-final mass relation that maps a main-sequence progenitor of several solar masses
+down to a compact remnant through extensive mass loss on the asymptotic giant branch. The
+width and shape of this mass peak, along with the high-mass and low-mass tails, encode
+information about binary evolution, merger products, and the star formation history of the
+Galactic disk.
+
+Because white dwarfs cool predictably over billions of years -- radiating away their
+residual thermal energy with well-understood physics -- they serve as cosmic chronometers.
+The white dwarf luminosity function (the number of white dwarfs per luminosity bin) encodes
+the age of the Galactic disk: the faint end cutoff corresponds to the oldest, coolest white
+dwarfs and provides an independent age estimate of 8--10 Gyr for the thin disk. With Gaia
+parallaxes enabling precise absolute magnitudes, this catalog allows construction of the
+luminosity function with unprecedented completeness out to several hundred parsecs.
+
+The Hertzsprung-Russell diagram of white dwarfs reveals rich substructure beyond the main
+cooling sequence. A bifurcation separates hydrogen-atmosphere (DA) white dwarfs from
+helium-atmosphere (DB/DC) objects, which follow a redder cooling track. Crystallization of
+the carbon-oxygen core produces a pile-up on the cooling sequence, observable as an
+overdensity first conclusively detected in Gaia data. Massive white dwarfs from merged
+binary systems populate a distinct sequence at higher surface gravities. This catalog,
+with its probability scores, atmospheric parameters, and multi-band photometry, provides
+the foundation for studying all of these phenomena across a volume-complete sample.
+
 ## Key columns
 
 | Column | Type | Description |

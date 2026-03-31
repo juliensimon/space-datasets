@@ -218,6 +218,12 @@ effective temperatures based on the infrared flux method and re-derived ages, me
 and kinematics. This catalog is essential for studies of the age-metallicity relation,
 Galactic chemical evolution, and stellar population kinematics in the solar neighbourhood.
 
+The GCS is unique among stellar surveys in providing reliable individual stellar ages for a large, volume-complete sample of solar-type stars. Age determination in stellar astrophysics is notoriously difficult -- unlike temperature and metallicity, age cannot be directly measured from a spectrum. The GCS derives ages by placing each star on theoretical isochrones in the HR diagram, using Stromgren photometric indices (b-y, m1, c1, and H-beta) to determine effective temperatures and luminosities with sufficient precision to constrain evolutionary states. The third revision by Casagrande et al. (2011) improved the temperature scale using the infrared flux method calibrated against interferometric angular diameters, significantly reducing systematic errors in the derived ages and metallicities.
+
+The full three-dimensional space velocities (U, V, W) in the GCS are computed from Hipparcos proper motions, trigonometric parallaxes, and ground-based radial velocities. These velocities enable kinematic decomposition of the solar neighborhood into thin disk, thick disk, and halo populations using Toomre diagrams and orbital parameters (eccentricity, maximum height above the Galactic plane, mean Galactocentric radius). The catalog has been central to establishing the age-velocity dispersion relation, which shows that older stellar populations have progressively larger random velocities -- evidence for dynamical heating of the Galactic disk by molecular clouds, spiral arms, and satellite galaxy interactions over billions of years.
+
+The GCS remains a benchmark dataset for testing Galactic chemical evolution models because it provides the age-metallicity relation (AMR) for a well-defined stellar sample. The observed scatter in the AMR at any given age constrains the efficiency of radial mixing (churning) in the Galactic disk and the homogeneity of the interstellar medium from which successive generations of stars formed.
+
 ## Schema
 
 | Column | Type | Description |

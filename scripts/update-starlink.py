@@ -207,6 +207,12 @@ The `daily_snapshots` config contains historical daily aggregates — one row pe
 shell per day — enabling trend analysis of constellation growth, shell fill
 rates, deployment cadence, and ISL (inter-satellite laser link) rollout.
 
+Starlink is the largest satellite constellation ever built, representing a fundamental shift in how broadband internet is delivered globally. SpaceX deploys satellites into five distinct orbital shells, each defined by its inclination and target altitude, to provide overlapping coverage from the equator to high latitudes. The constellation operates in low Earth orbit (LEO) at altitudes between 328 km and 570 km, where orbital periods of roughly 90 minutes mean each satellite circles the Earth about 16 times per day. This low altitude reduces signal latency to 20-40 ms round-trip -- competitive with terrestrial fiber over long distances -- but also means satellites experience significant atmospheric drag and must periodically reboost or be replaced.
+
+Understanding constellation health requires tracking each satellite through its lifecycle: initial deployment to a parking orbit, orbit raising via Hall-effect ion thrusters, operational service at target altitude, and eventual controlled deorbit. The mean motion derivative (the rate at which orbital period changes) serves as a reliable proxy for whether a satellite is actively thrusting upward or decaying. Satellites with anomalous eccentricity may indicate propulsion failures or collision avoidance maneuvers. The inter-satellite laser link (ISL) capability, rolled out starting in 2022, enables direct satellite-to-satellite routing without ground relay, dramatically improving service in oceanic and polar regions.
+
+This dataset is particularly valuable for space situational awareness research, orbital debris modeling, constellation economics analysis, and radio frequency interference studies. The daily time series format enables researchers to measure deployment cadence, correlate shell fill rates with SpaceX launch schedules, track the fleet's deorbit rate as older v1.0 satellites age out, and monitor the ISL rollout's progress toward full mesh networking capability.
+
 ## Config: `daily_snapshots`
 
 Historical daily aggregates per orbital shell. Currently **{daily_rows:,}** rows

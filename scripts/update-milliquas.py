@@ -173,6 +173,12 @@ redshift, optical magnitudes, and cross-identifications with radio and X-ray sur
 This catalog is widely used for quasar target selection, AGN demographics, and
 cross-matching with multi-wavelength surveys.
 
+Quasars are the most luminous persistent objects in the universe, powered by accretion onto supermassive black holes with masses ranging from millions to tens of billions of solar masses. Because they can be detected at redshifts beyond z = 7, they provide direct observational windows into the epoch of reionization and the assembly of the first massive galaxies. The broad emission lines produced in their accretion-disk winds encode information about black hole mass and accretion rate, while narrow absorption features imprinted by intervening gas trace the large-scale distribution of baryonic matter along the line of sight.
+
+A catalog of this scale is indispensable for statistical studies of AGN demographics -- how the quasar luminosity function evolves with redshift, what fraction of supermassive black holes are actively accreting at a given epoch, and how AGN feedback influences galaxy evolution. The inclusion of radio and X-ray cross-identifications allows researchers to identify jetted AGN (radio-loud quasars and blazars) and to separate radiatively efficient from radiatively inefficient accretion modes. Milliquas also provides the foundation for selecting spectroscopic targets in next-generation surveys such as DESI, 4MOST, and the Vera Rubin Observatory's LSST.
+
+The QSO probability percentages included for candidate objects make this catalog particularly valuable for probabilistic classification pipelines and for estimating contamination rates in photometric quasar samples. Combined with photometric redshifts and multi-band magnitudes, these data support both traditional statistical analyses and modern machine-learning approaches to AGN identification.
+
 ## Schema
 
 | Column | Type | Description |

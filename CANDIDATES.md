@@ -2,7 +2,7 @@
 
 *Researched 2026-03-24, expanded 2026-03-26, solar system missions added 2026-03-27. Goal: the most comprehensive free, tabular space data collection on Hugging Face.*
 
-**Built: 128 dataset scripts (126 uploaded, 1 blocked on USGS, 1 no HF card)** | **Remaining candidates: 24** | All sources free, no auth.
+**Built: 128 dataset scripts (127 uploaded, 1 blocked on USGS, 2 source unavailable)** | **Remaining candidates: 24** | All sources free, no auth.
 
 ---
 
@@ -12,7 +12,7 @@ All P0 and P1 candidates are built. Scripts in `scripts/update-*.py`, workflows 
 
 **From P0 (all 14):** JPL SBDB, NVSS, Lunar Craters, FIRST, eROSITA, Mars Craters, Sunspot, GCVS, Fermi 4FGL, CHIME/FRB, Sentry, Fireballs, Pantheon+, PDG
 
-**From P1 Original (27 of 30):** IceCube, TGSS, CRDB, Gaia RR Lyrae, SUMSS, Hipparcos, WDS, Auger, CelesTrak SW, RC3, IERS EOP, F10.7, SWPC Alerts, Solar Radio, SatNOGS, UCS, TESS TOI, Open Clusters, NHATS, ICRF3, Astronauts, VLASS (3.4M), Chandra (28K), Cosmicflows-4, IAU Meteor Showers, GCAT, NASA EVA. *Not built: Transients (needs API key)*
+**From P1 Original (25 of 30):** IceCube, TGSS, CRDB, Gaia RR Lyrae, SUMSS, Hipparcos, WDS, Auger, CelesTrak SW, RC3, IERS EOP, F10.7, SWPC Alerts, SatNOGS, TESS TOI, Open Clusters, NHATS, ICRF3, Astronauts, VLASS (3.4M), Chandra (28K), Cosmicflows-4, IAU Meteor Showers, GCAT, NASA EVA. *Not built: Transients (needs API key). Source unavailable: Solar Radio (HEASARC table removed 2026-03), UCS (download URLs dead 2026-03)*
 
 **From P1 Space Probes (all 4):** ChemCam MOC (30K), ESA Mars Express (1.66M, weekly), ESA Rosetta (8.3M), Perseverance MEDA Weather (monthly)
 
@@ -134,6 +134,9 @@ Built and uploaded: #1 PDS Missions, #2 InSight Marsquakes, #3 IAU Nomenclature,
 | Tibet ASgamma | No public catalog on VizieR/HEASARC |
 | Mars Rover Photos API | api.nasa.gov endpoint down since 2026 |
 | NSSDC Master Catalog | No API or bulk download, HTML only. Currently offline for maintenance (2026-03). Superseded by PDS Search API |
+| Solar Radio Bursts (HEASARC) | `solarburst` table no longer exists on HEASARC (never successfully fetched). No alternative consolidated source. Script + workflow kept (schedule disabled) |
+| UCS Satellite Database | All download URLs return 404/403 (2026-03). UCS may have taken database offline. Script + workflow kept (schedule disabled) |
+| Astronaut Database (Mendeley) | Original Mendeley source dead (2026-03). **Rebuilt using Wikidata SPARQL** — 1,044 astronauts, CC0 licensed |
 
 ---
 

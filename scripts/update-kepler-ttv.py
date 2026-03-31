@@ -170,6 +170,12 @@ to extract individual transit times, producing the most comprehensive Kepler TTV
 The O-C (observed minus computed) residuals reveal planetary interactions, orbital
 eccentricities, and the presence of additional non-transiting planets.
 
+Transit timing variations are one of the most powerful tools for characterizing multi-planet systems. In a system with only one planet, transits occur at perfectly regular intervals set by the orbital period. When a second planet is present, its gravitational pull perturbs the transiting planet's orbit, causing each transit to arrive slightly early or late relative to the linear ephemeris. The amplitude and pattern of these O-C (observed minus computed) residuals encode the mass, orbital period, and eccentricity of the perturbing body -- even if that body never transits the star itself. This technique has been used to confirm dozens of non-transiting planets and to measure planet masses in systems where radial velocity observations are impractical due to faint host stars.
+
+The Holczer et al. (2016) catalog represents the most comprehensive uniform TTV analysis of the Kepler long-cadence dataset. By fitting individual transit profiles with a consistent methodology across all KOIs, it provides homogeneous mid-time, duration, and depth measurements that can be directly compared across systems. The transit duration variations (TDV) and transit profile variations (TPV) columns capture additional dynamical effects such as orbital precession and changes in impact parameter, which constrain orbital inclinations and the three-dimensional architecture of planetary systems.
+
+This dataset is widely used for dynamical mass measurements via N-body fitting, studies of orbital resonance and migration history, and statistical analyses of multi-planet system architectures. It also serves as a benchmark for testing TTV extraction algorithms and for training machine learning models to detect weak dynamical signals in photometric time series.
+
 ## Key columns
 
 | Column | Type | Description |

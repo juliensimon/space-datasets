@@ -222,6 +222,12 @@ surface gravities, overall metallicities, and individual abundances for elements
 Mg, Al, Si, Ti, Fe, and Ni. Stellar parameters were derived using an updated pipeline
 combining the MADERA algorithm with spectro-photometric information from 2MASS and Gaia DR2.
 
+RAVE was one of the pioneering large-scale stellar spectroscopic surveys, conceived in the early 2000s to measure radial velocities for hundreds of thousands of stars and thereby map the kinematic structure of the Milky Way. Its focus on the calcium triplet region was a deliberate choice: these strong absorption lines are detectable even at modest spectral resolution and in relatively faint stars, making them ideal for efficient radial velocity measurements. The Ca II triplet lines also carry information about stellar surface gravity and metallicity, enabling the derivation of atmospheric parameters beyond the primary velocity measurement.
+
+The survey's target selection in the magnitude range 9 < I < 12 means RAVE primarily sampled giant stars at distances of 1-3 kpc and nearby dwarf stars within a few hundred parsecs. This selection function makes RAVE particularly valuable for studying the Galactic thick disk and halo populations in the solar neighborhood, complementing deeper but more narrowly targeted surveys like APOGEE. When combined with Gaia astrometry (proper motions and parallaxes), RAVE radial velocities complete the six-dimensional phase-space information needed to compute full Galactic orbits, enabling dynamical studies of stellar streams, moving groups, and the local dark matter density.
+
+DR6 includes individual abundances for several alpha-elements (Mg, Si, Ti) and iron-peak elements (Fe, Ni, Al) derived from the spectra, although the moderate spectral resolution limits abundance precision compared to higher-resolution surveys like GALAH or APOGEE. The catalog has been extensively cross-matched with Gaia DR2, providing a ready-made resource for combined spectroscopic-astrometric studies of Galactic structure and stellar populations.
+
 ## Quick stats
 
 - **{n_total:,}** spectral observations

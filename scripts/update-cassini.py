@@ -128,6 +128,14 @@ observations spanning **{year_min}** to **{year_max}**. Cassini orbited Saturn f
 studying the planet, its rings, and its moons before its planned destruction in
 Saturn's atmosphere on September 15, 2017.
 
+## Dataset description
+
+The Cassini-Huygens mission was one of the most ambitious planetary exploration endeavors ever undertaken. A joint NASA/ESA/ASI project, Cassini spent 13 years in orbit around Saturn, completing 294 orbits and 127 close flybys of Titan, along with numerous encounters with Enceladus, Rhea, Dione, and other Saturnian moons. The spacecraft carried 12 science instruments spanning imaging, spectroscopy, radar, magnetometry, and particle detection, operated by dedicated science teams (identified as CIRS, ISS, UVIS, VIMS, CAPS, MAG, RADAR, RPWS, and others in this observation schedule).
+
+Among Cassini's landmark discoveries were the active water-ice geysers erupting from Enceladus's south polar tiger stripe fractures — revealing a subsurface ocean with hydrothermal activity and the potential for habitability — and the detailed characterization of Titan's methane hydrological cycle through RADAR mapping of surface lakes and seas. Cassini also observed the hexagonal jet stream at Saturn's north pole, tracked the evolution of a massive northern hemisphere storm in 2010-2011, measured Saturn's internal rotation period through ring seismology, and discovered seven new moons. The mission's Grand Finale in 2017 sent the spacecraft between Saturn's innermost ring and the planet's atmosphere, providing the closest-ever measurements of Saturn's gravity field and magnetic field.
+
+This observation master schedule documents every planned science activity across the entire mission, making it possible to reconstruct which targets were observed, by which instrument teams, and when. The schedule is essential for cross-referencing with archival data products in the NASA PDS, enabling researchers to identify and retrieve specific observations of interest for Saturn system science.
+
 ## Schema
 
 | Column | Type | Description |

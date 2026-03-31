@@ -221,6 +221,12 @@ taxonomic classification, diameter, albedo, and slope parameters. The U rating s
 Suffixes `+` and `-` indicate borderline ratings. A `period_flag` of `>` means
 the true period may be longer; `S` indicates a synodic period.
 
+Asteroid rotation is a direct probe of internal structure, collisional history, and non-gravitational physics. The distribution of spin rates reveals a sharp "spin barrier" near 2.2 hours for objects larger than about 200 meters: virtually no large asteroids rotate faster than this critical period, because centrifugal force at the equator would exceed the gravitational self-binding force of a rubble-pile body with no tensile strength. The handful of super-fast rotators below this barrier are either monolithic rocks (intact fragments from violent collisions) or very small objects where cohesive forces between grains provide sufficient strength. This spin barrier is one of the strongest pieces of evidence that most asteroids larger than a few hundred meters are gravitationally bound aggregates of rubble rather than solid bodies.
+
+Lightcurve amplitude -- the difference between maximum and minimum brightness as an asteroid rotates -- encodes shape information. A spherical object shows no brightness variation; an elongated body like (216) Kleopatra (shaped like a dog bone) produces deep lightcurve dips twice per rotation as its cross-section varies. Amplitudes above 1.0 magnitude imply axis ratios of at least 2.5:1, suggesting highly elongated or contact-binary morphologies. The binary_type column flags known binary and multiple asteroid systems, which comprise roughly 15% of near-Earth asteroids and play a key role in understanding the YORP (Yarkovsky-O'Keefe-Radzievskii-Paddack) spin-up mechanism -- asymmetric thermal radiation that gradually accelerates rotation until a body sheds material or fissions into a binary pair.
+
+The taxonomic classifications and albedo values in the LCDB enable population-level studies linking surface composition to rotational properties. For example, low-albedo C-complex asteroids tend to have longer rotation periods on average than high-albedo S-complex asteroids of the same size, possibly reflecting differences in bulk density, internal structure, or collisional evolution timescales. These correlations provide constraints on models of how the asteroid belt was assembled, disrupted, and dynamically processed over 4.6 billion years of solar system history.
+
 ## Schema
 
 | Column | Type | Description |

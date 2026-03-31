@@ -132,6 +132,14 @@ Catalog of **{n:,}** quasars and active galactic nuclei from
 [SIMBAD](https://simbad.u-strasbg.fr/): **{n_qso:,}** quasars, **{n_seyfert:,}**
 Seyfert galaxies, **{n_blazar:,}** blazars/BL Lacs, **{n_agn:,}** general AGN.
 
+## Dataset description
+
+Active galactic nuclei are galaxies whose central supermassive black holes are actively accreting matter, releasing enormous amounts of energy across the electromagnetic spectrum. Quasars, the most luminous subclass, can outshine their entire host galaxy by factors of a hundred or more and are visible at cosmological distances, making them powerful probes of the early universe. The different AGN categories in this catalog -- Seyfert 1 and 2 galaxies, blazars, BL Lac objects, and LINERs -- are thought to represent different viewing angles and accretion rates of the same underlying phenomenon, unified under orientation-dependent models.
+
+These objects are critical for multiple areas of astrophysics. Quasars serve as background beacons for studying the intergalactic medium through absorption-line spectroscopy, they anchor the International Celestial Reference Frame (ICRF) used for precision astrometry, and their redshift distribution traces the growth history of supermassive black holes across cosmic time. Blazars, whose relativistic jets point nearly along our line of sight, are among the brightest persistent sources in the gamma-ray sky and are candidate sources of high-energy cosmic neutrinos.
+
+The SIMBAD database aggregates classifications from thousands of publications, providing a heterogeneous but broadly representative census of known AGN. This catalog is useful for cross-matching with multi-wavelength surveys, selecting targets for spectroscopic follow-up, and building training sets for machine-learning classification of AGN from photometric data.
+
 ## Schema
 
 | Column | Type | Description |

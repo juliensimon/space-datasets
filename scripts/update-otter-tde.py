@@ -229,6 +229,10 @@ Each record includes sky coordinates, spectroscopic classification,
 redshift, host galaxy, peak apparent and absolute magnitude, and
 Milky Way extinction (E(B-V)).
 
+Tidal disruption events provide a unique laboratory for studying supermassive black holes (SMBHs) that are otherwise quiescent and therefore undetectable. When a star on a low-angular-momentum orbit enters the tidal radius of an SMBH, the differential gravitational force across the star exceeds its self-gravity, shredding it into a stream of debris. Roughly half of this material becomes bound and accretes onto the black hole, producing a luminous flare that peaks in the UV/optical for lower-mass black holes (10^6--10^7 solar masses) and in the soft X-ray band for more massive ones. The light curve rise time, peak luminosity, and late-time decay rate (classically predicted to follow a t^(-5/3) power law) encode the black hole mass, the stellar mass and structure, and the orbital geometry.
+
+The spectroscopic classification of TDEs into hydrogen-rich (TDE-H), helium-rich (TDE-He), and mixed subtypes reflects the composition of the disrupted star and the complex reprocessing of emission in the debris stream and outflows. Relativistic TDEs -- such as Swift J1644+57 -- launch powerful jets detectable at radio through hard X-ray wavelengths, providing probes of jet formation physics analogous to active galactic nuclei but in a time-resolved, "clean" environment. The host galaxy properties (mass, morphology, nuclear activity) are critical for understanding the SMBH occupation fraction and the stellar dynamics that deliver stars to disruption orbits, with TDEs preferentially occurring in post-starburst ("E+A") galaxies for reasons that remain actively debated.
+
 ## Schema
 
 | Column | Type | Description |

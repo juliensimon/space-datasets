@@ -170,6 +170,12 @@ It includes detailed information about each operational satellite: its name, cou
 registry, operator, purpose (communications, Earth observation, navigation, scientific,
 technology development, etc.), orbital parameters, launch details, and physical characteristics.
 
+What makes the UCS database uniquely valuable is its focus on the "why" behind each satellite, not just the "where." While NORAD's SATCAT tracks orbital parameters and the TLE catalog provides ephemeris data, the UCS database adds the human layer: who operates each satellite, what it does, who pays for it, and what sector it serves. This makes it the go-to source for policy researchers studying the militarization of space, economists analyzing the satellite communications market, and journalists reporting on the growing commercial space industry. The database distinguishes between civil, commercial, government, and military users, and categorizes purposes from broadband communications to weather monitoring to signals intelligence.
+
+The database captures the full diversity of the operational satellite population across all orbit regimes. LEO satellites (below 2,000 km) include Earth observation platforms, broadband mega-constellations, and scientific missions. MEO hosts navigation constellations like GPS and Galileo. GEO satellites at 35,786 km serve as communications relays, weather sentinels, and early warning platforms. Elliptical orbits like Molniya and Tundra provide high-latitude coverage for nations like Russia. Physical parameters such as launch mass, dry mass, and power output help characterize satellite capability classes, from 1-kg CubeSats to 6,000-kg GEO communications platforms.
+
+Because the UCS database is curated by analysts rather than generated automatically from tracking data, it includes contextual information that no orbital catalog can provide -- contractor details, expected lifetime, and purpose classifications that require human judgment. This makes it an essential complement to the SATCAT and TLE datasets for any comprehensive analysis of the space environment.
+
 ## Schema
 
 | Column | Type | Description |

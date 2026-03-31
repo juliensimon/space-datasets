@@ -189,6 +189,12 @@ high-resolution spectra decomposed into fundamental stellar parameters and indiv
 elemental abundances spanning light elements, alpha-elements, iron-peak elements,
 and neutron-capture elements.
 
+GALAH was specifically designed for chemical tagging -- the idea that stars born in the same molecular cloud retain a unique multi-dimensional chemical fingerprint that persists long after the birth cluster has dispersed. To achieve this, GALAH requires both high spectral resolution (R ~ 28,000) and broad elemental coverage, which the HERMES spectrograph delivers through four non-contiguous optical wavelength channels centered on key spectral features. The four channels capture lines of light elements (Li, C, N, O), alpha-elements (Mg, Si, Ca, Ti), iron-peak elements (Sc, V, Cr, Mn, Fe, Co, Ni, Cu, Zn), and neutron-capture elements (Rb, Sr, Y, Zr, Mo, Ba, La, Ce, Nd, Ru, Sm, Eu), providing up to 31 distinct abundance dimensions per star.
+
+The survey primarily targets FGK-type stars in the magnitude range 12 < V < 14 across the southern sky, sampling a volume that extends from the solar neighborhood out to several kiloparsecs. DR4 represents a major advance over DR3, incorporating improved spectral analysis techniques, better treatment of non-LTE effects for critical elements, and cross-matching with Gaia DR3 for precise astrometric information. The inclusion of both s-process elements (Ba, La, Ce from AGB nucleosynthesis) and r-process elements (Eu from neutron star mergers) makes GALAH uniquely powerful for constraining the sites and timescales of heavy element production in the Milky Way.
+
+When combined with Gaia astrometry, GALAH provides the full chemodynamical phase space (positions, velocities, and multi-element abundances) needed to disentangle the overlapping stellar populations of the Galactic disk, identify accreted satellite debris, and trace the assembly history of the Milky Way. GALAH's target density and chemical detail complement the deeper but infrared-only APOGEE survey, and together they form the backbone of modern Galactic archaeology.
+
 Key properties:
 - **{n_rv:,}** stars with radial velocity measurements
 - **{n_abund:,}** stars with at least one elemental abundance

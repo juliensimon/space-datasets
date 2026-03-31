@@ -156,6 +156,12 @@ relative velocity, absolute magnitude, and — where available — measured diam
 For objects without a measured diameter, we include estimates derived from
 absolute magnitude using standard albedo assumptions.
 
+Near-Earth objects are asteroids and comets whose orbits bring them within 1.3 AU of the Sun, placing them on trajectories that can intersect Earth's path. They originate primarily from gravitational perturbations in the main asteroid belt -- resonances with Jupiter eject fragments into planet-crossing orbits over millions of years -- or from the disintegration of short-period comets. The population spans a vast size range, from sub-meter fragments to objects tens of kilometers across, with the current catalog heavily weighted toward objects larger than about 140 meters due to survey detection limits.
+
+Close approaches within 0.05 AU (~19.5 lunar distances) are of particular interest for planetary defense. At these distances, gravitational perturbations from Earth can significantly alter an object's future orbit, a phenomenon that makes long-term trajectory prediction inherently uncertain. The 3-sigma distance bounds in this dataset reflect that orbital uncertainty: well-observed objects with long data arcs have tight bounds, while newly discovered objects may have approach distances uncertain by orders of magnitude. The velocity columns capture both the geocentric relative velocity (v_rel) and the hyperbolic excess velocity (v_inf), which together determine the kinetic energy of a potential impact and the feasibility of deflection missions.
+
+The distinction between past and predicted future approaches is scientifically important. Historical approaches are constrained by astrometric observations and have well-determined parameters. Future predictions depend on orbit propagation and degrade in accuracy over time, especially for small objects with short observation arcs or those subject to non-gravitational forces like the Yarkovsky effect -- a thermal radiation pressure that slowly shifts asteroid orbits by up to ~0.01 AU per million years and is the dominant source of uncertainty for sub-kilometer NEOs on century timescales.
+
 ## Schema
 
 | Column | Type | Description |

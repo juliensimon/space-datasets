@@ -199,6 +199,34 @@ velocities where available.
 Each entry includes coordinates, parallax (and derived distance), proper motion, radial velocity,
 Gaia and infrared magnitudes, and cross-identifiers (Gliese-Jahreiss, Hipparcos, Gaia DR3, SIMBAD).
 
+The solar neighborhood within 25 parsecs is the only volume of space where we can obtain a
+truly complete census of the stellar population, down to the faintest brown dwarfs and white
+dwarfs. This completeness is essential for determining the stellar luminosity function and
+the local mass density of the Galactic disk -- fundamental quantities that anchor models of
+Galactic structure and dynamics. The CNS5 builds on the legacy of the Gliese (1969) and
+Gliese & Jahreiss (1991) catalogs, which for decades served as the standard reference for
+nearby stars. The fifth edition exploits Gaia EDR3 parallaxes with typical precisions of
+0.02--0.05 milliarcseconds, resolving many ambiguous cases from the Hipparcos era and adding
+newly discovered nearby stars, particularly faint M dwarfs and late-type companions in
+multiple systems.
+
+The 25-parsec sample is dominated by red dwarfs (spectral types M0--M9), which account for
+roughly 75% of all stellar systems in the solar neighborhood despite being invisible to the
+naked eye. The catalog also includes a substantial population of white dwarfs, several
+dozen brown dwarfs that straddle the hydrogen-burning limit, and a handful of nearby giant
+stars. The multi-band photometry spanning from Gaia optical (G, BP, RP) through 2MASS
+near-infrared (J, H, Ks) to WISE mid-infrared (W1--W4) enables spectral energy distribution
+fitting and effective temperature estimation across the full range of spectral types
+represented.
+
+The proper motions and radial velocities in this catalog allow full three-dimensional space
+velocity reconstruction for most entries, enabling kinematic membership analysis of nearby
+moving groups and stellar streams -- associations of co-eval stars that share a common
+origin but have dispersed across the sky over hundreds of millions of years. These moving
+groups, such as the Hyades stream, the Ursa Major group, and the AB Doradus association,
+provide age-dated samples of nearby stars that are invaluable for calibrating gyrochronology,
+activity-age relations, and planetary system evolution.
+
 ## Schema
 
 | Column | Type | Description |

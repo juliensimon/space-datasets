@@ -280,6 +280,12 @@ Key parameter groups:
 - **Solar indices**: F10.7 radio flux, sunspot number
 - **Energetic particles**: proton fluxes at >1, >2, >4, >10, >30, >60 MeV
 
+The solar wind is a continuous supersonic outflow of magnetized plasma from the Sun's corona, carrying the interplanetary magnetic field (IMF) outward through the heliosphere at speeds typically between 300 and 800 km/s. Its interaction with Earth's magnetosphere is the primary driver of space weather: when the IMF turns southward (negative Bz in GSM coordinates), magnetic reconnection at the dayside magnetopause transfers solar wind energy into the magnetosphere, powering geomagnetic storms and substorms. The OMNI dataset captures this coupling in a single time series by co-locating solar wind inputs (IMF, plasma) with the magnetospheric response (Dst, Kp, AE indices).
+
+A key feature of the OMNI processing is the time-shifting of upstream spacecraft data to the Earth's bow shock nose. Observations from monitors at the L1 Lagrange point (ACE, Wind, DSCOVR -- roughly 1.5 million km upstream) are propagated to the bow shock using the measured solar wind speed, accounting for the roughly 30-60 minute transit time. This phase-front technique ensures that the IMF and plasma parameters are temporally aligned with the geomagnetic indices they drive, making OMNI the standard dataset for empirical studies of solar wind-magnetosphere coupling, storm forecasting model development, and magnetohydrodynamic simulation validation.
+
+The derived quantities in the dataset encode important plasma physics. Plasma beta (ratio of thermal to magnetic pressure) distinguishes magnetically dominated structures such as magnetic clouds (beta << 1) from the ambient solar wind (beta ~ 1). The Alfven Mach number characterizes how supersonic the flow is relative to the Alfven wave speed, which controls shock formation and energy dissipation. The convective electric field (-V x B) quantifies the rate of magnetic flux transport toward the magnetopause and is a key input to empirical geomagnetic activity models such as the Newell coupling function.
+
 ## Schema
 
 | Column | Type | Description |

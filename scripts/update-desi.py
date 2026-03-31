@@ -220,6 +220,12 @@ lunar conditions. This curated subset includes only the main survey observations
 with reliable redshift fits (zero warning flags) and primary measurements
 (no duplicates).
 
+DESI represents a transformative leap in our ability to map the three-dimensional structure of the universe. By measuring precise spectroscopic redshifts for tens of millions of galaxies and quasars, DESI constructs a detailed map of the cosmic web -- the filaments, walls, and voids that comprise the large-scale structure of matter. The primary science goal is to measure the baryon acoustic oscillation (BAO) scale at multiple redshifts, providing a standard ruler that constrains the expansion history of the universe and the nature of dark energy. DR1 already represents more spectroscopic redshifts than all previous surveys combined.
+
+The Bright Galaxy Survey is the lowest-redshift component of DESI, targeting the most luminous galaxies with r-band magnitudes brighter than 19.5. These galaxies trace the matter distribution in the local universe (z < 0.6), where dark energy has become the dominant component driving cosmic acceleration. The BGS sample is particularly valuable for measuring the growth rate of structure through redshift-space distortions -- the apparent anisotropy in galaxy clustering caused by peculiar velocities -- which provides a direct test of general relativity on cosmological scales.
+
+The spectral classifications in this dataset (GALAXY, STAR, QSO) are determined by the Redrock template-fitting pipeline, which cross-correlates each observed spectrum against libraries of galaxy, stellar, and quasar templates. The delta-chi-squared value quantifies the confidence of the classification by measuring how much better the best-fit template matches compared to the next-best alternative. Objects with zwarn=0 have passed all quality checks, making this a high-purity sample suitable for cosmological analyses.
+
 **Breakdown by spectral type:**
 - **{n_galaxy:,}** galaxies ({100*n_galaxy/n_total:.1f}%)
 - **{n_star:,}** stars ({100*n_star/n_total:.1f}%)

@@ -166,6 +166,12 @@ including energy spectra and flux data from ground-based detectors, balloon
 experiments, and space missions. It is the reference database for cosmic ray
 physics, maintained by D. Maurin et al. at LPSC Grenoble.
 
+Cosmic rays are high-energy charged particles -- mostly protons and atomic nuclei, but also electrons and positrons -- that bombard the Earth from all directions. Their energies span an astonishing range, from sub-GeV particles modulated by the solar wind to ultra-high-energy events exceeding 10^20 eV, far beyond what any terrestrial accelerator can produce. The cosmic ray energy spectrum follows a remarkably smooth power law over more than ten orders of magnitude, punctuated by subtle features like the "knee" at ~3x10^15 eV and the "ankle" at ~5x10^18 eV that signal transitions between different source populations and acceleration mechanisms. Understanding cosmic ray origins, acceleration, and propagation through the Galaxy is one of the central problems in astroparticle physics.
+
+CRDB aggregates measurements from an extraordinary variety of instruments: magnetic spectrometers on the International Space Station (AMS-02), balloon-borne calorimeters (CREAM, TRACER), satellite experiments (PAMELA, CALET, DAMPE), ground-based air shower arrays (KASCADE, Tibet AS-gamma), and Cherenkov telescopes. Each experiment covers a different energy range and particle species, and CRDB's uniform formatting makes it possible to compare results across decades of measurements and very different detection techniques. The database also includes secondary-to-primary ratios like boron-to-carbon (B/C), which are critical probes of cosmic ray propagation models and the diffusion coefficient of the interstellar medium.
+
+This dataset is essential for constraining cosmic ray propagation models (e.g., GALPROP, DRAGON, USINE), testing dark matter annihilation signatures in positron and antiproton spectra, calibrating hadronic interaction models used in air shower simulations, and studying solar modulation effects. It serves as the primary benchmarking resource for any theoretical or computational work in cosmic ray physics.
+
 ## Schema
 
 | Column | Type | Description |

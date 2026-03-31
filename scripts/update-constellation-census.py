@@ -458,6 +458,12 @@ Hulianwang), navigation systems (GPS, Galileo, BeiDou, GLONASS), communications
 fleets (Iridium, Globalstar, ORBCOMM, SES, Intelsat, Eutelsat, Telesat), and
 Earth observation (Planet, Spire).
 
+The satellite constellation landscape is undergoing a historic transformation. Legacy GEO communications operators like SES, Intelsat, and Eutelsat -- each operating dozens of spacecraft at 35,786 km altitude -- are being joined by LEO mega-constellations deploying thousands of satellites at altitudes below 600 km. Starlink alone now exceeds all other constellations combined in satellite count. Meanwhile, China's Qianfan (G60) and Hulianwang (GuoWang) programs are rapidly deploying their own broadband mega-constellations, and Amazon's Kuiper is entering the market. This dataset captures the full competitive picture across orbit regimes, operators, and nations.
+
+Navigation constellations (GPS, Galileo, BeiDou, GLONASS) operate in MEO at approximately 20,000-23,000 km altitude, where orbital periods of roughly 12 hours provide optimal geometry for positioning services. These systems require minimum satellite counts per orbital plane to guarantee continuous global coverage, making their health status operationally critical. The SBAS augmentation satellites in GEO provide differential corrections for aviation safety. Each constellation type has distinct orbital dynamics: LEO satellites experience significant drag and require periodic reboosting, while MEO and GEO satellites face radiation belt exposure and station-keeping challenges from solar radiation pressure and gravitational perturbations.
+
+This census is valuable for spectrum coordination (identifying potential radio frequency interference between overlapping constellations), space traffic management (understanding orbital density by altitude band), competitive intelligence in the satellite communications market, and as input to orbital debris environment models that depend on accurate population counts by orbit regime.
+
 ## Config: `latest_satellites`
 
 One row per satellite. Currently **{total:,}** satellites across

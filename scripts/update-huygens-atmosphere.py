@@ -266,6 +266,10 @@ The dataset combines two mission phases:
 
 Vertical velocity from the trajectory reconstruction is merged for each measurement point.
 
+Titan is the only moon in the solar system with a substantial atmosphere — a dense nitrogen-methane envelope with a surface pressure of approximately 1.5 bar, roughly 50% greater than Earth's sea-level pressure. The Huygens descent through this atmosphere revealed a complex thermal structure including a well-defined tropopause near 44 km altitude (at roughly 70 K), a stratosphere warmed by methane and haze absorption, and a troposphere with a nearly constant lapse rate. The temperature profile confirmed theoretical predictions of a methane hydrological cycle, with conditions permitting methane condensation and rainfall in the lower troposphere — a cycle subsequently confirmed by Cassini's detection of methane lakes at Titan's poles.
+
+The atmospheric density measurements from the descent phase enabled direct determination of the mean molecular weight and composition of Titan's lower atmosphere, complementing mass spectrometer results from the GCMS instrument. The transition between the entry phase (where density was inferred from deceleration) and the descent phase (where direct sensors operated under parachute) provides a complete atmospheric profile spanning nearly three orders of magnitude in pressure. This profile remains the only ground-truth calibration point for remote sensing retrievals of Titan's atmospheric state and is fundamental to atmospheric modeling, aerosol microphysics studies, and planning for future Titan missions such as NASA's Dragonfly rotorcraft.
+
 Surface conditions at landing: **{press_surface:.1f} hPa** pressure, **{temp_surface:.1f} K** temperature.
 
 ## Schema

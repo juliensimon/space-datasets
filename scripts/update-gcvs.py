@@ -126,6 +126,30 @@ variability research.
 Each entry includes the GCVS designation, coordinates, variability type, magnitude range,
 period, epoch of maximum, and spectral type where known.
 
+The catalog spans an extraordinary range of stellar physics. Mira variables (type M) are
+asymptotic giant branch stars with periods of hundreds of days and visual amplitudes exceeding
+2.5 magnitudes, driven by radial pulsations in their extended hydrogen envelopes. Semi-regular
+variables (SR) occupy a similar evolutionary stage but pulsate with smaller amplitudes and
+less predictable cycles. Eclipsing binaries (EA, EB, EW) are not intrinsically variable at
+all -- their brightness changes arise purely from orbital geometry as one star transits the
+disk of its companion. At the other extreme, eruptive variables like UV Ceti flare stars and
+FU Orionis objects undergo sudden, dramatic outbursts linked to magnetic reconnection events
+or disk accretion instabilities.
+
+Among the most scientifically important classes are the pulsating variables used as standard
+candles: classical Cepheids (DCEP), whose period-luminosity relation underpins the
+extragalactic distance ladder, and RR Lyrae stars (RR), horizontal-branch pulsators that
+trace the old stellar populations of the Galactic halo and globular clusters. The GCVS
+classification scheme, refined over decades, remains the basis for variable star taxonomy
+worldwide, and GCVS designations are the official IAU-recognized names for variable stars
+not already named in the Bayer or Flamsteed systems.
+
+Because the GCVS draws on over a century of photometric monitoring, it captures variability
+on timescales inaccessible to modern surveys that have operated for only a few years. Many
+entries include epochs of maximum light stretching back to the early twentieth century,
+enabling studies of period changes, evolutionary effects, and long-term amplitude modulation
+that would be impossible from any single contemporary survey alone.
+
 ## Schema
 
 | Column | Type | Description |

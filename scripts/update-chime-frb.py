@@ -134,6 +134,10 @@ The First CHIME/FRB Catalog (CHIME/FRB Collaboration, 2021, ApJS, 257, 59) conta
 detected between 2018 July 25 and 2019 July 1, representing the largest uniform FRB sample
 to date.
 
+The dispersion measure (DM) recorded for each burst encodes the integrated column density of free electrons along the line of sight, making FRBs powerful probes of the intergalactic medium and the so-called "missing baryons" problem. High-DM events trace sightlines through cosmological distances where the intervening plasma imprints information about large-scale structure, the epoch of helium reionization, and the baryon content of the cosmic web. The relationship between DM and redshift, once calibrated with host galaxy identifications, turns each FRB into a cosmological ruler.
+
+Repeating sources are of particular scientific interest because they rule out cataclysmic progenitor models and constrain the local environment of the source. The CHIME catalog's uniform selection function across a wide field of view makes it possible to derive the intrinsic FRB rate, the luminosity function, and the repeater fraction with controlled systematics. Burst morphology parameters such as scattering time and sub-burst structure encode propagation effects through turbulent plasma, providing diagnostics of the circum-source and host-galaxy interstellar medium at extragalactic distances.
+
 ## Schema
 
 | Column | Type | Description |

@@ -155,6 +155,14 @@ maintained by Jonathan McDowell at the Harvard-Smithsonian Center for Astrophysi
 Currently **{len(vehicles):,}** launch vehicles, **{len(engines):,}** engines, and
 **{len(stages):,}** stages ({total_rows:,} records total).
 
+## Dataset description
+
+The General Catalog of Artificial Space Objects (GCAT) is the most comprehensive open reference for spaceflight hardware, maintained by astrophysicist Jonathan McDowell at the Harvard-Smithsonian Center for Astrophysics. Unlike government catalogs that focus on tracked orbital objects, GCAT catalogs the vehicles that put them there -- every rocket variant, engine design, and stage configuration used in spaceflight from the V-2 era to the present day. This dataset extracts the three hardware tables: launch vehicles, engines, and stages.
+
+The vehicle table covers the full spectrum of rocketry, from small sounding rockets to super-heavy orbital launch vehicles. Key parameters like LEO and GTO payload capacity, liftoff thrust, and physical dimensions enable quantitative comparison across vehicle families. The engine table is particularly valuable for propulsion engineering research, cataloging specific impulse (a measure of fuel efficiency), thrust levels, propellant combinations (LOX/kerosene, LOX/LH2, hypergolic, solid), and burn durations for engines spanning seven decades of development. The stage table connects engines to their vehicle applications, documenting how many engines power each stage and the stage-level mass fractions that determine overall vehicle performance.
+
+These tables support a range of analyses: comparing launch vehicle economics (cost per kilogram to orbit), studying propulsion technology trends over time, assessing launch provider capabilities for mission planning, and building physics-based models of launch vehicle performance. Cross-referencing with GCAT's launch log dataset enables correlating vehicle specifications with actual flight history and success rates.
+
 ## Configs
 
 ### `vehicles` — {len(vehicles):,} launch vehicles
