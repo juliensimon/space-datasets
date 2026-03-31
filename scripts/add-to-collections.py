@@ -26,6 +26,8 @@ PHYSICS = "juliensimon/physics-datasets-69c2d4682d37dfdb77447bd7"
 SOLAR_SYSTEM = "juliensimon/solar-system-datasets-69c6fa681978de62dff2f347"
 
 # ── Sub-collections (focused) ─────────────────────────────────────────────
+# Cross-domain
+ESSENTIALS = "juliensimon/space-essentials-69cbafd7ea046a10eff11405"
 # Astronomy sub-collections
 STELLAR = "juliensimon/stellar-catalogs-69c792b1a52ab2757b0eaa57"
 VARIABLE_STARS = "juliensimon/variable-stars-and-transients-69c792b1dd7a45812c5a9b36"
@@ -339,6 +341,16 @@ DATASETS = {
         "juliensimon/galileo-jupiter-atmosphere",
         "juliensimon/huygens-titan-atmosphere",
         "juliensimon/impact-craters",
+    ],
+    # ── Sub: Space Essentials (general public, no jargon) ────────────────────
+    ESSENTIALS: [
+        "juliensimon/astronaut-database",
+        "juliensimon/astronomer-database",
+        "juliensimon/space-missions",
+        "juliensimon/constellation-catalog",
+        "juliensimon/space-agency-database",
+        "juliensimon/physics-nobel-laureates",
+        "juliensimon/meteorite-database",
     ],
 }
 

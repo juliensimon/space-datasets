@@ -255,6 +255,7 @@ Fundamental particle properties and high-energy astrophysics catalogs. Includes 
 - [Astronomy](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) — exoplanets, pulsars, radio surveys, X-ray catalogs, variable stars, gravitational waves, galaxy morphology
 - [Physics](https://huggingface.co/collections/juliensimon/physics-datasets-69c2d4682d37dfdb77447bd7) — particle properties, cosmic ray spectra, hard X-ray surveys, gamma-ray catalogs (TeV/UHE)
 - [Solar System](https://huggingface.co/collections/juliensimon/solar-system-datasets-69c6fa681978de62dff2f347) — planetary missions, craters (Moon/Mars/Ceres/Mercury), atmospheric profiles (Jupiter/Titan), named features
+- [Space Essentials](https://huggingface.co/collections/juliensimon/space-essentials-69cbafd7ea046a10eff11405) — astronauts, space missions, meteorites, constellations, Nobel laureates. No jargon, just names, dates, and places
 
 ## How it works
 
