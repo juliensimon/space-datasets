@@ -1,0 +1,25 @@
+name: Update Observatories
+on:
+  schedule:
+    - cron: '30 9 1 1,4,7,10 *'  # quarterly, Jan/Apr/Jul/Oct 1st at 09:30 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    environment: HF
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pandas pyarrow requests huggingface_hub[hf_xet]
+      - id: update
+        run: python scripts/update-observatories.py
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      - name: Update and push status
+        run: bash scripts/push-status.sh observatories --rows ${{ steps.update.outputs.rows }}
