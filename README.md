@@ -107,6 +107,7 @@ Track every object orbiting Earth and beyond. This collection covers the complet
 | [ucs-satellite-database](https://huggingface.co/datasets/juliensimon/ucs-satellite-database) | 7,500+ active satellites with purpose, operator, and orbit metadata | ![UCS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.ucs&label=updated&color=brightgreen) | Quarterly | 5 MB |
 | [iau-meteor-showers](https://huggingface.co/datasets/juliensimon/iau-meteor-showers) | 2,163 meteor shower records from the IAU Meteor Data Center | — | Static | <1 MB |
 | [gcat-launch-vehicles](https://huggingface.co/datasets/juliensimon/gcat-launch-vehicles) | 4,875 launch vehicles, engines, and stages from GCAT | — | Static | <1 MB |
+| [space-agency-database](https://huggingface.co/datasets/juliensimon/space-agency-database) | Space agencies and governmental space organizations worldwide | ![Space Agencies](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['space-agencies']&label=updated&color=brightgreen) | Quarterly | <1 MB |
 
 ### Space Probes & Missions
 
