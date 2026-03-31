@@ -7,20 +7,20 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ### Top downloads
 
 <!-- TOP_DOWNLOADS_START -->
-**3,957** downloads (+886)  ·  **1** likes  ·  **138** datasets  ·  updated 2026-03-30
+**4,543** downloads (+586)  ·  **1** likes  ·  **144** datasets  ·  updated 2026-03-31
 
 | # | Dataset | Downloads |
 |--:|---------|----------:|
-| 1 | [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) | 536 (+151) |
-| 2 | [starlink-fleet-data](https://huggingface.co/datasets/juliensimon/starlink-fleet-data) | 136 (+7) |
-| 3 | [donki-space-weather-events](https://huggingface.co/datasets/juliensimon/donki-space-weather-events) | 73 (+15) |
-| 4 | [constellation-census](https://huggingface.co/datasets/juliensimon/constellation-census) | 70 (+7) |
-| 5 | [starlink-ground-stations](https://huggingface.co/datasets/juliensimon/starlink-ground-stations) | 67 (+6) |
-| 6 | [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) | 58 (+9) |
-| 7 | [solar-flare-events](https://huggingface.co/datasets/juliensimon/solar-flare-events) | 52 (+7) |
-| 8 | [neo-close-approaches](https://huggingface.co/datasets/juliensimon/neo-close-approaches) | 51 (+5) |
-| 9 | [solar-wind](https://huggingface.co/datasets/juliensimon/solar-wind) | 50 (+7) |
-| 10 | [space-weather-indices](https://huggingface.co/datasets/juliensimon/space-weather-indices) | 49 (+7) |
+| 1 | [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) | 654 (+118) |
+| 2 | [starlink-fleet-data](https://huggingface.co/datasets/juliensimon/starlink-fleet-data) | 145 (+9) |
+| 3 | [donki-space-weather-events](https://huggingface.co/datasets/juliensimon/donki-space-weather-events) | 82 (+9) |
+| 4 | [constellation-census](https://huggingface.co/datasets/juliensimon/constellation-census) | 79 (+9) |
+| 5 | [starlink-ground-stations](https://huggingface.co/datasets/juliensimon/starlink-ground-stations) | 73 (+6) |
+| 6 | [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) | 66 (+8) |
+| 7 | [solar-flare-events](https://huggingface.co/datasets/juliensimon/solar-flare-events) | 62 (+10) |
+| 8 | [neo-close-approaches](https://huggingface.co/datasets/juliensimon/neo-close-approaches) | 61 (+10) |
+| 9 | [solar-wind](https://huggingface.co/datasets/juliensimon/solar-wind) | 59 (+9) |
+| 10 | [starlink-tle-latest](https://huggingface.co/datasets/juliensimon/starlink-tle-latest) | 59 (+16) |
 <!-- TOP_DOWNLOADS_END -->
 
 <!-- Orbital Mechanics -->
