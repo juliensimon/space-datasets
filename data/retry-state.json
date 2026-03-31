@@ -1,0 +1,17 @@
+{
+  "astronauts": {
+    "first_failure": "2026-03-31",
+    "last_retry": "2026-03-31",
+    "retries": 1
+  },
+  "solar-radio": {
+    "first_failure": "2026-03-31",
+    "last_retry": "2026-03-31",
+    "retries": 1
+  },
+  "ucs": {
+    "first_failure": "2026-03-31",
+    "last_retry": "2026-03-31",
+    "retries": 1
+  }
+}
