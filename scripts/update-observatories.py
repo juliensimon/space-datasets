@@ -179,6 +179,7 @@ tags:
   - parquet
 configs:
   - config_name: default
+    default: true
     data_files:
       - split: train
         path: data/observatories.parquet

@@ -73,9 +73,11 @@ def fetch_meteorites() -> pd.DataFrame:
 
     df = pd.DataFrame(rows)
 
-    # Deduplicate on wikidata_id — multiple optional properties can produce
-    # multiple rows for the same entity; keep first occurrence
-    df = df.drop_duplicates(subset=["wikidata_id"], keep="first")
+    # Deduplicate on wikidata_id — keep the most complete row
+    df["_completeness"] = df.notna().sum(axis=1)
+    df = df.sort_values("_completeness", ascending=False).drop_duplicates(
+        subset=["wikidata_id"], keep="first"
+    ).drop(columns=["_completeness"])
 
     # Drop bare Q-ID names (junk Wikidata entries without a real label)
     df = df[~df["name"].str.match(r"^Q\d+$", na=False)]
@@ -163,6 +165,7 @@ tags:
   - parquet
 configs:
   - config_name: default
+    default: true
     data_files:
       - split: train
         path: data/meteorites.parquet

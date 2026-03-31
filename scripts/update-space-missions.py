@@ -74,7 +74,7 @@ def fetch_missions() -> pd.DataFrame:
             "launch_site": r.get("launch_siteLabel", {}).get("value"),
             "vehicle": r.get("vehicleLabel", {}).get("value"),
             "crew_count": (
-                int(r.get("crewCount", {}).get("value"))
+                int(float(r.get("crewCount", {}).get("value")))
                 if r.get("crewCount", {}).get("value") else None
             ),
             "duration_days": duration_days,
@@ -157,6 +157,7 @@ tags:
   - parquet
 configs:
   - config_name: default
+    default: true
     data_files:
       - split: train
         path: data/space-missions.parquet
