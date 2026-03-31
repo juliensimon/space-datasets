@@ -60,7 +60,9 @@ def fetch_nebulae() -> pd.DataFrame:
     )
     resp.raise_for_status()
 
-    results = resp.json()["results"]["bindings"]
+    # strict=False handles control characters in some Wikidata labels
+    import json as _json
+    results = _json.loads(resp.text, strict=False)["results"]["bindings"]
     print(f"  {len(results):,} raw rows from Wikidata")
 
     rows = []

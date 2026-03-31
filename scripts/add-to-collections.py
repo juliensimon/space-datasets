@@ -73,6 +73,7 @@ DATASETS = {
         "juliensimon/spacecraft-database",
         "juliensimon/launch-vehicles",
         "juliensimon/space-agency-database",
+        "juliensimon/comet-catalog",
     ],
     # ── Sub: Satellites & Launches ─────────────────────────────────────────
     SATELLITES: [
@@ -112,6 +113,7 @@ DATASETS = {
         "juliensimon/sdss-asteroid-taxonomy",
         "juliensimon/iau-meteor-showers",
         "juliensimon/meteorite-database",
+        "juliensimon/comet-catalog",
     ],
     # ── Parent: Space Probes ───────────────────────────────────────────────
     PROBES: [
@@ -222,6 +224,8 @@ DATASETS = {
         "juliensimon/carbon-stars",
         "juliensimon/astronomer-database",
         "juliensimon/observatory-database",
+        "juliensimon/constellation-catalog",
+        "juliensimon/nebula-catalog",
     ],
     # ── Sub: Stellar Catalogs ──────────────────────────────────────────────
     STELLAR: [
@@ -313,6 +317,7 @@ DATASETS = {
         "juliensimon/lhaaso-gamma-ray-sources",
         "juliensimon/hawc-tev-gamma-ray",
         "juliensimon/icecat-neutrino-alerts",
+        "juliensimon/physics-nobel-laureates",
     ],
     # ── Parent: Solar System ───────────────────────────────────────────────
     SOLAR_SYSTEM: [

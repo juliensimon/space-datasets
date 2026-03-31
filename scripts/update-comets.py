@@ -38,6 +38,17 @@ WHERE {
 
 def fetch_comets() -> pd.DataFrame:
     """Query Wikidata SPARQL for all comets."""
+
+    def safe_float(r, key):
+        """Parse float from Wikidata value, returning None for blank nodes or bad data."""
+        val = r.get(key, {}).get("value")
+        if not val:
+            return None
+        try:
+            return float(val)
+        except (ValueError, TypeError):
+            return None
+
     print("Querying Wikidata for comets...")
     resp = requests.get(
         WIKIDATA_URL,
@@ -58,22 +69,10 @@ def fetch_comets() -> pd.DataFrame:
             "name": r.get("cometLabel", {}).get("value"),
             "discovery_date": r.get("discoveryDate", {}).get("value", "")[:10] or None,
             "discoverer": r.get("discovererLabel", {}).get("value") or None,
-            "orbital_period_yr": (
-                float(r["orbitalPeriod"]["value"])
-                if r.get("orbitalPeriod", {}).get("value") else None
-            ),
-            "perihelion_au": (
-                float(r["perihelion"]["value"])
-                if r.get("perihelion", {}).get("value") else None
-            ),
-            "eccentricity": (
-                float(r["eccentricity"]["value"])
-                if r.get("eccentricity", {}).get("value") else None
-            ),
-            "inclination_deg": (
-                float(r["inclination"]["value"])
-                if r.get("inclination", {}).get("value") else None
-            ),
+            "orbital_period_yr": safe_float(r, "orbitalPeriod"),
+            "perihelion_au": safe_float(r, "perihelion"),
+            "eccentricity": safe_float(r, "eccentricity"),
+            "inclination_deg": safe_float(r, "inclination"),
             "named_after": r.get("namedAfterLabel", {}).get("value") or None,
             "epoch": r.get("epoch", {}).get("value", "")[:10] or None,
         })

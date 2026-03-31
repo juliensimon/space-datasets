@@ -1,6 +1,6 @@
 # space-datasets — Open Space, Astronomy & Physics Datasets on Hugging Face
 
-Open-source data pipelines that publish **140+ space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, Wikidata, and other public APIs. Updated daily via GitHub Actions.
+Open-source data pipelines that publish **144+ space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, Wikidata, and other public APIs. Updated daily via GitHub Actions.
 
 All datasets are loadable in one line (`load_dataset("juliensimon/...")`), require no API keys, and work with `pandas`, `polars`, or any Parquet-compatible tool.
 
@@ -43,6 +43,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![Spacecraft](https://github.com/juliensimon/space-datasets/actions/workflows/update-spacecraft.yml/badge.svg)
 ![Launch Vehicles](https://github.com/juliensimon/space-datasets/actions/workflows/update-launch-vehicles.yml/badge.svg)
 ![Space Agencies](https://github.com/juliensimon/space-datasets/actions/workflows/update-space-agencies.yml/badge.svg)
+![Comets](https://github.com/juliensimon/space-datasets/actions/workflows/update-comets.yml/badge.svg)
 <!-- Space Weather -->
 ![CelesTrak SW](https://github.com/juliensimon/space-datasets/actions/workflows/update-celestrak-sw.yml/badge.svg)
 ![Space Weather](https://github.com/juliensimon/space-datasets/actions/workflows/update-space-weather.yml/badge.svg)
@@ -79,6 +80,8 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![Supernovae](https://github.com/juliensimon/space-datasets/actions/workflows/update-supernovae.yml/badge.svg)
 ![Astronomers](https://github.com/juliensimon/space-datasets/actions/workflows/update-astronomers.yml/badge.svg)
 ![Observatories](https://github.com/juliensimon/space-datasets/actions/workflows/update-observatories.yml/badge.svg)
+![Constellations](https://github.com/juliensimon/space-datasets/actions/workflows/update-constellations.yml/badge.svg)
+![Nebulae](https://github.com/juliensimon/space-datasets/actions/workflows/update-nebulae.yml/badge.svg)
 <!-- Space Probes -->
 ![Deep Space Probes](https://github.com/juliensimon/space-datasets/actions/workflows/update-deep-space-probes.yml/badge.svg)
 ![Mars Express](https://github.com/juliensimon/space-datasets/actions/workflows/update-mars-express.yml/badge.svg)
@@ -90,6 +93,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![CRDB](https://github.com/juliensimon/space-datasets/actions/workflows/update-crdb.yml/badge.svg)
 ![PDG](https://github.com/juliensimon/space-datasets/actions/workflows/update-pdg.yml/badge.svg)
 ![Fermi GBM](https://github.com/juliensimon/space-datasets/actions/workflows/update-fermi-gbm-triggers.yml/badge.svg)
+![Physics Nobel](https://github.com/juliensimon/space-datasets/actions/workflows/update-physics-nobel.yml/badge.svg)
 
 ## Datasets
 
@@ -120,6 +124,7 @@ Track every object orbiting Earth and beyond. This collection covers the complet
 | [spacecraft-database](https://huggingface.co/datasets/juliensimon/spacecraft-database) | 8K+ spacecraft with operators, manufacturers, and orbits from Wikidata | ![Spacecraft](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['spacecraft']&label=updated&color=brightgreen) | Quarterly | <1 MB |
 | [launch-vehicles](https://huggingface.co/datasets/juliensimon/launch-vehicles) | 230+ orbital launch vehicles with specs and payload capacity from Wikidata | ![Launch Vehicles](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['launch-vehicles']&label=updated&color=brightgreen) | Quarterly | <1 MB |
 | [space-agency-database](https://huggingface.co/datasets/juliensimon/space-agency-database) | Space agencies and governmental space organizations worldwide | ![Space Agencies](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['space-agencies']&label=updated&color=brightgreen) | Quarterly | <1 MB |
+| [comet-catalog](https://huggingface.co/datasets/juliensimon/comet-catalog) | 1,278 comets with orbital elements, discoverers, and discovery dates from Wikidata | ![Comets](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['comets']&label=updated&color=brightgreen) | Quarterly | <1 MB |
 
 ### Space Probes & Missions
 
@@ -211,6 +216,8 @@ A broad survey of the observable universe — from exoplanets in our galactic ne
 | [astronaut-database](https://huggingface.co/datasets/juliensimon/astronaut-database) | Every person who has been to space — 560 astronauts/cosmonauts | — | Static | <1 MB |
 | [astronomer-database](https://huggingface.co/datasets/juliensimon/astronomer-database) | 11K+ astronomers with affiliations, awards, and fields of work from Wikidata | ![Astronomers](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['astronomers']&label=updated&color=brightgreen) | Quarterly | <1 MB |
 | [observatory-database](https://huggingface.co/datasets/juliensimon/observatory-database) | 640+ ground and space observatories with locations, apertures, and wavelengths from Wikidata | ![Observatories](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['observatories']&label=updated&color=brightgreen) | Quarterly | <1 MB |
+| [constellation-catalog](https://huggingface.co/datasets/juliensimon/constellation-catalog) | 94 IAU constellations with abbreviations, areas, and brightest stars from Wikidata | ![Constellations](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['constellations']&label=updated&color=brightgreen) | Quarterly | <1 MB |
+| [nebula-catalog](https://huggingface.co/datasets/juliensimon/nebula-catalog) | 60K+ nebulae (emission, reflection, dark, planetary) with coordinates and distances from Wikidata | ![Nebulae](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['nebulae']&label=updated&color=brightgreen) | Quarterly | 1.7 MB |
 | [icecube-neutrino-catalog](https://huggingface.co/datasets/juliensimon/icecube-neutrino-catalog) | IceCube neutrino point sources from HEASARC | — | Static | <1 MB |
 | [brown-dwarf-catalog](https://huggingface.co/datasets/juliensimon/brown-dwarf-catalog) | 14K ultracool and brown dwarfs within 40 pc | — | Static | 10 MB |
 | [kepler-eclipsing-binaries](https://huggingface.co/datasets/juliensimon/kepler-eclipsing-binaries) | 2,177 Kepler eclipsing binary stars | — | Static | 1 MB |
@@ -237,6 +244,7 @@ Fundamental particle properties and high-energy astrophysics catalogs. Includes 
 | [tevcat-tev-gamma-ray](https://huggingface.co/datasets/juliensimon/tevcat-tev-gamma-ray) | 322 TeV gamma-ray sources — THE ground-based VHE reference catalog | — | Static | <1 MB |
 | [lhaaso-gamma-ray-sources](https://huggingface.co/datasets/juliensimon/lhaaso-gamma-ray-sources) | 180 ultra-high-energy gamma-ray sources from 1LHAASO (2024) | — | Static | <1 MB |
 | [hawc-tev-gamma-ray](https://huggingface.co/datasets/juliensimon/hawc-tev-gamma-ray) | 65 TeV gamma-ray sources from the 3HWC HAWC catalog | — | Static | <1 MB |
+| [physics-nobel-laureates](https://huggingface.co/datasets/juliensimon/physics-nobel-laureates) | 229 Physics Nobel Prize laureates with institutions and cited work from Wikidata | ![Nobel](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['physics-nobel']&label=updated&color=brightgreen) | Quarterly | <1 MB |
 
 ## Collections on Hugging Face
 
@@ -285,6 +293,7 @@ python scripts/update-space-missions.py
 python scripts/update-spacecraft.py
 python scripts/update-launch-vehicles.py
 python scripts/update-space-agencies.py
+python scripts/update-comets.py
 
 # Planetary Science
 pip install dbfread && python scripts/update-planetary-nomenclature.py
@@ -357,6 +366,8 @@ python scripts/update-wds.py
 python scripts/update-astronauts.py
 python scripts/update-astronomers.py
 python scripts/update-observatories.py
+python scripts/update-constellations.py
+python scripts/update-nebulae.py
 python scripts/update-vlass.py
 python scripts/update-chandra.py
 python scripts/update-cosmicflows.py
@@ -374,6 +385,7 @@ python scripts/update-integral-ibis.py
 python scripts/update-tevcat.py
 python scripts/update-lhaaso.py
 python scripts/update-hawc.py
+python scripts/update-physics-nobel.py
 ```
 
 ## Bulk ingestion
