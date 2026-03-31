@@ -69,6 +69,10 @@ DATASETS = {
         "juliensimon/sdss-asteroid-taxonomy",
         "juliensimon/orbital-fragmentation-events",
         "juliensimon/launch-cost-to-leo",
+        "juliensimon/space-missions",
+        "juliensimon/spacecraft-database",
+        "juliensimon/launch-vehicles",
+        "juliensimon/space-agency-database",
     ],
     # ── Sub: Satellites & Launches ─────────────────────────────────────────
     SATELLITES: [
@@ -87,6 +91,9 @@ DATASETS = {
         "juliensimon/launch-cost-to-leo",
         "juliensimon/nasa-eva-chronology",
         "juliensimon/deep-space-probes",
+        "juliensimon/space-missions",
+        "juliensimon/spacecraft-database",
+        "juliensimon/launch-vehicles",
     ],
     # ── Sub: Asteroids & Small Bodies ──────────────────────────────────────
     SMALL_BODIES: [
@@ -104,6 +111,7 @@ DATASETS = {
         "juliensimon/bus-demeo-asteroid-taxonomy",
         "juliensimon/sdss-asteroid-taxonomy",
         "juliensimon/iau-meteor-showers",
+        "juliensimon/meteorite-database",
     ],
     # ── Parent: Space Probes ───────────────────────────────────────────────
     PROBES: [
@@ -128,6 +136,8 @@ DATASETS = {
         "juliensimon/solar-system-moons",
         "juliensimon/planetary-nomenclature",
         "juliensimon/ceres-craters-dawn",
+        "juliensimon/impact-craters",
+        "juliensimon/meteorite-database",
     ],
     # ── Parent: Space Weather ──────────────────────────────────────────────
     WEATHER: [
@@ -210,6 +220,8 @@ DATASETS = {
         "juliensimon/milliquas",
         "juliensimon/bright-star-catalog",
         "juliensimon/carbon-stars",
+        "juliensimon/astronomer-database",
+        "juliensimon/observatory-database",
     ],
     # ── Sub: Stellar Catalogs ──────────────────────────────────────────────
     STELLAR: [
@@ -321,6 +333,7 @@ DATASETS = {
         "juliensimon/ceres-craters-dawn",
         "juliensimon/galileo-jupiter-atmosphere",
         "juliensimon/huygens-titan-atmosphere",
+        "juliensimon/impact-craters",
     ],
 }
 

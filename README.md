@@ -39,6 +39,10 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![SatNOGS](https://github.com/juliensimon/space-datasets/actions/workflows/update-satnogs.yml/badge.svg)
 ![UCS](https://github.com/juliensimon/space-datasets/actions/workflows/update-ucs.yml/badge.svg)
 ![Reentry Events](https://github.com/juliensimon/space-datasets/actions/workflows/update-reentry-events.yml/badge.svg)
+![Space Missions](https://github.com/juliensimon/space-datasets/actions/workflows/update-space-missions.yml/badge.svg)
+![Spacecraft](https://github.com/juliensimon/space-datasets/actions/workflows/update-spacecraft.yml/badge.svg)
+![Launch Vehicles](https://github.com/juliensimon/space-datasets/actions/workflows/update-launch-vehicles.yml/badge.svg)
+![Space Agencies](https://github.com/juliensimon/space-datasets/actions/workflows/update-space-agencies.yml/badge.svg)
 <!-- Space Weather -->
 ![CelesTrak SW](https://github.com/juliensimon/space-datasets/actions/workflows/update-celestrak-sw.yml/badge.svg)
 ![Space Weather](https://github.com/juliensimon/space-datasets/actions/workflows/update-space-weather.yml/badge.svg)
@@ -73,10 +77,15 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![TESS TOI](https://github.com/juliensimon/space-datasets/actions/workflows/update-tess-toi.yml/badge.svg)
 ![WDS](https://github.com/juliensimon/space-datasets/actions/workflows/update-wds.yml/badge.svg)
 ![Supernovae](https://github.com/juliensimon/space-datasets/actions/workflows/update-supernovae.yml/badge.svg)
+![Astronomers](https://github.com/juliensimon/space-datasets/actions/workflows/update-astronomers.yml/badge.svg)
+![Observatories](https://github.com/juliensimon/space-datasets/actions/workflows/update-observatories.yml/badge.svg)
 <!-- Space Probes -->
 ![Deep Space Probes](https://github.com/juliensimon/space-datasets/actions/workflows/update-deep-space-probes.yml/badge.svg)
 ![Mars Express](https://github.com/juliensimon/space-datasets/actions/workflows/update-mars-express.yml/badge.svg)
 ![MEDA Weather](https://github.com/juliensimon/space-datasets/actions/workflows/update-meda-weather.yml/badge.svg)
+<!-- Planetary Science -->
+![Impact Craters](https://github.com/juliensimon/space-datasets/actions/workflows/update-impact-craters.yml/badge.svg)
+![Meteorites](https://github.com/juliensimon/space-datasets/actions/workflows/update-meteorites.yml/badge.svg)
 <!-- Physics -->
 ![CRDB](https://github.com/juliensimon/space-datasets/actions/workflows/update-crdb.yml/badge.svg)
 ![PDG](https://github.com/juliensimon/space-datasets/actions/workflows/update-pdg.yml/badge.svg)
@@ -107,6 +116,9 @@ Track every object orbiting Earth and beyond. This collection covers the complet
 | [ucs-satellite-database](https://huggingface.co/datasets/juliensimon/ucs-satellite-database) | 7,500+ active satellites with purpose, operator, and orbit metadata | ![UCS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.ucs&label=updated&color=brightgreen) | Quarterly | 5 MB |
 | [iau-meteor-showers](https://huggingface.co/datasets/juliensimon/iau-meteor-showers) | 2,163 meteor shower records from the IAU Meteor Data Center | — | Static | <1 MB |
 | [gcat-launch-vehicles](https://huggingface.co/datasets/juliensimon/gcat-launch-vehicles) | 4,875 launch vehicles, engines, and stages from GCAT | — | Static | <1 MB |
+| [space-missions](https://huggingface.co/datasets/juliensimon/space-missions) | 24K+ crewed and uncrewed space missions from Wikidata | ![Space Missions](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['space-missions']&label=updated&color=brightgreen) | Quarterly | <1 MB |
+| [spacecraft-database](https://huggingface.co/datasets/juliensimon/spacecraft-database) | 8K+ spacecraft with operators, manufacturers, and orbits from Wikidata | ![Spacecraft](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['spacecraft']&label=updated&color=brightgreen) | Quarterly | <1 MB |
+| [launch-vehicles](https://huggingface.co/datasets/juliensimon/launch-vehicles) | 230+ orbital launch vehicles with specs and payload capacity from Wikidata | ![Launch Vehicles](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['launch-vehicles']&label=updated&color=brightgreen) | Quarterly | <1 MB |
 | [space-agency-database](https://huggingface.co/datasets/juliensimon/space-agency-database) | Space agencies and governmental space organizations worldwide | ![Space Agencies](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['space-agencies']&label=updated&color=brightgreen) | Quarterly | <1 MB |
 
 ### Space Probes & Missions
@@ -138,6 +150,8 @@ Explore the surfaces of other worlds through impact crater databases and geochem
 | [mars-craters-robbins](https://huggingface.co/datasets/juliensimon/mars-craters-robbins) | 384K+ Mars impact craters from the Robbins & Hynek 2012 database | — | Static | 50 MB |
 | [ceres-craters-dawn](https://huggingface.co/datasets/juliensimon/ceres-craters-dawn) | 44,594 impact craters on Ceres (≥1 km) from the Dawn Framing Camera | — | Static | 9 MB |
 | [meteorite-landings](https://huggingface.co/datasets/juliensimon/meteorite-landings) | 45K+ known meteorite landings with classification and mass | — | Static | 5 MB |
+| [impact-craters](https://huggingface.co/datasets/juliensimon/impact-craters) | 4K+ impact craters across the solar system (Earth, Moon, Mars, etc.) from Wikidata | ![Impact Craters](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['impact-craters']&label=updated&color=brightgreen) | Quarterly | <1 MB |
+| [meteorite-database](https://huggingface.co/datasets/juliensimon/meteorite-database) | 1,200+ named meteorites with classification, mass, and fall location from Wikidata | ![Meteorites](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['meteorites']&label=updated&color=brightgreen) | Quarterly | <1 MB |
 
 ### Space Weather
 
@@ -195,6 +209,8 @@ A broad survey of the observable universe — from exoplanets in our galactic ne
 | [wds-double-stars](https://huggingface.co/datasets/juliensimon/wds-double-stars) | 157K visual double star systems from the Washington Double Star Catalog | ![WDS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.wds&label=updated&color=brightgreen) | Weekly | 50 MB |
 | [open-supernova-catalog](https://huggingface.co/datasets/juliensimon/open-supernova-catalog) | 72K supernovae with light curves, spectra references, and host galaxies | ![Supernovae](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.supernovae&label=updated&color=brightgreen) | Weekly | 10 MB |
 | [astronaut-database](https://huggingface.co/datasets/juliensimon/astronaut-database) | Every person who has been to space — 560 astronauts/cosmonauts | — | Static | <1 MB |
+| [astronomer-database](https://huggingface.co/datasets/juliensimon/astronomer-database) | 11K+ astronomers with affiliations, awards, and fields of work from Wikidata | ![Astronomers](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['astronomers']&label=updated&color=brightgreen) | Quarterly | <1 MB |
+| [observatory-database](https://huggingface.co/datasets/juliensimon/observatory-database) | 640+ ground and space observatories with locations, apertures, and wavelengths from Wikidata | ![Observatories](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['observatories']&label=updated&color=brightgreen) | Quarterly | <1 MB |
 | [icecube-neutrino-catalog](https://huggingface.co/datasets/juliensimon/icecube-neutrino-catalog) | IceCube neutrino point sources from HEASARC | — | Static | <1 MB |
 | [brown-dwarf-catalog](https://huggingface.co/datasets/juliensimon/brown-dwarf-catalog) | 14K ultracool and brown dwarfs within 40 pc | — | Static | 10 MB |
 | [kepler-eclipsing-binaries](https://huggingface.co/datasets/juliensimon/kepler-eclipsing-binaries) | 2,177 Kepler eclipsing binary stars | — | Static | 1 MB |
@@ -265,6 +281,10 @@ python scripts/update-satnogs.py
 python scripts/update-ucs.py  # requires: pip install openpyxl
 python scripts/update-meteor-showers.py
 python scripts/update-gcat.py
+python scripts/update-space-missions.py
+python scripts/update-spacecraft.py
+python scripts/update-launch-vehicles.py
+python scripts/update-space-agencies.py
 
 # Planetary Science
 pip install dbfread && python scripts/update-planetary-nomenclature.py
@@ -272,6 +292,8 @@ python scripts/update-lunar-craters.py
 python scripts/update-mars-craters.py
 python scripts/update-ceres-craters.py
 python scripts/update-meteorite-landings.py
+python scripts/update-impact-craters.py
+python scripts/update-meteorites.py
 
 # Space Weather
 python scripts/update-space-weather.py
@@ -333,6 +355,8 @@ python scripts/update-kepler-eb.py
 python scripts/update-planetary-nebulae.py
 python scripts/update-wds.py
 python scripts/update-astronauts.py
+python scripts/update-astronomers.py
+python scripts/update-observatories.py
 python scripts/update-vlass.py
 python scripts/update-chandra.py
 python scripts/update-cosmicflows.py

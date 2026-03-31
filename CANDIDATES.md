@@ -2,7 +2,7 @@
 
 *Researched 2026-03-24, expanded 2026-03-26, solar system missions added 2026-03-27. Goal: the most comprehensive free, tabular space data collection on Hugging Face.*
 
-**Built: 128 dataset scripts (127 uploaded, 1 blocked on USGS, 2 source unavailable)** | **Remaining candidates: 24** | All sources free, no auth.
+**Built: 136 dataset scripts (135 uploaded, 1 blocked on USGS, 2 source unavailable)** | **Remaining candidates: 24** | All sources free, no auth.
 
 ---
 
@@ -25,6 +25,8 @@ All P0 and P1 candidates are built. Scripts in `scripts/update-*.py`, workflows 
 **From P2 (16):** AE Index, Brown Dwarfs, Kepler EB, Planetary Nebulae, Gaia DR3 White Dwarfs (1.28M), SsODNet (1.49M), OTTER TDE (90), CNS5 (5.9K), Wolf-Rayet (380), Nesvorny Families (171K), Asterank Mining (600K), LCDB Lightcurves (36K), Solar System Moons (440), Magnetars (31), MPC Comets (1K), Unified Radio (1.66M)
 
 **From new research (7):** Deep Space Probes (1.2M, monthly), Cassini (63K), Swift-BAT, Fermi 4LAC, Fermi 3FHL, Gravitational Lenses (33K), Meteorite Landings
+
+**From Wikidata (8):** Space Missions (24K), Astronomer Database (11K), Spacecraft Database (8K), Impact Craters (4K), Meteorite Database (1K), Observatory Database (640), Launch Vehicles (230), Space Agency Database (200)
 
 **Pre-existing (23):** NEO, Starlink, SATCAT, Launch Log, Ground Stations, Constellation Census, DONKI, Dst Index, Kp Index, Solar Flares, Solar Wind, Space Weather, Exoplanets, GRB, Gravitational Waves, Pulsars, NGC/IC, SNR, Messier, Black Holes, Quasars, Galaxy Clusters
 
