@@ -60,7 +60,7 @@
     "swpc-alerts": 166,
     "tess-toi": 7913,
     "tle-history": 7050436,
-    "tle-latest": 10011,
+    "tle-latest": 10132,
     "wds": 157336
   },
   "ae-index": "2026-03-31",
@@ -129,6 +129,6 @@
   "swpc-alerts": "2026-03-31",
   "tess-toi": "2026-03-30",
   "tle-history": "2026-03-31",
-  "tle-latest": "2026-03-30",
+  "tle-latest": "2026-04-01",
   "wds": "2026-03-25"
 }
