@@ -52,7 +52,10 @@ def main():
     # Rename columns to snake_case
     col_rename = {
         "Name of Satellite": "satellite_name",
+        "Name of Satellite, Alternate Names": "satellite_name",
+        "Current Official Name of Satellite": "official_name",
         "Country/Org of UN Registry": "country_registry",
+        "Country of Operator/Owner": "operator_country",
         "Operator/Owner": "operator",
         "Users": "users",
         "Purpose": "purpose",
