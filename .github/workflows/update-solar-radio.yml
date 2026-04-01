@@ -1,8 +1,7 @@
 name: Update Solar Radio
 on:
-  # schedule disabled: HEASARC solarburst table removed (2026-03)
-  # schedule:
-  #   - cron: '0 19 * * 1'
+  schedule:
+    - cron: '0 19 * * *'  # daily — SWPC has ~30-day rolling window
   workflow_dispatch:
 
 permissions:
