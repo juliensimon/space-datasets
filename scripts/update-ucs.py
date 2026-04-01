@@ -101,10 +101,10 @@ def main():
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
     # Clean string columns
-    for col in ["satellite_name", "country_registry", "operator", "users",
-                "purpose", "detailed_purpose", "orbit_class", "orbit_type",
-                "contractor", "contractor_country", "launch_site", "launch_vehicle",
-                "cospar_id", "source_refs"]:
+    for col in ["satellite_name", "official_name", "country_registry", "operator",
+                "operator_country", "users", "purpose", "detailed_purpose",
+                "orbit_class", "orbit_type", "contractor", "contractor_country",
+                "launch_site", "launch_vehicle", "cospar_id", "source_refs"]:
         if col in df.columns:
             df[col] = df[col].astype(str).str.strip().replace(
                 {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
