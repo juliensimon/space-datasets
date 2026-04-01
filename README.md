@@ -83,6 +83,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![Constellations](https://github.com/juliensimon/space-datasets/actions/workflows/update-constellations.yml/badge.svg)
 ![Nebulae](https://github.com/juliensimon/space-datasets/actions/workflows/update-nebulae.yml/badge.svg)
 <!-- Space Probes -->
+![Artemis II](https://github.com/juliensimon/space-datasets/actions/workflows/update-artemis-ii.yml/badge.svg)
 ![Deep Space Probes](https://github.com/juliensimon/space-datasets/actions/workflows/update-deep-space-probes.yml/badge.svg)
 ![Mars Express](https://github.com/juliensimon/space-datasets/actions/workflows/update-mars-express.yml/badge.svg)
 ![MEDA Weather](https://github.com/juliensimon/space-datasets/actions/workflows/update-meda-weather.yml/badge.svg)
@@ -132,6 +133,7 @@ Data returned by humanity's most distant spacecraft and surface explorers. Inclu
 
 | Dataset | Description | Last Updated | Schedule | Size |
 |---------|-------------|-------------|----------|------|
+| [artemis-ii](https://huggingface.co/datasets/juliensimon/artemis-ii) | Artemis II crewed lunar flyby: 1,285 trajectory vectors, crew manifest, mission timeline, payloads | ![Artemis II](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['artemis-ii']&label=updated&color=brightgreen) | Daily | <1 MB |
 | [pds-planetary-missions](https://huggingface.co/datasets/juliensimon/pds-planetary-missions) | NASA PDS mission catalog — 98 missions, 115 spacecraft, 748 instruments with targets and cross-references | — | Static | <5 MB |
 | [deep-space-probes](https://huggingface.co/datasets/juliensimon/deep-space-probes) | 1.2M hourly readings from Voyager 1+2 and Pioneer 10+11 (1972–2025) | ![Probes](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['deep-space-probes']&label=updated&color=blue) | Monthly | 32 MB |
 | [galileo-jupiter-atmosphere](https://huggingface.co/datasets/juliensimon/galileo-jupiter-atmosphere) | Jupiter atmospheric profile from Galileo Probe descent (1995) — temperature, pressure, density to 24 bar | — | Static | <1 MB |

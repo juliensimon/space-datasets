@@ -119,6 +119,7 @@ DATASETS = {
     ],
     # ── Parent: Space Probes ───────────────────────────────────────────────
     PROBES: [
+        "juliensimon/artemis-ii",
         "juliensimon/deep-space-probes",
         "juliensimon/cassini-saturn-observations",
         "juliensimon/esa-mars-express-observations",
@@ -323,6 +324,7 @@ DATASETS = {
     ],
     # ── Parent: Solar System ───────────────────────────────────────────────
     SOLAR_SYSTEM: [
+        "juliensimon/artemis-ii",
         "juliensimon/lunar-craters-robbins",
         "juliensimon/mars-craters-robbins",
         "juliensimon/meteorite-landings",
