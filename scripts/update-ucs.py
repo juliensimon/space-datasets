@@ -107,23 +107,20 @@ def main():
     if rename_map:
         df = df.rename(columns=rename_map)
 
-    # Coerce all object columns to string first (handles mixed int/str cells)
-    for col in df.select_dtypes(include="object").columns:
-        df[col] = df[col].astype(str).replace({"nan": pd.NA, "None": pd.NA, "": pd.NA})
-
     # Convert numerics (coerce handles strings like "1,500-1,900" gracefully)
-    for col in ["geo_longitude", "perigee_km", "apogee_km", "eccentricity",
-                "inclination_deg", "period_minutes", "launch_mass_kg", "dry_mass_kg",
-                "power_watts", "expected_lifetime_years", "norad_id"]:
+    numeric_cols = ["geo_longitude", "perigee_km", "apogee_km", "eccentricity",
+                    "inclination_deg", "period_minutes", "launch_mass_kg", "dry_mass_kg",
+                    "power_watts", "expected_lifetime_years", "norad_id"]
+    for col in numeric_cols:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # Clean string columns
-    for col in df.select_dtypes(include="object").columns:
-        if col in df.columns:
-            df[col] = df[col].astype(str).str.strip().replace(
-                {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
-            )
+    # Coerce remaining object columns to clean strings
+    str_cols = [c for c in df.columns if c not in numeric_cols and df[c].dtype == "object"]
+    for col in str_cols:
+        df[col] = df[col].astype(str).str.strip().replace(
+            {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA, "none": pd.NA}
+        )
 
     check_dataset(df, "ucs", min_rows=5000,
         expected_columns=["satellite_name", "norad_id", "purpose", "orbit_class"],
