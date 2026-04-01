@@ -1,6 +1,6 @@
 {
   "_rows": {
-    "ae-index": 45312,
+    "ae-index": 45648,
     "astronomers": 11543,
     "black-holes": 3765,
     "celestrak-sw": 25249,
@@ -64,7 +64,7 @@
     "wds": 157336,
     "astronauts": 863
   },
-  "ae-index": "2026-03-31",
+  "ae-index": "2026-04-01",
   "astronomers": "2026-03-31",
   "black-holes": "2026-03-30",
   "celestrak-sw": "2026-04-01",
