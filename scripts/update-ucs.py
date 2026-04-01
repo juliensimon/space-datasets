@@ -52,6 +52,9 @@ def main():
     # Drop unnamed/empty columns (Excel artifacts)
     df = df.loc[:, ~df.columns.str.startswith("Unnamed")]
     df = df.loc[:, ~df.columns.str.startswith("Source.")]
+    # Drop the standalone "Source" column if "Source Used for Orbital Data" exists
+    if "Source Used for Orbital Data" in df.columns and "Source" in df.columns:
+        df = df.drop(columns=["Source"])
 
     # Rename columns to snake_case — handle both 2023 and 2024 UCS column naming
     col_rename = {
@@ -106,6 +109,9 @@ def main():
                 rename_map[col] = snake
     if rename_map:
         df = df.rename(columns=rename_map)
+
+    # Drop duplicate columns (can happen when both 2023 and 2024 names map to same target)
+    df = df.loc[:, ~df.columns.duplicated()]
 
     # Convert numerics (coerce handles strings like "1,500-1,900" gracefully)
     numeric_cols = ["geo_longitude", "perigee_km", "apogee_km", "eccentricity",
