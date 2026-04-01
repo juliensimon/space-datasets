@@ -64,7 +64,8 @@
     "wds": 157336,
     "astronauts": 863,
     "solar-radio": 393,
-    "ucs": 7560
+    "ucs": 7560,
+    "artemis-ii": 1285
   },
   "ae-index": "2026-04-01",
   "astronomers": "2026-03-31",
@@ -136,5 +137,6 @@
   "wds": "2026-03-25",
   "astronauts": "2026-04-01",
   "solar-radio": "2026-04-01",
-  "ucs": "2026-04-01"
+  "ucs": "2026-04-01",
+  "artemis-ii": "2026-04-01"
 }
