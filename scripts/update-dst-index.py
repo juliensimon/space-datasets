@@ -187,7 +187,7 @@ def main():
     with _tf.TemporaryDirectory() as probe:
         df_existing = load_existing_dst(Path(probe))
 
-    if df_existing is not None and len(df_existing) > 0:
+    if df_existing is not None and len(df_existing) >= 400_000:
         # Incremental: fetch only realtime (current year) + last provisional month
         print("  Incremental mode: fetching recent months only")
         new_records = []
