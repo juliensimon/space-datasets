@@ -16,9 +16,12 @@ from validate import check_dataset
 HF_REPO = "juliensimon/ucs-satellite-database"
 
 UCS_URLS = [
-    "https://www.ucs.org/sites/default/files/2025-02/UCS-Satellite-Database-5-1-2024.xlsx",
+    # Stable media redirect — points to whatever version UCS currently hosts
+    "https://www.ucs.org/media/11492",
+    # Direct file link (May 2023 version, latest available as of Apr 2026)
+    "https://www.ucs.org/sites/default/files/2024-01/UCS-Satellite-Database%205-1-2023.xlsx",
+    # Legacy paths in case UCS publishes a newer version
     "https://www.ucsusa.org/sites/default/files/2025-02/UCS-Satellite-Database-5-1-2024.xlsx",
-    "https://www.ucsusa.org/media/2025-02/UCS-Satellite-Database-5-1-2024.xlsx",
     "https://s3.amazonaws.com/ucs-documents/nuclear-weapons/sat-database/5-2024-update/UCS-Satellite-Database-5-1-2024.xlsx",
 ]
 
