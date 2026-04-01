@@ -15,12 +15,19 @@ from validate import check_dataset
 
 
 # URL patterns: final (1957-2020), provisional (2021-2025), realtime (recent)
+# .for.request files only exist for some years; HTML index pages have data for all years.
 
 DST_SOURCES = [
     ("final", "https://wdc.kugi.kyoto-u.ac.jp/dst_final/{ym6}/dst{ym4}.for.request", 1957, 2020),
     ("provisional", "https://wdc.kugi.kyoto-u.ac.jp/dst_provisional/{ym6}/dst{ym4}.for.request", 2021, 2025),
     ("realtime", "https://wdc.kugi.kyoto-u.ac.jp/dst_realtime/{ym6}/dst{ym4}.for.request", 2026, 2030),
 ]
+
+DST_HTML_BASES = {
+    "final": "https://wdc.kugi.kyoto-u.ac.jp/dst_final/{ym6}/index.html",
+    "provisional": "https://wdc.kugi.kyoto-u.ac.jp/dst_provisional/{ym6}/index.html",
+    "realtime": "https://wdc.kugi.kyoto-u.ac.jp/dst_realtime/{ym6}/index.html",
+}
 HF_REPO = "juliensimon/dst-index"
 
 
@@ -85,8 +92,49 @@ def load_existing_dst(tmp_dir):
     return None
 
 
+def parse_dst_html(html, year, month, quality):
+    """Parse Dst data from WDC Kyoto HTML index page (<pre class="data"> block)."""
+    m = re.search(r'<pre class="data">(.*?)</pre>', html, re.DOTALL)
+    if not m:
+        return []
+    records = []
+    for line in m.group(1).splitlines():
+        line = line.rstrip()
+        if not line or not line.strip():
+            continue
+        # Data lines start with day number (1-31), left-padded with spaces
+        stripped = line.strip()
+        if not stripped[0].isdigit():
+            continue
+        # Split: first token is day, then 24 hourly values
+        parts = line.split()
+        if len(parts) < 25:
+            continue
+        try:
+            dd = int(parts[0])
+            if dd < 1 or dd > 31:
+                continue
+            hourly = []
+            for i in range(1, 25):
+                val = int(parts[i])
+                hourly.append(None if val == 9999 else val)
+            for hour, dst_val in enumerate(hourly):
+                records.append({
+                    "datetime": datetime(year, month, dd, hour),
+                    "dst_nt": dst_val,
+                    "daily_mean_nt": None,
+                    "quality": quality,
+                })
+        except (ValueError, IndexError):
+            continue
+    return records
+
+
 def fetch_month(url_template, year, month, quality, retries=3):
-    """Fetch a single month from WDC Kyoto with retries."""
+    """Fetch a single month from WDC Kyoto with retries.
+
+    Tries .for.request file first, falls back to HTML index page.
+    """
     ym6 = f"{year}{month:02d}"
     ym4 = f"{year % 100:02d}{month:02d}"
     url = url_template.format(ym6=ym6, ym4=ym4)
@@ -96,11 +144,29 @@ def fetch_month(url_template, year, month, quality, retries=3):
             if resp.status_code == 200 and resp.text.startswith("DST"):
                 return parse_dst_wdc(resp.text, quality)
             if resp.status_code == 404:
-                return []  # month not available, don't retry
+                break  # fall through to HTML fallback
         except Exception:
             pass
         if attempt < retries - 1:
             time.sleep(2 ** attempt)
+
+    # Fallback: parse the HTML index page
+    html_template = DST_HTML_BASES.get(quality)
+    if html_template:
+        html_url = html_template.format(ym6=ym6)
+        for attempt in range(retries):
+            try:
+                resp = requests.get(html_url, timeout=15)
+                if resp.status_code == 200:
+                    records = parse_dst_html(resp.text, year, month, quality)
+                    if records:
+                        return records
+                if resp.status_code == 404:
+                    return []
+            except Exception:
+                pass
+            if attempt < retries - 1:
+                time.sleep(2 ** attempt)
     return []
 
 
@@ -193,7 +259,7 @@ def main():
     n_provisional = int((df["quality"] == "provisional").sum())
     n_realtime = int((df["quality"] == "realtime").sum())
 
-    check_dataset(df, "dst-index", min_rows=150_000,
+    check_dataset(df, "dst-index", min_rows=400_000,
                   expected_columns=["datetime", "dst_nt", "quality"],
                   critical_columns=["datetime", "dst_nt"],
                   incremental=True)
