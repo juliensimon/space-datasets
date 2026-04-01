@@ -49,7 +49,11 @@ def main():
         import sys
         sys.exit(1)
 
-    # Rename columns to snake_case
+    # Drop unnamed/empty columns (Excel artifacts)
+    df = df.loc[:, ~df.columns.str.startswith("Unnamed")]
+    df = df.loc[:, ~df.columns.str.startswith("Source.")]
+
+    # Rename columns to snake_case — handle both 2023 and 2024 UCS column naming
     col_rename = {
         "Name of Satellite": "satellite_name",
         "Name of Satellite, Alternate Names": "satellite_name",
@@ -64,22 +68,32 @@ def main():
         "Type of Orbit": "orbit_type",
         "Longitude of GEO (degrees)": "geo_longitude",
         "Perigee (Kilometers)": "perigee_km",
+        "Perigee (km)": "perigee_km",
         "Apogee (Kilometers)": "apogee_km",
+        "Apogee (km)": "apogee_km",
         "Eccentricity": "eccentricity",
         "Inclination (Degrees)": "inclination_deg",
+        "Inclination (degrees)": "inclination_deg",
         "Period (Minutes)": "period_minutes",
+        "Period (minutes)": "period_minutes",
         "Launch Mass (Kilograms)": "launch_mass_kg",
+        "Launch Mass (kg.)": "launch_mass_kg",
         "Dry Mass (Kilograms)": "dry_mass_kg",
+        "Dry Mass (kg.)": "dry_mass_kg",
         "Power (Watts)": "power_watts",
+        "Power (watts)": "power_watts",
         "Date of Launch": "launch_date",
         "Expected Lifetime (Years)": "expected_lifetime_years",
+        "Expected Lifetime (yrs.)": "expected_lifetime_years",
         "Contractor": "contractor",
         "Country of Contractor": "contractor_country",
         "Launch Site": "launch_site",
         "Launch Vehicle": "launch_vehicle",
         "COSPAR Number": "cospar_id",
         "NORAD Number": "norad_id",
+        "Comments": "comments",
         "Source Used for Orbital Data": "source_refs",
+        "Source": "source_refs",
     }
     df = df.rename(columns=col_rename)
 
@@ -87,13 +101,17 @@ def main():
     rename_map = {}
     for col in df.columns:
         if col not in col_rename.values():
-            snake = col.replace(" ", "_").replace("-", "_").replace("(", "").replace(")", "").lower()
+            snake = col.replace(" ", "_").replace("-", "_").replace("(", "").replace(")", "").replace(".", "").lower()
             if snake != col:
                 rename_map[col] = snake
     if rename_map:
         df = df.rename(columns=rename_map)
 
-    # Convert numerics
+    # Coerce all object columns to string first (handles mixed int/str cells)
+    for col in df.select_dtypes(include="object").columns:
+        df[col] = df[col].astype(str).replace({"nan": pd.NA, "None": pd.NA, "": pd.NA})
+
+    # Convert numerics (coerce handles strings like "1,500-1,900" gracefully)
     for col in ["geo_longitude", "perigee_km", "apogee_km", "eccentricity",
                 "inclination_deg", "period_minutes", "launch_mass_kg", "dry_mass_kg",
                 "power_watts", "expected_lifetime_years", "norad_id"]:
@@ -101,10 +119,7 @@ def main():
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
     # Clean string columns
-    for col in ["satellite_name", "official_name", "country_registry", "operator",
-                "operator_country", "users", "purpose", "detailed_purpose",
-                "orbit_class", "orbit_type", "contractor", "contractor_country",
-                "launch_site", "launch_vehicle", "cospar_id", "source_refs"]:
+    for col in df.select_dtypes(include="object").columns:
         if col in df.columns:
             df[col] = df[col].astype(str).str.strip().replace(
                 {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
