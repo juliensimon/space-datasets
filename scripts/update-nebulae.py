@@ -42,18 +42,13 @@ NEBULA_TYPE_QUERIES = [
     ("Q204194", "planetary nebula"),
 ]
 
-# Separate query for catalog IDs — P528 is multi-valued and creates
-# massive row explosion if included in the main query.
-CATALOG_QUERY = """
-SELECT ?neb (GROUP_CONCAT(DISTINCT ?catalogId; separator="; ") AS ?catalogIds)
-WHERE {
-  { ?neb wdt:P31 wd:Q207326 }
-  UNION { ?neb wdt:P31 wd:Q167278 }
-  UNION { ?neb wdt:P31 wd:Q46587 }
-  UNION { ?neb wdt:P31 wd:Q204194 }
+# Per-type catalog query — raw rows, aggregated in Python (GROUP_CONCAT times out)
+CATALOG_TEMPLATE = """
+SELECT ?neb ?catalogId
+WHERE {{
+  ?neb wdt:P31 wd:{qid}.
   ?neb wdt:P528 ?catalogId.
-}
-GROUP BY ?neb
+}}
 """
 
 # Labels corresponding to the four nebula-type QIDs (lowercase for matching)
@@ -194,18 +189,26 @@ def fetch_nebulae() -> pd.DataFrame:
             df = df.drop(columns=[col])
             print(f"  Dropped column '{col}' ({null_pct:.0%} null)")
 
-    # Pass 2: catalog IDs (separate query, GROUP_CONCAT to avoid explosion)
-    time.sleep(2)
-    try:
-        cat_results = _query_wikidata_json(CATALOG_QUERY, "catalogs")
-        cat_map = {}
-        for r in cat_results:
-            qid = r.get("neb", {}).get("value", "").rsplit("/", 1)[-1]
-            cat_map[qid] = r.get("catalogIds", {}).get("value") or None
-        df["catalog_id"] = df["wikidata_id"].map(cat_map)
-    except Exception as e:
-        print(f"  Catalog query failed ({e}), skipping catalog IDs")
-        df["catalog_id"] = pd.NA
+    # Pass 2: catalog IDs (raw rows per-type, aggregated in Python)
+    cat_raw = {}  # qid -> list of catalog IDs
+    for qid, type_name in NEBULA_TYPE_QUERIES:
+        time.sleep(2)
+        try:
+            cat_results = _query_wikidata_json(
+                CATALOG_TEMPLATE.format(qid=qid), f"catalogs/{type_name}"
+            )
+            for r in cat_results:
+                neb_qid = r.get("neb", {}).get("value", "").rsplit("/", 1)[-1]
+                cat_id = r.get("catalogId", {}).get("value")
+                if cat_id:
+                    cat_raw.setdefault(neb_qid, set()).add(cat_id)
+        except Exception as e:
+            print(f"  Catalog query for {type_name} failed ({e}), skipping")
+    # Aggregate: join unique catalog IDs with semicolons
+    cat_map = {qid: "; ".join(sorted(ids)) for qid, ids in cat_raw.items()}
+    df["catalog_id"] = df["wikidata_id"].map(cat_map)
+    n_with_cat = df["catalog_id"].notna().sum()
+    print(f"  Catalog IDs: {n_with_cat:,} / {len(df):,} nebulae")
 
     return df
 
