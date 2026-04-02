@@ -63,7 +63,7 @@
     "tle-latest": 10129,
     "wds": 157336,
     "astronauts": 863,
-    "solar-radio": 393,
+    "solar-radio": 411,
     "ucs": 7560,
     "artemis-ii": 1285
   },
@@ -136,7 +136,7 @@
   "tle-latest": "2026-04-02",
   "wds": "2026-04-02",
   "astronauts": "2026-04-01",
-  "solar-radio": "2026-04-01",
+  "solar-radio": "2026-04-02",
   "ucs": "2026-04-01",
   "artemis-ii": "2026-04-01"
 }
