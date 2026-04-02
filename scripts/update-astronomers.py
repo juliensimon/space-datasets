@@ -17,58 +17,72 @@ HF_REPO = "juliensimon/astronomer-database"
 WIKIDATA_URL = "https://query.wikidata.org/sparql"
 HEADERS = {"User-Agent": "space-datasets/1.0 (https://github.com/juliensimon/space-datasets)"}
 
-SPARQL_QUERY = """
-SELECT ?person ?personLabel ?birth ?death ?sexLabel
-       (GROUP_CONCAT(DISTINCT ?nationalityLabel; separator="; ") AS ?nationalities)
-       (GROUP_CONCAT(DISTINCT ?employerLabel; separator="; ") AS ?employers)
-       (GROUP_CONCAT(DISTINCT ?awardLabel; separator="; ") AS ?awards)
-       (GROUP_CONCAT(DISTINCT ?fieldLabel; separator="; ") AS ?fields)
+MAX_RETRIES = 3
+
+# Pass 1: core person data (lightweight, no multi-valued JOINs)
+SPARQL_CORE = """
+SELECT ?person ?personLabel ?birth ?death ?sexLabel ?nationalityLabel
 WHERE {
   ?person wdt:P106 wd:Q11063.
   ?person wdt:P31 wd:Q5.
   OPTIONAL { ?person wdt:P569 ?birth. }
   OPTIONAL { ?person wdt:P570 ?death. }
   OPTIONAL { ?person wdt:P21 ?sex. }
-  OPTIONAL { ?person wdt:P27 ?nationality.
-             ?nationality rdfs:label ?nationalityLabel. FILTER(LANG(?nationalityLabel) = "en") }
+  OPTIONAL { ?person wdt:P27 ?nationality. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul". }
+}
+"""
+
+# Pass 2: multi-valued properties aggregated per person
+SPARQL_ENRICHMENT = """
+SELECT ?person
+       (GROUP_CONCAT(DISTINCT ?employerLabel; separator="; ") AS ?employers)
+       (GROUP_CONCAT(DISTINCT ?awardLabel; separator="; ") AS ?awards)
+       (GROUP_CONCAT(DISTINCT ?fieldLabel; separator="; ") AS ?fields)
+WHERE {
+  ?person wdt:P106 wd:Q11063.
+  ?person wdt:P31 wd:Q5.
   OPTIONAL { ?person wdt:P108 ?employer.
              ?employer rdfs:label ?employerLabel. FILTER(LANG(?employerLabel) = "en") }
   OPTIONAL { ?person wdt:P166 ?award.
              ?award rdfs:label ?awardLabel. FILTER(LANG(?awardLabel) = "en") }
   OPTIONAL { ?person wdt:P101 ?field.
              ?field rdfs:label ?fieldLabel. FILTER(LANG(?fieldLabel) = "en") }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul". }
 }
-GROUP BY ?person ?personLabel ?birth ?death ?sexLabel
+GROUP BY ?person
 """
 
-MAX_RETRIES = 3
 
-
-def fetch_astronomers() -> pd.DataFrame:
-    """Query Wikidata SPARQL for all astronomers with retries."""
+def _query_wikidata(sparql, label="query"):
+    """Run a SPARQL query with retries."""
     import time
-    print("Querying Wikidata for astronomers...")
     for attempt in range(MAX_RETRIES):
         try:
             resp = requests.get(
                 WIKIDATA_URL,
-                params={"query": SPARQL_QUERY, "format": "json"},
+                params={"query": sparql, "format": "json"},
                 headers=HEADERS,
                 timeout=180,
             )
             resp.raise_for_status()
-            break
+            results = resp.json()["results"]["bindings"]
+            print(f"  {label}: {len(results):,} rows")
+            return results
         except Exception as e:
             if attempt < MAX_RETRIES - 1:
                 wait = 30 * (attempt + 1)
-                print(f"  Attempt {attempt + 1} failed ({e}), retrying in {wait}s...")
+                print(f"  {label} attempt {attempt + 1} failed ({e}), retrying in {wait}s...")
                 time.sleep(wait)
             else:
                 raise
 
-    results = resp.json()["results"]["bindings"]
-    print(f"  {len(results):,} raw rows from Wikidata")
+
+def fetch_astronomers() -> pd.DataFrame:
+    """Query Wikidata SPARQL for all astronomers (two-pass for reliability)."""
+    print("Querying Wikidata for astronomers...")
+
+    # Pass 1: core person data
+    results = _query_wikidata(SPARQL_CORE, "core")
 
     rows = []
     for r in results:
@@ -79,20 +93,35 @@ def fetch_astronomers() -> pd.DataFrame:
             "birth_date": r.get("birth", {}).get("value", "")[:10] or None,
             "death_date": r.get("death", {}).get("value", "")[:10] or None,
             "sex": r.get("sexLabel", {}).get("value"),
-            "nationality": r.get("nationalities", {}).get("value") or None,
-            "employers": r.get("employers", {}).get("value") or None,
-            "awards": r.get("awards", {}).get("value") or None,
-            "fields_of_work": r.get("fields", {}).get("value") or None,
+            "nationality": r.get("nationalityLabel", {}).get("value"),
         })
 
     df = pd.DataFrame(rows)
 
-    # Deduplicate: multiple nationalities/awards can create duplicate rows
-    # Keep the row with the most info (longest fields string)
-    df["_sort"] = df["fields_of_work"].fillna("").str.len()
-    df = df.sort_values("_sort", ascending=False).drop_duplicates(
-        subset=["wikidata_id"], keep="first"
-    ).drop(columns=["_sort"])
+    # Deduplicate: multiple nationalities create duplicate rows
+    df = df.drop_duplicates(subset=["wikidata_id"], keep="first")
+
+    # Pass 2: enrichment (employers, awards, fields)
+    import time
+    time.sleep(2)
+    try:
+        enrich = _query_wikidata(SPARQL_ENRICHMENT, "enrichment")
+        enrich_map = {}
+        for r in enrich:
+            qid = r.get("person", {}).get("value", "").rsplit("/", 1)[-1]
+            enrich_map[qid] = {
+                "employers": r.get("employers", {}).get("value") or None,
+                "awards": r.get("awards", {}).get("value") or None,
+                "fields_of_work": r.get("fields", {}).get("value") or None,
+            }
+        df["employers"] = df["wikidata_id"].map(lambda q: (enrich_map.get(q) or {}).get("employers"))
+        df["awards"] = df["wikidata_id"].map(lambda q: (enrich_map.get(q) or {}).get("awards"))
+        df["fields_of_work"] = df["wikidata_id"].map(lambda q: (enrich_map.get(q) or {}).get("fields_of_work"))
+    except Exception as e:
+        print(f"  Enrichment query failed ({e}), skipping employers/awards/fields")
+        df["employers"] = pd.NA
+        df["awards"] = pd.NA
+        df["fields_of_work"] = pd.NA
 
     # Drop entries with no real name (bare Q-IDs = junk Wikidata entities)
     df = df[~df["name"].str.match(r"^Q\d+$", na=False)]
