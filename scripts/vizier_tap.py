@@ -75,15 +75,26 @@ def _add_recno_filter(adql: str, min_recno: int) -> str:
         return q + f" WHERE recno > {min_recno}"
 
 
-def _fetch_page(adql: str, timeout: int) -> pd.DataFrame:
-    """Fetch a single page from VizieR TAP as CSV."""
-    resp = requests.post(TAP_URL, data={
-        "REQUEST": "doQuery",
-        "LANG": "ADQL",
-        "FORMAT": "csv",
-        "QUERY": adql,
-    }, timeout=timeout)
-    resp.raise_for_status()
+def _fetch_page(adql: str, timeout: int, retries: int = 3) -> pd.DataFrame:
+    """Fetch a single page from VizieR TAP as CSV with retries."""
+    import time as _time
+    for attempt in range(retries):
+        try:
+            resp = requests.post(TAP_URL, data={
+                "REQUEST": "doQuery",
+                "LANG": "ADQL",
+                "FORMAT": "csv",
+                "QUERY": adql,
+            }, timeout=timeout)
+            resp.raise_for_status()
+            break
+        except Exception as e:
+            if attempt < retries - 1:
+                wait = 10 * (2 ** attempt)
+                print(f"  VizieR request failed ({e}), retrying in {wait}s...")
+                _time.sleep(wait)
+            else:
+                raise
 
     text = resp.text.strip()
     if text.startswith("<?xml") or text.startswith("<VOTABLE"):

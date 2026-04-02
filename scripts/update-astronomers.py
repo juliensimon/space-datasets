@@ -19,7 +19,7 @@ HEADERS = {"User-Agent": "space-datasets/1.0 (https://github.com/juliensimon/spa
 
 SPARQL_QUERY = """
 SELECT ?person ?personLabel ?birth ?death ?sexLabel
-       ?nationalityLabel
+       (GROUP_CONCAT(DISTINCT ?nationalityLabel; separator="; ") AS ?nationalities)
        (GROUP_CONCAT(DISTINCT ?employerLabel; separator="; ") AS ?employers)
        (GROUP_CONCAT(DISTINCT ?awardLabel; separator="; ") AS ?awards)
        (GROUP_CONCAT(DISTINCT ?fieldLabel; separator="; ") AS ?fields)
@@ -29,7 +29,8 @@ WHERE {
   OPTIONAL { ?person wdt:P569 ?birth. }
   OPTIONAL { ?person wdt:P570 ?death. }
   OPTIONAL { ?person wdt:P21 ?sex. }
-  OPTIONAL { ?person wdt:P27 ?nationality. }
+  OPTIONAL { ?person wdt:P27 ?nationality.
+             ?nationality rdfs:label ?nationalityLabel. FILTER(LANG(?nationalityLabel) = "en") }
   OPTIONAL { ?person wdt:P108 ?employer.
              ?employer rdfs:label ?employerLabel. FILTER(LANG(?employerLabel) = "en") }
   OPTIONAL { ?person wdt:P166 ?award.
@@ -38,20 +39,33 @@ WHERE {
              ?field rdfs:label ?fieldLabel. FILTER(LANG(?fieldLabel) = "en") }
   SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul". }
 }
-GROUP BY ?person ?personLabel ?birth ?death ?sexLabel ?nationalityLabel
+GROUP BY ?person ?personLabel ?birth ?death ?sexLabel
 """
+
+MAX_RETRIES = 3
 
 
 def fetch_astronomers() -> pd.DataFrame:
-    """Query Wikidata SPARQL for all astronomers."""
+    """Query Wikidata SPARQL for all astronomers with retries."""
+    import time
     print("Querying Wikidata for astronomers...")
-    resp = requests.get(
-        WIKIDATA_URL,
-        params={"query": SPARQL_QUERY, "format": "json"},
-        headers=HEADERS,
-        timeout=120,
-    )
-    resp.raise_for_status()
+    for attempt in range(MAX_RETRIES):
+        try:
+            resp = requests.get(
+                WIKIDATA_URL,
+                params={"query": SPARQL_QUERY, "format": "json"},
+                headers=HEADERS,
+                timeout=180,
+            )
+            resp.raise_for_status()
+            break
+        except Exception as e:
+            if attempt < MAX_RETRIES - 1:
+                wait = 30 * (attempt + 1)
+                print(f"  Attempt {attempt + 1} failed ({e}), retrying in {wait}s...")
+                time.sleep(wait)
+            else:
+                raise
 
     results = resp.json()["results"]["bindings"]
     print(f"  {len(results):,} raw rows from Wikidata")
@@ -65,7 +79,7 @@ def fetch_astronomers() -> pd.DataFrame:
             "birth_date": r.get("birth", {}).get("value", "")[:10] or None,
             "death_date": r.get("death", {}).get("value", "")[:10] or None,
             "sex": r.get("sexLabel", {}).get("value"),
-            "nationality": r.get("nationalityLabel", {}).get("value"),
+            "nationality": r.get("nationalities", {}).get("value") or None,
             "employers": r.get("employers", {}).get("value") or None,
             "awards": r.get("awards", {}).get("value") or None,
             "fields_of_work": r.get("fields", {}).get("value") or None,

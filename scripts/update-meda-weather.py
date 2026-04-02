@@ -317,27 +317,31 @@ def main():
     # ── Combine batches ────────────────────────────────────────────────────
     batch_files = sorted(batch_dir.glob("batch_*.parquet"))
     if batch_files:
-        # Read batch files one at a time and combine
-        # Read and combine batch files one at a time to limit peak memory
-        df_new = pd.read_parquet(batch_files[0])
-        for f in batch_files[1:]:
-            df_new = pd.concat([df_new, pd.read_parquet(f)], ignore_index=True)
-        # Clean up batch files
-        for f in batch_files:
-            f.unlink()
-        batch_dir.rmdir()
-
-        print(f"  Combined: {len(df_new):,} new rows")
-
         if df_existing is not None and len(df_existing) > 0:
-            df = pd.concat([df_existing, df_new], ignore_index=True)
-            del df_new, df_existing
+            # Incremental: write existing data as another parquet file,
+            # then read all files at once via PyArrow (avoids 2x memory peak)
+            existing_path = batch_dir / "existing.parquet"
+            df_existing.to_parquet(existing_path, index=False, engine="pyarrow")
+            del df_existing
+
+            all_files = [existing_path] + batch_files
+            df = pd.read_parquet(batch_dir)  # reads all parquet in directory
+            # Clean up
+            for f in all_files:
+                f.unlink()
+            batch_dir.rmdir()
+
             dedup_col = "sclk" if "sclk" in df.columns else "SCLK"
+            before = len(df)
             df = df.drop_duplicates(subset=["sol", dedup_col], keep="last")
-            print(f"  Merged: {len(df):,} total rows")
+            print(f"  Merged: {len(df):,} rows ({before - len(df):,} dupes removed)")
         else:
-            df = df_new
-            del df_new
+            # Full rebuild: read all batch files at once
+            df = pd.read_parquet(batch_dir)
+            for f in batch_files:
+                f.unlink()
+            batch_dir.rmdir()
+            print(f"  Combined: {len(df):,} rows")
     elif df_existing is not None and len(df_existing) > 0:
         df = df_existing
         print("  No new sols found, re-uploading existing data")
