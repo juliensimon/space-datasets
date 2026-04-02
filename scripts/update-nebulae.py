@@ -20,23 +20,27 @@ HEADERS = {"User-Agent": "space-datasets/1.0 (https://github.com/juliensimon/spa
 # Wikidata QIDs for nebula types we want to keep as "most specific"
 NEBULA_TYPE_QIDS = {"Q207326", "Q167278", "Q46587", "Q204194"}
 
-SPARQL_QUERY = """
+SPARQL_TEMPLATE = """
 SELECT ?neb ?nebLabel ?typeLabel ?constellationLabel
-       ?ra ?dec ?distance ?angularSize
-WHERE {
-  { ?neb wdt:P31 wd:Q207326 }
-  UNION { ?neb wdt:P31 wd:Q167278 }
-  UNION { ?neb wdt:P31 wd:Q46587 }
-  UNION { ?neb wdt:P31 wd:Q204194 }
-  OPTIONAL { ?neb wdt:P31 ?type. }
-  OPTIONAL { ?neb wdt:P59 ?constellation. }
-  OPTIONAL { ?neb wdt:P6257 ?ra. }
-  OPTIONAL { ?neb wdt:P6258 ?dec. }
-  OPTIONAL { ?neb wdt:P2583 ?distance. }
-  OPTIONAL { ?neb wdt:P2386 ?angularSize. }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul". }
-}
+       ?ra ?dec ?distance
+WHERE {{
+  ?neb wdt:P31 wd:{qid}.
+  OPTIONAL {{ ?neb wdt:P31 ?type. }}
+  OPTIONAL {{ ?neb wdt:P59 ?constellation. }}
+  OPTIONAL {{ ?neb wdt:P6257 ?ra. }}
+  OPTIONAL {{ ?neb wdt:P6258 ?dec. }}
+  OPTIONAL {{ ?neb wdt:P2583 ?distance. }}
+  SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en,mul". }}
+}}
 """
+
+# Fetch each nebula type separately to keep response sizes under Wikidata limits
+NEBULA_TYPE_QUERIES = [
+    ("Q207326", "emission nebula"),
+    ("Q167278", "reflection nebula"),
+    ("Q46587", "dark nebula"),
+    ("Q204194", "planetary nebula"),
+]
 
 # Separate query for catalog IDs — P528 is multi-valued and creates
 # massive row explosion if included in the main query.
@@ -60,6 +64,27 @@ SPECIFIC_TYPE_LABELS = {
     "planetary nebula",
 }
 
+# All type labels we consider valid nebulae (includes subtypes)
+VALID_NEBULA_TYPES = SPECIFIC_TYPE_LABELS | {
+    "nebula",
+    "protoplanetary nebula",
+    "supernova remnant",
+    "h ii region",
+    "herbig–haro object",
+    "herbig-haro object",
+    "bipolar nebula",
+    "ring nebula",
+    "diffuse nebula",
+    "bright nebula",
+    "star-forming region",
+    "molecular cloud",
+    "bok globule",
+    "cometary globule",
+    "wolf–rayet nebula",
+    "wolf-rayet nebula",
+    "nova remnant",
+}
+
 
 def _pick_best_type(types_str):
     """Pick the most specific nebula type from a semicolon-separated list."""
@@ -73,30 +98,59 @@ def _pick_best_type(types_str):
     return types[0] if types else None
 
 
-def _query_wikidata(sparql, label="query"):
-    """Run a SPARQL query against Wikidata and return bindings."""
+def _query_wikidata_json(sparql, label="query", retries=3):
+    """Run a SPARQL query against Wikidata (JSON), with truncation-tolerant parsing."""
     import json as _json
-    resp = requests.get(
-        WIKIDATA_URL,
-        params={"query": sparql, "format": "json"},
-        headers=HEADERS,
-        timeout=300,
-    )
-    resp.raise_for_status()
-    results = _json.loads(resp.text, strict=False)["results"]["bindings"]
-    print(f"  {label}: {len(results):,} rows ({len(resp.text) / 1e6:.1f} MB)")
-    return results
+    import time
+    for attempt in range(retries):
+        try:
+            resp = requests.get(
+                WIKIDATA_URL,
+                params={"query": sparql, "format": "json"},
+                headers=HEADERS,
+                timeout=300,
+            )
+            resp.raise_for_status()
+            try:
+                results = _json.loads(resp.text, strict=False)["results"]["bindings"]
+            except _json.JSONDecodeError:
+                # Truncated response — salvage what we can by finding the last complete record
+                text = resp.text
+                last_close = text.rfind("}")
+                if last_close > 0:
+                    # Find the end of the last complete binding array entry
+                    truncated = text[:last_close + 1] + "]}}"
+                    results = _json.loads(truncated, strict=False)["results"]["bindings"]
+                    print(f"  {label}: salvaged {len(results):,} rows from truncated response")
+                else:
+                    raise
+            else:
+                print(f"  {label}: {len(results):,} rows ({len(resp.text) / 1e6:.1f} MB)")
+            return results
+        except Exception as e:
+            if attempt < retries - 1:
+                wait = 30 * (attempt + 1)
+                print(f"  {label} attempt {attempt + 1} failed ({e}), retrying in {wait}s...")
+                time.sleep(wait)
+            else:
+                raise
 
 
 def fetch_nebulae() -> pd.DataFrame:
-    """Query Wikidata SPARQL for all nebulae (two-pass to avoid row explosion)."""
+    """Query Wikidata SPARQL for all nebulae (per-type to stay under size limits)."""
+    import time
     print("Querying Wikidata for nebulae...")
 
-    # Pass 1: main data (no catalog IDs)
-    results = _query_wikidata(SPARQL_QUERY, "main")
+    # Fetch each nebula type separately to stay under Wikidata response limits
+    all_results = []
+    for qid, type_name in NEBULA_TYPE_QUERIES:
+        sparql = SPARQL_TEMPLATE.format(qid=qid)
+        results = _query_wikidata_json(sparql, type_name)
+        all_results.extend(results)
+        time.sleep(2)  # be nice to Wikidata
 
     rows = []
-    for r in results:
+    for r in all_results:
         wikidata_id = r.get("neb", {}).get("value", "").rsplit("/", 1)[-1]
         type_label = r.get("typeLabel", {}).get("value") or None
         rows.append({
@@ -107,7 +161,6 @@ def fetch_nebulae() -> pd.DataFrame:
             "ra_deg": r.get("ra", {}).get("value") or None,
             "dec_deg": r.get("dec", {}).get("value") or None,
             "distance_ly": r.get("distance", {}).get("value") or None,
-            "angular_size": r.get("angularSize", {}).get("value") or None,
         })
 
     df = pd.DataFrame(rows)
@@ -119,8 +172,7 @@ def fetch_nebulae() -> pd.DataFrame:
     df["_type_score"] = df["nebula_type"].apply(
         lambda t: 1 if (t or "").lower() in SPECIFIC_TYPE_LABELS else 0
     )
-    numeric_cols = ["ra_deg", "dec_deg", "distance_ly", "angular_size"]
-    df["_completeness"] = df[numeric_cols].notna().sum(axis=1)
+    df["_completeness"] = df[["ra_deg", "dec_deg"]].notna().sum(axis=1)
     df = df.sort_values(
         ["wikidata_id", "_type_score", "_completeness"],
         ascending=[True, False, False],
@@ -128,11 +180,24 @@ def fetch_nebulae() -> pd.DataFrame:
         columns=["_type_score", "_completeness"]
     )
 
+    # Filter: only keep entities whose best type is a recognized nebula type.
+    # Wikidata entities often have multiple P31 values (e.g. "dark nebula" AND "summit"),
+    # and the UNION query pulls in non-nebula entities that share a type QID.
+    before = len(df)
+    df = df[df["nebula_type"].str.lower().isin(VALID_NEBULA_TYPES)]
+    print(f"  Filtered to valid nebula types: {len(df):,} / {before:,}")
+
+    # Drop columns that are >95% null (distance_ly, angular_size)
+    for col in list(df.columns):
+        null_pct = df[col].isna().mean()
+        if null_pct > 0.95:
+            df = df.drop(columns=[col])
+            print(f"  Dropped column '{col}' ({null_pct:.0%} null)")
+
     # Pass 2: catalog IDs (separate query, GROUP_CONCAT to avoid explosion)
-    import time
-    time.sleep(2)  # be nice to Wikidata
+    time.sleep(2)
     try:
-        cat_results = _query_wikidata(CATALOG_QUERY, "catalogs")
+        cat_results = _query_wikidata_json(CATALOG_QUERY, "catalogs")
         cat_map = {}
         for r in cat_results:
             qid = r.get("neb", {}).get("value", "").rsplit("/", 1)[-1]
@@ -150,13 +215,15 @@ def main():
 
     # Numeric coercions
     for col in ["ra_deg", "dec_deg", "distance_ly", "angular_size"]:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
 
     # Clean string columns
     for col in ["name", "nebula_type", "constellation", "catalog_id"]:
-        df[col] = df[col].astype(str).str.strip().replace(
-            {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
-        )
+        if col in df.columns:
+            df[col] = df[col].astype(str).str.strip().replace(
+                {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
+            )
 
     df = df.sort_values("name").reset_index(drop=True)
     print(f"  {len(df):,} unique nebulae")
@@ -178,15 +245,8 @@ def main():
         f"{c} ({cnt:,})" for c, cnt in top_constellations.items()
     )
 
-    n_with_distance = int(df["distance_ly"].notna().sum())
     n_with_coords = int(df[["ra_deg", "dec_deg"]].notna().all(axis=1).sum())
-    dist_min = df["distance_ly"].min()
-    dist_max = df["distance_ly"].max()
-    dist_range = (
-        f"{dist_min:,.0f} – {dist_max:,.0f} light-years"
-        if pd.notna(dist_min) and pd.notna(dist_max)
-        else "N/A"
-    )
+    n_with_catalog = int(df["catalog_id"].notna().sum()) if "catalog_id" in df.columns else 0
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
@@ -262,16 +322,13 @@ reflection (Q167278), dark (Q46587), and planetary (Q204194) nebulae.
 | `constellation` | string | Host constellation |
 | `ra_deg` | float | Right ascension (degrees) |
 | `dec_deg` | float | Declination (degrees) |
-| `distance_ly` | float | Distance from Earth (light-years) |
-| `angular_size` | float | Angular size (arcminutes) |
-| `catalog_id` | string | Catalog identifier (NGC, IC, Messier, etc.) |
+| `catalog_id` | string | Catalog identifiers (NGC, IC, Messier, etc.; semicolon-separated) |
 
 ## Quick stats
 
 - **{n:,}** nebulae total
 - **{n_with_coords:,}** with equatorial coordinates
-- **{n_with_distance:,}** with distance measurements
-- Distance range: {dist_range}
+- **{n_with_catalog:,}** with catalog identifiers
 - Top constellations: {top_const_str}
 
 ### Breakdown by type
@@ -289,17 +346,17 @@ df = ds.to_pandas()
 # Count by nebula type
 print(df["nebula_type"].value_counts())
 
-# Planetary nebulae with known distances
-pn = df[(df["nebula_type"] == "planetary nebula") & df["distance_ly"].notna()]
-print(pn[["name", "constellation", "distance_ly"]].sort_values("distance_ly").head(10))
+# Planetary nebulae with coordinates
+pn = df[(df["nebula_type"] == "planetary nebula") & df["ra_deg"].notna()]
+print(pn[["name", "constellation", "ra_deg", "dec_deg"]].head(10))
 
 # Nebulae in Orion
 orion = df[df["constellation"] == "Orion"]
 print(f"{{len(orion):,}} nebulae in Orion")
 
-# Largest nebulae by angular size
-largest = df[df["angular_size"].notna()].nlargest(10, "angular_size")
-print(largest[["name", "nebula_type", "angular_size", "constellation"]])
+# Dark nebulae
+dark = df[df["nebula_type"] == "dark nebula"]
+print(f"{{len(dark):,}} dark nebulae")
 ```
 
 ## Data source
