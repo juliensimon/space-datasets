@@ -28,8 +28,6 @@ WHERE {
   OPTIONAL { ?cons wdt:P367 ?symbol. }
   OPTIONAL { ?cons wdt:P7015 ?brightestStar. }
   OPTIONAL { ?cons wdt:P2046 ?areaSquareDeg. }
-  OPTIONAL { ?cons wdt:P6257 ?raCenter. }
-  OPTIONAL { ?cons wdt:P6258 ?decCenter. }
   OPTIONAL { ?cons wdt:P138 ?namedAfter. }
   SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul". }
 }
@@ -54,8 +52,6 @@ def fetch_constellations() -> pd.DataFrame:
     for r in results:
         wikidata_id = r.get("cons", {}).get("value", "").rsplit("/", 1)[-1]
         area_raw = r.get("areaSquareDeg", {}).get("value")
-        ra_raw = r.get("raCenter", {}).get("value")
-        dec_raw = r.get("decCenter", {}).get("value")
         rows.append({
             "wikidata_id": wikidata_id,
             "name": r.get("consLabel", {}).get("value"),
@@ -63,8 +59,6 @@ def fetch_constellations() -> pd.DataFrame:
             "symbol": r.get("symbolLabel", {}).get("value") or None,
             "brightest_star": r.get("brightestStarLabel", {}).get("value") or None,
             "area_sq_deg": float(area_raw) if area_raw else None,
-            "ra_center": float(ra_raw) if ra_raw else None,
-            "dec_center": float(dec_raw) if dec_raw else None,
             "named_after": r.get("namedAfterLabel", {}).get("value") or None,
         })
 
@@ -99,7 +93,6 @@ def main():
     n = len(df)
     n_with_area = int(df["area_sq_deg"].notna().sum())
     n_with_brightest = int(df["brightest_star"].notna().sum())
-    n_with_coords = int((df["ra_center"].notna() & df["dec_center"].notna()).sum())
     n_with_named_after = int(df["named_after"].notna().sum())
     total_area = df["area_sq_deg"].sum()
 
@@ -166,15 +159,12 @@ Sourced from Wikidata's structured knowledge base (property P31=Q8928 for instan
 | `symbol` | string | Traditional symbol or figure |
 | `brightest_star` | string | Common name of the brightest star |
 | `area_sq_deg` | float | Area of the constellation in square degrees |
-| `ra_center` | float | Right ascension of center (degrees) |
-| `dec_center` | float | Declination of center (degrees) |
 | `named_after` | string | Mythological figure, animal, or object it represents |
 
 ## Quick stats
 
 - **{n}** IAU-recognized constellations
 - **{n_with_area:,}** with area in square degrees (total sky: ~{total_area:,.0f} sq deg)
-- **{n_with_coords:,}** with sky coordinates (RA/Dec center)
 - **{n_with_brightest:,}** with brightest star identified
 - **{n_with_named_after:,}** with named-after mythology or origin
 
@@ -192,10 +182,6 @@ print(df.nlargest(10, "area_sq_deg")[["name", "iau_abbreviation", "area_sq_deg"]
 # Constellations named after mythological figures
 myth = df[df["named_after"].notna()]
 print(myth[["name", "named_after"]].head(10))
-
-# Northern sky constellations (positive declination)
-northern = df[df["dec_center"] > 0]
-print(f"{{len(northern)}} northern-hemisphere constellations")
 
 # Find by IAU abbreviation
 orion = df[df["iau_abbreviation"] == "Ori"].iloc[0]

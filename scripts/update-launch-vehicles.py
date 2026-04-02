@@ -119,32 +119,42 @@ def main():
     df = df.sort_values("name").reset_index(drop=True)
     print(f"  {len(df):,} unique launch vehicles")
 
+    # Drop columns that are >95% null (Wikidata fields with no coverage)
+    before_cols = len(df.columns)
+    for col in list(df.columns):
+        if df[col].isna().mean() > 0.95:
+            df = df.drop(columns=[col])
+    dropped = before_cols - len(df.columns)
+    if dropped:
+        print(f"  Dropped {dropped} columns (>95% null)")
+
     check_dataset(df, "launch-vehicles", min_rows=100,
                   expected_columns=["name"],
                   critical_columns=["name"])
 
     # Stats for README
     n = len(df)
-    n_countries = int(df["country"].nunique())
-    top_countries = df["country"].value_counts().head(5)
-    top_countries_str = ", ".join(f"{c} ({cnt:,})" for c, cnt in top_countries.items())
+    n_countries = int(df["country"].nunique()) if "country" in df.columns else 0
+    if "country" in df.columns:
+        top_countries = df["country"].value_counts().head(5)
+        top_countries_str = ", ".join(f"{c} ({cnt:,})" for c, cnt in top_countries.items())
+    else:
+        top_countries_str = "N/A"
 
     # Tallest vehicle
-    tallest_idx = df["height_m"].dropna().idxmax() if df["height_m"].notna().any() else None
-    tallest_str = (
-        f"{df.loc[tallest_idx, 'name']} ({df.loc[tallest_idx, 'height_m']:.1f} m)"
-        if tallest_idx is not None else "N/A"
-    )
+    tallest_str = "N/A"
+    if "height_m" in df.columns and df["height_m"].notna().any():
+        tallest_idx = df["height_m"].dropna().idxmax()
+        tallest_str = f"{df.loc[tallest_idx, 'name']} ({df.loc[tallest_idx, 'height_m']:.1f} m)"
 
     # Heaviest LEO payload
-    heaviest_leo_idx = df["payload_leo_kg"].dropna().idxmax() if df["payload_leo_kg"].notna().any() else None
-    heaviest_leo_str = (
-        f"{df.loc[heaviest_leo_idx, 'name']} ({df.loc[heaviest_leo_idx, 'payload_leo_kg']:,.0f} kg)"
-        if heaviest_leo_idx is not None else "N/A"
-    )
+    heaviest_leo_str = "N/A"
+    if "payload_leo_kg" in df.columns and df["payload_leo_kg"].notna().any():
+        heaviest_leo_idx = df["payload_leo_kg"].dropna().idxmax()
+        heaviest_leo_str = f"{df.loc[heaviest_leo_idx, 'name']} ({df.loc[heaviest_leo_idx, 'payload_leo_kg']:,.0f} kg)"
 
-    n_active = int((df["status"].str.lower() == "active").sum())
-    n_retired = int((df["status"].str.lower() == "retired").sum())
+    n_active = int((df["status"].str.lower() == "active").sum()) if "status" in df.columns else 0
+    n_retired = int((df["status"].str.lower() == "retired").sum()) if "status" in df.columns else 0
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
@@ -200,15 +210,11 @@ defined humanity's access to space. This dataset covers every orbital and suborb
 vehicle recorded in Wikidata, including historical rockets, active workhorses, and vehicles
 under development.
 
-Each entry includes physical dimensions (height, diameter, liftoff mass), payload capacity
-to low Earth orbit (LEO) and geostationary transfer orbit (GTO), first and last flight dates,
-number of stages, operational status, manufacturer, and country of origin.
-
-This enables analysis of global launch capability, rocket engineering evolution over decades,
-national space programme comparisons, and payload capacity trends across generations of vehicles.
-
 Sourced from Wikidata's structured knowledge base (class Q697175: space launch vehicle),
 maintained by the WikiProject Spaceflight community.
+
+> **Note:** Wikidata coverage varies — some vehicles lack physical specs or payload data.
+> Columns with <5% data coverage are automatically dropped during pipeline processing.
 
 ## Schema
 
@@ -219,14 +225,9 @@ maintained by the WikiProject Spaceflight community.
 | `manufacturer` | string | Manufacturer organisation |
 | `country` | string | Country of origin |
 | `height_m` | float | Total height (metres) |
-| `diameter_m` | float | Core diameter (metres) |
-| `mass_kg` | float | Liftoff mass (kg) |
 | `payload_leo_kg` | float | Payload capacity to LEO (kg) |
-| `payload_gto_kg` | float | Payload capacity to GTO (kg) |
-| `first_flight` | string | Date of first flight (YYYY-MM-DD) |
-| `last_flight` | string | Date of last flight if retired (YYYY-MM-DD) |
-| `num_stages` | int | Number of stages |
-| `status` | string | Operational status (active/retired/in development) |
+
+Additional columns (diameter, mass, first_flight, etc.) appear when Wikidata coverage exceeds 5%.
 
 ## Quick stats
 
@@ -244,26 +245,13 @@ from datasets import load_dataset
 ds = load_dataset("juliensimon/launch-vehicles", split="train")
 df = ds.to_pandas()
 
-# Active vehicles by country
-active = df[df["status"].str.lower() == "active"]
-print(active["country"].value_counts().head(10))
+# List all vehicles by country
+print(df[["name", "country", "manufacturer"]].head(20))
 
-# Heaviest LEO payload capacity
-top_leo = df.nlargest(10, "payload_leo_kg")[["name", "country", "payload_leo_kg"]]
-print(top_leo)
-
-# Vehicles by first flight decade
-df["decade"] = (df["first_flight"].str[:4].astype(float) // 10 * 10).astype("Int64")
-print(df["decade"].value_counts().sort_index())
-
-# Height vs payload correlation
-import matplotlib.pyplot as plt
-subset = df.dropna(subset=["height_m", "payload_leo_kg"])
-plt.scatter(subset["height_m"], subset["payload_leo_kg"])
-plt.xlabel("Height (m)")
-plt.ylabel("LEO Payload (kg)")
-plt.title("Rocket Height vs Payload Capacity")
-plt.show()
+# Vehicles with known height
+if "height_m" in df.columns:
+    tall = df.dropna(subset=["height_m"]).nlargest(10, "height_m")
+    print(tall[["name", "country", "height_m"]])
 ```
 
 ## Data source

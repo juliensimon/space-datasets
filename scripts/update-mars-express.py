@@ -184,6 +184,15 @@ def main():
     for inst, count in instruments_summary.items():
         print(f"    {inst}: {count:,}")
 
+    # Drop columns that are >95% null (optional EPN-TAP fields)
+    before_cols = len(df.columns)
+    for col in list(df.columns):
+        if df[col].isna().mean() > 0.95:
+            df = df.drop(columns=[col])
+    dropped = before_cols - len(df.columns)
+    if dropped:
+        print(f"  Dropped {dropped} columns (>95% null)")
+
     # ── Validate ──────────────────────────────────────────────────────
     check_dataset(df, "mars-express", min_rows=1_000_000,
         expected_columns=["granule_uid", "instrument_name", "target_name",

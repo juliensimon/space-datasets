@@ -93,6 +93,15 @@ def main():
 
     df = df.reset_index(drop=True)
 
+    # Drop columns that are >95% null (instrument-specific fields from wide source)
+    before_cols = len(df.columns)
+    for col in list(df.columns):
+        if df[col].isna().mean() > 0.95:
+            df = df.drop(columns=[col])
+    dropped = before_cols - len(df.columns)
+    if dropped:
+        print(f"  Dropped {dropped} columns (>95% null)")
+
     n_total = len(df)
     print(f"  {n_total:,} events total")
 

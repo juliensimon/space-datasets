@@ -18,6 +18,7 @@ def check_dataset(
     critical_columns: list[str] | None = None,
     max_null_pct: float = 0.05,
     incremental: bool = False,
+    warn_all_nulls: float | None = None,
 ) -> None:
     """Validate a DataFrame before upload.
 
@@ -25,6 +26,9 @@ def check_dataset(
     For incremental datasets, also hard-fails on >20% row count drop
     (protects against uploading truncated data over good data).
     Prints ::warning:: annotations for null percentage violations.
+
+    If warn_all_nulls is set, checks ALL columns (not just critical_columns)
+    against that threshold and warns on any that exceed it.
     """
     warnings = 0
 
@@ -41,7 +45,7 @@ def check_dataset(
               f"missing columns: {sorted(missing)}")
         sys.exit(1)
 
-    # ── Null checks ──────────────────────────────────────────────────────
+    # ── Null checks (critical columns) ───────────────────────────────────
     if critical_columns:
         for col in critical_columns:
             if col not in df.columns:
@@ -50,6 +54,18 @@ def check_dataset(
             if null_pct > max_null_pct:
                 print(f"::warning::[{dataset_name}] column '{col}' "
                       f"has {null_pct:.1%} nulls (threshold: {max_null_pct:.0%})")
+                warnings += 1
+
+    # ── Null checks (all columns) ────────────────────────────────────────
+    if warn_all_nulls is not None:
+        checked = set(critical_columns or [])
+        for col in df.columns:
+            if col in checked:
+                continue
+            null_pct = df[col].isna().mean()
+            if null_pct > warn_all_nulls:
+                print(f"::warning::[{dataset_name}] column '{col}' "
+                      f"has {null_pct:.1%} nulls (>{warn_all_nulls:.0%})")
                 warnings += 1
 
     # ── Row count trend ──────────────────────────────────────────────────

@@ -110,19 +110,31 @@ def main():
     df = df.sort_values("launch_date", na_position="last").reset_index(drop=True)
     print(f"  {len(df):,} unique missions")
 
+    # Drop columns that are >95% null (Wikidata fields with no coverage)
+    before_cols = len(df.columns)
+    for col in list(df.columns):
+        if df[col].isna().mean() > 0.95:
+            df = df.drop(columns=[col])
+    dropped = before_cols - len(df.columns)
+    if dropped:
+        print(f"  Dropped {dropped} columns (>95% null)")
+
     check_dataset(df, "space-missions", min_rows=5000,
-                  expected_columns=["name", "launch_date"],
+                  expected_columns=["name"],
                   critical_columns=["name"])
 
     # Stats for README
     n = len(df)
-    n_with_date = int(df["launch_date"].notna().sum())
-    n_crewed = int((df["crew_count"].fillna(0) > 0).sum())
-    n_destinations = int(df["destination"].nunique())
-    top_operators = df["operator"].value_counts().head(5)
-    top_operators_str = ", ".join(f"{op} ({cnt:,})" for op, cnt in top_operators.items())
-    earliest = df["launch_date"].dropna().min()
-    latest = df["launch_date"].dropna().max()
+    n_with_date = int(df["launch_date"].notna().sum()) if "launch_date" in df.columns else 0
+    n_crewed = int((df["crew_count"].fillna(0) > 0).sum()) if "crew_count" in df.columns else 0
+    n_destinations = int(df["destination"].nunique()) if "destination" in df.columns else 0
+    if "operator" in df.columns:
+        top_operators = df["operator"].value_counts().head(5)
+        top_operators_str = ", ".join(f"{op} ({cnt:,})" for op, cnt in top_operators.items())
+    else:
+        top_operators_str = "N/A"
+    earliest = df["launch_date"].dropna().min() if "launch_date" in df.columns else "N/A"
+    latest = df["launch_date"].dropna().max() if "launch_date" in df.columns else "N/A"
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
@@ -171,11 +183,10 @@ Comprehensive database of **{n:,}** space missions — both crewed and uncrewed 
 
 ## Dataset description
 
-From Sputnik-1 in 1957 to today's commercial launches and deep space probes, this dataset covers the full breadth of human spaceflight and robotic exploration. Each record includes launch and end dates, operating agency, destination, launch vehicle, crew size, mission duration, and outcome where available.
+This dataset draws on Wikidata's structured knowledge base using three entity types: space missions (Q2133344), crewed spaceflights (Q1248784), and uncrewed spaceflights (Q12795915). It is maintained by the WikiProject Spaceflight community and updated as new missions are flown and documented.
 
-The dataset draws on Wikidata's structured knowledge base using three entity types: space missions (Q2133344), crewed spaceflights (Q1248784), and uncrewed spaceflights (Q12795915). It is maintained by the WikiProject Spaceflight community and updated as new missions are flown and documented.
-
-Records span from **{earliest}** to **{latest}**, with **{n_with_date:,}** missions having a known launch date and **{n_crewed:,}** confirmed crewed missions.
+> **Note:** Wikidata coverage is uneven — most entries have only a name and Wikidata ID.
+> Columns with <5% data coverage are automatically dropped during pipeline processing.
 
 ## Schema
 
@@ -183,24 +194,13 @@ Records span from **{earliest}** to **{latest}**, with **{n_with_date:,}** missi
 |--------|------|-------------|
 | `wikidata_id` | string | Wikidata entity ID (e.g. Q183294) |
 | `name` | string | Mission name |
-| `launch_date` | string | Launch date (YYYY-MM-DD) |
-| `end_date` | string | Mission end date (YYYY-MM-DD) |
-| `operator` | string | Operating agency or organization |
-| `destination` | string | Mission destination (e.g. Moon, Mars, ISS) |
-| `launch_site` | string | Launch site name |
-| `vehicle` | string | Launch vehicle |
-| `crew_count` | int | Number of crew members (null for uncrewed) |
-| `duration_days` | float | Mission duration in days (derived from Wikidata minutes) |
-| `outcome` | string | Mission outcome (e.g. successful, partial failure) |
-| `launch_year` | int | Launch year (derived from launch_date) |
+| `operator` | string | Operating agency or organization (~13% coverage) |
+
+Additional columns (launch_date, destination, etc.) appear when Wikidata coverage exceeds 5%.
 
 ## Quick stats
 
 - **{n:,}** total missions in the database
-- **{n_with_date:,}** missions with a known launch date
-- **{n_crewed:,}** confirmed crewed missions
-- **{n_destinations:,}** distinct destinations
-- Date range: {earliest} to {latest}
 - Top operators: {top_operators_str}
 
 ## Usage
@@ -212,21 +212,11 @@ ds = load_dataset("juliensimon/space-missions", split="train")
 df = ds.to_pandas()
 
 # Missions by operator
-print(df["operator"].value_counts().head(10))
+if "operator" in df.columns:
+    print(df["operator"].value_counts().head(10))
 
-# Crewed missions only
-crewed = df[df["crew_count"].notna() & (df["crew_count"] > 0)]
-print(f"{{len(crewed):,}} crewed missions")
-
-# Missions by destination
-print(df["destination"].value_counts().head(10))
-
-# Missions by year
-print(df["launch_year"].value_counts().sort_index())
-
-# Longest missions
-top_duration = df.nlargest(10, "duration_days")[["name", "operator", "duration_days", "destination"]]
-print(top_duration)
+# List all missions
+print(df[["name", "wikidata_id"]].head(20))
 ```
 
 ## Data source
