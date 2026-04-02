@@ -1,12 +1,32 @@
 {
-  "solar-radio": {
-    "first_failure": "2026-03-31",
-    "last_retry": "2026-04-01",
-    "retries": 2
+  "cataclysmic-variables": {
+    "first_failure": "2026-04-02",
+    "last_retry": "2026-04-02",
+    "retries": 1
   },
-  "ucs": {
-    "first_failure": "2026-03-31",
-    "last_retry": "2026-04-01",
-    "retries": 2
+  "cosmic-voids": {
+    "first_failure": "2026-04-02",
+    "last_retry": "2026-04-02",
+    "retries": 1
+  },
+  "hii-regions": {
+    "first_failure": "2026-04-02",
+    "last_retry": "2026-04-02",
+    "retries": 1
+  },
+  "planck-sz2": {
+    "first_failure": "2026-04-02",
+    "last_retry": "2026-04-02",
+    "retries": 1
+  },
+  "pulsar-glitches": {
+    "first_failure": "2026-04-02",
+    "last_retry": "2026-04-02",
+    "retries": 1
+  },
+  "xray-binaries": {
+    "first_failure": "2026-04-02",
+    "last_retry": "2026-04-02",
+    "retries": 1
   }
 }
