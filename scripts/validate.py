@@ -45,6 +45,13 @@ def check_dataset(
               f"missing columns: {sorted(missing)}")
         sys.exit(1)
 
+    # ── All-null columns (always checked) ───────────────────────────────
+    all_null_cols = [col for col in df.columns if df[col].isna().all()]
+    if all_null_cols:
+        print(f"::error::VALIDATION FAILED [{dataset_name}]: "
+              f"completely empty columns: {sorted(all_null_cols)}")
+        sys.exit(1)
+
     # ── Null checks (critical columns) ───────────────────────────────────
     if critical_columns:
         for col in critical_columns:

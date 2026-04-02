@@ -20,19 +20,21 @@ HEADERS = {"User-Agent": "space-datasets/1.0 (https://github.com/juliensimon/spa
 SPARQL_QUERY = """
 SELECT ?met ?metLabel ?fallDate ?mass
        ?classLabel ?countryLabel
-       ?lat ?lon ?fallFind
+       ?lat ?lon
 WHERE {
   ?met wdt:P31 wd:Q60186.
-  OPTIONAL { ?met wdt:P585 ?fallDate. }
+  OPTIONAL { ?met wdt:P585 ?pointInTime. }
+  OPTIONAL { ?met wdt:P575 ?discoveryDate. }
+  BIND(COALESCE(?pointInTime, ?discoveryDate) AS ?fallDate)
   OPTIONAL { ?met wdt:P2067 ?mass. }
-  OPTIONAL { ?met wdt:P279 ?class. }
+  OPTIONAL { ?met wdt:P31 ?class.
+             ?class wdt:P279* wd:Q60186.
+             FILTER(?class != wd:Q60186) }
   OPTIONAL { ?met wdt:P17 ?country. }
   OPTIONAL { ?met p:P625 ?coordStmt.
              ?coordStmt psv:P625 ?coordNode.
              ?coordNode wikibase:geoLatitude ?lat.
              ?coordNode wikibase:geoLongitude ?lon. }
-  OPTIONAL { ?met wdt:P1269 ?fallFindType.
-             BIND(IF(?fallFindType = wd:Q194288, "Fall", "Find") AS ?fallFind) }
   SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul". }
 }
 """
@@ -68,7 +70,6 @@ def fetch_meteorites() -> pd.DataFrame:
             "country": r.get("countryLabel", {}).get("value"),
             "latitude": float(lat_raw) if lat_raw else None,
             "longitude": float(lon_raw) if lon_raw else None,
-            "fall_or_find": r.get("fallFind", {}).get("value"),
         })
 
     df = pd.DataFrame(rows)
@@ -89,7 +90,7 @@ def main():
     df = fetch_meteorites()
 
     # Clean string columns
-    for col in ["name", "classification", "country", "fall_or_find"]:
+    for col in ["name", "classification", "country"]:
         df[col] = df[col].astype(str).str.strip().replace(
             {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
         )
@@ -123,8 +124,7 @@ def main():
         f"{c} ({cnt:,})" for c, cnt in top_countries.items()
     )
 
-    n_falls = int((df["fall_or_find"] == "Fall").sum())
-    n_finds = int((df["fall_or_find"] == "Find").sum())
+    n_classified = int(df["classification"].notna().sum())
 
     top_classes = df["classification"].value_counts().head(5)
     top_classes_str = ", ".join(
@@ -186,8 +186,8 @@ achondrites, iron meteorites) and recorded either as *falls* (witnessed descent)
 *finds* (recovered without observation).
 
 This dataset aggregates Wikidata entries for all entities of type Q60186 (meteorite), pulling
-structured properties including mass (P2067), fall date (P585), country (P17), coordinates
-(P625), and mineralogical class (P279). It complements NASA and Meteoritical Society
+structured properties including mass (P2067), fall/discovery date (P585/P575), country (P17),
+coordinates (P625), and mineralogical class (via P31 subclass hierarchy). It complements NASA and Meteoritical Society
 databases with Wikidata's multilingual, cross-linked knowledge graph.
 
 ## Schema
@@ -202,15 +202,14 @@ databases with Wikidata's multilingual, cross-linked knowledge graph.
 | `country` | string | Country of recovery |
 | `latitude` | float | Recovery latitude (decimal degrees) |
 | `longitude` | float | Recovery longitude (decimal degrees) |
-| `fall_or_find` | string | "Fall" (witnessed) or "Find" (unwitnessed recovery) |
 
 ## Quick stats
 
 - **{n:,}** meteorites total
 - **{n_with_mass:,}** with recorded mass
 - **{n_with_coords:,}** with geographic coordinates
+- **{n_classified:,}** with classification
 - **{n_countries:,}** countries of recovery
-- **{n_falls:,}** falls, **{n_finds:,}** finds
 - Heaviest: {heaviest_str}
 - Top countries: {top_countries_str}
 - Top classifications: {top_classes_str}
@@ -225,9 +224,6 @@ df = ds.to_pandas()
 
 # Heaviest meteorites
 print(df.nlargest(10, "mass_g")[["name", "mass_g", "country", "classification"]])
-
-# Falls vs finds
-print(df["fall_or_find"].value_counts())
 
 # Meteorites by country
 print(df["country"].value_counts().head(10))
