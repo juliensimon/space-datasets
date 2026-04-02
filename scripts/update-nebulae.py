@@ -23,7 +23,6 @@ NEBULA_TYPE_QIDS = {"Q207326", "Q167278", "Q46587", "Q204194"}
 SPARQL_QUERY = """
 SELECT ?neb ?nebLabel ?typeLabel ?constellationLabel
        ?ra ?dec ?distance ?angularSize
-       ?catalogId
 WHERE {
   { ?neb wdt:P31 wd:Q207326 }
   UNION { ?neb wdt:P31 wd:Q167278 }
@@ -35,9 +34,22 @@ WHERE {
   OPTIONAL { ?neb wdt:P6258 ?dec. }
   OPTIONAL { ?neb wdt:P2583 ?distance. }
   OPTIONAL { ?neb wdt:P2386 ?angularSize. }
-  OPTIONAL { ?neb wdt:P528 ?catalogId. }
   SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul". }
 }
+"""
+
+# Separate query for catalog IDs — P528 is multi-valued and creates
+# massive row explosion if included in the main query.
+CATALOG_QUERY = """
+SELECT ?neb (GROUP_CONCAT(DISTINCT ?catalogId; separator="; ") AS ?catalogIds)
+WHERE {
+  { ?neb wdt:P31 wd:Q207326 }
+  UNION { ?neb wdt:P31 wd:Q167278 }
+  UNION { ?neb wdt:P31 wd:Q46587 }
+  UNION { ?neb wdt:P31 wd:Q204194 }
+  ?neb wdt:P528 ?catalogId.
+}
+GROUP BY ?neb
 """
 
 # Labels corresponding to the four nebula-type QIDs (lowercase for matching)
@@ -49,21 +61,39 @@ SPECIFIC_TYPE_LABELS = {
 }
 
 
-def fetch_nebulae() -> pd.DataFrame:
-    """Query Wikidata SPARQL for all nebulae."""
-    print("Querying Wikidata for nebulae...")
+def _pick_best_type(types_str):
+    """Pick the most specific nebula type from a semicolon-separated list."""
+    if not types_str:
+        return None
+    types = [t.strip() for t in types_str.split(";")]
+    # Prefer specific nebula type labels
+    for t in types:
+        if t.lower() in SPECIFIC_TYPE_LABELS:
+            return t
+    return types[0] if types else None
+
+
+def _query_wikidata(sparql, label="query"):
+    """Run a SPARQL query against Wikidata and return bindings."""
+    import json as _json
     resp = requests.get(
         WIKIDATA_URL,
-        params={"query": SPARQL_QUERY, "format": "json"},
+        params={"query": sparql, "format": "json"},
         headers=HEADERS,
-        timeout=180,
+        timeout=300,
     )
     resp.raise_for_status()
-
-    # strict=False handles control characters in some Wikidata labels
-    import json as _json
     results = _json.loads(resp.text, strict=False)["results"]["bindings"]
-    print(f"  {len(results):,} raw rows from Wikidata")
+    print(f"  {label}: {len(results):,} rows ({len(resp.text) / 1e6:.1f} MB)")
+    return results
+
+
+def fetch_nebulae() -> pd.DataFrame:
+    """Query Wikidata SPARQL for all nebulae (two-pass to avoid row explosion)."""
+    print("Querying Wikidata for nebulae...")
+
+    # Pass 1: main data (no catalog IDs)
+    results = _query_wikidata(SPARQL_QUERY, "main")
 
     rows = []
     for r in results:
@@ -78,7 +108,6 @@ def fetch_nebulae() -> pd.DataFrame:
             "dec_deg": r.get("dec", {}).get("value") or None,
             "distance_ly": r.get("distance", {}).get("value") or None,
             "angular_size": r.get("angularSize", {}).get("value") or None,
-            "catalog_id": r.get("catalogId", {}).get("value") or None,
         })
 
     df = pd.DataFrame(rows)
@@ -87,22 +116,31 @@ def fetch_nebulae() -> pd.DataFrame:
     df = df[~df["name"].str.match(r"^Q\d+$", na=False)]
 
     # For nebula_type: prefer specific type labels over generic ones.
-    # Score rows: specific type labels score 1, everything else 0.
     df["_type_score"] = df["nebula_type"].apply(
         lambda t: 1 if (t or "").lower() in SPECIFIC_TYPE_LABELS else 0
     )
-
-    # For deduplication: keep the most specific type row per entity.
-    # Among ties, prefer rows with more non-null fields (most complete).
-    numeric_cols = ["ra_deg", "dec_deg", "distance_ly", "angular_size", "catalog_id"]
+    numeric_cols = ["ra_deg", "dec_deg", "distance_ly", "angular_size"]
     df["_completeness"] = df[numeric_cols].notna().sum(axis=1)
-
     df = df.sort_values(
         ["wikidata_id", "_type_score", "_completeness"],
         ascending=[True, False, False],
     ).drop_duplicates(subset=["wikidata_id"], keep="first").drop(
         columns=["_type_score", "_completeness"]
     )
+
+    # Pass 2: catalog IDs (separate query, GROUP_CONCAT to avoid explosion)
+    import time
+    time.sleep(2)  # be nice to Wikidata
+    try:
+        cat_results = _query_wikidata(CATALOG_QUERY, "catalogs")
+        cat_map = {}
+        for r in cat_results:
+            qid = r.get("neb", {}).get("value", "").rsplit("/", 1)[-1]
+            cat_map[qid] = r.get("catalogIds", {}).get("value") or None
+        df["catalog_id"] = df["wikidata_id"].map(cat_map)
+    except Exception as e:
+        print(f"  Catalog query failed ({e}), skipping catalog IDs")
+        df["catalog_id"] = pd.NA
 
     return df
 
