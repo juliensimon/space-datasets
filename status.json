@@ -1,7 +1,7 @@
 {
   "_rows": {
     "ae-index": 45648,
-    "astronomers": 11543,
+    "astronomers": 11613,
     "black-holes": 3765,
     "celestrak-sw": 25249,
     "chime-frb": 600,
@@ -68,7 +68,7 @@
     "artemis-ii": 1285
   },
   "ae-index": "2026-04-01",
-  "astronomers": "2026-03-31",
+  "astronomers": "2026-04-02",
   "black-holes": "2026-03-30",
   "celestrak-sw": "2026-04-01",
   "chime-frb": "2026-03-24",
