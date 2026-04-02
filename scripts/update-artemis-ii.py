@@ -22,7 +22,7 @@ HF_REPO = "juliensimon/artemis-ii"
 HORIZONS_URL = "https://ssd.jpl.nasa.gov/api/horizons.api"
 
 # Mission time bounds (ICPS separation to splashdown)
-MISSION_START = "2026-04-02T01:50"
+MISSION_START = "2026-04-02T02:00"
 MISSION_END = "2026-04-10T23:50"
 
 
@@ -51,8 +51,12 @@ def fetch_horizons_vectors(center, start, stop, step="10m"):
 def parse_horizons_vectors(text):
     """Parse Horizons vector table into list of dicts."""
     lines = text.splitlines()
-    soe = next(i for i, l in enumerate(lines) if l.strip() == "$$SOE")
-    eoe = next(i for i, l in enumerate(lines) if l.strip() == "$$EOE")
+    try:
+        soe = next(i for i, l in enumerate(lines) if l.strip() == "$$SOE")
+        eoe = next(i for i, l in enumerate(lines) if l.strip() == "$$EOE")
+    except StopIteration:
+        print(f"::error::Horizons did not return ephemeris data. Response:\n{text[:500]}")
+        sys.exit(1)
     data_lines = lines[soe + 1:eoe]
 
     records = []
