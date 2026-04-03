@@ -44,6 +44,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![Launch Vehicles](https://github.com/juliensimon/space-datasets/actions/workflows/update-launch-vehicles.yml/badge.svg)
 ![Space Agencies](https://github.com/juliensimon/space-datasets/actions/workflows/update-space-agencies.yml/badge.svg)
 ![Comets](https://github.com/juliensimon/space-datasets/actions/workflows/update-comets.yml/badge.svg)
+![WMO OSCAR](https://github.com/juliensimon/space-datasets/actions/workflows/update-wmo-oscar.yml/badge.svg)
 <!-- Space Weather -->
 ![CelesTrak SW](https://github.com/juliensimon/space-datasets/actions/workflows/update-celestrak-sw.yml/badge.svg)
 ![Space Weather](https://github.com/juliensimon/space-datasets/actions/workflows/update-space-weather.yml/badge.svg)
@@ -89,6 +90,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![Pulsar Glitches](https://github.com/juliensimon/space-datasets/actions/workflows/update-pulsar-glitches.yml/badge.svg)
 ![Cosmic Voids](https://github.com/juliensimon/space-datasets/actions/workflows/update-cosmic-voids.yml/badge.svg)
 <!-- Space Probes -->
+![Venus Express](https://github.com/juliensimon/space-datasets/actions/workflows/update-venus-express.yml/badge.svg)
 ![Artemis II](https://github.com/juliensimon/space-datasets/actions/workflows/update-artemis-ii.yml/badge.svg)
 ![Deep Space Probes](https://github.com/juliensimon/space-datasets/actions/workflows/update-deep-space-probes.yml/badge.svg)
 ![Mars Express](https://github.com/juliensimon/space-datasets/actions/workflows/update-mars-express.yml/badge.svg)
@@ -132,6 +134,8 @@ Track every object orbiting Earth and beyond. This collection covers the complet
 | [starlink-ground-stations](https://huggingface.co/datasets/juliensimon/starlink-ground-stations) | Starlink gateway and point-of-presence locations worldwide | ![Ground Stations](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['ground-stations']&label=updated&color=brightgreen) | Daily | 7 KB |
 | [starlink-tle-latest](https://huggingface.co/datasets/juliensimon/starlink-tle-latest) | Latest Starlink + GPS TLEs in raw and Parquet format | ![TLE Latest](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['tle-latest']&label=updated&color=brightgreen) | Daily | 1.5 MB |
 | [ucs-satellite-database](https://huggingface.co/datasets/juliensimon/ucs-satellite-database) | 7,500+ active satellites with purpose, operator, and orbit metadata | ![UCS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.ucs&label=updated&color=brightgreen) | Quarterly | 5 MB |
+| [gcat-satellite-catalog](https://huggingface.co/datasets/juliensimon/gcat-satellite-catalog) | 68K+ satellites, rocket bodies, and debris from GCAT (Jonathan McDowell) | ![GCAT SATCAT](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['gcat-satcat']&label=updated&color=brightgreen) | Weekly | 2.6 MB |
+| [wmo-oscar-satellites](https://huggingface.co/datasets/juliensimon/wmo-oscar-satellites) | 1,025 Earth-observing satellites and 1,230 instruments from WMO OSCAR | ![WMO OSCAR](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['wmo-oscar']&label=updated&color=brightgreen) | Quarterly | <1 MB |
 
 ### Space Probes & Missions
 
@@ -151,6 +155,9 @@ Data returned by humanity's most distant spacecraft and surface explorers. Inclu
 | [mars-perseverance-weather](https://huggingface.co/datasets/juliensimon/mars-perseverance-weather) | Mars surface weather from Perseverance MEDA (temperature, pressure, wind, UV) | ![MEDA](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['meda-weather']&label=updated&color=brightgreen) | Monthly | ~100 MB |
 | [nasa-eva-chronology](https://huggingface.co/datasets/juliensimon/nasa-eva-chronology) | 375 spacewalks (EVAs) — complete history from Gemini to ISS | — | Static | <1 MB |
 | [pds-planetary-missions](https://huggingface.co/datasets/juliensimon/pds-planetary-missions) | NASA PDS mission catalog — 98 missions, 115 spacecraft, 748 instruments with targets and cross-references | — | Static | <5 MB |
+| [esa-venus-express-observations](https://huggingface.co/datasets/juliensimon/esa-venus-express-observations) | 525K observation metadata from ESA Venus Express (5 instruments, 2006–2014) | ![Venus Express](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['venus-express']&label=updated&color=brightgreen) | Weekly | 21 MB |
+| [gcat-deep-space](https://huggingface.co/datasets/juliensimon/gcat-deep-space) | 1,206 deep space objects and 469 planetary landings from GCAT | ![GCAT Deep Space](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['gcat-deep-space']&label=updated&color=brightgreen) | Weekly | <1 MB |
+| [isro-missions](https://huggingface.co/datasets/juliensimon/isro-missions) | ISRO spacecraft, launchers, customer satellites, and research centres | ![ISRO](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['isro']&label=updated&color=brightgreen) | Quarterly | <1 MB |
 
 ### Planetary Science
 
@@ -310,6 +317,8 @@ python scripts/update-space-missions.py
 python scripts/update-spacecraft.py
 python scripts/update-starlink.py
 python scripts/update-ucs.py  # requires: pip install openpyxl
+python scripts/update-gcat-satcat.py
+python scripts/update-wmo-oscar.py
 
 # Planetary Science
 python scripts/update-ceres-craters.py
@@ -347,6 +356,9 @@ python scripts/update-mars-express.py
 python scripts/update-meda-weather.py
 python scripts/update-pds-missions.py
 python scripts/update-rosetta.py
+python scripts/update-venus-express.py
+python scripts/update-gcat-deep-space.py
+python scripts/update-isro.py
 
 # Astronomy
 python scripts/update-astronauts.py
@@ -467,8 +479,8 @@ These datasets are built from the following public sources — please cite them 
 
 | Domain | Original source |
 |--------|----------------|
-| Orbital Mechanics | [CelesTrak](https://celestrak.org/) (Dr. T.S. Kelso), [Space-Track.org](https://www.space-track.org/), [GCAT](https://planet4589.org/space/gcat/) (Jonathan McDowell), [Starlink Insider](https://starlinkinsider.com/), [NASA/JPL CNEOS](https://cneos.jpl.nasa.gov/), [NASA/JPL SSD](https://ssd.jpl.nasa.gov/), [NASA NHATS](https://cneos.jpl.nasa.gov/nhats/), [SatNOGS](https://db.satnogs.org/) (Libre Space Foundation), [UCS](https://www.ucsusa.org/resources/satellite-database), [IAU MDC](https://www.ta3.sk/IAUC22DB/MDC2022/) |
-| Space Probes | [NASA SPDF COHOWeb](https://spdf.gsfc.nasa.gov/) (Voyager, Pioneer), [PDS Atmospheres](https://pds-atmospheres.nmsu.edu/) (Cassini, MEDA), [PDS Geosciences](https://pds-geosciences.wustl.edu/) (ChemCam), [ESA PSA](https://psa.esa.int/) (Mars Express, Rosetta) |
+| Orbital Mechanics | [CelesTrak](https://celestrak.org/) (Dr. T.S. Kelso), [Space-Track.org](https://www.space-track.org/), [GCAT](https://planet4589.org/space/gcat/) (Jonathan McDowell), [Starlink Insider](https://starlinkinsider.com/), [NASA/JPL CNEOS](https://cneos.jpl.nasa.gov/), [NASA/JPL SSD](https://ssd.jpl.nasa.gov/), [NASA NHATS](https://cneos.jpl.nasa.gov/nhats/), [SatNOGS](https://db.satnogs.org/) (Libre Space Foundation), [UCS](https://www.ucsusa.org/resources/satellite-database), [IAU MDC](https://www.ta3.sk/IAUC22DB/MDC2022/), [WMO OSCAR](https://space.oscar.wmo.int/) |
+| Space Probes | [NASA SPDF COHOWeb](https://spdf.gsfc.nasa.gov/) (Voyager, Pioneer), [PDS Atmospheres](https://pds-atmospheres.nmsu.edu/) (Cassini, MEDA), [PDS Geosciences](https://pds-geosciences.wustl.edu/) (ChemCam), [ESA PSA](https://psa.esa.int/) (Mars Express, Rosetta, Venus Express), [ISRO](https://www.isro.gov.in/) |
 | Planetary Science | [USGS Astrogeology](https://astrogeology.usgs.gov/) (Robbins crater databases), [Meteoritical Society](https://www.lpi.usra.edu/meteor/) (via NASA data.gov) |
 | Space Weather | [NOAA SWPC](https://www.swpc.noaa.gov/), [WDC Kyoto](https://wdc.kugi.kyoto-u.ac.jp/dstdir/), [NASA CCMC DONKI](https://ccmc.gsfc.nasa.gov/tools/DONKI/), [NOAA NCEI](https://www.ncei.noaa.gov/) GOES-16 XRS, [SILSO](https://www.sidc.be/SILSO/) (Royal Observatory of Belgium), [LASP LISIRD](https://lasp.colorado.edu/lisird/) (F10.7), [IERS](https://www.iers.org/) |
 | Astronomy | [NASA Exoplanet Archive](https://exoplanetarchive.ipac.caltech.edu/), [NASA HEASARC](https://heasarc.gsfc.nasa.gov/) (Fermi, Chandra, Swift), [GWOSC](https://gwosc.org/) (LIGO/Virgo/KAGRA), [ATNF](https://www.atnf.csiro.au/research/pulsar/psrcat/) Pulsar Catalogue, [OpenNGC](https://github.com/mattiaverga/OpenNGC), [Green's SNR Catalog](https://www.mrao.cam.ac.uk/surveys/snrs/), [SIMBAD](https://simbad.u-strasbg.fr/) (CDS Strasbourg), [VizieR](https://vizier.cds.unistra.fr/) (CDS Strasbourg — VLASS, Cosmicflows-4, INTEGRAL, LHAASO, HAWC), [Fermi LAT](https://fermi.gsfc.nasa.gov/ssc/), [CHIME/FRB](https://www.chime-frb.ca/), [eROSITA](https://erosita.mpe.mpg.de/), [Pantheon+](https://github.com/PantheonPlusSH0ES/DataRelease), [lenscat](https://github.com/lenscat/lenscat) |

@@ -1,0 +1,26 @@
+name: Update Venus Express
+on:
+  schedule:
+    - cron: '0 8 * * 1'  # weekly Mon at 08:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    environment: HF
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pandas pyarrow requests huggingface_hub[hf_xet]
+      - id: update
+        run: python scripts/update-venus-express.py
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      - name: Update and push status
+        run: bash scripts/push-status.sh venus-express --rows ${{ steps.update.outputs.rows }}

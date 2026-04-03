@@ -76,6 +76,8 @@ DATASETS = {
         "juliensimon/starlink-ground-stations",
         "juliensimon/starlink-tle-latest",
         "juliensimon/ucs-satellite-database",
+        "juliensimon/gcat-satellite-catalog",
+        "juliensimon/wmo-oscar-satellites",
     ],
     # ── Sub: Satellites & Launches ─────────────────────────────────────────
     SATELLITES: [
@@ -97,6 +99,8 @@ DATASETS = {
         "juliensimon/starlink-ground-stations",
         "juliensimon/starlink-tle-latest",
         "juliensimon/ucs-satellite-database",
+        "juliensimon/gcat-satellite-catalog",
+        "juliensimon/wmo-oscar-satellites",
     ],
     # ── Sub: Asteroids & Small Bodies ──────────────────────────────────────
     SMALL_BODIES: [
@@ -132,6 +136,9 @@ DATASETS = {
         "juliensimon/mars-perseverance-weather",
         "juliensimon/nasa-eva-chronology",
         "juliensimon/pds-planetary-missions",
+        "juliensimon/gcat-deep-space",
+        "juliensimon/isro-missions",
+        "juliensimon/esa-venus-express-observations",
     ],
     # ── Parent: Planetary Science ──────────────────────────────────────────
     PLANETARY: [
@@ -353,6 +360,8 @@ DATASETS = {
         "juliensimon/planetary-nomenclature",
         "juliensimon/solar-eclipse-catalog",
         "juliensimon/solar-system-moons",
+        "juliensimon/gcat-deep-space",
+        "juliensimon/esa-venus-express-observations",
     ],
     # ── Sub: Space Essentials (general public, no jargon) ────────────────────
     ESSENTIALS: [

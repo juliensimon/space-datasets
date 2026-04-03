@@ -12,7 +12,7 @@ Reusable checklist for adding any new dataset to `juliensimon/space-datasets`. L
 - [ ] Column rename to snake_case
 - [ ] Guard optional columns: `if "col" in df.columns` before accessing
 - [ ] Derive computed fields (classifications, categories, flags)
-- [ ] Call `check_dataset(df, name, min_rows=N, expected_columns=[...], critical_columns=[...])`
+- [ ] Call `check_dataset(df, name, min_rows=N, expected_columns=[...], critical_columns=[...], warn_all_nulls=0.90)`
 - [ ] Write parquet with zstd: `df.to_parquet(path, index=False, engine="pyarrow", compression="zstd")`
 - [ ] Upload via `hf upload` CLI: `["hf", "upload", HF_REPO, str(tmp_dir), ".", "--repo-type", "dataset", "--commit-message", msg]`
 - [ ] Emit row count to `$GITHUB_OUTPUT` for status tracking
@@ -25,9 +25,15 @@ Reusable checklist for adding any new dataset to `juliensimon/space-datasets`. L
 - [ ] Fall back to full rebuild when existing data can't be loaded
 - [ ] Verify idempotency: same-day re-run must not create duplicate rows
 
-### If using TAP/ADQL (HEASARC, SIMBAD, VizieR, Gaia):
+### If using TAP/ADQL (HEASARC, SIMBAD, VizieR, Gaia, EPN-TAP):
 
 - [ ] Test ADQL query in isolation first (curl or browser)
+- [ ] Add auto-drop for >95% null columns after fetch (wide schemas carry many empty optional fields):
+  ```python
+  for col in list(df.columns):
+      if df[col].isna().mean() > 0.95:
+          df = df.drop(columns=[col])
+  ```
 - [ ] HEASARC: use `FORMAT=text` (pipe-delimited) — CSV returns VOTable XML
 - [ ] HEASARC: if using multi-format fallback (CSV→JSON→text), always add XML guard: `if not resp.text.strip().startswith("<?xml")` before CSV parse
 - [ ] HEASARC: add column sanity check after parse (e.g., `and "ra" in df.columns`), not just row count
@@ -119,8 +125,11 @@ Each section serves a dual purpose: human readability AND search engine discover
 - [ ] `min_rows` threshold set based on expected dataset size
 - [ ] `expected_columns` lists all required columns
 - [ ] `critical_columns` lists columns that must be <5% null
+- [ ] `warn_all_nulls=0.90` — optional, warns on ANY column >90% null (catches junk columns from wide queries)
 - [ ] Row trend check enabled via `validate.py` `_check_row_trend` (warns on >20% drop)
+- [ ] For TAP/ADQL `SELECT *` sources: add auto-drop loop for >95% null columns before validation (see pattern below)
 - [ ] Spot-check known values (e.g. GW150914 in GW dataset, Kepler-452b in exoplanets, ISS in SATCAT)
+- [ ] Run `python scripts/audit-nulls.py --dataset <name>` to verify no columns are >80% null without justification
 
 ---
 
@@ -208,6 +217,9 @@ Each section serves a dual purpose: human readability AND search engine discover
 | VizieR catalog sizes differ from docs | VLASS component catalog is 3.4M rows (not 700K as listed in papers). Always check actual row count from `vizier_query()` and adjust `size_categories` accordingly |
 | `import` inside function body | Keep all imports at file top level for consistency with project convention |
 | License body says "MIT" | Always use `[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)` in README body — must match YAML frontmatter |
+| TAP/EPN-TAP `SELECT *` carries junk columns | Add auto-drop loop for >95% null columns before validation. Wide schemas (EPN-TAP ~50 cols, VizieR catalogs) have many optional fields that are empty for the specific dataset |
+| Wikidata SPARQL returns mostly-empty entities | Many Wikidata classes have thousands of stub entities with only a name. Drop >95% null columns and guard README stats with `if "col" in df.columns` |
+| README schema table lists dropped columns | When using auto-drop, either generate schema dynamically or only list core columns that always survive. Add note: "Additional columns appear when source coverage exceeds 5%" |
 | HF collection description too long | Hard limit is 150 characters. Use `update_collection_metadata(slug, description=...)` — pack in domain keywords and source names |
 
 ---
