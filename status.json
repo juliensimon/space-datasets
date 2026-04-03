@@ -76,7 +76,8 @@
     "planck-sz2": 1655,
     "pulsar-glitches": 728,
     "cosmic-voids": 1228,
-    "cataclysmic-variables": 1168
+    "cataclysmic-variables": 1168,
+    "xray-binaries": 305
   },
   "ae-index": "2026-04-03",
   "astronomers": "2026-04-02",
@@ -160,5 +161,6 @@
   "planck-sz2": "2026-04-03",
   "pulsar-glitches": "2026-04-03",
   "cosmic-voids": "2026-04-03",
-  "cataclysmic-variables": "2026-04-03"
+  "cataclysmic-variables": "2026-04-03",
+  "xray-binaries": "2026-04-03"
 }
