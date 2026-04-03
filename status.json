@@ -72,7 +72,8 @@
     "wmo-oscar": 2255,
     "venus-express": 524787,
     "spacex-launches": 659,
-    "hii-regions": 8399
+    "hii-regions": 8399,
+    "planck-sz2": 1655
   },
   "ae-index": "2026-04-03",
   "astronomers": "2026-04-02",
@@ -152,5 +153,6 @@
   "wmo-oscar": "2026-04-03",
   "venus-express": "2026-04-03",
   "spacex-launches": "2026-04-03",
-  "hii-regions": "2026-04-03"
+  "hii-regions": "2026-04-03",
+  "planck-sz2": "2026-04-03"
 }
