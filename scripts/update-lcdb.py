@@ -10,6 +10,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 LCDB_URL = "https://minplanobs.org/MPInfo/datazips/LCLIST_PUB_CURRENT.zip"
@@ -169,6 +170,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet, {len(df):,} rows")
 
+        banner_file = download_banner("lcdb", tmp)
+        banner_md = banner_markdown("lcdb", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Asteroid Lightcurve Database (LCDB)"
@@ -198,7 +202,7 @@ configs:
 ---
 
 # Asteroid Lightcurve Database (LCDB)
-
+{banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 Rotation periods, lightcurve amplitudes, and physical properties for **{len(df):,}** asteroids
@@ -303,7 +307,7 @@ by Brian D. Warner, Alan W. Harris, and Josef Durech.
 ## Related datasets
 
 - [neo-close-approaches](https://huggingface.co/datasets/juliensimon/neo-close-approaches) -- NEO close approaches from NASA JPL
-- [sbdb-asteroids-comets](https://huggingface.co/datasets/juliensimon/sbdb-asteroids-comets) -- JPL Small-Body Database
+- [sbdb-asteroids-comets](https://huggingface.co/datasets/juliensimon/jpl-small-body-database) -- JPL Small-Body Database
 - [nhats-accessible-asteroids](https://huggingface.co/datasets/juliensimon/nhats-accessible-asteroids) -- Human-accessible NEOs
 
 ## Pipeline

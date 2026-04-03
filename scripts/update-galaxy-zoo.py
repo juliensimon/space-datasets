@@ -8,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 SOURCE_URL = "https://zooniverse-data.s3.amazonaws.com/galaxy-zoo-2/zoo2MainSpecz.csv.gz"
@@ -114,6 +115,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("galaxy-zoo", tmp)
+        banner_md = banner_markdown("galaxy-zoo", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Galaxy Zoo 2 Morphological Classifications"
@@ -144,7 +148,7 @@ configs:
 ---
 
 # Galaxy Zoo 2 Morphological Classifications
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 **{len(df):,}** citizen-science galaxy morphology classifications from Galaxy Zoo 2,
@@ -249,9 +253,9 @@ This table is the spectroscopic-redshift subsample (Table 5).
 
 ## Related datasets
 
-- [open-ngc](https://huggingface.co/datasets/juliensimon/open-ngc) — NGC/IC galaxy and nebula catalog
-- [exoplanets](https://huggingface.co/datasets/juliensimon/exoplanets) — NASA Exoplanet Archive
-- [messier-objects](https://huggingface.co/datasets/juliensimon/messier-objects) — Messier catalog of deep-sky objects
+- [open-ngc](https://huggingface.co/datasets/juliensimon/ngc-ic-catalog) — NGC/IC galaxy and nebula catalog
+- [exoplanets](https://huggingface.co/datasets/juliensimon/nasa-exoplanets) — NASA Exoplanet Archive
+- [messier-objects](https://huggingface.co/datasets/juliensimon/messier-catalog) — Messier catalog of deep-sky objects
 
 ## Pipeline
 

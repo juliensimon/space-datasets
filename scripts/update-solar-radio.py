@@ -14,6 +14,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -160,6 +161,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("solar-radio", tmp)
+        banner_md = banner_markdown("solar-radio", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Solar Radio Burst Events"
@@ -191,7 +195,7 @@ configs:
 ---
 
 # Solar Radio Burst Events
-
+{banner_md}
 *Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
 
 ![Update Solar Radio](https://github.com/juliensimon/space-datasets/actions/workflows/update-solar-radio.yml/badge.svg)
@@ -260,7 +264,7 @@ Daily at 19:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-dat
 
 ## Related datasets
 
-- [solar-flare-index](https://huggingface.co/datasets/juliensimon/solar-flare-index) — Solar flare observations
+- [solar-flare-index](https://huggingface.co/datasets/juliensimon/solar-flare-events) — Solar flare observations
 - [donki-space-weather-events](https://huggingface.co/datasets/juliensimon/donki-space-weather-events) — NASA DONKI space weather events
 - [space-weather-indices](https://huggingface.co/datasets/juliensimon/space-weather-indices) — Daily Kp, Ap, F10.7 indices
 

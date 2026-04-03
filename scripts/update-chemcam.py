@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 BASE_URL = (
@@ -163,6 +164,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("chemcam", tmp)
+        banner_md = banner_markdown("chemcam", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Mars ChemCam LIBS Oxide Compositions"
@@ -194,7 +198,7 @@ configs:
 ---
 
 # Mars ChemCam LIBS Oxide Compositions
-
+{banner_md}
 *Part of the [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-68228b04b65e1f3b9e57a76b) collection on Hugging Face.*
 
 Major oxide compositions of Mars surface rock and soil targets analyzed by the
@@ -300,9 +304,9 @@ using the combined PLS+ICA multivariate model (sPDL Tool v2.5).
 
 ## Related datasets
 
-- [mars-craters](https://huggingface.co/datasets/juliensimon/mars-craters) — Robbins Mars crater catalog
+- [mars-craters](https://huggingface.co/datasets/juliensimon/mars-craters-robbins) — Robbins Mars crater catalog
 - [neo-close-approaches](https://huggingface.co/datasets/juliensimon/neo-close-approaches) — Near-Earth object approaches
-- [small-body-database](https://huggingface.co/datasets/juliensimon/small-body-database) — JPL small body orbital parameters
+- [small-body-database](https://huggingface.co/datasets/juliensimon/jpl-small-body-database) — JPL small body orbital parameters
 
 ## Pipeline
 

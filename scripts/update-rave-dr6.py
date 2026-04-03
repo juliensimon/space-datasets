@@ -14,6 +14,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 from vizier_tap import vizier_query
 
@@ -172,6 +173,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("rave-dr6", tmp)
+        banner_md = banner_markdown("rave-dr6", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "RAVE DR6 Stellar Parameters"
@@ -202,7 +206,7 @@ configs:
 ---
 
 # RAVE DR6 Stellar Parameters
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 The **Radial Velocity Experiment (RAVE)** Data Release 6 is the final release of this major
@@ -271,7 +275,7 @@ Accessed via [VizieR](https://vizier.cds.unistra.fr/) (III/283), CDS Strasbourg.
 
 - [wolf-rayet-stars](https://huggingface.co/datasets/juliensimon/wolf-rayet-stars) -- Galactic Wolf-Rayet Stars
 - [brown-dwarf-catalog](https://huggingface.co/datasets/juliensimon/brown-dwarf-catalog) -- Brown Dwarf Catalog
-- [galah-dr4](https://huggingface.co/datasets/juliensimon/galah-dr4) -- GALAH DR4 Stellar Parameters
+- [galah-dr4](https://huggingface.co/datasets/juliensimon/galah-dr4-stellar-abundances) -- GALAH DR4 Stellar Parameters
 
 ## Pipeline
 

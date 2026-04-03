@@ -12,6 +12,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -243,6 +244,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("ae-index", tmp)
+        banner_md = banner_markdown("ae-index", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Auroral Electrojet (AE) Index"
@@ -273,7 +277,7 @@ configs:
 ---
 
 # Auroral Electrojet (AE) Index
-
+{banner_md}
 *Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
 
 ![Update AE Index](https://github.com/juliensimon/space-datasets/actions/workflows/update-ae-index.yml/badge.svg)
@@ -359,7 +363,7 @@ Daily at 19:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-dat
 
 - [dst-index](https://huggingface.co/datasets/juliensimon/dst-index) — Dst geomagnetic storm index (ring current)
 - [space-weather-indices](https://huggingface.co/datasets/juliensimon/space-weather-indices) — Daily Kp, Ap, F10.7 indices
-- [kp-index](https://huggingface.co/datasets/juliensimon/kp-index) — Kp geomagnetic index
+- [kp-index](https://huggingface.co/datasets/juliensimon/geomagnetic-kp-index) — Kp geomagnetic index
 
 ## Pipeline
 

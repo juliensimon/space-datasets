@@ -10,6 +10,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 HF_REPO = "juliensimon/nasa-eva-chronology"
@@ -115,6 +116,9 @@ def main():
         size_kb = out.stat().st_size / 1024
         print(f"  {size_kb:.0f} KB parquet")
 
+        banner_file = download_banner("eva", tmp)
+        banner_md = banner_markdown("eva", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "NASA EVA Chronology"
@@ -146,7 +150,7 @@ configs:
 ---
 
 # NASA EVA Chronology
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 Complete chronology of all **{n:,}** extravehicular activities (spacewalks)
@@ -216,7 +220,7 @@ NASA Open Data Portal -- Extra-vehicular Activity (EVA) - US and Russia.
 ## Related datasets
 
 - [astronaut-database](https://huggingface.co/datasets/juliensimon/astronaut-database) -- Complete astronaut database
-- [launch-log](https://huggingface.co/datasets/juliensimon/launch-log) -- McDowell launch log
+- [launch-log](https://huggingface.co/datasets/juliensimon/space-launch-log) -- McDowell launch log
 
 ## Pipeline
 

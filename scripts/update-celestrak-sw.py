@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -82,6 +83,9 @@ def main():
             col_rows.append(f"| `{col}` | {dtype} |")
         col_table = "\n".join(col_rows)
 
+        banner_file = download_banner("celestrak-sw", tmp)
+        banner_md = banner_markdown("celestrak-sw", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "CelesTrak Consolidated Space Weather"
@@ -114,7 +118,7 @@ configs:
 ---
 
 # CelesTrak Consolidated Space Weather
-
+{banner_md}
 *Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
 
 ![Update CelesTrak SW](https://github.com/juliensimon/space-datasets/actions/workflows/update-celestrak-sw.yml/badge.svg)
@@ -184,10 +188,10 @@ Original data from NOAA SWPC, USAF, and other agencies.
 
 ## Related datasets
 
-- [kp-index](https://huggingface.co/datasets/juliensimon/kp-index) -- GFZ Potsdam Kp geomagnetic index
+- [kp-index](https://huggingface.co/datasets/juliensimon/geomagnetic-kp-index) -- GFZ Potsdam Kp geomagnetic index
 - [dst-index](https://huggingface.co/datasets/juliensimon/dst-index) -- WDC Kyoto Dst geomagnetic index
 - [solar-wind](https://huggingface.co/datasets/juliensimon/solar-wind) -- DSCOVR real-time solar wind
-- [f107-index](https://huggingface.co/datasets/juliensimon/f107-index) -- NRCan F10.7 solar radio flux
+- [f107-index](https://huggingface.co/datasets/juliensimon/f107-solar-flux) -- NRCan F10.7 solar radio flux
 
 ## Pipeline
 

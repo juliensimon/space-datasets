@@ -702,8 +702,8 @@ Daily incremental updates via GitHub Actions.
 
 ## Related datasets
 
-- [launch-log](https://huggingface.co/datasets/juliensimon/launch-log) — McDowell launch log (all providers)
-- [launch-cost](https://huggingface.co/datasets/juliensimon/launch-cost) — Historical launch costs
+- [launch-log](https://huggingface.co/datasets/juliensimon/space-launch-log) — McDowell launch log (all providers)
+- [launch-cost](https://huggingface.co/datasets/juliensimon/launch-cost-to-leo) — Historical launch costs
 - [launch-vehicles](https://huggingface.co/datasets/juliensimon/launch-vehicles) — Rocket specifications
 - [starlink](https://huggingface.co/datasets/juliensimon/starlink-fleet-data) — Starlink constellation snapshots
 

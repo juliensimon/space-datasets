@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -98,6 +99,9 @@ def main():
         landers.to_parquet(data_dir / "planetary_landings.parquet", index=False,
                            engine="pyarrow", compression="zstd")
 
+        banner_file = download_banner("gcat-deep-space", tmp_dir)
+        banner_md = banner_markdown("gcat-deep-space", banner_file)
+
         (tmp_dir / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "GCAT Deep Space Objects and Planetary Landings"
@@ -133,7 +137,7 @@ size_categories:
 ---
 
 # GCAT Deep Space Objects and Planetary Landings
-
+{banner_md}
 *Part of the [Solar System Datasets](https://huggingface.co/collections/juliensimon/solar-system-datasets-69c6fa681978de62dff2f347) collection on Hugging Face.*
 
 Deep space spacecraft and planetary/lunar landings from
@@ -279,7 +283,7 @@ Static dataset -- rebuilt manually when GCAT is updated (approximately monthly).
 ## Related datasets
 
 - [space-missions](https://huggingface.co/datasets/juliensimon/space-missions) -- Space missions from Wikidata
-- [spacecraft](https://huggingface.co/datasets/juliensimon/spacecraft) -- Spacecraft catalog from Wikidata
+- [spacecraft](https://huggingface.co/datasets/juliensimon/spacecraft-database) -- Spacecraft catalog from Wikidata
 - [gcat-satellite-catalog](https://huggingface.co/datasets/juliensimon/gcat-satellite-catalog) -- GCAT orbital satellite catalog
 - [deep-space-probes](https://huggingface.co/datasets/juliensimon/deep-space-probes) -- Deep space probe trajectories
 

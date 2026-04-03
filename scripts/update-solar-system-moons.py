@@ -17,6 +17,7 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 HF_REPO = "juliensimon/solar-system-moons"
@@ -482,6 +483,9 @@ def main():
                 f"radius {largest['mean_radius_km']:,.1f} km)"
             )
 
+        banner_file = download_banner("solar-system-moons", tmp)
+        banner_md = banner_markdown("solar-system-moons", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Solar System Moons"
@@ -514,7 +518,7 @@ configs:
 ---
 
 # Solar System Moons
-
+{banner_md}
 *Part of the [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-68214dab0f1e965e6741fcd2) collection on Hugging Face.*
 
 Every known natural satellite of planets and dwarf planets in the Solar System \u2014
@@ -606,8 +610,8 @@ recent = df[df["discovery_year"] >= 2020]
 ## Related datasets
 
 - [neo-close-approaches](https://huggingface.co/datasets/juliensimon/neo-close-approaches) \u2014 NEO close approaches from JPL CNEOS
-- [exoplanets](https://huggingface.co/datasets/juliensimon/exoplanets) \u2014 NASA Exoplanet Archive
-- [asteroid-orbits](https://huggingface.co/datasets/juliensimon/asteroid-orbits) \u2014 All asteroid orbital elements
+- [exoplanets](https://huggingface.co/datasets/juliensimon/nasa-exoplanets) \u2014 NASA Exoplanet Archive
+- [asteroid-orbits](https://huggingface.co/datasets/juliensimon/jpl-small-body-database) \u2014 All asteroid orbital elements
 
 ## Pipeline
 

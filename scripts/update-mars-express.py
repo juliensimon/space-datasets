@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -216,6 +217,9 @@ def main():
             for inst, count in instruments_summary.items()
         )
 
+        banner_file = download_banner("mars-express", tmp)
+        banner_md = banner_markdown("mars-express", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "ESA Mars Express Observations"
@@ -244,7 +248,7 @@ configs:
 ---
 
 # ESA Mars Express Observations
-
+{banner_md}
 *Part of the [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c24cb17e3db14fc30f0716) collection on Hugging Face.*
 
 ![Update Mars Express](https://github.com/juliensimon/space-datasets/actions/workflows/update-mars-express.yml/badge.svg)
@@ -338,9 +342,9 @@ Weekly (Monday at 07:00 UTC) via [GitHub Actions](https://github.com/juliensimon
 
 ## Related datasets
 
-- [mars-craters](https://huggingface.co/datasets/juliensimon/mars-craters) \u2014 Robbins Mars crater catalog
-- [exoplanet-archive](https://huggingface.co/datasets/juliensimon/exoplanet-archive) \u2014 NASA Exoplanet Archive
-- [lunar-craters](https://huggingface.co/datasets/juliensimon/lunar-craters) \u2014 Lunar crater catalog
+- [mars-craters](https://huggingface.co/datasets/juliensimon/mars-craters-robbins) \u2014 Robbins Mars crater catalog
+- [exoplanet-archive](https://huggingface.co/datasets/juliensimon/nasa-exoplanets) \u2014 NASA Exoplanet Archive
+- [lunar-craters](https://huggingface.co/datasets/juliensimon/lunar-craters-robbins) \u2014 Lunar crater catalog
 
 ## Pipeline
 

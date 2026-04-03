@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 BASE_URL = "https://isro.vercel.app/api"
@@ -132,6 +133,9 @@ def main():
         n_countries = customer_sats["country"].nunique()
         n_states = centres["state"].nunique() if "state" in centres.columns else 0
 
+        banner_file = download_banner("isro", tmp_dir)
+        banner_md = banner_markdown("isro", banner_file)
+
         (tmp_dir / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "ISRO Missions Data"
@@ -173,7 +177,7 @@ size_categories:
 ---
 
 # ISRO Missions Data
-
+{banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 Comprehensive data on the **Indian Space Research Organisation (ISRO)**: **{len(spacecraft):,}** spacecraft,
@@ -271,9 +275,9 @@ Static dataset -- rebuilt manually when the source API is updated.
 ## Related datasets
 
 - [space-missions](https://huggingface.co/datasets/juliensimon/space-missions) -- Global space mission history
-- [spacecraft](https://huggingface.co/datasets/juliensimon/spacecraft) -- Spacecraft database
+- [spacecraft](https://huggingface.co/datasets/juliensimon/spacecraft-database) -- Spacecraft database
 - [gcat-satellite-catalog](https://huggingface.co/datasets/juliensimon/gcat-satellite-catalog) -- GCAT satellite catalog
-- [space-agencies](https://huggingface.co/datasets/juliensimon/space-agencies) -- Space agency data
+- [space-agencies](https://huggingface.co/datasets/juliensimon/space-agency-database) -- Space agency data
 
 ## Pipeline
 

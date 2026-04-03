@@ -9,6 +9,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -135,6 +136,9 @@ def main():
         size_kb = out.stat().st_size / 1024
         print(f"  {size_kb:.0f} KB parquet")
 
+        banner_file = download_banner("impact-craters", tmp)
+        banner_md = banner_markdown("impact-craters", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc0-1.0
 pretty_name: "Impact Craters"
@@ -166,7 +170,7 @@ configs:
 ---
 
 # Impact Craters
-
+{banner_md}
 *Part of the [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2) collection on Hugging Face.*
 
 Comprehensive database of impact craters across the solar system — **{n:,}** craters
@@ -250,7 +254,7 @@ newly catalogued craters.
 
 ## Related datasets
 
-- [ceres-craters](https://huggingface.co/datasets/juliensimon/ceres-craters) — Ceres crater catalog
+- [ceres-craters](https://huggingface.co/datasets/juliensimon/ceres-craters-dawn) — Ceres crater catalog
 - [meteorite-database](https://huggingface.co/datasets/juliensimon/meteorite-database) — Meteorite landings
 - [planetary-nomenclature](https://huggingface.co/datasets/juliensimon/planetary-nomenclature) — IAU planetary feature names
 

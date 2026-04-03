@@ -18,6 +18,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 # Harvard Dataverse file ID for IceCube_Gold_Bronze_Tracks.tab (TSV summary)
@@ -141,6 +142,9 @@ def main():
         type_lines = [f"- **{count:,}** {atype}" for atype, count in type_counts.items()]
         type_summary = "\n".join(type_lines)
 
+        banner_file = download_banner("icecat", tmp)
+        banner_md = banner_markdown("icecat", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "ICECAT-1 — IceCube Event Catalog of Alert Tracks"
@@ -170,7 +174,7 @@ configs:
 ---
 
 # ICECAT-1 — IceCube Event Catalog of Alert Tracks
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 Catalog of **{n_total:,}** high-energy neutrino events from the IceCube Neutrino
@@ -261,7 +265,7 @@ Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-d
 
 - [gamma-ray-bursts](https://huggingface.co/datasets/juliensimon/gamma-ray-bursts) — Fermi GBM Gamma-Ray Burst Catalog
 - [tevcat-tev-gamma-ray](https://huggingface.co/datasets/juliensimon/tevcat-tev-gamma-ray) — TeVCat TeV Gamma-Ray Source Catalog
-- [cosmic-rays](https://huggingface.co/datasets/juliensimon/cosmic-rays) — Cosmic Ray Database
+- [cosmic-rays](https://huggingface.co/datasets/juliensimon/auger-cosmic-rays) — Cosmic Ray Database
 
 ## Support
 

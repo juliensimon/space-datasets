@@ -9,6 +9,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -167,6 +168,9 @@ def main():
         size_kb = out.stat().st_size / 1024
         print(f"  {size_kb:.0f} KB parquet")
 
+        banner_file = download_banner("astronauts", tmp)
+        banner_md = banner_markdown("astronauts", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc0-1.0
 pretty_name: "Astronaut Database"
@@ -197,7 +201,7 @@ configs:
 ---
 
 # Astronaut Database
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 Complete database of every person who has traveled to space — **{n:,}** astronauts
@@ -278,9 +282,9 @@ Static dataset. Re-run manually to pick up new astronauts.
 
 ## Related datasets
 
-- [launch-log](https://huggingface.co/datasets/juliensimon/launch-log) -- McDowell launch log
-- [satcat](https://huggingface.co/datasets/juliensimon/satcat) -- Satellite catalog
-- [nasa-eva](https://huggingface.co/datasets/juliensimon/nasa-eva) -- NASA EVA history
+- [launch-log](https://huggingface.co/datasets/juliensimon/space-launch-log) -- McDowell launch log
+- [satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) -- Satellite catalog
+- [nasa-eva](https://huggingface.co/datasets/juliensimon/nasa-eva-chronology) -- NASA EVA history
 
 ## Pipeline
 

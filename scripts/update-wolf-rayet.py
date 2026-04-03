@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 from vizier_tap import vizier_query
 
@@ -144,6 +145,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("wolf-rayet", tmp)
+        banner_md = banner_markdown("wolf-rayet", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Galactic Wolf-Rayet Stars"
@@ -172,7 +176,7 @@ configs:
 ---
 
 # Galactic Wolf-Rayet Stars
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 Catalog of **{n_total:,}** Galactic Wolf-Rayet stars — massive evolved stars with powerful stellar
@@ -269,7 +273,7 @@ Accessed via [VizieR](https://vizier.cds.unistra.fr/) (J/MNRAS/493/1512), CDS St
 
 ## Related datasets
 
-- [ob-stars](https://huggingface.co/datasets/juliensimon/ob-stars) -- OB stellar catalog
+- [ob-stars](https://huggingface.co/datasets/juliensimon/bright-star-catalog) -- OB stellar catalog
 - [gcvs-variable-stars](https://huggingface.co/datasets/juliensimon/gcvs-variable-stars) -- General Catalogue of Variable Stars
 - [pulsar-catalog](https://huggingface.co/datasets/juliensimon/pulsar-catalog) -- ATNF Pulsar Catalogue
 

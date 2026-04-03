@@ -14,6 +14,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 CATALOG_URL = (
@@ -149,6 +150,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("supernovae", tmp)
+        banner_md = banner_markdown("supernovae", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Open Supernova Catalog"
@@ -177,7 +181,7 @@ configs:
 ---
 
 # Open Supernova Catalog
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-67c2e994a8b1a76b88ecfe22) collection on Hugging Face.*
 
 ![Update Supernovae](https://github.com/juliensimon/space-datasets/actions/workflows/update-supernovae.yml/badge.svg)
@@ -274,8 +278,8 @@ Weekly (Mondays at 07:00 UTC) via [GitHub Actions](https://github.com/juliensimo
 
 ## Related datasets
 
-- [grb-catalog](https://huggingface.co/datasets/juliensimon/grb-catalog) — Gamma-ray burst catalog
-- [exoplanet-archive](https://huggingface.co/datasets/juliensimon/exoplanet-archive) — Confirmed exoplanets
+- [grb-catalog](https://huggingface.co/datasets/juliensimon/gamma-ray-bursts) — Gamma-ray burst catalog
+- [exoplanet-archive](https://huggingface.co/datasets/juliensimon/nasa-exoplanets) — Confirmed exoplanets
 - [quasar-catalog](https://huggingface.co/datasets/juliensimon/quasar-catalog) — Milliquas quasar catalog
 - [pulsar-catalog](https://huggingface.co/datasets/juliensimon/pulsar-catalog) — ATNF pulsar catalog
 

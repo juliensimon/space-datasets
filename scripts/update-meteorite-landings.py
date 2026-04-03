@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 # NASA retired the Socrata SODA API (y77d-th95 / gh4g-9sfh).
@@ -141,6 +142,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("meteorite-landings", tmp)
+        banner_md = banner_markdown("meteorite-landings", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Meteorite Landings"
@@ -169,7 +173,7 @@ configs:
 ---
 
 # Meteorite Landings
-
+{banner_md}
 *Part of the [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2) collection on Hugging Face.*
 
 NASA's comprehensive catalog of all known meteorite landings on Earth -- **{len(df):,}** records
@@ -242,8 +246,8 @@ Static dataset (meteorite records are updated infrequently).
 ## Related datasets
 
 - [neo-close-approaches](https://huggingface.co/datasets/juliensimon/neo-close-approaches) -- Near-Earth object close approaches from NASA JPL
-- [confirmed-exoplanets](https://huggingface.co/datasets/juliensimon/confirmed-exoplanets) -- NASA Exoplanet Archive confirmed planets
-- [impact-risk](https://huggingface.co/datasets/juliensimon/impact-risk) -- Sentry impact risk assessments
+- [confirmed-exoplanets](https://huggingface.co/datasets/juliensimon/nasa-exoplanets) -- NASA Exoplanet Archive confirmed planets
+- [impact-risk](https://huggingface.co/datasets/juliensimon/sentry-impact-risk) -- Sentry impact risk assessments
 
 ## Pipeline
 

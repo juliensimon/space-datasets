@@ -15,6 +15,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 CATALOG_URL = (
@@ -181,6 +182,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.2f} MB parquet")
 
+        banner_file = download_banner("otter-tde", tmp)
+        banner_md = banner_markdown("otter-tde", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "OTTER TDE Catalog"
@@ -210,7 +214,7 @@ configs:
 ---
 
 # OTTER TDE Catalog
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-67c2e994a8b1a76b88ecfe22) collection on Hugging Face.*
 
 All **{len(df):,}** known tidal disruption events (TDEs) from the
@@ -308,8 +312,8 @@ and the astronomical literature.
 ## Related datasets
 
 - [open-supernova-catalog](https://huggingface.co/datasets/juliensimon/open-supernova-catalog) — Open Supernova Catalog
-- [grb-catalog](https://huggingface.co/datasets/juliensimon/grb-catalog) — Gamma-ray burst catalog
-- [exoplanet-archive](https://huggingface.co/datasets/juliensimon/exoplanet-archive) — Confirmed exoplanets
+- [grb-catalog](https://huggingface.co/datasets/juliensimon/gamma-ray-bursts) — Gamma-ray burst catalog
+- [exoplanet-archive](https://huggingface.co/datasets/juliensimon/nasa-exoplanets) — Confirmed exoplanets
 
 ## Pipeline
 

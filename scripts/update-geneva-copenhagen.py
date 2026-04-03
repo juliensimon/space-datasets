@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 from vizier_tap import vizier_query
 
@@ -174,6 +175,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("geneva-copenhagen", tmp)
+        banner_md = banner_markdown("geneva-copenhagen", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Geneva-Copenhagen Survey of Solar Neighbourhood"
@@ -202,7 +206,7 @@ configs:
 ---
 
 # Geneva-Copenhagen Survey of Solar Neighbourhood
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 The Geneva-Copenhagen Survey (GCS) is a comprehensive catalog of **{n_total:,}** F and G dwarf
@@ -272,8 +276,8 @@ accessed via [VizieR](https://vizier.cds.unistra.fr/), CDS Strasbourg.
 ## Related datasets
 
 - [hipparcos-catalog](https://huggingface.co/datasets/juliensimon/hipparcos-catalog) -- Hipparcos astrometric catalog
-- [gaia-dr3-nearby-stars](https://huggingface.co/datasets/juliensimon/gaia-dr3-nearby-stars) -- Gaia DR3 nearby stars
-- [exoplanets](https://huggingface.co/datasets/juliensimon/exoplanets) -- NASA Exoplanet Archive
+- [gaia-dr3-nearby-stars](https://huggingface.co/datasets/juliensimon/cns5-nearby-stars) -- Gaia DR3 nearby stars
+- [exoplanets](https://huggingface.co/datasets/juliensimon/nasa-exoplanets) -- NASA Exoplanet Archive
 
 ## Pipeline
 

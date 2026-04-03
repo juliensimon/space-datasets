@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 from vizier_tap import vizier_query
 
@@ -70,6 +71,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("erosita", tmp)
+        banner_md = banner_markdown("erosita", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "eROSITA eRASS1 X-Ray Source Catalog"
@@ -100,7 +104,7 @@ configs:
 ---
 
 # eROSITA eRASS1 X-Ray Source Catalog
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 ![Update eROSITA](https://github.com/juliensimon/space-datasets/actions/workflows/update-erosita.yml/badge.svg)
@@ -179,7 +183,7 @@ Semi-annual (June 1) via [GitHub Actions](https://github.com/juliensimon/space-d
 
 - [fermi-4fgl-dr4](https://huggingface.co/datasets/juliensimon/fermi-4fgl-dr4) -- Fermi gamma-ray source catalog
 - [pulsar-catalog](https://huggingface.co/datasets/juliensimon/pulsar-catalog) -- Pulsar catalog
-- [galaxy-cluster-catalog](https://huggingface.co/datasets/juliensimon/galaxy-cluster-catalog) -- Galaxy cluster catalog
+- [galaxy-cluster-catalog](https://huggingface.co/datasets/juliensimon/galaxy-clusters) -- Galaxy cluster catalog
 
 ## Pipeline
 

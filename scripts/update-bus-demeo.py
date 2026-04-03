@@ -14,6 +14,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -169,6 +170,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.2f} MB parquet")
 
+        banner_file = download_banner("bus-demeo", tmp)
+        banner_md = banner_markdown("bus-demeo", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Bus-DeMeo Asteroid Taxonomy"
@@ -198,7 +202,7 @@ configs:
 ---
 
 # Bus-DeMeo Asteroid Taxonomy
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 The **Bus-DeMeo taxonomy** is the current standard classification system for asteroids based on
@@ -282,7 +286,7 @@ Accessed via [PDS Small Bodies Node](https://sbn.psi.edu/pds/resource/busdemeota
 ## Related datasets
 
 - [neo-close-approaches](https://huggingface.co/datasets/juliensimon/neo-close-approaches) -- Near-Earth Object close approaches
-- [asteroid-sbdb](https://huggingface.co/datasets/juliensimon/asteroid-sbdb) -- JPL Small-Body Database
+- [asteroid-sbdb](https://huggingface.co/datasets/juliensimon/jpl-small-body-database) -- JPL Small-Body Database
 - [meteorite-landings](https://huggingface.co/datasets/juliensimon/meteorite-landings) -- Meteorite Landings
 
 ## Pipeline

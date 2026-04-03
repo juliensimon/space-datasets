@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 from vizier_tap import vizier_query
 
@@ -125,6 +126,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("milliquas", tmp)
+        banner_md = banner_markdown("milliquas", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Milliquas — Million Quasars Catalog v8"
@@ -157,7 +161,7 @@ configs:
 ---
 
 # Milliquas — Million Quasars Catalog v8
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 The Million Quasars (Milliquas) v8 catalog — **{n:,}** quasars, AGN, and blazars,
@@ -235,7 +239,7 @@ Accessed via [VizieR](https://vizier.cds.unistra.fr/) catalog VII/294, CDS Stras
 ## Related datasets
 
 - [quasar-catalog](https://huggingface.co/datasets/juliensimon/quasar-catalog) — SIMBAD Quasar & AGN Catalog
-- [galaxy-cluster-catalog](https://huggingface.co/datasets/juliensimon/galaxy-cluster-catalog) — Galaxy Cluster Catalog
+- [galaxy-cluster-catalog](https://huggingface.co/datasets/juliensimon/galaxy-clusters) — Galaxy Cluster Catalog
 - [gravitational-lenses](https://huggingface.co/datasets/juliensimon/gravitational-lenses) — Gravitational Lens Catalog
 
 ## Pipeline

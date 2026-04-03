@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -86,6 +87,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("sunspot", tmp)
+        banner_md = banner_markdown("sunspot", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "SILSO Daily Sunspot Number"
@@ -116,7 +120,7 @@ configs:
 ---
 
 # SILSO Daily Sunspot Number
-
+{banner_md}
 *Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
 
 ![Update Sunspot](https://github.com/juliensimon/space-datasets/actions/workflows/update-sunspot.yml/badge.svg)
@@ -198,8 +202,8 @@ Monthly (1st at 09:00 UTC) via [GitHub Actions](https://github.com/juliensimon/s
 
 ## Related datasets
 
-- [solar-flare-index](https://huggingface.co/datasets/juliensimon/solar-flare-index) -- Solar flare observations
-- [kp-index](https://huggingface.co/datasets/juliensimon/kp-index) -- Geomagnetic Kp index
+- [solar-flare-index](https://huggingface.co/datasets/juliensimon/solar-flare-events) -- Solar flare observations
+- [kp-index](https://huggingface.co/datasets/juliensimon/geomagnetic-kp-index) -- Geomagnetic Kp index
 - [dst-index](https://huggingface.co/datasets/juliensimon/dst-index) -- Geomagnetic Dst index
 
 ## Pipeline

@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -214,6 +215,9 @@ def main():
             for inst, count in instruments_summary.items()
         )
 
+        banner_file = download_banner("venus-express", tmp)
+        banner_md = banner_markdown("venus-express", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "ESA Venus Express Observations"
@@ -243,7 +247,7 @@ configs:
 ---
 
 # ESA Venus Express Observations
-
+{banner_md}
 *Part of the [Solar System Datasets](https://huggingface.co/collections/juliensimon/solar-system-datasets-67dbf0a31b29ff85d08bbb21) and [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c24cb17e3db14fc30f0716) collections on Hugging Face.*
 
 ![Update Venus Express](https://github.com/juliensimon/space-datasets/actions/workflows/update-venus-express.yml/badge.svg)
@@ -353,7 +357,7 @@ Weekly (Monday at 08:00 UTC) via [GitHub Actions](https://github.com/juliensimon
 
 - [esa-mars-express-observations](https://huggingface.co/datasets/juliensimon/esa-mars-express-observations) \u2014 ESA Mars Express observation catalog
 - [esa-rosetta-observations](https://huggingface.co/datasets/juliensimon/esa-rosetta-observations) \u2014 ESA Rosetta observation catalog
-- [exoplanet-archive](https://huggingface.co/datasets/juliensimon/exoplanet-archive) \u2014 NASA Exoplanet Archive
+- [exoplanet-archive](https://huggingface.co/datasets/juliensimon/nasa-exoplanets) \u2014 NASA Exoplanet Archive
 
 ## Pipeline
 

@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -112,6 +113,12 @@ def main():
         if any(kw in col for kw in ["mag", "period", "porb", "flux", "dist"]):
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
+    # Second pass: drop columns that became all-null after numeric coercion
+    all_null = [c for c in df.columns if df[c].isna().all()]
+    if all_null:
+        print(f"  Dropping {len(all_null)} all-null columns after coercion: {all_null}")
+        df = df.drop(columns=all_null)
+
     # Derive CV subtype classification if a type column exists
     type_col = None
     for candidate in ["type", "cv_type", "class", "obj_type", "source_type", "type2"]:
@@ -203,6 +210,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("cataclysmic-variables", tmp)
+        banner_md = banner_markdown("cataclysmic-variables", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Ritter & Kolb Cataclysmic Variable Catalog"
@@ -234,7 +244,7 @@ configs:
 ---
 
 # Ritter & Kolb Cataclysmic Variable Catalog
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) and [Variable Stars & Transients](https://huggingface.co/collections/juliensimon/variable-stars-transients-69c24caf2f17e36128946744) collections on Hugging Face.*
 
 ![Update Cataclysmic Variables](https://github.com/juliensimon/space-datasets/actions/workflows/update-cataclysmic-variables.yml/badge.svg)

@@ -9,6 +9,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -146,6 +147,9 @@ def main():
         size_kb = out.stat().st_size / 1024
         print(f"  {size_kb:.0f} KB parquet")
 
+        banner_file = download_banner("space-missions", tmp)
+        banner_md = banner_markdown("space-missions", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc0-1.0
 pretty_name: "Space Missions Database"
@@ -176,7 +180,7 @@ configs:
 ---
 
 # Space Missions Database
-
+{banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 Comprehensive database of **{n:,}** space missions — both crewed and uncrewed — sourced from [Wikidata](https://www.wikidata.org/).
@@ -235,7 +239,7 @@ Quarterly (January, April, July, October).
 ## Related datasets
 
 - [astronaut-database](https://huggingface.co/datasets/juliensimon/astronaut-database) -- Every person who has traveled to space
-- [launch-log](https://huggingface.co/datasets/juliensimon/launch-log) -- McDowell orbital launch log
+- [launch-log](https://huggingface.co/datasets/juliensimon/space-launch-log) -- McDowell orbital launch log
 - [spacecraft-database](https://huggingface.co/datasets/juliensimon/spacecraft-database) -- Spacecraft catalog
 - [deep-space-probes](https://huggingface.co/datasets/juliensimon/deep-space-probes) -- Deep space probe trajectories
 

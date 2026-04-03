@@ -11,6 +11,7 @@ import requests
 from astropy.io import fits
 from astropy.table import Table
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 FITS_URL = "https://fermi.gsfc.nasa.gov/ssc/data/access/lat/14yr_catalog/gll_psc_v35.fit"
@@ -115,6 +116,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("fermi-4fgl", tmp)
+        banner_md = banner_markdown("fermi-4fgl", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Fermi LAT 4FGL-DR4 Gamma-Ray Source Catalog"
@@ -146,7 +150,7 @@ configs:
 ---
 
 # Fermi LAT 4FGL-DR4 Gamma-Ray Source Catalog
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 ![Update Fermi 4FGL](https://github.com/juliensimon/space-datasets/actions/workflows/update-fermi-4fgl.yml/badge.svg)
@@ -246,8 +250,8 @@ Annual (January 1) via [GitHub Actions](https://github.com/juliensimon/space-dat
 
 ## Related datasets
 
-- [grb-catalog](https://huggingface.co/datasets/juliensimon/grb-catalog) -- Gamma-ray burst catalog
-- [snr-catalog](https://huggingface.co/datasets/juliensimon/snr-catalog) -- Supernova remnant catalog
+- [grb-catalog](https://huggingface.co/datasets/juliensimon/gamma-ray-bursts) -- Gamma-ray burst catalog
+- [snr-catalog](https://huggingface.co/datasets/juliensimon/supernova-remnants) -- Supernova remnant catalog
 - [pulsar-catalog](https://huggingface.co/datasets/juliensimon/pulsar-catalog) -- Pulsar catalog
 
 ## Pipeline

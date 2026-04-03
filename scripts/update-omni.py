@@ -10,6 +10,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 HF_REPO = "juliensimon/omni-solar-wind-parameters"
@@ -223,6 +224,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("omni", tmp)
+        banner_md = banner_markdown("omni", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "OMNI Hourly Solar Wind Parameters"
@@ -253,7 +257,7 @@ configs:
 ---
 
 # OMNI Hourly Solar Wind Parameters
-
+{banner_md}
 *Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
 
 ![Update OMNI](https://github.com/juliensimon/space-datasets/actions/workflows/update-omni.yml/badge.svg)
@@ -389,11 +393,11 @@ The full dataset is re-downloaded each run (~100 MB ASCII).
 
 ## Related datasets
 
-- [solar-wind-plasma](https://huggingface.co/datasets/juliensimon/solar-wind-plasma) — Near-Earth solar wind from DSCOVR/ACE (1-minute resolution)
+- [solar-wind-plasma](https://huggingface.co/datasets/juliensimon/solar-wind) — Near-Earth solar wind from DSCOVR/ACE (1-minute resolution)
 - [dst-index](https://huggingface.co/datasets/juliensimon/dst-index) — Geomagnetic Dst index
-- [kp-index](https://huggingface.co/datasets/juliensimon/kp-index) — Geomagnetic Kp index
-- [ae-index](https://huggingface.co/datasets/juliensimon/ae-index) — Auroral Electrojet AE index
-- [f107-index](https://huggingface.co/datasets/juliensimon/f107-index) — F10.7 solar radio flux
+- [kp-index](https://huggingface.co/datasets/juliensimon/geomagnetic-kp-index) — Geomagnetic Kp index
+- [ae-index](https://huggingface.co/datasets/juliensimon/auroral-electrojet-index) — Auroral Electrojet AE index
+- [f107-index](https://huggingface.co/datasets/juliensimon/f107-solar-flux) — F10.7 solar radio flux
 
 ## Pipeline
 

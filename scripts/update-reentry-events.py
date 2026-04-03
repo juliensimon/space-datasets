@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 SATCAT_URL = "https://celestrak.org/pub/satcat.csv"
@@ -88,6 +89,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("reentry-events", tmp)
+        banner_md = banner_markdown("reentry-events", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Reentry Events"
@@ -116,7 +120,7 @@ configs:
 ---
 
 # Reentry Events
-
+{banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 ![Update Reentry Events](https://github.com/juliensimon/space-datasets/actions/workflows/update-reentry-events.yml/badge.svg)
@@ -204,7 +208,7 @@ Daily at 07:15 UTC via [GitHub Actions](https://github.com/juliensimon/space-dat
 
 - [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) -- Full NORAD satellite catalog
 - [space-launch-log](https://huggingface.co/datasets/juliensimon/space-launch-log) -- Global launch history from GCAT
-- [tle-history](https://huggingface.co/datasets/juliensimon/tle-history) -- Historical two-line element sets
+- [tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) -- Historical two-line element sets
 
 ## Pipeline
 

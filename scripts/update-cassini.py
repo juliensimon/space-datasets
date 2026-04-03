@@ -10,6 +10,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -89,6 +90,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("cassini", tmp_dir)
+        banner_md = banner_markdown("cassini", banner_file)
+
         (tmp_dir / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Cassini Saturn Observations"
@@ -120,7 +124,7 @@ configs:
 ---
 
 # Cassini Saturn Observations
-
+{banner_md}
 *Part of the [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c24cb6dfc9bf82d6b2edf1) collection on Hugging Face.*
 
 The complete **Cassini mission** observation master schedule — **{n:,}** planned science
@@ -190,9 +194,9 @@ Static dataset (Cassini mission ended 2017). No scheduled updates.
 
 ## Related datasets
 
-- [mars-craters](https://huggingface.co/datasets/juliensimon/mars-craters) — Martian impact craters
-- [lunar-craters](https://huggingface.co/datasets/juliensimon/lunar-craters) — Lunar impact craters
-- [exoplanet-archive](https://huggingface.co/datasets/juliensimon/exoplanet-archive) — Confirmed exoplanets
+- [mars-craters](https://huggingface.co/datasets/juliensimon/mars-craters-robbins) — Martian impact craters
+- [lunar-craters](https://huggingface.co/datasets/juliensimon/lunar-craters-robbins) — Lunar impact craters
+- [exoplanet-archive](https://huggingface.co/datasets/juliensimon/nasa-exoplanets) — Confirmed exoplanets
 
 ## Pipeline
 

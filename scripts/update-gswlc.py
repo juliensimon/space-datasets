@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 SOURCE_URL = "https://salims.pages.iu.edu/gswlc/GSWLC-X2.dat.gz"
@@ -165,6 +166,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("gswlc", tmp)
+        banner_md = banner_markdown("gswlc", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "GSWLC-2 Galaxy Properties"
@@ -197,7 +201,7 @@ configs:
 ---
 
 # GSWLC-2 Galaxy Properties
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 **{len(df):,}** galaxies with physical properties derived from UV-to-infrared spectral energy distribution (SED) fitting. GSWLC-2 (GALEX-SDSS-WISE Legacy Catalog 2) combines ultraviolet photometry from GALEX, optical photometry from SDSS, and mid-infrared photometry from WISE to estimate stellar masses, star formation rates, and dust attenuation for galaxies at redshifts 0.01 < z < 0.30.
@@ -294,7 +298,7 @@ dusty = df[df["a_fuv"] > 3.0]
 ## Related datasets
 
 - [galaxy-zoo-2-morphology](https://huggingface.co/datasets/juliensimon/galaxy-zoo-2-morphology) — Galaxy Zoo 2 visual morphological classifications
-- [open-ngc](https://huggingface.co/datasets/juliensimon/open-ngc) — NGC/IC galaxy and nebula catalog
+- [open-ngc](https://huggingface.co/datasets/juliensimon/ngc-ic-catalog) — NGC/IC galaxy and nebula catalog
 
 ## Pipeline
 
