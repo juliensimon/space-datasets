@@ -74,7 +74,8 @@
     "spacex-launches": 659,
     "hii-regions": 8399,
     "planck-sz2": 1655,
-    "pulsar-glitches": 728
+    "pulsar-glitches": 728,
+    "cosmic-voids": 1228
   },
   "ae-index": "2026-04-03",
   "astronomers": "2026-04-02",
@@ -156,5 +157,6 @@
   "spacex-launches": "2026-04-03",
   "hii-regions": "2026-04-03",
   "planck-sz2": "2026-04-03",
-  "pulsar-glitches": "2026-04-03"
+  "pulsar-glitches": "2026-04-03",
+  "cosmic-voids": "2026-04-03"
 }
