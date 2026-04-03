@@ -11,7 +11,7 @@ jobs:
   update:
     runs-on: ubuntu-latest
     environment: HF
-    timeout-minutes: 120
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
