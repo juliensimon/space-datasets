@@ -202,73 +202,85 @@ def main():
 
     print(f"  Total fetched: {total_rows:,} rows")
 
-    # ── Consolidate parts into final parquet ──────────────────────────
-    # Read parts in batches, clean, and write consolidated per-instrument files
-    part_files = sorted(parts_dir.glob("*.parquet"))
-    print(f"  Consolidating {len(part_files)} part files...")
-
-    # Determine columns to drop (>95% null) from a sample
-    sample = pd.read_parquet(part_files[0])
+    # ── Consolidate per instrument (memory-bounded) ───────────────────
+    # Determine columns to drop (>95% null) from a sample of first part
+    first_part = sorted(parts_dir.glob("*.parquet"))[0]
+    sample = pd.read_parquet(first_part)
     sample = _clean_chunk(sample)
     drop_cols = [col for col in sample.columns if sample[col].isna().mean() > 0.95]
     del sample
 
-    # Read all parts, clean, drop junk columns, write final parquet per instrument
-    all_dfs = []
-    for pf in part_files:
-        chunk = pd.read_parquet(pf)
-        chunk = _clean_chunk(chunk)
-        chunk = chunk.drop(columns=[c for c in drop_cols if c in chunk.columns], errors="ignore")
-        all_dfs.append(chunk)
-        del chunk
-
-    df = pd.concat(all_dfs, ignore_index=True)
-    del all_dfs
-
-    # Sort by observation start time
-    df = df.sort_values("time_min", na_position="last").reset_index(drop=True)
-
     dropped = len(drop_cols)
     if dropped:
-        print(f"  Dropped {dropped} columns (>95% null)")
+        print(f"  Dropping {dropped} columns (>95% null)")
 
-    # ── Stats ─────────────────────────────────────────────────────────
-    n_total = len(df)
-    n_instruments = df["instrument_name"].nunique()
-    instruments_summary = (df["instrument_name"].value_counts()
-                           .head(8).to_dict())
-    n_targets = df["target_name"].nunique() if "target_name" in df.columns else 0
-    time_range_min = df["time_min"].min()
-    time_range_max = df["time_max"].max()
-
-    print(f"  {n_total:,} observations across {n_instruments} instruments")
-    for inst, count in instruments_summary.items():
-        print(f"    {inst}: {count:,}")
-
-    # ── Validate ──────────────────────────────────────────────────────
-    check_dataset(df, "exomars-tgo", min_rows=100_000,
-        expected_columns=["granule_uid", "instrument_name", "target_name",
-                          "time_min", "time_max", "dataproduct_type"],
-        critical_columns=["granule_uid", "instrument_name", "time_min"])
-
-    # ── Size category ─────────────────────────────────────────────────
-    if n_total >= 10_000_000:
-        size_cat = "10M<n<100M"
-    elif n_total >= 1_000_000:
-        size_cat = "1M<n<10M"
-    else:
-        size_cat = "100K<n<1M"
-
-    # ── Write & upload ────────────────────────────────────────────────
+    # Write one consolidated parquet per instrument into upload dir
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         data_dir = tmp / "data"
         data_dir.mkdir()
 
-        out = data_dir / "exomars_tgo_observations.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
+        instruments_summary = {}
+        time_mins, time_maxs = [], []
+        all_targets = set()
+        total_size = 0
+
+        for inst, inst_rows in instrument_counts.items():
+            inst_lower = inst.lower()
+            part_files = sorted(parts_dir.glob(f"{inst_lower}_part*.parquet"))
+            if not part_files:
+                continue
+
+            print(f"  Consolidating {inst} ({len(part_files)} parts)...")
+            chunks = []
+            for pf in part_files:
+                chunk = pd.read_parquet(pf)
+                chunk = _clean_chunk(chunk)
+                chunk = chunk.drop(
+                    columns=[c for c in drop_cols if c in chunk.columns],
+                    errors="ignore")
+                chunks.append(chunk)
+                del chunk
+
+            df_inst = pd.concat(chunks, ignore_index=True)
+            del chunks
+            df_inst = df_inst.sort_values("time_min", na_position="last").reset_index(drop=True)
+
+            # Validate this instrument
+            check_dataset(df_inst, f"exomars-tgo-{inst_lower}",
+                min_rows=10 if inst == "DREAMS" else 1000,
+                expected_columns=["granule_uid", "instrument_name", "time_min"],
+                critical_columns=["granule_uid", "instrument_name", "time_min"])
+
+            # Collect stats
+            instruments_summary[inst] = len(df_inst)
+            if "time_min" in df_inst.columns:
+                time_mins.append(df_inst["time_min"].min())
+                time_maxs.append(df_inst["time_max"].max())
+            if "target_name" in df_inst.columns:
+                all_targets.update(df_inst["target_name"].dropna().unique())
+
+            out = data_dir / f"{inst_lower}.parquet"
+            df_inst.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
+            fsize = out.stat().st_size / 1024 / 1024
+            total_size += fsize
+            print(f"    {inst}: {len(df_inst):,} rows, {fsize:.1f} MB")
+            del df_inst
+
+        n_total = total_rows
+        n_instruments = len(instruments_summary)
+        n_targets = len(all_targets)
+        time_range_min = min(time_mins) if time_mins else 0
+        time_range_max = max(time_maxs) if time_maxs else 0
+        print(f"  {n_total:,} observations across {n_instruments} instruments, {total_size:.1f} MB total")
+
+        # ── Size category ─────────────────────────────────────────────
+        if n_total >= 10_000_000:
+            size_cat = "10M<n<100M"
+        elif n_total >= 1_000_000:
+            size_cat = "1M<n<10M"
+        else:
+            size_cat = "100K<n<1M"
 
         # Format instrument breakdown for README
         inst_lines = "\n".join(
@@ -302,8 +314,28 @@ configs:
   - config_name: default
     data_files:
       - split: train
-        path: data/exomars_tgo_observations.parquet
+        path: data/*.parquet
     default: true
+  - config_name: cassis
+    data_files:
+      - split: train
+        path: data/cassis.parquet
+  - config_name: acs
+    data_files:
+      - split: train
+        path: data/acs.parquet
+  - config_name: nomad
+    data_files:
+      - split: train
+        path: data/nomad.parquet
+  - config_name: frend
+    data_files:
+      - split: train
+        path: data/frend.parquet
+  - config_name: dreams
+    data_files:
+      - split: train
+        path: data/dreams.parquet
 ---
 
 # ESA ExoMars TGO Observations
@@ -371,26 +403,14 @@ The full schema contains up to ~50 columns following the EPN-TAP standard.
 ```python
 from datasets import load_dataset
 
-ds = load_dataset("juliensimon/esa-exomars-tgo-observations", split="train")
-df = ds.to_pandas()
-
-# Observations per instrument
-print(df["instrument_name"].value_counts())
-
-# ACS atmospheric spectra
-acs = df[df["instrument_name"] == "ACS"]
+# Load a single instrument (fast, low memory)
+acs = load_dataset("juliensimon/esa-exomars-tgo-observations", "acs", split="train")
 print(f"{{len(acs):,}} ACS observations")
 
-# CaSSIS surface images
-cassis = df[df["instrument_name"] == "CaSSIS"]
-print(f"{{len(cassis):,}} CaSSIS observations")
+# Load all instruments at once (27M+ rows, needs ~8 GB RAM)
+ds = load_dataset("juliensimon/esa-exomars-tgo-observations", split="train")
 
-# Timeline of observations
-import matplotlib.pyplot as plt
-df["year"] = ((df["time_min"] - 2451545.0) / 365.25 + 2000).astype(int)
-df.groupby(["year", "instrument_name"]).size().unstack().plot(kind="bar", stacked=True)
-plt.title("ExoMars TGO observations per year")
-plt.ylabel("Count")
+# Available configs: cassis, acs, nomad, frend, dreams
 ```
 
 ## Data source
