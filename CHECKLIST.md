@@ -1,6 +1,6 @@
 # Dataset Addition Checklist
 
-Reusable checklist for adding any new dataset to `juliensimon/space-datasets`. Learned from building 85 datasets.
+Reusable checklist for adding any new dataset to `juliensimon/space-datasets`. Learned from building 86 datasets.
 
 ---
 
@@ -78,6 +78,7 @@ Each section serves a dual purpose: human readability AND search engine discover
 
 - [ ] **H1 title** — must match `pretty_name`. This is the strongest on-page SEO signal
 - [ ] **Collection backlink** — `*Part of the [Domain Datasets](...) collection on Hugging Face.*` (improves HF nav graph)
+- [ ] **Banner image** — use `download_banner()` / `banner_markdown()` from `scripts/dataset_images.py`. Ensure dataset key is in `DATASET_DOMAIN` mapping. Image appears centered between title and collection backlink. All images are copyright-free (NASA public domain / ESA CC-BY 4.0)
 - [ ] **CI badge** + **dynamic "updated" badge** — freshness signals for search engines
 - [ ] **Keyword-rich intro paragraph** — 2-3 sentences with **bold** key stats (row count, date range, source). Front-load important terms. This paragraph often becomes the Google snippet
 - [ ] **Schema table** — Column | Type | Description. Schema tables rank for "[dataset] columns" queries

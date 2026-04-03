@@ -70,7 +70,8 @@
     "gcat-deep-space": 1675,
     "isro": 290,
     "wmo-oscar": 2255,
-    "venus-express": 524787
+    "venus-express": 524787,
+    "spacex-launches": 659
   },
   "ae-index": "2026-04-01",
   "astronomers": "2026-04-02",
@@ -148,5 +149,6 @@
   "gcat-deep-space": "2026-04-03",
   "isro": "2026-04-03",
   "wmo-oscar": "2026-04-03",
-  "venus-express": "2026-04-03"
+  "venus-express": "2026-04-03",
+  "spacex-launches": "2026-04-03"
 }

@@ -77,6 +77,7 @@ DATASETS = {
         "juliensimon/starlink-tle-latest",
         "juliensimon/ucs-satellite-database",
         "juliensimon/gcat-satellite-catalog",
+        "juliensimon/spacex-launches",
         "juliensimon/wmo-oscar-satellites",
     ],
     # ── Sub: Satellites & Launches ─────────────────────────────────────────
@@ -100,6 +101,7 @@ DATASETS = {
         "juliensimon/starlink-tle-latest",
         "juliensimon/ucs-satellite-database",
         "juliensimon/gcat-satellite-catalog",
+        "juliensimon/spacex-launches",
         "juliensimon/wmo-oscar-satellites",
     ],
     # ── Sub: Asteroids & Small Bodies ──────────────────────────────────────

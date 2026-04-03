@@ -2,7 +2,7 @@
 
 *Researched 2026-03-24, expanded 2026-03-26, solar system missions added 2026-03-27, Wikidata datasets added 2026-03-31. Goal: the most comprehensive free, tabular space data collection on Hugging Face.*
 
-**Built: 140 dataset scripts (139 uploaded, 1 blocked on USGS)** | **Remaining candidates: 20** | All sources free, no auth.
+**Built: 141 dataset scripts (140 uploaded, 1 blocked on USGS)** | **Remaining candidates: 20** | All sources free, no auth.
 
 ---
 
@@ -31,6 +31,8 @@ All P0 and P1 candidates are built, plus 4 P2 and 8 Wikidata datasets. Scripts i
 **Pre-existing (23):** NEO, Starlink, SATCAT, Launch Log, Ground Stations, Constellation Census, DONKI, Dst Index, Kp Index, Solar Flares, Solar Wind, Space Weather, Exoplanets, GRB, Gravitational Waves, Pulsars, NGC/IC, SNR, Messier, Black Holes, Quasars, Galaxy Clusters
 
 **Gap-filling bridge datasets (8):** OMNI Solar Wind (500K+, daily), GRBweb Unified GRBs (9K), ICECAT-1 Neutrino Alerts (348), Kepler Transit Timing (295K), SDSS Asteroid Taxonomy, Gaia YSOs, HECATE Galaxies, GSWLC-2
+
+**New research (1):** SpaceX Launches (659, monthly) — all SpaceX missions with timelines, descriptions, and carousel photos from spacex.com
 
 **From P1 Solar System Missions (5 of 6 uploaded, 2026-03-27):** PDS Planetary Missions (137+115+748, multi-config), InSight Marsquakes (2,715), IAU Planetary Nomenclature (13,723 features across Moon/Mars/Venus/Mercury), Galileo Jupiter Atmosphere (686, entry+descent), Huygens Titan Atmosphere (2,727, entry+descent+velocity). *Blocked: Ceres Craters Dawn (44K, USGS Astropedia 503)*
 
