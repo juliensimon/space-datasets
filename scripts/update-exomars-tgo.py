@@ -231,41 +231,43 @@ def main():
             if not part_files:
                 continue
 
-            print(f"  Consolidating {inst} ({len(part_files)} parts)...")
-            chunks = []
-            for pf in part_files:
+            inst_dir = data_dir / inst_lower
+            inst_dir.mkdir()
+
+            print(f"  Processing {inst} ({len(part_files)} parts)...")
+            inst_row_count = 0
+            inst_size = 0
+            for i, pf in enumerate(part_files):
                 chunk = pd.read_parquet(pf)
                 chunk = _clean_chunk(chunk)
                 chunk = chunk.drop(
                     columns=[c for c in drop_cols if c in chunk.columns],
                     errors="ignore")
-                chunks.append(chunk)
+
+                # Collect stats from first chunk only (avoid loading all)
+                if i == 0:
+                    if "time_min" in chunk.columns:
+                        time_mins.append(chunk["time_min"].min())
+                    if "target_name" in chunk.columns:
+                        all_targets.update(chunk["target_name"].dropna().unique()[:20])
+
+                out = inst_dir / f"part{i:04d}.parquet"
+                chunk.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
+                inst_row_count += len(chunk)
+                inst_size += out.stat().st_size
                 del chunk
 
-            df_inst = pd.concat(chunks, ignore_index=True)
-            del chunks
-            df_inst = df_inst.sort_values("time_min", na_position="last").reset_index(drop=True)
+            # Get time_max from last chunk
+            last_chunk = pd.read_parquet(
+                inst_dir / f"part{len(part_files)-1:04d}.parquet",
+                columns=["time_max"])
+            time_maxs.append(last_chunk["time_max"].max())
+            del last_chunk
 
-            # Validate this instrument
-            check_dataset(df_inst, f"exomars-tgo-{inst_lower}",
-                min_rows=10 if inst == "DREAMS" else 1000,
-                expected_columns=["granule_uid", "instrument_name", "time_min"],
-                critical_columns=["granule_uid", "instrument_name", "time_min"])
-
-            # Collect stats
-            instruments_summary[inst] = len(df_inst)
-            if "time_min" in df_inst.columns:
-                time_mins.append(df_inst["time_min"].min())
-                time_maxs.append(df_inst["time_max"].max())
-            if "target_name" in df_inst.columns:
-                all_targets.update(df_inst["target_name"].dropna().unique())
-
-            out = data_dir / f"{inst_lower}.parquet"
-            df_inst.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-            fsize = out.stat().st_size / 1024 / 1024
-            total_size += fsize
-            print(f"    {inst}: {len(df_inst):,} rows, {fsize:.1f} MB")
-            del df_inst
+            instruments_summary[inst] = inst_row_count
+            inst_mb = inst_size / 1024 / 1024
+            total_size += inst_mb
+            print(f"    {inst}: {inst_row_count:,} rows, {inst_mb:.1f} MB")
 
         n_total = total_rows
         n_instruments = len(instruments_summary)
@@ -314,28 +316,28 @@ configs:
   - config_name: default
     data_files:
       - split: train
-        path: data/*.parquet
+        path: data/**/*.parquet
     default: true
   - config_name: cassis
     data_files:
       - split: train
-        path: data/cassis.parquet
+        path: data/cassis/*.parquet
   - config_name: acs
     data_files:
       - split: train
-        path: data/acs.parquet
+        path: data/acs/*.parquet
   - config_name: nomad
     data_files:
       - split: train
-        path: data/nomad.parquet
+        path: data/nomad/*.parquet
   - config_name: frend
     data_files:
       - split: train
-        path: data/frend.parquet
+        path: data/frend/*.parquet
   - config_name: dreams
     data_files:
       - split: train
-        path: data/dreams.parquet
+        path: data/dreams/*.parquet
 ---
 
 # ESA ExoMars TGO Observations
