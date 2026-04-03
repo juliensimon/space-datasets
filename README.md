@@ -1,6 +1,6 @@
 # space-datasets — Open Space, Astronomy & Physics Datasets on Hugging Face
 
-Open-source data pipelines that publish **150+ space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, Wikidata, and other public APIs. Updated daily via GitHub Actions.
+Open-source data pipelines that publish **160+ space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
 
 All datasets are loadable in one line (`load_dataset("juliensimon/...")`), require no API keys, and work with `pandas`, `polars`, or any Parquet-compatible tool.
 
@@ -44,7 +44,6 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![Launch Vehicles](https://github.com/juliensimon/space-datasets/actions/workflows/update-launch-vehicles.yml/badge.svg)
 ![Space Agencies](https://github.com/juliensimon/space-datasets/actions/workflows/update-space-agencies.yml/badge.svg)
 ![Comets](https://github.com/juliensimon/space-datasets/actions/workflows/update-comets.yml/badge.svg)
-![WMO OSCAR](https://github.com/juliensimon/space-datasets/actions/workflows/update-wmo-oscar.yml/badge.svg)
 ![SpaceX Launches](https://github.com/juliensimon/space-datasets/actions/workflows/update-spacex-launches.yml/badge.svg)
 <!-- Space Weather -->
 ![CelesTrak SW](https://github.com/juliensimon/space-datasets/actions/workflows/update-celestrak-sw.yml/badge.svg)
@@ -136,7 +135,7 @@ Track every object orbiting Earth and beyond. This collection covers the complet
 | [starlink-tle-latest](https://huggingface.co/datasets/juliensimon/starlink-tle-latest) | Latest Starlink + GPS TLEs in raw and Parquet format | ![TLE Latest](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['tle-latest']&label=updated&color=brightgreen) | Daily | 1.5 MB |
 | [ucs-satellite-database](https://huggingface.co/datasets/juliensimon/ucs-satellite-database) | 7,500+ active satellites with purpose, operator, and orbit metadata | ![UCS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.ucs&label=updated&color=brightgreen) | Quarterly | 5 MB |
 | [gcat-satellite-catalog](https://huggingface.co/datasets/juliensimon/gcat-satellite-catalog) | 68K+ satellites, rocket bodies, and debris from GCAT (Jonathan McDowell) | ![GCAT SATCAT](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['gcat-satcat']&label=updated&color=brightgreen) | Weekly | 2.6 MB |
-| [spacex-launches](https://huggingface.co/datasets/juliensimon/spacex-launches) | 659 SpaceX missions with timelines, descriptions, and carousel photos from spacex.com | ![SpaceX](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['spacex-launches']&label=updated&color=brightgreen) | Monthly | ~80 MB |
+| [spacex-launches](https://huggingface.co/datasets/juliensimon/spacex-launches) | 659 SpaceX missions with timelines, descriptions, and carousel photos from spacex.com | ![SpaceX](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['spacex-launches']&label=updated&color=brightgreen) | Daily | ~80 MB |
 | [wmo-oscar-satellites](https://huggingface.co/datasets/juliensimon/wmo-oscar-satellites) | 1,025 Earth-observing satellites and 1,230 instruments from WMO OSCAR | ![WMO OSCAR](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['wmo-oscar']&label=updated&color=brightgreen) | Quarterly | <1 MB |
 
 ### Space Probes & Missions

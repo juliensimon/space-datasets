@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Fetch all SpaceX launch data from spacex.com and upload to HF.
 
+Incremental mode: downloads existing data from HF, fetches fresh tiles,
+identifies new or changed launches, and only fetches details + images for those.
+Falls back to full rebuild if no existing data.
+
 Collects launch summaries, mission descriptions, pre/post-launch timelines,
 and carousel images from the official SpaceX content API.
 """
@@ -124,6 +128,8 @@ def fetch_stats() -> dict:
 
 def fetch_mission_details(slugs: list[str]) -> dict[str, dict]:
     """Fetch detail data for each launch by slug."""
+    if not slugs:
+        return {}
     print(f"Fetching mission details for {len(slugs):,} launches...")
     details = {}
     for i, slug in enumerate(slugs):
@@ -139,37 +145,126 @@ def fetch_mission_details(slugs: list[str]) -> dict[str, dict]:
     return details
 
 
+def load_existing(tmp_dir: Path) -> tuple[pd.DataFrame | None, pd.DataFrame | None, pd.DataFrame | None]:
+    """Download existing parquet files from HF. Returns (launches, timelines, carousel) or Nones."""
+    try:
+        subprocess.run(
+            ["hf", "download", HF_REPO, "data/launches.parquet",
+             "data/timelines.parquet", "data/carousel.parquet",
+             "--repo-type", "dataset", "--local-dir", str(tmp_dir)],
+            check=True, capture_output=True, timeout=60,
+        )
+        launches_path = tmp_dir / "data" / "launches.parquet"
+        timelines_path = tmp_dir / "data" / "timelines.parquet"
+        carousel_path = tmp_dir / "data" / "carousel.parquet"
+
+        if not launches_path.exists():
+            return None, None, None
+
+        df_launches = pd.read_parquet(launches_path)
+        df_timelines = pd.read_parquet(timelines_path) if timelines_path.exists() else pd.DataFrame()
+        df_carousel = pd.read_parquet(carousel_path) if carousel_path.exists() else pd.DataFrame()
+
+        print(f"  Loaded existing: {len(df_launches):,} launches, "
+              f"{len(df_timelines):,} timelines, {len(df_carousel):,} carousel")
+        return df_launches, df_timelines, df_carousel
+    except Exception as e:
+        print(f"  Could not load existing ({e}), doing full rebuild")
+        return None, None, None
+
+
+def find_changed_slugs(tiles: list[dict], existing_df: pd.DataFrame) -> list[str]:
+    """Compare fresh tiles against existing data. Return slugs that need detail refresh.
+
+    A slug needs refresh if:
+    - It's completely new (not in existing data)
+    - Its mission_status changed (e.g. upcoming → final)
+    - It has no description in existing data (detail fetch failed last time)
+    """
+    existing_status = dict(zip(existing_df["slug"], existing_df["mission_status"]))
+    existing_desc = set(
+        existing_df.loc[existing_df["description"].notna(), "slug"]
+    ) if "description" in existing_df.columns else set()
+
+    changed = []
+    for tile in tiles:
+        slug = tile.get("link")
+        if not slug:
+            continue
+        new_status = tile.get("missionStatus")
+        old_status = existing_status.get(slug)
+
+        if old_status is None:
+            changed.append(slug)  # new launch
+        elif old_status != new_status:
+            changed.append(slug)  # status changed
+        elif slug not in existing_desc:
+            changed.append(slug)  # missing description from prior failed fetch
+
+    return changed
+
+
+def _extract_detail_fields(detail: dict) -> dict:
+    """Extract detail-enrichment fields from a mission detail response."""
+    paragraphs = detail.get("paragraphs") or []
+    desc_parts = [_strip_html(p.get("content", "")) for p in paragraphs if p.get("content")]
+
+    astronauts = detail.get("astronauts") or []
+    webcasts = detail.get("webcasts") or []
+
+    return {
+        "description": "\n\n".join(desc_parts) if desc_parts else None,
+        "astronauts": json.dumps(astronauts) if astronauts else None,
+        "webcast_id": webcasts[0].get("videoId") if webcasts else None,
+        "webcast_platform": webcasts[0].get("streamingVideoType") if webcasts else None,
+        "follow_dragon_enabled": detail.get("followDragonEnabled"),
+    }
+
+
+def _extract_timelines(slug: str, detail: dict) -> list[dict]:
+    """Extract timeline rows from a mission detail response."""
+    rows = []
+    for phase, key in [("pre_launch", "preLaunchTimeline"), ("post_launch", "postLaunchTimeline")]:
+        timeline = detail.get(key) or {}
+        entries = timeline.get("timelineEntries") or []
+        for entry in entries:
+            rows.append({
+                "slug": slug,
+                "phase": phase,
+                "event_time": entry.get("time"),
+                "description": entry.get("description"),
+            })
+    return rows
+
+
+def _extract_carousel(slug: str, detail: dict) -> list[dict]:
+    """Extract carousel rows from a mission detail response."""
+    rows = []
+    carousel = detail.get("carousel") or {}
+    items = carousel.get("carouselItems") or []
+    for idx, item in enumerate(items):
+        image = item.get("imageDesktop") or {}
+        image_url = image.get("url")
+        if image_url and not image_url.startswith("http"):
+            image_url = f"https://sxcontent9668.azureedge.us{image_url}"
+        ext = Path(image_url).suffix[:4] if image_url else ".jpg"
+        rows.append({
+            "slug": slug,
+            "caption": item.get("caption"),
+            "image_url": image_url,
+            "image_path": f"images/{slug}_{idx}{ext}" if image_url else None,
+        })
+    return rows
+
+
 def build_launches_df(tiles: list[dict], details: dict[str, dict]) -> pd.DataFrame:
     """Build the main launches DataFrame from tiles + detail data."""
     rows = []
     for tile in tiles:
         row = {col: tile.get(api_key) for api_key, col in TILE_FIELDS.items()}
         slug = row["slug"]
-
-        # Enrich with detail data
         detail = details.get(slug, {})
-
-        # Description: join paragraph HTML → plain text
-        paragraphs = detail.get("paragraphs") or []
-        desc_parts = [_strip_html(p.get("content", "")) for p in paragraphs if p.get("content")]
-        row["description"] = "\n\n".join(desc_parts) if desc_parts else None
-
-        # Astronauts
-        astronauts = detail.get("astronauts") or []
-        row["astronauts"] = json.dumps(astronauts) if astronauts else None
-
-        # Webcasts
-        webcasts = detail.get("webcasts") or []
-        if webcasts:
-            row["webcast_id"] = webcasts[0].get("videoId")
-            row["webcast_platform"] = webcasts[0].get("streamingVideoType")
-        else:
-            row["webcast_id"] = None
-            row["webcast_platform"] = None
-
-        # Dragon tracking flags
-        row["follow_dragon_enabled"] = detail.get("followDragonEnabled")
-
+        row.update(_extract_detail_fields(detail))
         rows.append(row)
 
     df = pd.DataFrame(rows)
@@ -197,16 +292,7 @@ def build_timelines_df(details: dict[str, dict]) -> pd.DataFrame:
     """Build the timelines DataFrame from detail data."""
     rows = []
     for slug, detail in details.items():
-        for phase, key in [("pre_launch", "preLaunchTimeline"), ("post_launch", "postLaunchTimeline")]:
-            timeline = detail.get(key) or {}
-            entries = timeline.get("timelineEntries") or []
-            for entry in entries:
-                rows.append({
-                    "slug": slug,
-                    "phase": phase,
-                    "event_time": entry.get("time"),
-                    "description": entry.get("description"),
-                })
+        rows.extend(_extract_timelines(slug, detail))
     df = pd.DataFrame(rows)
     print(f"  {len(df):,} timeline events")
     return df
@@ -216,33 +302,27 @@ def build_carousel_df(details: dict[str, dict]) -> pd.DataFrame:
     """Build the carousel DataFrame from detail data."""
     rows = []
     for slug, detail in details.items():
-        carousel = detail.get("carousel") or {}
-        items = carousel.get("carouselItems") or []
-        for idx, item in enumerate(items):
-            image = item.get("imageDesktop") or {}
-            image_url = image.get("url")
-            if image_url and not image_url.startswith("http"):
-                image_url = f"https://sxcontent9668.azureedge.us{image_url}"
-            ext = Path(image_url).suffix[:4] if image_url else ".jpg"
-            rows.append({
-                "slug": slug,
-                "caption": item.get("caption"),
-                "image_url": image_url,
-                "image_path": f"images/{slug}_{idx}{ext}" if image_url else None,
-            })
+        rows.extend(_extract_carousel(slug, detail))
     df = pd.DataFrame(rows)
     print(f"  {len(df):,} carousel photos")
     return df
 
 
-def download_carousel_images(carousel_df: pd.DataFrame, dest_dir: Path) -> int:
-    """Download all carousel images. Returns count of successful downloads."""
+def download_carousel_images(carousel_df: pd.DataFrame, dest_dir: Path,
+                             skip_slugs: set[str] | None = None) -> int:
+    """Download carousel images. Skip slugs already present. Returns success count."""
     images_dir = dest_dir / "images"
     images_dir.mkdir(exist_ok=True)
 
     to_download = carousel_df.dropna(subset=["image_url", "image_path"])
-    print(f"Downloading {len(to_download):,} carousel images...")
+    if skip_slugs:
+        to_download = to_download[~to_download["slug"].isin(skip_slugs)]
 
+    if to_download.empty:
+        print("No new carousel images to download.")
+        return 0
+
+    print(f"Downloading {len(to_download):,} carousel images...")
     success = 0
     for i, (_, row) in enumerate(to_download.iterrows()):
         if (i + 1) % 100 == 0:
@@ -256,16 +336,148 @@ def download_carousel_images(carousel_df: pd.DataFrame, dest_dir: Path) -> int:
     return success
 
 
+def download_existing_images(carousel_df: pd.DataFrame, dest_dir: Path,
+                             slugs_to_keep: set[str]) -> int:
+    """Download already-uploaded images from HF for unchanged launches."""
+    images_dir = dest_dir / "images"
+    images_dir.mkdir(exist_ok=True)
+
+    to_fetch = carousel_df[
+        carousel_df["slug"].isin(slugs_to_keep)
+        & carousel_df["image_path"].notna()
+    ]
+    if to_fetch.empty:
+        return 0
+
+    # Download all images from HF in one go
+    image_paths = to_fetch["image_path"].tolist()
+    print(f"Downloading {len(image_paths):,} existing images from HF...")
+    try:
+        subprocess.run(
+            ["hf", "download", HF_REPO, *image_paths,
+             "--repo-type", "dataset", "--local-dir", str(dest_dir)],
+            check=True, capture_output=True, timeout=120,
+        )
+        count = sum(1 for p in image_paths if (dest_dir / p).exists())
+        print(f"  {count:,} existing images restored from HF")
+        return count
+    except Exception as e:
+        print(f"  Warning: could not restore existing images ({e})")
+        return 0
+
+
 def main():
     tiles = fetch_tiles()
     stats = fetch_stats()
-    slugs = [t.get("link") for t in tiles if t.get("link")]
-    details = fetch_mission_details(slugs)
 
-    print("Building DataFrames...")
-    df = build_launches_df(tiles, details)
-    timelines_df = build_timelines_df(details)
-    carousel_df = build_carousel_df(details)
+    # Try incremental: load existing data from HF
+    with tempfile.TemporaryDirectory() as probe:
+        probe = Path(probe)
+        existing_launches, existing_timelines, existing_carousel = load_existing(probe)
+
+    incremental = existing_launches is not None and len(existing_launches) > 0
+
+    if incremental:
+        changed_slugs = find_changed_slugs(tiles, existing_launches)
+        all_slugs = [t.get("link") for t in tiles if t.get("link")]
+        unchanged_slugs = set(all_slugs) - set(changed_slugs)
+
+        if changed_slugs:
+            print(f"Incremental: {len(changed_slugs)} new/changed, "
+                  f"{len(unchanged_slugs)} unchanged")
+            new_details = fetch_mission_details(changed_slugs)
+        else:
+            print("Incremental: no changes detected")
+            new_details = {}
+
+        # Build detail dict: reuse existing detail-enriched fields for unchanged,
+        # use fresh API data for changed
+        # For unchanged slugs, reconstruct a pseudo-detail dict from existing parquet
+        details = {}
+        for slug in all_slugs:
+            if slug in new_details:
+                details[slug] = new_details[slug]
+            elif slug in unchanged_slugs:
+                # Reconstruct from existing parquet row
+                row = existing_launches[existing_launches["slug"] == slug]
+                if not row.empty:
+                    r = row.iloc[0]
+                    details[slug] = {"_from_existing": True, "_row": r}
+
+        # Build launches df from tiles + merged details
+        print("Building DataFrames...")
+        rows = []
+        for tile in tiles:
+            row = {col: tile.get(api_key) for api_key, col in TILE_FIELDS.items()}
+            slug = row["slug"]
+            detail = details.get(slug, {})
+
+            if detail.get("_from_existing"):
+                # Reuse existing detail fields
+                r = detail["_row"]
+                row["description"] = r.get("description") if pd.notna(r.get("description")) else None
+                row["astronauts"] = r.get("astronauts") if pd.notna(r.get("astronauts")) else None
+                row["webcast_id"] = r.get("webcast_id") if pd.notna(r.get("webcast_id")) else None
+                row["webcast_platform"] = r.get("webcast_platform") if pd.notna(r.get("webcast_platform")) else None
+                row["follow_dragon_enabled"] = r.get("follow_dragon_enabled")
+            else:
+                row.update(_extract_detail_fields(detail))
+            rows.append(row)
+
+        df = pd.DataFrame(rows)
+        df["launch_date"] = pd.to_datetime(df["launch_date"], errors="coerce")
+        df["end_date"] = pd.to_datetime(df["end_date"], errors="coerce")
+        df["launch_datetime"] = pd.to_datetime(
+            df["launch_date"].dt.strftime("%Y-%m-%d").fillna("") + "T" + df["launch_time"].fillna(""),
+            errors="coerce",
+        )
+        df["launch_year"] = df["launch_datetime"].dt.year.astype("Int64")
+        df["success"] = df["mission_status"] == "final"
+        df["has_landing"] = df["return_site"].notna() & (df["return_site"] != "")
+        df = df.sort_values("launch_datetime", ascending=False, na_position="last").reset_index(drop=True)
+
+        # Timelines: keep existing for unchanged slugs, add new
+        new_timeline_rows = []
+        for slug in changed_slugs:
+            if slug in new_details:
+                new_timeline_rows.extend(_extract_timelines(slug, new_details[slug]))
+        new_timelines = pd.DataFrame(new_timeline_rows) if new_timeline_rows else pd.DataFrame(
+            columns=["slug", "phase", "event_time", "description"])
+
+        if existing_timelines is not None and not existing_timelines.empty:
+            kept_timelines = existing_timelines[existing_timelines["slug"].isin(unchanged_slugs)]
+            timelines_df = pd.concat([kept_timelines, new_timelines], ignore_index=True)
+        else:
+            timelines_df = new_timelines
+        print(f"  {len(timelines_df):,} timeline events")
+
+        # Carousel: keep existing for unchanged slugs, add new
+        new_carousel_rows = []
+        for slug in changed_slugs:
+            if slug in new_details:
+                new_carousel_rows.extend(_extract_carousel(slug, new_details[slug]))
+        new_carousel = pd.DataFrame(new_carousel_rows) if new_carousel_rows else pd.DataFrame(
+            columns=["slug", "caption", "image_url", "image_path"])
+
+        if existing_carousel is not None and not existing_carousel.empty:
+            kept_carousel = existing_carousel[existing_carousel["slug"].isin(unchanged_slugs)]
+            carousel_df = pd.concat([kept_carousel, new_carousel], ignore_index=True)
+        else:
+            carousel_df = new_carousel
+        print(f"  {len(carousel_df):,} carousel photos")
+
+    else:
+        # Full rebuild
+        print("Full rebuild mode")
+        all_slugs = [t.get("link") for t in tiles if t.get("link")]
+        details = fetch_mission_details(all_slugs)
+        changed_slugs = all_slugs
+        unchanged_slugs = set()
+
+        print("Building DataFrames...")
+        df = build_launches_df(tiles, details)
+        timelines_df = build_timelines_df(details)
+        carousel_df = build_carousel_df(details)
 
     check_dataset(
         df, "spacex-launches",
@@ -273,6 +485,7 @@ def main():
         expected_columns=["title", "vehicle", "launch_date", "mission_status",
                           "launch_site", "slug", "mission_type"],
         critical_columns=["title", "vehicle", "launch_date"],
+        incremental=incremental,
     )
 
     # ── Stats for README ────────────────────────────────────────────────
@@ -312,8 +525,10 @@ def main():
         carousel_df.to_parquet(carousel_out, index=False, engine="pyarrow", compression="zstd")
         print(f"  carousel.parquet: {carousel_out.stat().st_size / 1024:.0f} KB")
 
-        # Download carousel images
-        n_images = download_carousel_images(carousel_df, tmp)
+        # Images: restore unchanged from HF, download new from CDN
+        if incremental and unchanged_slugs:
+            download_existing_images(carousel_df, tmp, unchanged_slugs)
+        download_carousel_images(carousel_df, tmp, skip_slugs=unchanged_slugs if incremental else None)
 
         # Banner
         banner_file = download_banner("spacex-launches", tmp)
@@ -440,8 +655,7 @@ and **{total_reflights}** reflights as of the latest update.
 - **{n_landings:,}** missions with landing data
 - **{n_with_desc:,}** missions with descriptions
 - **{n_timeline_events:,}** timeline events across all missions
-- **{n_photos:,}** carousel photos ({n_images:,} downloaded)
-- SpaceX totals: {total_launches:,} launches, {total_landings} landings, {total_reflights} reflights
+- **{n_photos:,}** carousel photos
 
 ## Usage
 
@@ -484,7 +698,7 @@ Data sourced from the SpaceX content API (Strapi CMS).
 
 ## Update schedule
 
-Monthly rebuild via GitHub Actions.
+Daily incremental updates via GitHub Actions.
 
 ## Related datasets
 
