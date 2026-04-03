@@ -19,6 +19,41 @@ HF_REPO = "juliensimon/celestrak-space-weather"
 
 SW_URL = "https://celestrak.org/SpaceData/SW-All.csv"
 
+# Descriptions for CelesTrak consolidated space weather columns
+COLUMN_DESCRIPTIONS = {
+    "date": "Observation date (UTC)",
+    "bsrn": "Bartels Solar Rotation Number",
+    "nd": "Day within the Bartels rotation (1-27)",
+    "kp1": "Planetary geomagnetic index Kp for 00-03 UT",
+    "kp2": "Planetary geomagnetic index Kp for 03-06 UT",
+    "kp3": "Planetary geomagnetic index Kp for 06-09 UT",
+    "kp4": "Planetary geomagnetic index Kp for 09-12 UT",
+    "kp5": "Planetary geomagnetic index Kp for 12-15 UT",
+    "kp6": "Planetary geomagnetic index Kp for 15-18 UT",
+    "kp7": "Planetary geomagnetic index Kp for 18-21 UT",
+    "kp8": "Planetary geomagnetic index Kp for 21-24 UT",
+    "kpsum": "Sum of eight 3-hourly Kp values for the day",
+    "ap1": "Planetary geomagnetic index Ap for 00-03 UT",
+    "ap2": "Planetary geomagnetic index Ap for 03-06 UT",
+    "ap3": "Planetary geomagnetic index Ap for 06-09 UT",
+    "ap4": "Planetary geomagnetic index Ap for 09-12 UT",
+    "ap5": "Planetary geomagnetic index Ap for 12-15 UT",
+    "ap6": "Planetary geomagnetic index Ap for 15-18 UT",
+    "ap7": "Planetary geomagnetic index Ap for 18-21 UT",
+    "ap8": "Planetary geomagnetic index Ap for 21-24 UT",
+    "apavg": "Daily average Ap index",
+    "cp": "Daily planetary character figure Cp",
+    "c9": "Conversion of Cp to a single digit (0-9)",
+    "isn": "International Sunspot Number (daily)",
+    "f10_7_obs": "Observed daily F10.7 solar radio flux (SFU)",
+    "f10_7_adj": "Adjusted F10.7 flux to 1 AU",
+    "f10_7_data_type": "Data source qualifier for F10.7 values",
+    "f10_7_obs_center81": "81-day centered average of observed F10.7",
+    "f10_7_obs_last81": "81-day trailing average of observed F10.7",
+    "f10_7_adj_center81": "81-day centered average of adjusted F10.7",
+    "f10_7_adj_last81": "81-day trailing average of adjusted F10.7",
+}
+
 
 def main():
     print("Fetching CelesTrak consolidated space weather data...")
@@ -80,7 +115,8 @@ def main():
         col_rows = []
         for col in df.columns:
             dtype = str(df[col].dtype)
-            col_rows.append(f"| `{col}` | {dtype} |")
+            desc = COLUMN_DESCRIPTIONS.get(col, "")
+            col_rows.append(f"| `{col}` | {dtype} | {desc} |")
         col_table = "\n".join(col_rows)
 
         banner_file = download_banner("celestrak-sw", tmp)
@@ -147,8 +183,8 @@ The dataset spans the full modern era of satellite operations, with the historic
 
 ## Schema
 
-| Column | Type |
-|--------|------|
+| Column | Type | Description |
+|--------|------|-------------|
 {col_table}
 
 ## Quick stats

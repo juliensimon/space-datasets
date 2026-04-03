@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -145,6 +146,32 @@ def main():
         highest_snr_val = df.loc[highest_snr_idx, "snr"] if highest_snr_idx is not None else 0
 
         # Build column schema from actual DataFrame
+        col_descriptions = {
+            "name": "PSZ2 catalog designation",
+            "ra": "Right ascension (J2000, degrees)",
+            "dec": "Declination (J2000, degrees)",
+            "lii": "Galactic longitude (degrees)",
+            "bii": "Galactic latitude (degrees)",
+            "snr": "Signal-to-noise ratio of the SZ detection",
+            "redshift": "Spectroscopic or photometric redshift",
+            "redshift_err": "Uncertainty on the redshift",
+            "redshift_type": "Source of redshift measurement (spectroscopic/photometric)",
+            "redshift_source": "Reference or survey providing the redshift",
+            "msz": "SZ-derived cluster mass M_SZ (10^14 solar masses)",
+            "msz_err_up": "Upper uncertainty on M_SZ",
+            "msz_err_low": "Lower uncertainty on M_SZ",
+            "y5r500": "Integrated Compton parameter Y_5R500 (arcmin^2)",
+            "y5r500_err_up": "Upper uncertainty on Y_5R500",
+            "y5r500_err_low": "Lower uncertainty on Y_5R500",
+            "theta": "Cluster angular size estimate (arcmin)",
+            "theta_err_up": "Upper uncertainty on theta",
+            "theta_err_low": "Lower uncertainty on theta",
+            "pipeline_det": "Detection pipeline flags (MMF1, MMF3, PwS)",
+            "validation": "External validation status of the detection",
+            "external_name": "Cross-matched name from external catalogs",
+            "external_class": "Classification from external catalogs",
+            "is_confirmed": "Has a measured redshift (derived column)",
+        }
         schema_rows = []
         for col in df.columns:
             dtype = str(df[col].dtype)
@@ -156,8 +183,12 @@ def main():
                 col_type = "bool"
             else:
                 col_type = "string"
-            schema_rows.append(f"| `{col}` | {col_type} |")
+            desc = col_descriptions.get(col, "")
+            schema_rows.append(f"| `{col}` | {col_type} | {desc} |")
         schema_table = "\n".join(schema_rows)
+
+        banner_file = download_banner("planck-sz2", tmp)
+        banner_md = banner_markdown("planck-sz2", banner_file)
 
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
@@ -190,7 +221,7 @@ configs:
 ---
 
 # Planck Second Sunyaev-Zeldovich Source Catalog (PSZ2)
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) and [Galaxies & Cosmology](https://huggingface.co/collections/juliensimon/galaxies-cosmology-datasets-6839d94f11ba2e03cd4b18cb) collections on Hugging Face.*
 
 ![Update Planck SZ2](https://github.com/juliensimon/space-datasets/actions/workflows/update-planck-sz2.yml/badge.svg)
@@ -224,8 +255,8 @@ structure formation, and cross-matching with optical, X-ray, and gravitational l
 
 ## Schema
 
-| Column | Type |
-|--------|------|
+| Column | Type | Description |
+|--------|------|-------------|
 {schema_table}
 
 ## Quick stats

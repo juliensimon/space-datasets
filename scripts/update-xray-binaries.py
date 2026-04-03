@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -139,6 +140,34 @@ def main():
         print(f"  {size_mb:.1f} MB parquet")
 
         # Build column schema table for README
+        col_descriptions = {
+            "name": "Source designation / common name",
+            "ra": "Right ascension (J2000, degrees)",
+            "dec": "Declination (J2000, degrees)",
+            "lii": "Galactic longitude (degrees)",
+            "bii": "Galactic latitude (degrees)",
+            "class": "Source classification (e.g., Be/X, SFXT, Atoll, Z)",
+            "binary_type": "Binary type: HMXB or LMXB",
+            "flux": "X-ray flux (mCrab or source-specific units)",
+            "period": "Pulse/spin period (seconds)",
+            "orbital_period": "Orbital period (days)",
+            "optical_counterpart": "Name of optical counterpart",
+            "spectral_type": "Spectral type of the companion star",
+            "vmag": "Visual magnitude of the optical counterpart",
+            "alt_name": "Alternative source designation",
+            "time": "Reference epoch (MJD)",
+            "search_offset_": "Angular offset from search position (arcmin)",
+            "type": "Object type code",
+            "x_ray_flux": "X-ray flux measurement",
+            "right_ascension": "Right ascension (sexagesimal)",
+            "declination": "Declination (sexagesimal)",
+            "ref_no": "Reference number in the original catalog",
+            "remarks": "Additional notes or remarks",
+            "max_intensity": "Maximum observed X-ray intensity",
+            "x_ray_range": "X-ray energy range of the flux measurement",
+            "status": "Source status flag",
+            "obs_type": "Observation type",
+        }
         schema_rows = []
         for col in df.columns:
             dtype = df[col].dtype
@@ -148,8 +177,12 @@ def main():
                 col_type = "int"
             else:
                 col_type = "string"
-            schema_rows.append(f"| `{col}` | {col_type} |")
+            desc = col_descriptions.get(col, "")
+            schema_rows.append(f"| `{col}` | {col_type} | {desc} |")
         schema_table = "\n".join(schema_rows)
+
+        banner_file = download_banner("xray-binaries", tmp)
+        banner_md = banner_markdown("xray-binaries", banner_file)
 
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
@@ -183,7 +216,7 @@ configs:
 ---
 
 # X-ray Binary Catalog
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) and [Stellar Catalogs](https://huggingface.co/collections/juliensimon/stellar-catalogs-69c24caf2f17e36128946744) collections on Hugging Face.*
 
 ![Update X-ray Binaries](https://github.com/juliensimon/space-datasets/actions/workflows/update-xray-binaries.yml/badge.svg)
@@ -216,8 +249,8 @@ Galactic X-ray binary population with positions, X-ray fluxes, orbital periods, 
 
 ## Schema
 
-| Column | Type |
-|--------|------|
+| Column | Type | Description |
+|--------|------|-------------|
 {schema_table}
 
 ## Quick stats

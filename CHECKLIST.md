@@ -224,6 +224,7 @@ Each section serves a dual purpose: human readability AND search engine discover
 | Related dataset links use wrong slug | Cross-reference URLs in "Related datasets" must use the actual `HF_REPO` slug (e.g. `space-launch-log` not `launch-log`, `launch-cost-to-leo` not `launch-cost`). Verify URLs match `HF_REPO` values |
 | Wikidata SPARQL returns mostly-empty entities | Many Wikidata classes have thousands of stub entities with only a name. Drop >95% null columns and guard README stats with `if "col" in df.columns` |
 | README schema table lists dropped columns | When using auto-drop, either generate schema dynamically or only list core columns that always survive. Add note: "Additional columns appear when source coverage exceeds 5%" |
+| Schema table missing Description column | Every schema must have 3 columns: Column \| Type \| Description. For dynamic schemas (TAP/ADQL `SELECT *`), use a `col_descriptions` dict with `.get(col, "")` fallback for unknown columns |
 | HF collection description too long | Hard limit is 150 characters. Use `update_collection_metadata(slug, description=...)` — pack in domain keywords and source names |
 
 ---

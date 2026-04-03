@@ -193,11 +193,35 @@ def main():
     else:
         n_with_period = 0
 
-    # Build schema table from actual columns
+    # Build schema table from actual columns with descriptions
+    col_descriptions = {
+        "name": "Primary designation of the cataclysmic variable",
+        "ra": "Right ascension (J2000) in degrees",
+        "dec": "Declination (J2000) in degrees",
+        "lii": "Galactic longitude in degrees",
+        "bii": "Galactic latitude in degrees",
+        "class": "Object classification code from Ritter & Kolb",
+        "type2": "Secondary type classification",
+        "porb": "Orbital period in hours",
+        "porb2": "Secondary orbital period in hours",
+        "mag1": "Primary magnitude (typically in V band)",
+        "mag2": "Secondary magnitude (typically at minimum brightness)",
+        "spectral_type": "Spectral type of the secondary star",
+        "spect1": "Spectral type of the primary (white dwarf)",
+        "spect2": "Spectral type of the secondary (donor) star",
+        "period": "Orbital period",
+        "cv_subtype": "Derived CV subtype: dwarf_nova, polar, intermediate_polar, nova_like, classical_nova, or other",
+        "source_name": "Source designation",
+        "object_name": "Object name",
+        "designation": "Standard designation",
+        "ra_deg": "Right ascension in degrees",
+        "dec_deg": "Declination in degrees",
+    }
     schema_rows = []
     for col in df.columns:
         dtype = str(df[col].dtype)
-        schema_rows.append(f"| `{col}` | {dtype} |")
+        desc = col_descriptions.get(col, "")
+        schema_rows.append(f"| `{col}` | {dtype} | {desc} |")
     schema_table = "\n".join(schema_rows)
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -280,8 +304,8 @@ analysis, and understanding the evolution of compact binary systems.
 
 ## Schema
 
-| Column | Type |
-|--------|------|
+| Column | Type | Description |
+|--------|------|-------------|
 {schema_table}
 
 ## Quick stats

@@ -164,7 +164,48 @@ def main():
             parts = [f"{count:,} {cls}" for cls, count in top_classes.items()]
             class_summary = ", ".join(parts)
 
-        # Build schema table from actual columns
+        # Build schema table from actual columns with descriptions
+        col_descriptions = {
+            "name": "IAU source name (4FGL designation)",
+            "ra": "Right ascension (J2000, degrees)",
+            "dec": "Declination (J2000, degrees)",
+            "lii": "Galactic longitude (degrees)",
+            "bii": "Galactic latitude (degrees)",
+            "glon": "Galactic longitude (degrees)",
+            "glat": "Galactic latitude (degrees)",
+            "significance": "Detection significance (sigma)",
+            "pivot_energy": "Pivot energy for spectral fit (MeV)",
+            "flux": "Photon flux (ph/cm2/s, 1-100 GeV)",
+            "unc_flux": "Uncertainty on photon flux",
+            "energy_flux": "Energy flux (erg/cm2/s, 100 MeV-100 GeV)",
+            "unc_energy_flux": "Uncertainty on energy flux",
+            "spectral_index": "Power-law photon spectral index",
+            "unc_spectral_index": "Uncertainty on spectral index",
+            "pl_flux": "Power-law fit flux",
+            "lp_flux": "Log-parabola fit flux",
+            "lp_index": "Log-parabola spectral index at pivot energy",
+            "lp_beta": "Log-parabola curvature parameter",
+            "npred": "Number of predicted photons from the model",
+            "redshift": "Source redshift (spectroscopic or photometric)",
+            "variability_index": "Variability index from likelihood analysis",
+            "frac_variability": "Fractional variability amplitude",
+            "flux_band1": "Flux in energy band 1",
+            "flux_band2": "Flux in energy band 2",
+            "flux_band3": "Flux in energy band 3",
+            "flux_band4": "Flux in energy band 4",
+            "flux_band5": "Flux in energy band 5",
+            "class": "Source classification (BLL, FSRQ, etc.)",
+            "source_class": "Source classification (BLL, FSRQ, etc.)",
+            "optical_class": "Optical classification of the AGN",
+            "agn_class": "AGN classification type",
+            "clean_class": "Clean sample classification flag",
+            "sed_class": "SED-based classification (LSP, ISP, HSP)",
+            "sed_class_index": "Numeric index for SED class",
+            "assoc_name": "Associated source name from counterpart catalog",
+            "counterpart": "Multiwavelength counterpart designation",
+            "flags": "Analysis flags",
+            "status": "Source analysis status",
+        }
         schema_rows = []
         for col in df.columns:
             dtype = str(df[col].dtype)
@@ -178,7 +219,8 @@ def main():
                 col_type = "bool"
             else:
                 col_type = "string"
-            schema_rows.append(f"| `{col}` | {col_type} |")
+            desc = col_descriptions.get(col, "")
+            schema_rows.append(f"| `{col}` | {col_type} | {desc} |")
         schema_table = "\n".join(schema_rows)
 
         banner_file = download_banner("fermi-4lac", tmp)
@@ -240,8 +282,8 @@ The gamma-ray properties in 4LAC, combined with radio, optical, and X-ray data, 
 
 ## Schema
 
-| Column | Type |
-|--------|------|
+| Column | Type | Description |
+|--------|------|-------------|
 {schema_table}
 
 ## Quick stats
