@@ -1,6 +1,6 @@
 # Dataset Addition Checklist
 
-Reusable checklist for adding any new dataset to `juliensimon/space-datasets`. Learned from building 86 datasets.
+Reusable checklist for adding any new dataset to `juliensimon/space-datasets`. Learned from building 159 datasets.
 
 ---
 
@@ -34,6 +34,7 @@ Reusable checklist for adding any new dataset to `juliensimon/space-datasets`. L
       if df[col].isna().mean() > 0.95:
           df = df.drop(columns=[col])
   ```
+- [ ] After numeric coercion, drop any columns that became all-null (flag/limit columns with `>`, `<` etc.)
 - [ ] HEASARC: use `FORMAT=text` (pipe-delimited) — CSV returns VOTable XML
 - [ ] HEASARC: if using multi-format fallback (CSV→JSON→text), always add XML guard: `if not resp.text.strip().startswith("<?xml")` before CSV parse
 - [ ] HEASARC: add column sanity check after parse (e.g., `and "ra" in df.columns`), not just row count
@@ -219,6 +220,8 @@ Each section serves a dual purpose: human readability AND search engine discover
 | `import` inside function body | Keep all imports at file top level for consistency with project convention |
 | License body says "MIT" | Always use `[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)` in README body — must match YAML frontmatter |
 | TAP/EPN-TAP `SELECT *` carries junk columns | Add auto-drop loop for >95% null columns before validation. Wide schemas (EPN-TAP ~50 cols, VizieR catalogs) have many optional fields that are empty for the specific dataset |
+| Columns become all-null after numeric coercion | Flag/limit columns (e.g. `lim_mag*`, `*_flag`) may contain non-numeric strings like `>` or `<` that survive initial empty-string cleanup but become NaN after `pd.to_numeric(errors="coerce")`. Add a second all-null column drop after coercion |
+| Related dataset links use wrong slug | Cross-reference URLs in "Related datasets" must use the actual `HF_REPO` slug (e.g. `space-launch-log` not `launch-log`, `launch-cost-to-leo` not `launch-cost`). Verify URLs match `HF_REPO` values |
 | Wikidata SPARQL returns mostly-empty entities | Many Wikidata classes have thousands of stub entities with only a name. Drop >95% null columns and guard README stats with `if "col" in df.columns` |
 | README schema table lists dropped columns | When using auto-drop, either generate schema dynamically or only list core columns that always survive. Add note: "Additional columns appear when source coverage exceeds 5%" |
 | HF collection description too long | Hard limit is 150 characters. Use `update_collection_metadata(slug, description=...)` — pack in domain keywords and source names |

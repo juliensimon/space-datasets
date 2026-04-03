@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -119,6 +120,9 @@ def main():
         z_max = df["redshift"].max() if "redshift" in df.columns else 0
         snr_median = df["snr"].median() if "snr" in df.columns else 0
 
+        banner_file = download_banner("galaxy-clusters", tmp)
+        banner_md = banner_markdown("galaxy-clusters", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Planck PSZ2 Galaxy Cluster Catalog"
@@ -148,7 +152,7 @@ configs:
 ---
 
 # Planck PSZ2 Galaxy Cluster Catalog
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 ![Update Galaxy Clusters](https://github.com/juliensimon/space-datasets/actions/workflows/update-galaxy-clusters.yml/badge.svg)
@@ -240,7 +244,7 @@ Quarterly (1st Monday of January, April, July, October at 19:30 UTC) via
 
 - [supernova-remnants](https://huggingface.co/datasets/juliensimon/supernova-remnants) — Green's SNR Catalog
 - [gamma-ray-bursts](https://huggingface.co/datasets/juliensimon/gamma-ray-bursts) — Fermi GBM GRB Catalog
-- [exoplanets](https://huggingface.co/datasets/juliensimon/exoplanets) — NASA Exoplanet Archive
+- [exoplanets](https://huggingface.co/datasets/juliensimon/nasa-exoplanets) — NASA Exoplanet Archive
 
 ## Pipeline
 

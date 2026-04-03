@@ -12,6 +12,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 TAP_URL = "https://datalab.noirlab.edu/tap/sync"
@@ -170,6 +171,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("desi", tmp)
+        banner_md = banner_markdown("desi", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "DESI DR1 Bright Galaxy Survey Redshifts"
@@ -201,7 +205,7 @@ configs:
 ---
 
 # DESI DR1 Bright Galaxy Survey Redshifts
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 Spectroscopic redshifts from the [Dark Energy Spectroscopic Instrument](https://www.desi.lbl.gov/)
@@ -293,8 +297,8 @@ DESI Collaboration (2025). "The DESI Data Release 1." arXiv:2503.14745.
 
 ## Related datasets
 
-- [sdss-dr18-spectra](https://huggingface.co/datasets/juliensimon/sdss-dr18-spectra) — SDSS DR18 optical spectroscopy
-- [exoplanet-archive](https://huggingface.co/datasets/juliensimon/exoplanet-archive) — NASA Exoplanet Archive
+- [sdss-dr18-spectra](https://huggingface.co/datasets/juliensimon/desi-dr1-redshifts) — SDSS DR18 optical spectroscopy
+- [exoplanet-archive](https://huggingface.co/datasets/juliensimon/nasa-exoplanets) — NASA Exoplanet Archive
 
 ## Pipeline
 

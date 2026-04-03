@@ -19,6 +19,7 @@ import pandas as pd
 import requests
 
 sys.path.insert(0, str(Path(__file__).parent))
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 BASE_URL = "https://pds-atmospheres.nmsu.edu/PDS/data/PDS4/Mars2020/mars2020_meda/data_derived_env"
@@ -396,6 +397,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  Wrote {size_mb:.1f} MB parquet ({n_rows:,} rows)")
 
+        banner_file = download_banner("meda-weather", tmp)
+        banner_md = banner_markdown("meda-weather", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Mars Perseverance MEDA Weather"
@@ -427,7 +431,7 @@ configs:
 ---
 
 # Mars Perseverance MEDA Weather
-
+{banner_md}
 *Part of the [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 ![Update MEDA Weather](https://github.com/juliensimon/space-datasets/actions/workflows/update-meda-weather.yml/badge.svg)
@@ -529,9 +533,9 @@ New sols are ingested incrementally.
 
 ## Related datasets
 
-- [mars-craters](https://huggingface.co/datasets/juliensimon/mars-craters) — Mars crater catalog
+- [mars-craters](https://huggingface.co/datasets/juliensimon/mars-craters-robbins) — Mars crater catalog
 - [neo-close-approaches](https://huggingface.co/datasets/juliensimon/neo-close-approaches) — Near-Earth object approaches
-- [exoplanets](https://huggingface.co/datasets/juliensimon/exoplanets) — NASA Exoplanet Archive
+- [exoplanets](https://huggingface.co/datasets/juliensimon/nasa-exoplanets) — NASA Exoplanet Archive
 
 ## Pipeline
 

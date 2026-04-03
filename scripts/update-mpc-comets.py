@@ -8,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 SOURCE_URL = "https://www.minorplanetcenter.net/iau/MPCORB/CometEls.txt"
@@ -173,6 +174,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("mpc-comets", tmp)
+        banner_md = banner_markdown("mpc-comets", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "MPC Comet Orbital Elements"
@@ -202,7 +206,7 @@ configs:
 ---
 
 # MPC Comet Orbital Elements
-
+{banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 Orbital elements for **{len(df):,}** known comets published by the
@@ -287,7 +291,7 @@ Rebuilt monthly (static dataset).
 ## Related datasets
 
 - [neo-close-approaches](https://huggingface.co/datasets/juliensimon/neo-close-approaches) — NEO close approaches from NASA JPL
-- [mpc-asteroid-orbits](https://huggingface.co/datasets/juliensimon/mpc-asteroid-orbits) — MPC asteroid orbital elements
+- [mpc-asteroid-orbits](https://huggingface.co/datasets/juliensimon/mpc-comet-elements) — MPC asteroid orbital elements
 
 ## Pipeline
 

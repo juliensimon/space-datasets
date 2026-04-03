@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 SATCAT_URL = "https://celestrak.org/pub/satcat.csv"
@@ -195,6 +196,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.2f} MB parquet")
 
+        banner_file = download_banner("fragmentation-events", tmp)
+        banner_md = banner_markdown("fragmentation-events", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Orbital Fragmentation Events"
@@ -223,7 +227,7 @@ configs:
 ---
 
 # Orbital Fragmentation Events
-
+{banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 Catalog of **{n_events:,}** orbital fragmentation events derived from the NORAD Satellite Catalog
@@ -322,7 +326,7 @@ For authoritative event-by-event analysis including assessed causes, see NASA's
 
 - [reentry-events](https://huggingface.co/datasets/juliensimon/reentry-events) -- Atmospheric reentry catalog
 - [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) -- Full NORAD satellite catalog
-- [active-satellites](https://huggingface.co/datasets/juliensimon/active-satellites) -- Currently operational spacecraft
+- [active-satellites](https://huggingface.co/datasets/juliensimon/space-track-satcat) -- Currently operational spacecraft
 
 ## Pipeline
 

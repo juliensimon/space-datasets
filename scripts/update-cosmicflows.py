@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 from vizier_tap import vizier_query
 
@@ -121,6 +122,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("cosmicflows", tmp)
+        banner_md = banner_markdown("cosmicflows", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Cosmicflows-4 Galaxy Distances"
@@ -149,7 +153,7 @@ configs:
 ---
 
 # Cosmicflows-4 Galaxy Distances
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 The Cosmicflows-4 (CF4) catalog is the most comprehensive compilation of galaxy distances
@@ -261,7 +265,7 @@ Static dataset (fixed catalog release). No scheduled updates.
 
 - [messier-catalog](https://huggingface.co/datasets/juliensimon/messier-catalog) -- Messier deep-sky objects
 - [ngc-ic-catalog](https://huggingface.co/datasets/juliensimon/ngc-ic-catalog) -- NGC/IC deep-sky catalog
-- [exoplanet-catalog](https://huggingface.co/datasets/juliensimon/exoplanet-catalog) -- NASA Exoplanet Archive
+- [exoplanet-catalog](https://huggingface.co/datasets/juliensimon/nasa-exoplanets) -- NASA Exoplanet Archive
 
 ## Pipeline
 

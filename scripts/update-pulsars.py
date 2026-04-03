@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -136,6 +137,9 @@ def main():
         median_period = df["period"].median()
         median_dm = df["dm"].median()
 
+        banner_file = download_banner("pulsars", tmp)
+        banner_md = banner_markdown("pulsars", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "ATNF Pulsar Catalogue"
@@ -166,7 +170,7 @@ configs:
 ---
 
 # ATNF Pulsar Catalogue
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 ![Update Pulsars](https://github.com/juliensimon/space-datasets/actions/workflows/update-pulsars.yml/badge.svg)
@@ -267,7 +271,7 @@ Monthly (1st Monday at 18:00 UTC) via [GitHub Actions](https://github.com/julien
 
 - [gamma-ray-bursts](https://huggingface.co/datasets/juliensimon/gamma-ray-bursts) — Fermi GBM Gamma-Ray Burst Catalog
 - [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) — NORAD Satellite Catalog
-- [solar-flare-index](https://huggingface.co/datasets/juliensimon/solar-flare-index) — Solar flare observations
+- [solar-flare-index](https://huggingface.co/datasets/juliensimon/solar-flare-events) — Solar flare observations
 
 ## Pipeline
 

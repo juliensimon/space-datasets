@@ -15,6 +15,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 SUMMARY_URL = "https://user-web.icecube.wisc.edu/~grbweb_public/Summary_table.txt"
@@ -128,6 +129,9 @@ def main():
         brightest_name = df.loc[brightest_idx, "grb_name"] if pd.notna(brightest_idx) else "N/A"
         brightest_fluence = df.loc[brightest_idx, "fluence"] if pd.notna(brightest_idx) else 0
 
+        banner_file = download_banner("grbweb", tmp)
+        banner_md = banner_markdown("grbweb", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "GRBweb Unified Multi-Instrument GRB Catalog"
@@ -156,7 +160,7 @@ configs:
 ---
 
 # GRBweb Unified Multi-Instrument GRB Catalog
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 Unified catalog of **{n_total:,}** gamma-ray bursts detected across multiple space missions,
@@ -249,8 +253,8 @@ Static dataset, rebuilt monthly. Source code: [juliensimon/space-datasets](https
 ## Related datasets
 
 - [gamma-ray-bursts](https://huggingface.co/datasets/juliensimon/gamma-ray-bursts) — Fermi GBM Burst Catalog
-- [fermi-4fgl](https://huggingface.co/datasets/juliensimon/fermi-4fgl) — Fermi LAT 4FGL Source Catalog
-- [near-earth-objects](https://huggingface.co/datasets/juliensimon/near-earth-objects) — NEO close approaches
+- [fermi-4fgl](https://huggingface.co/datasets/juliensimon/fermi-4fgl-dr4) — Fermi LAT 4FGL Source Catalog
+- [near-earth-objects](https://huggingface.co/datasets/juliensimon/neo-close-approaches) — NEO close approaches
 
 ## Support
 

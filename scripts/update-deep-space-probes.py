@@ -12,6 +12,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 CURRENT_YEAR = datetime.date.today().year
@@ -322,6 +323,9 @@ def main():
             for sc in ["voyager_1", "voyager_2", "pioneer_10", "pioneer_11"]
         )
 
+        banner_file = download_banner("deep-space-probes", tmp)
+        banner_md = banner_markdown("deep-space-probes", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Deep Space Probes — Merged Hourly Data"
@@ -356,7 +360,7 @@ configs:
 ---
 
 # Deep Space Probes — Merged Hourly Data
-
+{banner_md}
 *Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
 
 ![Update Deep Space Probes](https://github.com/juliensimon/space-datasets/actions/workflows/update-deep-space-probes.yml/badge.svg)
@@ -471,9 +475,9 @@ Voyager data is still being collected; Pioneer missions ended in the 1990s.
 
 ## Related datasets
 
-- [solar-wind-plasma](https://huggingface.co/datasets/juliensimon/solar-wind-plasma) — Near-Earth solar wind from DSCOVR/ACE
+- [solar-wind-plasma](https://huggingface.co/datasets/juliensimon/solar-wind) — Near-Earth solar wind from DSCOVR/ACE
 - [dst-index](https://huggingface.co/datasets/juliensimon/dst-index) — Geomagnetic Dst index
-- [kp-index](https://huggingface.co/datasets/juliensimon/kp-index) — Geomagnetic Kp index
+- [kp-index](https://huggingface.co/datasets/juliensimon/geomagnetic-kp-index) — Geomagnetic Kp index
 
 ## Pipeline
 

@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -137,6 +138,9 @@ def main():
         brightest_name = df.loc[brightest_idx, "name"] if pd.notna(brightest_idx) else "N/A"
         brightest_fluence = df.loc[brightest_idx, "fluence"] if pd.notna(brightest_idx) else 0
 
+        banner_file = download_banner("grb", tmp)
+        banner_md = banner_markdown("grb", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Fermi GBM Gamma-Ray Burst Catalog"
@@ -167,7 +171,7 @@ configs:
 ---
 
 # Fermi GBM Gamma-Ray Burst Catalog
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 ![Update GRB](https://github.com/juliensimon/space-datasets/actions/workflows/update-grb.yml/badge.svg)
@@ -258,8 +262,8 @@ Weekly on Monday at 17:00 UTC via [GitHub Actions](https://github.com/juliensimo
 ## Related datasets
 
 - [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) — NORAD Satellite Catalog
-- [solar-flare-index](https://huggingface.co/datasets/juliensimon/solar-flare-index) — Solar flare observations
-- [near-earth-objects](https://huggingface.co/datasets/juliensimon/near-earth-objects) — NEO close approaches
+- [solar-flare-index](https://huggingface.co/datasets/juliensimon/solar-flare-events) — Solar flare observations
+- [near-earth-objects](https://huggingface.co/datasets/juliensimon/neo-close-approaches) — NEO close approaches
 
 ## Pipeline
 

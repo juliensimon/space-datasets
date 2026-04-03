@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -131,6 +132,9 @@ def main():
         n_filled = type_counts.get("filled-centre", 0)
         n_composite = type_counts.get("composite", 0)
 
+        banner_file = download_banner("snr", tmp)
+        banner_md = banner_markdown("snr", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Green's Supernova Remnant Catalog"
@@ -160,7 +164,7 @@ configs:
 ---
 
 # Green's Supernova Remnant Catalog
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 ![Update SNR](https://github.com/juliensimon/space-datasets/actions/workflows/update-snr.yml/badge.svg)
@@ -242,8 +246,8 @@ Quarterly (1st Monday of January, April, July, October at 19:00 UTC) via
 ## Related datasets
 
 - [gamma-ray-bursts](https://huggingface.co/datasets/juliensimon/gamma-ray-bursts) — Fermi GBM GRB Catalog
-- [gravitational-waves](https://huggingface.co/datasets/juliensimon/gravitational-waves) — LIGO/Virgo detections
-- [exoplanets](https://huggingface.co/datasets/juliensimon/exoplanets) — NASA Exoplanet Archive
+- [gravitational-waves](https://huggingface.co/datasets/juliensimon/gravitational-wave-events) — LIGO/Virgo detections
+- [exoplanets](https://huggingface.co/datasets/juliensimon/nasa-exoplanets) — NASA Exoplanet Archive
 
 ## Pipeline
 

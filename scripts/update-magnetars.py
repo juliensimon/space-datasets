@@ -16,6 +16,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 CSV_URL = "https://www.physics.mcgill.ca/~pulsar/magnetar/TabO1.csv"
@@ -211,6 +212,9 @@ def main():
         size_kb = out.stat().st_size / 1024
         print(f"  {size_kb:.1f} KB parquet ({len(df)} rows, {len(df.columns)} columns)")
 
+        banner_file = download_banner("magnetars", tmp)
+        banner_md = banner_markdown("magnetars", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "McGill Online Magnetar Catalog"
@@ -240,7 +244,7 @@ configs:
 ---
 
 # McGill Online Magnetar Catalog
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-67ac2ada12aceb39f8feca3b) collection on Hugging Face.*
 
 All **{len(df)}** known magnetars — neutron stars with extreme magnetic fields (10\u00b9\u00b3-10\u00b9\u2075 G) — from the
@@ -330,9 +334,9 @@ and refer to the catalog URL when using this data.
 
 ## Related datasets
 
-- [pulsars](https://huggingface.co/datasets/juliensimon/pulsars) — ATNF Pulsar Catalogue (3,400+ pulsars)
+- [pulsars](https://huggingface.co/datasets/juliensimon/pulsar-catalog) — ATNF Pulsar Catalogue (3,400+ pulsars)
 - [gamma-ray-bursts](https://huggingface.co/datasets/juliensimon/gamma-ray-bursts) — HEASARC GRB catalog
-- [fermi-4fgl](https://huggingface.co/datasets/juliensimon/fermi-4fgl) — Fermi LAT 4FGL source catalog
+- [fermi-4fgl](https://huggingface.co/datasets/juliensimon/fermi-4fgl-dr4) — Fermi LAT 4FGL source catalog
 
 ## Pipeline
 

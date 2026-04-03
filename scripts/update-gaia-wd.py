@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 from vizier_tap import vizier_query
 
@@ -128,6 +129,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("gaia-wd", tmp)
+        banner_md = banner_markdown("gaia-wd", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Gaia DR3 White Dwarfs"
@@ -158,7 +162,7 @@ configs:
 ---
 
 # Gaia DR3 White Dwarfs
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 The definitive Gaia DR3 white dwarf catalog from Gentile Fusillo et al. (2021), containing
@@ -277,7 +281,7 @@ Gentile Fusillo, N.P. et al. (2021), "A catalogue of white dwarfs in Gaia EDR3",
 ## Related datasets
 
 - [Gaia DR3 Eclipsing Binaries](https://huggingface.co/datasets/juliensimon/gaia-dr3-eclipsing-binaries) -- Gaia eclipsing binary candidates
-- [Gaia DR3 Variable Star Summary](https://huggingface.co/datasets/juliensimon/gaia-dr3-variable-summary) -- all Gaia variable star classifications
+- [Gaia DR3 Variable Star Summary](https://huggingface.co/datasets/juliensimon/gcvs-variable-stars) -- all Gaia variable star classifications
 
 ## Pipeline
 

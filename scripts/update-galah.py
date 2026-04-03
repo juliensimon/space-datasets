@@ -10,6 +10,7 @@ import pandas as pd
 import requests
 from astropy.table import Table
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 FITS_URL = "https://cloud.datacentral.org.au/teamdata/GALAH/public/GALAH_DR4/catalogs/galah_dr4_allstar_240705.fits"
@@ -143,6 +144,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("galah", tmp)
+        banner_md = banner_markdown("galah", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "GALAH DR4 — Stellar Abundances for 917k Stars"
@@ -173,7 +177,7 @@ configs:
 ---
 
 # GALAH DR4 — Stellar Abundances for 917k Stars
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 The fourth data release of the GALactic Archaeology with HERMES (GALAH) survey,
@@ -279,8 +283,8 @@ Static dataset — uploaded once from the DR4 release catalog.
 
 ## Related datasets
 
-- [gaia-dr3-astrophysical-parameters](https://huggingface.co/datasets/juliensimon/gaia-dr3-astrophysical-parameters) — Gaia DR3 stellar parameters
-- [exoplanet-catalog](https://huggingface.co/datasets/juliensimon/exoplanet-catalog) — Confirmed exoplanets
+- [gaia-dr3-astrophysical-parameters](https://huggingface.co/datasets/juliensimon/gaia-dr3-white-dwarfs) — Gaia DR3 stellar parameters
+- [exoplanet-catalog](https://huggingface.co/datasets/juliensimon/nasa-exoplanets) — Confirmed exoplanets
 - [pulsar-catalog](https://huggingface.co/datasets/juliensimon/pulsar-catalog) — Pulsar catalog
 
 ## Pipeline

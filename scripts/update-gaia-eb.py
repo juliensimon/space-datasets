@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 GAIA_TAP = "https://gea.esac.esa.int/tap-server/tap/sync"
@@ -144,6 +145,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("gaia-eb", tmp)
+        banner_md = banner_markdown("gaia-eb", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Gaia DR3 Eclipsing Binaries"
@@ -174,7 +178,7 @@ configs:
 ---
 
 # Gaia DR3 Eclipsing Binaries
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 The Gaia DR3 eclipsing binary catalog, containing **{n_total:,}** eclipsing binary candidates
@@ -284,7 +288,7 @@ European Space Agency. Via VizieR CDS (I/355/gaiadr3).
 
 ## Related datasets
 
-- [Gaia DR3 Variable Star Summary](https://huggingface.co/datasets/juliensimon/gaia-dr3-variable-summary) — all Gaia variable star classifications
+- [Gaia DR3 Variable Star Summary](https://huggingface.co/datasets/juliensimon/gcvs-variable-stars) — all Gaia variable star classifications
 
 ## Pipeline
 

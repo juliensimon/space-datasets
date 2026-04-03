@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -180,6 +181,9 @@ def main():
             schema_rows.append(f"| `{col}` | {col_type} |")
         schema_table = "\n".join(schema_rows)
 
+        banner_file = download_banner("fermi-4lac", tmp)
+        banner_md = banner_markdown("fermi-4lac", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Fermi LAT Fourth AGN Catalog (4LAC)"
@@ -210,7 +214,7 @@ configs:
 ---
 
 # Fermi LAT Fourth AGN Catalog (4LAC)
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 The largest catalog of gamma-ray active galactic nuclei (AGN), detected by the
@@ -278,7 +282,7 @@ Detected by the Fermi Large Area Telescope", ApJ, 892, 105.
 
 - [gamma-ray-bursts](https://huggingface.co/datasets/juliensimon/gamma-ray-bursts) -- Fermi GBM Gamma-Ray Burst Catalog
 - [pulsar-catalog](https://huggingface.co/datasets/juliensimon/pulsar-catalog) -- ATNF Pulsar Catalogue
-- [near-earth-objects](https://huggingface.co/datasets/juliensimon/near-earth-objects) -- NEO close approaches
+- [near-earth-objects](https://huggingface.co/datasets/juliensimon/neo-close-approaches) -- NEO close approaches
 
 ## Pipeline
 

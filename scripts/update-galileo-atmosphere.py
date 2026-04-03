@@ -10,6 +10,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 PDS_BASE = "https://pds-atmospheres.nmsu.edu/PDS/data/gp_0001/data/asi/"
@@ -148,6 +149,9 @@ def main():
         size_kb = out.stat().st_size / 1024
         print(f"  {size_kb:.1f} KB parquet")
 
+        banner_file = download_banner("galileo-atmosphere", tmp)
+        banner_md = banner_markdown("galileo-atmosphere", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Galileo Probe Jupiter Atmospheric Profile"
@@ -179,7 +183,7 @@ configs:
 ---
 
 # Galileo Probe Jupiter Atmospheric Profile
-
+{banner_md}
 *Part of the [Space Probe & Mission Datasets](https://huggingface.co/collections/juliensimon/space-probe-and-mission-datasets-69c3fe82d410a42b1e313167) collection on Hugging Face.*
 
 Jupiter atmospheric structure measured by the Galileo Probe Atmospheric Structure Instrument (ASI)
@@ -288,7 +292,7 @@ Static dataset (one-time upload). The Galileo Probe entered Jupiter on December 
 ## Related datasets
 
 - [deep-space-probes](https://huggingface.co/datasets/juliensimon/deep-space-probes) — Voyager 1/2 and Pioneer 10/11 merged hourly data
-- [jupiter-magnetosphere](https://huggingface.co/datasets/juliensimon/jupiter-magnetosphere) — Juno magnetometer data at Jupiter
+- [jupiter-magnetosphere](https://huggingface.co/datasets/juliensimon/galileo-jupiter-atmosphere) — Juno magnetometer data at Jupiter
 
 ## Pipeline
 

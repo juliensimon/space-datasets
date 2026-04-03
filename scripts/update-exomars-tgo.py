@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -290,6 +291,9 @@ def main():
             for inst, count in instruments_summary.items()
         )
 
+        banner_file = download_banner("exomars-tgo", tmp)
+        banner_md = banner_markdown("exomars-tgo", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "ESA ExoMars TGO Observations"
@@ -341,7 +345,7 @@ configs:
 ---
 
 # ESA ExoMars TGO Observations
-
+{banner_md}
 *Part of the [Solar System Datasets](https://huggingface.co/collections/juliensimon/solar-system-datasets-67dbfa3057e38241e7ea2aee) and [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c24cb17e3db14fc30f0716) collections on Hugging Face.*
 
 ![Update ExoMars TGO](https://github.com/juliensimon/space-datasets/actions/workflows/update-exomars-tgo.yml/badge.svg)
@@ -427,7 +431,7 @@ Weekly (Monday at 09:00 UTC) via [GitHub Actions](https://github.com/juliensimon
 ## Related datasets
 
 - [esa-mars-express-observations](https://huggingface.co/datasets/juliensimon/esa-mars-express-observations) \u2014 ESA Mars Express observation catalog
-- [mars-craters](https://huggingface.co/datasets/juliensimon/mars-craters) \u2014 Robbins Mars crater catalog
+- [mars-craters](https://huggingface.co/datasets/juliensimon/mars-craters-robbins) \u2014 Robbins Mars crater catalog
 - [esa-venus-express-observations](https://huggingface.co/datasets/juliensimon/esa-venus-express-observations) \u2014 ESA Venus Express observation catalog
 
 ## Pipeline

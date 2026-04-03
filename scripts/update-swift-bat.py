@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -153,6 +154,9 @@ def main():
         n_with_redshift = int(df["redshift"].notna().sum()) if "redshift" in df.columns else 0
         median_snr = df["snr"].median() if "snr" in df.columns else 0
 
+        banner_file = download_banner("swift-bat", tmp)
+        banner_md = banner_markdown("swift-bat", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Swift-BAT 157-Month Hard X-Ray Survey"
@@ -182,7 +186,7 @@ configs:
 ---
 
 # Swift-BAT 157-Month Hard X-Ray Survey
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 Catalog of **{n_total:,}** hard X-ray sources detected in the 14-195 keV band by the
@@ -254,7 +258,7 @@ Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-d
 
 - [gamma-ray-bursts](https://huggingface.co/datasets/juliensimon/gamma-ray-bursts) — Fermi GBM Gamma-Ray Burst Catalog
 - [pulsar-catalog](https://huggingface.co/datasets/juliensimon/pulsar-catalog) — ATNF Pulsar Catalogue
-- [rosat-all-sky](https://huggingface.co/datasets/juliensimon/rosat-all-sky) — ROSAT All-Sky Survey
+- [rosat-all-sky](https://huggingface.co/datasets/juliensimon/erosita-erass1-xray) — ROSAT All-Sky Survey
 
 ## Support
 

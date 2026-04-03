@@ -23,6 +23,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 BAUMGARDT_URL = "https://people.smp.uq.edu.au/HolgerBaumgardt/globular/combined_table.txt"
@@ -372,6 +373,9 @@ def main():
         size_kb = parquet_file.stat().st_size / 1024
         print(f"  {size_kb:.1f} KB parquet ({len(out)} rows, {len(out.columns)} columns)")
 
+        banner_file = download_banner("globular-clusters", tmp)
+        banner_md = banner_markdown("globular-clusters", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Milky Way Globular Star Clusters"
@@ -401,7 +405,7 @@ configs:
 ---
 
 # Milky Way Globular Star Clusters
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-67ac2ada12aceb39f8feca3b) collection on Hugging Face.*
 
 A comprehensive catalog of **{n_total}** Milky Way globular clusters, merging two authoritative sources:
@@ -535,8 +539,8 @@ plt.xlabel("[Fe/H]"); plt.ylabel("Mass (M☉)"); plt.yscale("log")
 ## Related datasets
 
 - [open-star-clusters](https://huggingface.co/datasets/juliensimon/open-star-clusters) — Milky Way open clusters
-- [stellar-streams](https://huggingface.co/datasets/juliensimon/stellar-streams) — Tidal stellar streams
-- [pulsars](https://huggingface.co/datasets/juliensimon/pulsars) — ATNF Pulsar Catalogue
+- [stellar-streams](https://huggingface.co/datasets/juliensimon/globular-star-clusters) — Tidal stellar streams
+- [pulsars](https://huggingface.co/datasets/juliensimon/pulsar-catalog) — ATNF Pulsar Catalogue
 
 ## Pipeline
 

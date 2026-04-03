@@ -16,6 +16,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -277,6 +278,9 @@ def main():
             else:
                 schema_rows += f"| `{col}` | mixed | HEASARC column |\n"
 
+        banner_file = download_banner("fermi-gbm-triggers", tmp)
+        banner_md = banner_markdown("fermi-gbm-triggers", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Fermi GBM All-Trigger Catalog"
@@ -308,7 +312,7 @@ configs:
 ---
 
 # Fermi GBM All-Trigger Catalog
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 ![Update Fermi GBM Triggers](https://github.com/juliensimon/space-datasets/actions/workflows/update-fermi-gbm-triggers.yml/badge.svg)
@@ -392,7 +396,7 @@ Daily at 20:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-dat
 ## Related datasets
 
 - [gamma-ray-bursts](https://huggingface.co/datasets/juliensimon/gamma-ray-bursts) — Fermi GBM confirmed GRB Catalog
-- [fermi-4fgl](https://huggingface.co/datasets/juliensimon/fermi-4fgl) — Fermi LAT 4FGL Source Catalog
+- [fermi-4fgl](https://huggingface.co/datasets/juliensimon/fermi-4fgl-dr4) — Fermi LAT 4FGL Source Catalog
 - [solar-flare-events](https://huggingface.co/datasets/juliensimon/solar-flare-events) — GOES X-ray flare detections
 
 ## Pipeline
