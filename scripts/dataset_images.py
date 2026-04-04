@@ -416,6 +416,7 @@ DATASET_DOMAIN = {
     "sdss-taxonomy": "small_bodies",
     "sentry": "small_bodies",
     "ssodnet": "small_bodies",
+    "constellation-tles": "satellites",
     # Space probes & missions
     "artemis-ii": "probes",
     "astronauts": "probes",

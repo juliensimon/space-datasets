@@ -79,6 +79,7 @@ DATASETS = {
         "juliensimon/gcat-satellite-catalog",
         "juliensimon/spacex-launches",
         "juliensimon/wmo-oscar-satellites",
+        "juliensimon/constellation-tle-latest",
     ],
     # ── Sub: Satellites & Launches ─────────────────────────────────────────
     SATELLITES: [
@@ -103,6 +104,7 @@ DATASETS = {
         "juliensimon/gcat-satellite-catalog",
         "juliensimon/spacex-launches",
         "juliensimon/wmo-oscar-satellites",
+        "juliensimon/constellation-tle-latest",
     ],
     # ── Sub: Asteroids & Small Bodies ──────────────────────────────────────
     SMALL_BODIES: [

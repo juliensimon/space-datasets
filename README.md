@@ -45,6 +45,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![Space Agencies](https://github.com/juliensimon/space-datasets/actions/workflows/update-space-agencies.yml/badge.svg)
 ![Comets](https://github.com/juliensimon/space-datasets/actions/workflows/update-comets.yml/badge.svg)
 ![SpaceX Launches](https://github.com/juliensimon/space-datasets/actions/workflows/update-spacex-launches.yml/badge.svg)
+![Constellation TLEs](https://github.com/juliensimon/space-datasets/actions/workflows/update-constellation-tles.yml/badge.svg)
 <!-- Space Weather -->
 ![CelesTrak SW](https://github.com/juliensimon/space-datasets/actions/workflows/update-celestrak-sw.yml/badge.svg)
 ![Space Weather](https://github.com/juliensimon/space-datasets/actions/workflows/update-space-weather.yml/badge.svg)
@@ -90,6 +91,8 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![Pulsar Glitches](https://github.com/juliensimon/space-datasets/actions/workflows/update-pulsar-glitches.yml/badge.svg)
 ![Cosmic Voids](https://github.com/juliensimon/space-datasets/actions/workflows/update-cosmic-voids.yml/badge.svg)
 <!-- Space Probes -->
+![Astronauts](https://github.com/juliensimon/space-datasets/actions/workflows/update-astronauts.yml/badge.svg)
+![ExoMars TGO](https://github.com/juliensimon/space-datasets/actions/workflows/update-exomars-tgo.yml/badge.svg)
 ![Venus Express](https://github.com/juliensimon/space-datasets/actions/workflows/update-venus-express.yml/badge.svg)
 ![Artemis II](https://github.com/juliensimon/space-datasets/actions/workflows/update-artemis-ii.yml/badge.svg)
 ![Deep Space Probes](https://github.com/juliensimon/space-datasets/actions/workflows/update-deep-space-probes.yml/badge.svg)
@@ -137,6 +140,7 @@ Track every object orbiting Earth and beyond. This collection covers the complet
 | [gcat-satellite-catalog](https://huggingface.co/datasets/juliensimon/gcat-satellite-catalog) | 68K+ satellites, rocket bodies, and debris from GCAT (Jonathan McDowell) | ![GCAT SATCAT](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['gcat-satcat']&label=updated&color=brightgreen) | Weekly | 2.6 MB |
 | [spacex-launches](https://huggingface.co/datasets/juliensimon/spacex-launches) | 659 SpaceX missions with timelines, descriptions, and carousel photos from spacex.com | ![SpaceX](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['spacex-launches']&label=updated&color=brightgreen) | Daily | ~80 MB |
 | [wmo-oscar-satellites](https://huggingface.co/datasets/juliensimon/wmo-oscar-satellites) | 1,025 Earth-observing satellites and 1,230 instruments from WMO OSCAR | ![WMO OSCAR](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['wmo-oscar']&label=updated&color=brightgreen) | Quarterly | <1 MB |
+| [constellation-tle-latest](https://huggingface.co/datasets/juliensimon/constellation-tle-latest) | Daily TLE snapshots for 18 constellations: GNSS, OneWeb, Iridium, Planet, SES, Intelsat, and more | ![Constellation TLEs](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['constellation-tles']&label=updated&color=brightgreen) | Daily | <5 MB |
 
 ### Space Probes & Missions
 
@@ -148,6 +152,7 @@ Data returned by humanity's most distant spacecraft and surface explorers. Inclu
 | [cassini-saturn-observations](https://huggingface.co/datasets/juliensimon/cassini-saturn-observations) | 63K Saturn observation records from the Cassini mission (2004–2017) | — | Static | 1.6 MB |
 | [deep-space-probes](https://huggingface.co/datasets/juliensimon/deep-space-probes) | 1.2M hourly readings from Voyager 1+2 and Pioneer 10+11 (1972–2025) | ![Probes](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['deep-space-probes']&label=updated&color=blue) | Monthly | 32 MB |
 | [esa-mars-express-observations](https://huggingface.co/datasets/juliensimon/esa-mars-express-observations) | 1.66M observation metadata from ESA Mars Express (8 instruments, since 2003) | ![Mars Express](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['mars-express']&label=updated&color=brightgreen) | Weekly | 200 MB |
+| [esa-exomars-tgo-observations](https://huggingface.co/datasets/juliensimon/esa-exomars-tgo-observations) | 27M+ observation records from ESA ExoMars TGO (4 instruments, since 2018) | ![ExoMars TGO](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['exomars-tgo']&label=updated&color=brightgreen) | Weekly | ~2 GB |
 | [esa-rosetta-observations](https://huggingface.co/datasets/juliensimon/esa-rosetta-observations) | 8.3M observation records from ESA Rosetta at comet 67P | — | Static | 1 GB |
 | [galileo-jupiter-atmosphere](https://huggingface.co/datasets/juliensimon/galileo-jupiter-atmosphere) | Jupiter atmospheric profile from Galileo Probe descent (1995) — temperature, pressure, density to 24 bar | — | Static | <1 MB |
 | [huygens-titan-atmosphere](https://huggingface.co/datasets/juliensimon/huygens-titan-atmosphere) | Titan atmospheric profile from Huygens Probe descent (2005) — 1,400 km to surface | — | Static | <1 MB |
@@ -202,7 +207,7 @@ A broad survey of the observable universe — from exoplanets in our galactic ne
 
 | Dataset | Description | Last Updated | Schedule | Size |
 |---------|-------------|-------------|----------|------|
-| [astronaut-database](https://huggingface.co/datasets/juliensimon/astronaut-database) | Every person who has been to space — 560 astronauts/cosmonauts | — | Static | <1 MB |
+| [astronaut-database](https://huggingface.co/datasets/juliensimon/astronaut-database) | Every person who has been to space — 560+ astronauts/cosmonauts | ![Astronauts](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['astronauts']&label=updated&color=brightgreen) | Monthly | <1 MB |
 | [astronomer-database](https://huggingface.co/datasets/juliensimon/astronomer-database) | 11K+ astronomers with affiliations, awards, and fields of work from Wikidata | ![Astronomers](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['astronomers']&label=updated&color=brightgreen) | Quarterly | <1 MB |
 | [black-hole-catalog](https://huggingface.co/datasets/juliensimon/black-hole-catalog) | Known black hole systems and X-ray binaries from SIMBAD | ![BH](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['black-holes']&label=updated&color=brightgreen) | Weekly | 90 KB |
 | [brown-dwarf-catalog](https://huggingface.co/datasets/juliensimon/brown-dwarf-catalog) | 14K ultracool and brown dwarfs within 40 pc | — | Static | 10 MB |
@@ -321,6 +326,7 @@ python scripts/update-starlink.py
 python scripts/update-ucs.py  # requires: pip install openpyxl
 python scripts/update-gcat-satcat.py
 python scripts/update-wmo-oscar.py
+python scripts/update-constellation-tles.py
 
 # Planetary Science
 python scripts/update-ceres-craters.py
@@ -347,6 +353,7 @@ python scripts/update-sunspot.py
 python scripts/update-swpc-alerts.py
 
 # Space Probes & Missions
+python scripts/update-astronauts.py
 python scripts/update-cassini.py
 python scripts/update-chemcam.py
 python scripts/update-deep-space-probes.py
@@ -359,11 +366,11 @@ python scripts/update-meda-weather.py
 python scripts/update-pds-missions.py
 python scripts/update-rosetta.py
 python scripts/update-venus-express.py
+python scripts/update-exomars-tgo.py
 python scripts/update-gcat-deep-space.py
 python scripts/update-isro.py
 
 # Astronomy
-python scripts/update-astronauts.py
 python scripts/update-astronomers.py
 python scripts/update-black-holes.py
 python scripts/update-brown-dwarfs.py
