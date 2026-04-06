@@ -83,7 +83,7 @@
     "tno-centaur": 652,
     "ucs": 7560,
     "venus-express": 524787,
-    "wds": 157336,
+    "wds": 157371,
     "wmo-oscar": 2255,
     "xray-binaries": 305,
     "constellation-tles": 1747
@@ -177,7 +177,7 @@
   "tno-centaur": "2026-04-04",
   "ucs": "2026-04-01",
   "venus-express": "2026-04-03",
-  "wds": "2026-04-02",
+  "wds": "2026-04-06",
   "wmo-oscar": "2026-04-03",
   "xray-binaries": "2026-04-03",
   "constellation-tles": "2026-04-06"
