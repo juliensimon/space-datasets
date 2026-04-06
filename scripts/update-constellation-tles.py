@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Fetch latest TLEs for 18 satellite constellations from CelesTrak and upload to HF.
 
+Uses a single bulk request (GROUP=active, FORMAT=csv) instead of per-constellation
+queries. The CSV includes TLE_LINE0/1/2 columns alongside OBJECT_NAME, so one
+request gives both structured data for filtering and raw TLE text for output.
+
 Covers LEO broadband (OneWeb, Kuiper, Qianfan, Hulianwang), LEO comms (Iridium,
 Globalstar, ORBCOMM), Earth observation (Planet, Spire), GNSS (GPS, Galileo,
 BeiDou, GLONASS, SBAS), and GEO comms (SES, Intelsat, Eutelsat, Telesat).
@@ -15,6 +19,7 @@ import tempfile
 import time
 from collections import OrderedDict
 from datetime import datetime, timezone
+from io import StringIO
 from pathlib import Path
 
 import pandas as pd
@@ -25,64 +30,123 @@ from validate import check_dataset
 
 HF_REPO = "juliensimon/constellation-tle-latest"
 
-# CelesTrak GROUP names — verified against update-constellation-census.py
-CONSTELLATIONS = OrderedDict([
-    # LEO Broadband
-    ("oneweb",     {"group": "oneweb",      "display": "OneWeb",               "operator": "Eutelsat OneWeb",  "orbit": "LEO",     "min_rows": 500}),
-    ("kuiper",     {"group": "kuiper",      "display": "Kuiper",               "operator": "Amazon",           "orbit": "LEO",     "min_rows": 2}),
-    ("qianfan",    {"group": "qianfan",     "display": "Qianfan (G60)",        "operator": "Shanghai Spacecom","orbit": "LEO",     "min_rows": 2}),
-    ("hulianwang", {"group": "hulianwang",  "display": "Hulianwang (GuoWang)", "operator": "China SatNet",     "orbit": "LEO",     "min_rows": 2}),
-    # LEO Communications
-    ("iridium",    {"group": "iridium-NEXT","display": "Iridium NEXT",         "operator": "Iridium",          "orbit": "LEO",     "min_rows": 60}),
-    ("globalstar", {"group": "globalstar",  "display": "Globalstar",           "operator": "Globalstar",       "orbit": "LEO",     "min_rows": 20}),
-    ("orbcomm",    {"group": "orbcomm",     "display": "ORBCOMM",              "operator": "ORBCOMM",          "orbit": "LEO",     "min_rows": 15}),
-    # Earth Observation
-    ("planet",     {"group": "planet",      "display": "Planet Labs",          "operator": "Planet Labs",      "orbit": "LEO",     "min_rows": 100}),
-    ("spire",      {"group": "spire",       "display": "Spire Global",         "operator": "Spire Global",     "orbit": "LEO",     "min_rows": 50}),
-    # GNSS
-    ("gps",        {"group": "gps-ops",     "display": "GPS (NAVSTAR)",        "operator": "USSF",             "orbit": "MEO",     "min_rows": 30}),
-    ("galileo",    {"group": "galileo",     "display": "Galileo",              "operator": "EU/ESA",           "orbit": "MEO",     "min_rows": 20}),
-    ("beidou",     {"group": "beidou",      "display": "BeiDou",               "operator": "CNSA",             "orbit": "MEO/GEO", "min_rows": 40}),
-    ("glonass",    {"group": "glo-ops",     "display": "GLONASS",              "operator": "Roscosmos",        "orbit": "MEO",     "min_rows": 20}),
-    ("sbas",       {"group": "sbas",        "display": "SBAS",                 "operator": "Various",          "orbit": "GEO",     "min_rows": 5}),
-    # GEO Communications
-    ("ses",        {"group": "ses",         "display": "SES",                  "operator": "SES",              "orbit": "GEO",     "min_rows": 30}),
-    ("intelsat",   {"group": "intelsat",    "display": "Intelsat",             "operator": "Intelsat",         "orbit": "GEO",     "min_rows": 30}),
-    ("eutelsat",   {"group": "eutelsat",    "display": "Eutelsat",             "operator": "Eutelsat",         "orbit": "GEO",     "min_rows": 10}),
-    ("telesat",    {"group": "telesat",     "display": "Telesat",              "operator": "Telesat",          "orbit": "GEO/LEO", "min_rows": 10}),
-])
-
-CELESTRAK_URL = "https://celestrak.org/NORAD/elements/gp.php?GROUP={group}&FORMAT=tle"
-FETCH_DELAY = 1.0
+# Single bulk endpoint — all active satellites in one request
+BULK_URL = "https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=csv"
 MAX_RETRIES = 3
 
+# Constellation definitions: name patterns used to filter the bulk CSV.
+# "patterns" is a list of prefixes matched against OBJECT_NAME (case-insensitive).
+# "norad_ids" is an optional set of NORAD catalog numbers for constellations
+# where name matching is unreliable (e.g., SBAS with heterogeneous host sats).
+CONSTELLATIONS = OrderedDict([
+    # LEO Broadband
+    ("oneweb",     {"display": "OneWeb",               "operator": "Eutelsat OneWeb",  "orbit": "LEO",     "min_rows": 500,
+                    "patterns": ["ONEWEB"]}),
+    ("kuiper",     {"display": "Kuiper",               "operator": "Amazon",           "orbit": "LEO",     "min_rows": 2,
+                    "patterns": ["KUIPER"]}),
+    ("qianfan",    {"display": "Qianfan (G60)",        "operator": "Shanghai Spacecom","orbit": "LEO",     "min_rows": 2,
+                    "patterns": ["QIANFAN"]}),
+    ("hulianwang", {"display": "Hulianwang (GuoWang)", "operator": "China SatNet",     "orbit": "LEO",     "min_rows": 2,
+                    "patterns": ["HULIANWANG"]}),
+    # LEO Communications
+    ("iridium",    {"display": "Iridium NEXT",         "operator": "Iridium",          "orbit": "LEO",     "min_rows": 60,
+                    "patterns": ["IRIDIUM"]}),
+    ("globalstar", {"display": "Globalstar",           "operator": "Globalstar",       "orbit": "LEO",     "min_rows": 20,
+                    "patterns": ["GLOBALSTAR"]}),
+    ("orbcomm",    {"display": "ORBCOMM",              "operator": "ORBCOMM",          "orbit": "LEO",     "min_rows": 15,
+                    "patterns": ["ORBCOMM"]}),
+    # Earth Observation
+    ("planet",     {"display": "Planet Labs",          "operator": "Planet Labs",      "orbit": "LEO",     "min_rows": 100,
+                    "patterns": ["FLOCK", "SKYSAT", "PELICAN"]}),
+    ("spire",      {"display": "Spire Global",         "operator": "Spire Global",     "orbit": "LEO",     "min_rows": 50,
+                    "patterns": ["LEMUR", "SPIRE"]}),
+    # GNSS
+    ("gps",        {"display": "GPS (NAVSTAR)",        "operator": "USSF",             "orbit": "MEO",     "min_rows": 30,
+                    "patterns": ["NAVSTAR"]}),
+    ("galileo",    {"display": "Galileo",              "operator": "EU/ESA",           "orbit": "MEO",     "min_rows": 20,
+                    "patterns": ["GSAT", "GALILEO"]}),
+    ("beidou",     {"display": "BeiDou",               "operator": "CNSA",             "orbit": "MEO/GEO", "min_rows": 40,
+                    "patterns": ["BEIDOU"]}),
+    ("glonass",    {"display": "GLONASS",              "operator": "Roscosmos",        "orbit": "MEO",     "min_rows": 20,
+                    "patterns": ["GLONASS"]}),
+    ("sbas",       {"display": "SBAS",                 "operator": "Various",          "orbit": "GEO",     "min_rows": 5,
+                    "patterns": ["EGNOS", "GAGAN", "SDCM"],
+                    "norad_ids": {
+                        # WAAS (US) — hosted on commercial GEO sats, names don't match
+                        35491, 38049, 44874,
+                        # EGNOS (EU)
+                        37718, 44828, 56325,
+                        # MSAS (Japan)
+                        42622, 42917,
+                        # GAGAN (India)
+                        38779, 40269,
+                        # SDCM (Russia)
+                        37372, 39194, 39727,
+                        # KASS (Korea)
+                        52932,
+                    }}),
+    # GEO Communications
+    ("ses",        {"display": "SES",                  "operator": "SES",              "orbit": "GEO",     "min_rows": 30,
+                    "patterns": ["SES-", "ASTRA", "O3B", "NSS-", "AMC-"]}),
+    ("intelsat",   {"display": "Intelsat",             "operator": "Intelsat",         "orbit": "GEO",     "min_rows": 30,
+                    "patterns": ["INTELSAT"]}),
+    ("eutelsat",   {"display": "Eutelsat",             "operator": "Eutelsat",         "orbit": "GEO",     "min_rows": 10,
+                    "patterns": ["EUTELSAT"]}),
+    ("telesat",    {"display": "Telesat",              "operator": "Telesat",          "orbit": "GEO/LEO", "min_rows": 10,
+                    "patterns": ["TELESAT", "TELSTAR"]}),
+])
 
-def fetch_tle(group: str, label: str) -> str | None:
-    """Fetch raw TLE text from CelesTrak with retry and exponential backoff."""
-    url = CELESTRAK_URL.format(group=group)
+
+def fetch_bulk_catalog() -> pd.DataFrame:
+    """Fetch all active satellites from CelesTrak in a single CSV request."""
     for attempt in range(MAX_RETRIES):
         try:
-            r = requests.get(url, timeout=60)
+            r = requests.get(BULK_URL, timeout=120)
             r.raise_for_status()
-            text = r.text.strip()
-            if not text or text.startswith("No GP"):
-                print(f"  WARNING: {label} returned empty or 'No GP' response")
-                return None
-            return text
+            df = pd.read_csv(StringIO(r.text))
+            print(f"  Fetched {len(df):,} satellites from CelesTrak (single request)")
+            return df
         except requests.RequestException as e:
             if attempt < MAX_RETRIES - 1:
                 wait = 2 ** (attempt + 1)
-                print(f"  Retry {attempt + 1}/{MAX_RETRIES} for {label} in {wait}s: {e}")
+                print(f"  Retry {attempt + 1}/{MAX_RETRIES} in {wait}s: {e}")
                 time.sleep(wait)
             else:
-                print(f"  WARNING: Failed to fetch {label} after {MAX_RETRIES} attempts: {e}")
-                return None
-    return None
+                print(f"::error::Failed to fetch bulk catalog after {MAX_RETRIES} attempts: {e}")
+                sys.exit(1)
 
 
-def parse_tle_text(text: str) -> pd.DataFrame:
-    """Parse 3-line TLE blocks into a DataFrame."""
-    lines = [line.strip() for line in text.strip().split("\n") if line.strip()]
+def match_constellation(row: pd.Series, cdef: dict) -> bool:
+    """Check if a satellite row matches a constellation definition."""
+    name = str(row.get("OBJECT_NAME", "")).upper()
+    # Match by NORAD ID (for SBAS and similar with heterogeneous names)
+    norad_ids = cdef.get("norad_ids")
+    if norad_ids and int(row.get("NORAD_CAT_ID", 0)) in norad_ids:
+        return True
+    # Match by name prefix
+    for prefix in cdef["patterns"]:
+        if name.startswith(prefix):
+            return True
+    return False
+
+
+def extract_tle_text(group_df: pd.DataFrame) -> str:
+    """Build raw 3-line TLE text from CSV TLE_LINE columns."""
+    lines = []
+    for _, row in group_df.iterrows():
+        l0 = str(row.get("TLE_LINE0", row.get("OBJECT_NAME", "")))
+        l1 = str(row.get("TLE_LINE1", ""))
+        l2 = str(row.get("TLE_LINE2", ""))
+        if l1.startswith("1 ") and l2.startswith("2 "):
+            # TLE_LINE0 is "0 NAME" format; strip the "0 " prefix for display
+            name = l0[2:].strip() if l0.startswith("0 ") else l0.strip()
+            lines.extend([name, l1, l2])
+    return "\n".join(lines) + "\n" if lines else ""
+
+
+def build_tle_dataframe(tle_text: str) -> pd.DataFrame:
+    """Parse 3-line TLE blocks into a name/line1/line2 DataFrame."""
+    lines = [line.strip() for line in tle_text.strip().split("\n") if line.strip()]
     rows = []
     for i in range(0, len(lines) - 2, 3):
         name, l1, l2 = lines[i], lines[i + 1], lines[i + 2]
@@ -305,19 +369,37 @@ If you find this dataset useful, please give it a ❤️ on the [dataset page](h
 
 def main():
     snapshot_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    results = {}  # constellation_id -> (DataFrame, raw_tle_text)
 
     print(f"Fetching TLEs for {len(CONSTELLATIONS)} constellations from CelesTrak...")
+    catalog = fetch_bulk_catalog()
+
+    # Verify expected columns
+    required = {"OBJECT_NAME", "NORAD_CAT_ID", "TLE_LINE0", "TLE_LINE1", "TLE_LINE2"}
+    missing = required - set(catalog.columns)
+    if missing:
+        print(f"::error::Bulk CSV missing expected columns: {missing}")
+        print(f"  Available columns: {list(catalog.columns)}")
+        sys.exit(1)
+
+    # Filter into per-constellation groups
+    results = {}  # constellation_id -> (DataFrame, raw_tle_text)
+    assigned = set()  # track NORAD IDs already assigned to avoid double-counting
 
     for cid, cdef in CONSTELLATIONS.items():
-        raw = fetch_tle(cdef["group"], cid)
-        if raw is None:
-            print(f"  {cid:15s} — SKIPPED (no data)")
+        mask = catalog.apply(lambda row: match_constellation(row, cdef), axis=1)
+        group_df = catalog[mask & ~catalog["NORAD_CAT_ID"].isin(assigned)]
+
+        if len(group_df) == 0:
+            print(f"  {cid:15s} — SKIPPED (no matches in bulk catalog)")
             continue
 
-        df = parse_tle_text(raw)
+        assigned.update(group_df["NORAD_CAT_ID"].tolist())
+
+        tle_text = extract_tle_text(group_df)
+        df = build_tle_dataframe(tle_text)
+
         if len(df) == 0:
-            print(f"  {cid:15s} — SKIPPED (0 parsed TLEs)")
+            print(f"  {cid:15s} — SKIPPED (0 valid TLEs)")
             continue
 
         if len(df) < cdef["min_rows"]:
@@ -325,11 +407,10 @@ def main():
         else:
             print(f"  {cid:15s} {len(df):6,} sats")
 
-        results[cid] = (df, raw)
-        time.sleep(FETCH_DELAY)
+        results[cid] = (df, tle_text)
 
     if len(results) < 10:
-        print(f"::error::Only {len(results)}/18 constellations fetched — aborting")
+        print(f"::error::Only {len(results)}/18 constellations matched — aborting")
         sys.exit(1)
 
     total = sum(len(df) for df, _ in results.values())

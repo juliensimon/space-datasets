@@ -10,6 +10,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 HF_REPO = "juliensimon/neutron-monitor-cosmic-rays"
@@ -207,8 +208,8 @@ def main():
     # Remove future rows
     df = df[df["datetime"] <= pd.Timestamp.now(tz=None)]
 
-    # Add station metadata
-    df["station_name"] = df["station"].map(STATIONS)
+    # Add station metadata (fall back to station code for any unmapped values)
+    df["station_name"] = df["station"].map(STATIONS).fillna(df["station"])
 
     # Derived columns: daily mean per station
     df["date"] = df["datetime"].dt.date.astype(str)
@@ -257,6 +258,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet, {n_total:,} records")
 
+        banner_file = download_banner("neutron-monitor", tmp)
+        banner_md = banner_markdown("neutron-monitor", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Neutron Monitor Cosmic Ray Intensity (Hourly)"
@@ -285,7 +289,7 @@ configs:
 ---
 
 # Neutron Monitor Cosmic Ray Intensity (Hourly)
-
+{banner_md}
 *Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
 
 ![Update Neutron Monitor](https://github.com/juliensimon/space-datasets/actions/workflows/update-neutron-monitor.yml/badge.svg)
