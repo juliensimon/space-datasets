@@ -9,6 +9,7 @@ from pathlib import Path
 import pandas as pd
 
 from jpl_api import jpl_query, jpl_fields_data_to_df
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -81,6 +82,9 @@ def main():
         size_kb = out.stat().st_size / 1024
         print(f"  {size_kb:.0f} KB parquet")
 
+        banner_file = download_banner("fireballs", tmp)
+        banner_md = banner_markdown("fireballs", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Fireball and Bolide Events"
@@ -113,7 +117,7 @@ configs:
 ---
 
 # Fireball and Bolide Events
-
+{banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 ![Update Fireballs](https://github.com/juliensimon/space-datasets/actions/workflows/update-fireballs.yml/badge.svg)

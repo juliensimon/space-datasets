@@ -16,6 +16,7 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 SOURCE_URL = (
@@ -193,6 +194,9 @@ def main():
         size_kb = out.stat().st_size / 1024
         print(f"  {size_kb:.0f} KB parquet")
 
+        banner_file = download_banner("solar-proton-events", tmp)
+        banner_md = banner_markdown("solar-proton-events", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Solar Proton Events"
@@ -224,7 +228,7 @@ configs:
 ---
 
 # Solar Proton Events
-
+{banner_md}
 *Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
 
 Solar proton events (SPEs) affecting the Earth environment from **{date_min}** to

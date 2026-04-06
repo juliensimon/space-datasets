@@ -72,6 +72,7 @@ DATASETS = {
         "juliensimon/space-track-tle-history",
         "juliensimon/spacecraft-database",
         "juliensimon/ssodnet-asteroid-properties",
+        "juliensimon/tno-centaur-properties",
         "juliensimon/starlink-fleet-data",
         "juliensimon/starlink-ground-stations",
         "juliensimon/starlink-tle-latest",
@@ -124,6 +125,7 @@ DATASETS = {
         "juliensimon/sdss-asteroid-taxonomy",
         "juliensimon/sentry-impact-risk",
         "juliensimon/ssodnet-asteroid-properties",
+        "juliensimon/tno-centaur-properties",
     ],
     # ── Parent: Space Probes ───────────────────────────────────────────────
     PROBES: [
@@ -139,6 +141,7 @@ DATASETS = {
         "juliensimon/mars-chemcam-compositions",
         "juliensimon/mars-perseverance-weather",
         "juliensimon/nasa-eva-chronology",
+        "juliensimon/pluto-atmosphere",
         "juliensimon/pds-planetary-missions",
         "juliensimon/gcat-deep-space",
         "juliensimon/isro-missions",
@@ -150,6 +153,9 @@ DATASETS = {
         "juliensimon/impact-craters",
         "juliensimon/lunar-craters-robbins",
         "juliensimon/mars-craters-robbins",
+        "juliensimon/lunar-sample-geochemistry",
+        "juliensimon/mercury-craters-herrick",
+        "juliensimon/mercury-crater-degradation",
         "juliensimon/meteorite-database",
         "juliensimon/meteorite-landings",
         "juliensimon/planetary-nomenclature",
@@ -172,7 +178,9 @@ DATASETS = {
         "juliensimon/solar-radio-bursts",
         "juliensimon/solar-wind",
         "juliensimon/space-weather-indices",
+        "juliensimon/substorm-onsets",
         "juliensimon/swpc-alerts",
+        "juliensimon/forbush-decreases",
     ],
     # ── Parent: Astronomy (umbrella — all astronomy datasets) ──────────────
     ASTRONOMY: [
@@ -247,6 +255,11 @@ DATASETS = {
         "juliensimon/wise-hii-regions",
         "juliensimon/wolf-rayet-stars",
         "juliensimon/xray-binary-catalog",
+        "juliensimon/4xmm-dr14-xray-sources",
+        "juliensimon/roma-bzcat-blazars",
+        "juliensimon/planck-cold-clumps",
+        "juliensimon/gaia-dr3-spectroscopic-binaries",
+        "juliensimon/fermi-3pc-gamma-ray-pulsars",
     ],
     # ── Sub: Stellar Catalogs ──────────────────────────────────────────────
     STELLAR: [
@@ -270,6 +283,8 @@ DATASETS = {
         "juliensimon/wds-double-stars",
         "juliensimon/wolf-rayet-stars",
         "juliensimon/xray-binary-catalog",
+        "juliensimon/gaia-dr3-spectroscopic-binaries",
+        "juliensimon/fermi-3pc-gamma-ray-pulsars",
     ],
     # ── Sub: Variable Stars & Transients ───────────────────────────────────
     VARIABLE_STARS: [
@@ -306,6 +321,7 @@ DATASETS = {
         "juliensimon/planck-sz2-clusters",
         "juliensimon/quasar-catalog",
         "juliensimon/rc3-galaxy-morphology",
+        "juliensimon/roma-bzcat-blazars",
     ],
     # ── Sub: Sky Surveys ───────────────────────────────────────────────────
     SKY_SURVEYS: [
@@ -325,6 +341,8 @@ DATASETS = {
         "juliensimon/unified-radio-catalog",
         "juliensimon/vlass-radio-sources",
         "juliensimon/wise-hii-regions",
+        "juliensimon/4xmm-dr14-xray-sources",
+        "juliensimon/planck-cold-clumps",
     ],
     # ── Parent: Physics ────────────────────────────────────────────────────
     PHYSICS: [
@@ -341,6 +359,7 @@ DATASETS = {
         "juliensimon/physics-nobel-laureates",
         "juliensimon/swift-bat-hard-xray-survey",
         "juliensimon/tevcat-tev-gamma-ray",
+        "juliensimon/fermi-3pc-gamma-ray-pulsars",
     ],
     # ── Parent: Solar System ───────────────────────────────────────────────
     SOLAR_SYSTEM: [
@@ -358,6 +377,10 @@ DATASETS = {
         "juliensimon/mars-chemcam-compositions",
         "juliensimon/mars-craters-robbins",
         "juliensimon/mars-perseverance-weather",
+        "juliensimon/mercury-craters-herrick",
+        "juliensimon/mercury-crater-degradation",
+        "juliensimon/lunar-sample-geochemistry",
+        "juliensimon/pluto-atmosphere",
         "juliensimon/meteorite-landings",
         "juliensimon/nasa-eva-chronology",
         "juliensimon/pds-planetary-missions",

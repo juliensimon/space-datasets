@@ -2,11 +2,11 @@
 
 *Researched 2026-03-24, expanded 2026-03-26, solar system missions added 2026-03-27, Wikidata datasets added 2026-03-31. Goal: the most comprehensive free, tabular space data collection on Hugging Face.*
 
-**Built: 141 dataset scripts (140 uploaded, 1 blocked on USGS)** | **Remaining candidates: 20** | All sources free, no auth.
+**Built: 153 dataset scripts (152 uploaded, 1 blocked on USGS)** | **Remaining candidates: 13** | All sources free, no auth.
 
 ---
 
-## Already Built (140 dataset scripts)
+## Already Built (153 dataset scripts)
 
 All P0 and P1 candidates are built, plus 4 P2 and 8 Wikidata datasets. Scripts in `scripts/update-*.py`, workflows in `.github/workflows/`.
 
@@ -36,6 +36,10 @@ All P0 and P1 candidates are built, plus 4 P2 and 8 Wikidata datasets. Scripts i
 
 **From P1 Solar System Missions (5 of 6 uploaded, 2026-03-27):** PDS Planetary Missions (137+115+748, multi-config), InSight Marsquakes (2,715), IAU Planetary Nomenclature (13,723 features across Moon/Mars/Venus/Mercury), Galileo Jupiter Atmosphere (686, entry+descent), Huygens Titan Atmosphere (2,727, entry+descent+velocity). *Blocked: Ceres Craters Dawn (44K, USGS Astropedia 503)*
 
+**From new research (2026-04-04, 7):** Mercury Craters Herrick (16.9K, static), Substorm Onsets SuperMAG (253K, quarterly), Forbush Decreases IZMIRAN (7.1K, static), TNO/Centaur Properties PDS (652, static), Mercury Crater Degradation Kinczyk (3.3K, static), Pluto Atmosphere New Horizons (1.9K, static), Lunar Sample Geochemistry Astromat (58K, static)
+
+**From gap analysis (2026-04-05, 5):** 4XMM X-ray Sources (630K, static, VizieR IX/68 DR12s), Roma-BZCAT Blazars (3.6K, static, VizieR VII/274), Planck Cold Clumps PGCC (13.2K, static, VizieR J/A+A/594/A28), Gaia DR3 Spectroscopic Binaries (186K, static, VizieR I/357 SB1+SB2), Fermi 3PC Gamma-ray Pulsars (7.2K, static, HEASARC fermilpsc)
+
 **Note on actual sizes:** VLASS is 3.4M rows (not 700K — full component catalog). Chandra is 28K rows (HEASARC TAP truncates). AAVSO VSX is 10.3M (not 2.1M — catalog grew). DESI BGS subset is ~5M of the full 28.4M.
 
 ---
@@ -48,15 +52,15 @@ Built and uploaded: #1 PDS Missions, #2 InSight Marsquakes, #3 IAU Nomenclature,
 |---|---------|--------|-----:|------|:-----:|----------|--------|-------|
 | 4 | **Ceres Crater Database** | Planetary | 44,594 | 9 MB | No | Static | USGS Astropedia | **Script ready**, blocked on USGS 503. CSV in zip. Zeilnhofer 2020 |
 | 7 | GCAT Deep Space Missions | Missions | 600+ | ~5 MB | No | Monthly | `planet4589.org/space/deepcat/` | TSV. deepcat.tsv + mission phases. All interplanetary objects/encounters |
-| 8 | Mercury Craters (Herrick) | Planetary | ~7K+ | ~5 MB | No | Static | U. Alaska (`sites.google.com/alaska.edu/robertherrick/`) | CSV. Completes crater quad (Moon+Mars+Ceres+Mercury) |
+| 8 | ~~Mercury Craters (Herrick)~~ | Planetary | 16,876 | <1 MB | No | Static | U. Alaska | **Built 2026-04-04** as `mercury-craters-herrick` |
 | 9 | Venus Craters (Herrick/USGS) | Planetary | ~900 | <1 MB | No | Static | USGS Astropedia CSV | Site currently down for maintenance. ~900 Magellan-era craters |
-| 10 | TNO/Centaur Properties | Outer SS | ~194 | <1 MB | No | Static | PDS Small Bodies Node | Diameters, albedos, densities. `sbnarchive.psi.edu/pds4/non_mission/` |
+| 10 | ~~TNO/Centaur Properties~~ | Outer SS | 652 | <1 MB | No | Static | PDS Small Bodies Node | **Built 2026-04-04** as `tno-centaur-properties` |
 | 11 | Mars Odyssey GRS Elements | Mars | ~grid | ~5 MB | No | Static | PDS Geosciences | .tab files. Cl, Fe, H2O, K, Si, Th maps at 2x2/5x5/10x10 deg bins |
 | 12 | Venus Express Observations | Venus | ~10K+ | ~10 MB | No | Static | ESA COSMOS portal | XLS. Full mission observation tracking table (2006-2014) |
-| 13 | New Horizons Pluto Atmospherics | Pluto | ~hundreds | <1 MB | No | Static | PDS SBN | PDS4 bundle. Temperature/pressure/haze profiles from REX and Alice |
+| 13 | ~~New Horizons Pluto Atmospherics~~ | Pluto | 1,869 | <1 MB | No | Static | PDS SBN | **Built 2026-04-04** as `pluto-atmosphere` |
 | 14 | MAVEN Key Parameters | Mars | millions | ~100 MB | No | Static | LASP SDC API | Tab-delimited ASCII. Multi-instrument atmospheric data. Large, needs chunked download |
-| 15 | Astromat Lunar Geochemistry | Moon | many | ~220 MB | No | Static | Astromat (`repo.astromat.org`) | CSV. 2,196 Apollo/Luna/Chang'e 5 specimens. CC-BY-4.0. Download URL needs verification |
-| 16 | Kinczyk Mercury Degradation | Mercury | ~thousands | <5 MB | No | Static | Mendeley Data (`10.17632/35nvbpfggx.1`) | CC-BY-4.0. Crater degradation classes |
+| 15 | ~~Astromat Lunar Geochemistry~~ | Moon | 58,289 | 1.4 MB | No | Static | EarthChem Library | **Built 2026-04-04** as `lunar-sample-geochemistry` |
+| 16 | ~~Kinczyk Mercury Degradation~~ | Mercury | 3,253 | <1 MB | No | Static | Mendeley Data | **Built 2026-04-04** as `mercury-crater-degradation` |
 | 17 | Juno Magnetometer (summary) | Jupiter | depends | ~50 MB | No | Static | PDS/PPI | ASCII. Would need perijove-only extraction. Large raw dataset |
 
 ---
@@ -65,9 +69,9 @@ Built and uploaded: #1 PDS Missions, #2 InSight Marsquakes, #3 IAU Nomenclature,
 
 | # | Dataset | Domain | Rows | Size | Incr? | Schedule | Notes |
 |---|---------|--------|-----:|------|:-----:|----------|-------|
-| 1 | Substorm Onset List | Weather | 10,000 | 2 MB | No | Quarterly | Full rebuild. Published periodically |
+| 1 | ~~Substorm Onset List~~ | Weather | 253,319 | 3 MB | No | Quarterly | **Built 2026-04-04** as `substorm-onsets` (SuperMAG, 5 algorithms) |
 | 2 | GPS NANU Archive | Orbital | 3,000 | 5 MB | Yes | Weekly | Append new NANUs by date |
-| 3 | Forbush Decreases | Weather | 1,000 | 500 KB | No | Static | Published event list |
+| 3 | ~~Forbush Decreases~~ | Weather | 7,097 | <1 MB | No | Static | **Built 2026-04-04** as `forbush-decreases` (IZMIRAN FEID) |
 | 4 | Aerospace Corp Reentries | Orbital | 1,000+ | 5 MB | Yes | Weekly | Append new reentries. Web scraping, fragile |
 | 5 | Habitable Worlds Catalog | Astronomy | 70 | <1 MB | No | Quarterly | Full rebuild. Better as filtered exoplanets view |
 | 6 | Orbital Debris Density | Orbital | derived | 1 MB | No | Static | Low standalone value |

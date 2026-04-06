@@ -14,6 +14,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 # ssoBFT bulk parquet — ~489 MB, updated regularly by IMCCE
@@ -203,6 +204,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"\n  {size_mb:.1f} MB parquet written")
 
+        banner_file = download_banner("ssodnet", tmp)
+        banner_md = banner_markdown("ssodnet", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "SsODNet Asteroid Physical Properties"
@@ -232,7 +236,7 @@ configs:
 ---
 
 # SsODNet Asteroid Physical Properties
-
+{banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 Physical and dynamical properties of **{n_total:,}** asteroids and dwarf planets from the

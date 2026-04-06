@@ -10,6 +10,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 SATELLITES_URL = "https://space.oscar.wmo.int/satellites"
@@ -241,6 +242,9 @@ def main():
             index=False, engine="pyarrow", compression="zstd",
         )
 
+        banner_file = download_banner("wmo-oscar", tmp_dir)
+        banner_md = banner_markdown("wmo-oscar", banner_file)
+
         (tmp_dir / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "WMO OSCAR Satellite Database"
@@ -275,7 +279,7 @@ size_categories:
 ---
 
 # WMO OSCAR Satellite Database
-
+{banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 The most comprehensive international database of Earth observation satellites and instruments, maintained by the World Meteorological Organization (WMO) through their

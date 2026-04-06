@@ -9,6 +9,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -154,6 +155,9 @@ def main():
         size_kb = out.stat().st_size / 1024
         print(f"  {size_kb:.0f} KB parquet")
 
+        banner_file = download_banner("physics-nobel", tmp)
+        banner_md = banner_markdown("physics-nobel", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc0-1.0
 pretty_name: "Physics Nobel Laureates"
@@ -184,7 +188,7 @@ configs:
 ---
 
 # Physics Nobel Laureates
-
+{banner_md}
 *Part of the [Physics Datasets](https://huggingface.co/collections/juliensimon/physics-datasets-69c2d4682d37dfdb77447bd7) collection on Hugging Face.*
 
 Complete database of every Physics Nobel Prize laureate — **{n:,}** scientists,

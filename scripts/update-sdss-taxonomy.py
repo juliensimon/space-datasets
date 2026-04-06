@@ -22,6 +22,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 BASE_URL = "https://sbnarchive.psi.edu/pds3/non_mission/EAR_A_I0035_5_SDSSTAX_V1_1/data"
@@ -248,6 +249,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("sdss-taxonomy", tmp)
+        banner_md = banner_markdown("sdss-taxonomy", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "SDSS-based Asteroid Taxonomy"
@@ -278,7 +282,7 @@ configs:
 ---
 
 # SDSS-based Asteroid Taxonomy
-
+{banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 Compositional taxonomy for **{n_total:,}** SDSS photometric observations of **{n_asteroids:,}**

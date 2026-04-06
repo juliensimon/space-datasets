@@ -18,6 +18,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 CSV_URL = "https://eclipse.gsfc.nasa.gov/eclipse_besselian_from_mysqldump2.csv"
@@ -164,6 +165,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("solar-eclipses", tmp)
+        banner_md = banner_markdown("solar-eclipses", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Five Millennium Catalog of Solar Eclipses"
@@ -195,7 +199,7 @@ configs:
 ---
 
 # Five Millennium Catalog of Solar Eclipses
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) and [Solar System Datasets](https://huggingface.co/collections/juliensimon/solar-system-datasets-69dd8a8b30395bb6e91abc76) collections on Hugging Face.*
 
 Static dataset -- uploaded once.

@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -71,6 +72,9 @@ def main():
         n_decayed = int(df["decay_date"].notna().sum())
         n_owners = df["owner"].nunique()
 
+        banner_file = download_banner("satcat", tmp)
+        banner_md = banner_markdown("satcat", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "NORAD Satellite Catalog (SATCAT)"
@@ -102,7 +106,7 @@ configs:
 ---
 
 # NORAD Satellite Catalog (SATCAT)
-
+{banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 ![Update SATCAT](https://github.com/juliensimon/space-datasets/actions/workflows/update-satcat.yml/badge.svg)

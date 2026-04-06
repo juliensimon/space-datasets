@@ -15,6 +15,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -313,6 +314,9 @@ def main():
         df_payloads.to_parquet(data_dir / "payloads.parquet", index=False,
                                engine="pyarrow", compression="zstd")
 
+        banner_file = download_banner("artemis-ii", tmp)
+        banner_md = banner_markdown("artemis-ii", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Artemis II Mission Data"
@@ -359,7 +363,7 @@ configs:
 ---
 
 # Artemis II Mission Data
-
+{banner_md}
 *Part of the [Space Probe & Mission Datasets](https://huggingface.co/collections/juliensimon/space-probe-and-mission-datasets-69c3fe82d410a42b1e313167) collection on Hugging Face.*
 
 ![Update Artemis II](https://github.com/juliensimon/space-datasets/actions/workflows/update-artemis-ii.yml/badge.svg)

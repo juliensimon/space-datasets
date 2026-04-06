@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -159,6 +160,9 @@ def main():
             type_lines = [f"- **{count:,}** {name}" for name, count in top_types.items()]
             type_summary = "\n".join(type_lines)
 
+        banner_file = download_banner("tevcat", tmp)
+        banner_md = banner_markdown("tevcat", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "TeVCat — TeV Gamma-Ray Source Catalog"
@@ -187,7 +191,7 @@ configs:
 ---
 
 # TeVCat — TeV Gamma-Ray Source Catalog
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 Catalog of **{n_total:,}** astronomical sources detected at very high energies

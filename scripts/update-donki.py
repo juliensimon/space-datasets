@@ -10,6 +10,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -248,6 +249,9 @@ def main():
         fastest_speed = int(fastest_cme["cme_speed_kms"]) if fastest_cme is not None else "N/A"
         fastest_date = fastest_cme["start_time"].strftime("%Y-%m-%d") if fastest_cme is not None else "N/A"
 
+        banner_file = download_banner("donki", tmp)
+        banner_md = banner_markdown("donki", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "NASA DONKI Space Weather Events"
@@ -282,7 +286,7 @@ configs:
 ---
 
 # DONKI Space Weather Events
-
+{banner_md}
 *Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
 
 ![Update DONKI](https://github.com/juliensimon/space-datasets/actions/workflows/update-donki.yml/badge.svg)

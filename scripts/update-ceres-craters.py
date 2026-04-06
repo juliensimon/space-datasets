@@ -13,6 +13,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 DATA_URL = "https://astropedia.astrogeology.usgs.gov/download/Ceres/Dawn/Craters/ceres_dawn_fc2_craterdatabase_zeilnhofer_2020_v2.zip"
@@ -185,6 +186,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("ceres-craters", tmp)
+        banner_md = banner_markdown("ceres-craters", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Ceres Crater Database (Zeilnhofer 2020, Dawn FC2)"
@@ -217,7 +221,7 @@ configs:
 ---
 
 # Ceres Crater Database (Zeilnhofer 2020, Dawn FC2)
-
+{banner_md}
 *Part of the [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2) collection on Hugging Face.*
 
 The most comprehensive catalog of impact craters on dwarf planet Ceres, containing **{n_total:,}** craters

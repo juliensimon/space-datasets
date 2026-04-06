@@ -19,6 +19,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -381,7 +382,7 @@ def fetch_constellation_gp(constellation_id: str, cdef: dict, now: datetime) -> 
     return rows
 
 
-def generate_readme(df: pd.DataFrame, df_daily: pd.DataFrame) -> str:
+def generate_readme(df: pd.DataFrame, df_daily: pd.DataFrame, banner_md: str = "") -> str:
     """Generate HF dataset README."""
     total = len(df)
     n_constellations = df["constellation"].nunique()
@@ -438,7 +439,7 @@ configs:
 ---
 
 # Constellation Census
-
+{banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 ![Update Constellation Census](https://github.com/juliensimon/space-datasets/actions/workflows/update-constellation-census.yml/badge.svg)
@@ -656,7 +657,9 @@ def main():
         n_constellations = df["constellation"].nunique()
         print(f"\n  {operational:,} operational across {n_constellations} constellations")
 
-        (tmp_dir / "README.md").write_text(generate_readme(df, df_daily))
+        banner_file = download_banner("constellation-census", tmp_dir)
+        _banner_md = banner_markdown("constellation-census", banner_file)
+        (tmp_dir / "README.md").write_text(generate_readme(df, df_daily, _banner_md))
 
         print("Uploading to HF...")
         commit_msg = (

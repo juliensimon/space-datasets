@@ -17,6 +17,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 ZIP_URL = "https://sbnarchive.psi.edu/pds4/non_mission/ast.nesvorny.families_V2_0.zip"
@@ -298,6 +299,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("nesvorny-families", tmp)
+        banner_md = banner_markdown("nesvorny-families", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Nesvorny Asteroid Families (HCM V2.0)"
@@ -327,7 +331,7 @@ configs:
 ---
 
 # Nesvorny Asteroid Families (HCM V2.0)
-
+{banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-68047314acba552840224498) collection on Hugging Face.*
 
 **{n_total:,}** asteroids grouped into **{n_families}** dynamical families from the

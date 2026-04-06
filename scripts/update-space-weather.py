@@ -94,6 +94,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("space-weather", tmp)
+        banner_md = banner_markdown("space-weather", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Space Weather Indices (Kp, Ap, F10.7)"
@@ -129,7 +132,7 @@ configs:
 ---
 
 # Space Weather Indices
-
+{banner_md}
 *Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
 
 ![Update Space Weather](https://github.com/juliensimon/space-datasets/actions/workflows/update-space-weather.yml/badge.svg)
@@ -190,6 +193,7 @@ For operational space weather applications, this dataset provides the complete s
 ## Usage
 
 ```python
+from dataset_images import banner_markdown, download_banner
 from datasets import load_dataset
 
 ds = load_dataset("juliensimon/space-weather-indices", split="train")

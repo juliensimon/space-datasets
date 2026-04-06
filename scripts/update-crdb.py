@@ -10,6 +10,7 @@ from pathlib import Path
 import crdb
 import pandas as pd
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -120,6 +121,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("crdb", tmp)
+        banner_md = banner_markdown("crdb", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Cosmic Ray Database (CRDB)"
@@ -149,7 +153,7 @@ configs:
 ---
 
 # Cosmic Ray Database (CRDB)
-
+{banner_md}
 *Part of the [Physics Datasets](https://huggingface.co/collections/juliensimon/physics-datasets-69c2d4682d37dfdb77447bd7) collection on Hugging Face.*
 
 ![Update CRDB](https://github.com/juliensimon/space-datasets/actions/workflows/update-crdb.yml/badge.svg)

@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 STARLINK_URL = "https://celestrak.org/NORAD/elements/gp.php?GROUP=starlink&FORMAT=tle"
@@ -82,6 +83,9 @@ def main():
 
         total = len(starlink_df) + len(gps_df)
 
+        banner_file = download_banner("tle-latest", tmp)
+        banner_md = banner_markdown("tle-latest", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Latest Starlink & GPS TLEs"
@@ -117,7 +121,7 @@ configs:
 ---
 
 # Latest Starlink & GPS TLEs
-
+{banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 ![Update TLE Latest](https://github.com/juliensimon/space-datasets/actions/workflows/update-tle-latest.yml/badge.svg)

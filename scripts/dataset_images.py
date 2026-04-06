@@ -416,6 +416,7 @@ DATASET_DOMAIN = {
     "sdss-taxonomy": "small_bodies",
     "sentry": "small_bodies",
     "ssodnet": "small_bodies",
+    "tno-centaur": "small_bodies",
     "constellation-tles": "satellites",
     # Space probes & missions
     "artemis-ii": "probes",
@@ -442,6 +443,10 @@ DATASET_DOMAIN = {
     "impact-craters": "planetary",
     "lunar-craters": "planetary",
     "mars-craters": "planetary",
+    "mercury-craters": "planetary",
+    "mercury-degradation": "planetary",
+    "lunar-geochemistry": "planetary",
+    "pluto-atmosphere": "solar_system",
     "planetary-nomenclature": "planetary",
     "solar-system-moons": "planetary",
     # Space weather
@@ -461,6 +466,8 @@ DATASET_DOMAIN = {
     "solar-radio": "weather",
     "solar-wind": "weather",
     "space-weather": "weather",
+    "substorm-onsets": "weather",
+    "forbush-decreases": "weather",
     "swpc-alerts": "weather",
     # Physics
     "auger": "physics",
@@ -478,6 +485,14 @@ DATASET_DOMAIN = {
     "physics-nobel": "physics",
     "swift-bat": "physics",
     "tevcat": "physics",
+    "fermi-3pc": "physics",
+    # Sky surveys (additions)
+    "4xmm-dr14": "sky_surveys",
+    "planck-pgcc": "sky_surveys",
+    # Galaxies (additions)
+    "roma-bzcat": "galaxies",
+    # Stellar (additions)
+    "gaia-sb": "stellar",
     # Essentials / general
     "astronomers": "essentials",
     "constellations": "essentials",

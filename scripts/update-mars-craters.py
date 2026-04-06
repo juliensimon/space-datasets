@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 DATA_URLS = [
@@ -122,6 +123,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("mars-craters", tmp)
+        banner_md = banner_markdown("mars-craters", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Mars Crater Database (Robbins & Hynek 2012)"
@@ -151,7 +155,7 @@ configs:
 ---
 
 # Mars Crater Database (Robbins & Hynek 2012)
-
+{banner_md}
 *Part of the [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2) collection on Hugging Face.*
 
 The only global Mars impact crater database, containing **{n_total:,}** craters with diameter >= 1 km

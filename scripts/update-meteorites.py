@@ -9,6 +9,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -141,6 +142,9 @@ def main():
         size_kb = out.stat().st_size / 1024
         print(f"  {size_kb:.0f} KB parquet")
 
+        banner_file = download_banner("meteorites", tmp)
+        banner_md = banner_markdown("meteorites", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc0-1.0
 pretty_name: "Meteorite Database"
@@ -172,7 +176,7 @@ configs:
 ---
 
 # Meteorite Database
-
+{banner_md}
 *Part of the [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2) collection on Hugging Face.*
 
 Catalogue of **{n:,}** known meteorites sourced from [Wikidata](https://www.wikidata.org/),

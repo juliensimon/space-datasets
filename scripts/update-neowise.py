@@ -14,6 +14,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 ZIP_URL = "https://sbnarchive.psi.edu/pds4/non_mission/neowise_diameters_albedos_V2_0.zip"
@@ -257,6 +258,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("neowise", tmp)
+        banner_md = banner_markdown("neowise", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "NEOWISE Asteroid Diameters and Albedos"
@@ -287,7 +291,7 @@ configs:
 ---
 
 # NEOWISE Asteroid Diameters and Albedos
-
+{banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 Physical properties of **{n_total:,}** asteroids derived from WISE/NEOWISE infrared observations,

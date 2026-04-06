@@ -18,6 +18,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 PDS_API = "https://pds.nasa.gov/api/search/1/products"
@@ -284,6 +285,9 @@ def main():
             size_mb = out.stat().st_size / 1024 / 1024
             print(f"  {name}: {len(df):,} rows, {size_mb:.2f} MB")
 
+        banner_file = download_banner("pds-missions", tmp)
+        banner_md = banner_markdown("pds-missions", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "NASA PDS Planetary Missions Catalog"
@@ -322,7 +326,7 @@ configs:
 ---
 
 # NASA PDS Planetary Missions Catalog
-
+{banner_md}
 *Part of the [Space Probes & Mission Datasets](https://huggingface.co/collections/juliensimon/space-probe-and-mission-datasets-69c3fe82d410a42b1e313167) collection on Hugging Face.*
 
 Comprehensive catalog of **{n_missions}** planetary science investigations (missions), **{n_spacecraft}** instrument hosts (spacecraft), and **{n_instruments}** scientific instruments from the NASA Planetary Data System (PDS). Includes mission dates, target bodies, and full cross-references between missions, spacecraft, and instruments.

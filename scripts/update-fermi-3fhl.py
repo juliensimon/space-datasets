@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -157,6 +158,9 @@ def main():
         sig_col = sort_col or "N/A"
         median_sig = df[sig_col].median() if sort_col and sort_col in df.columns else 0
 
+        banner_file = download_banner("fermi-3fhl", tmp)
+        banner_md = banner_markdown("fermi-3fhl", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Fermi LAT Third Catalog of Hard Sources (3FHL)"
@@ -187,7 +191,7 @@ configs:
 ---
 
 # Fermi LAT Third Catalog of Hard Sources (3FHL)
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 Gamma-ray sources detected above 10 GeV by the Fermi Large Area Telescope (LAT)

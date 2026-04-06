@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 DATA_URLS = [
@@ -120,6 +121,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("lunar-craters", tmp)
+        banner_md = banner_markdown("lunar-craters", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Lunar Crater Database (Robbins 2019)"
@@ -151,7 +155,7 @@ configs:
 ---
 
 # Lunar Crater Database (Robbins 2019)
-
+{banner_md}
 *Part of the [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2) collection on Hugging Face.*
 
 The definitive lunar impact crater database, containing **{n_total:,}** craters with diameter >= 1 km.

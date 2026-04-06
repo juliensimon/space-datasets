@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -108,6 +109,9 @@ def main():
         n_manufacturers = vehicles["lv_manufacturer"].nunique()
         n_engine_groups = engines["group"].nunique() if "group" in engines.columns else 0
 
+        banner_file = download_banner("gcat", tmp_dir)
+        banner_md = banner_markdown("gcat", banner_file)
+
         (tmp_dir / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "GCAT Launch Vehicles and Engines"
@@ -145,7 +149,7 @@ size_categories:
 ---
 
 # GCAT Launch Vehicles and Engines
-
+{banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 Launch vehicle specifications, rocket engines, and vehicle stages from

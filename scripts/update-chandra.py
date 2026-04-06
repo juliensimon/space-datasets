@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -156,6 +157,9 @@ def main():
         sig_line = f"\n- Median significance: **{median_sig:.1f}**" if median_sig is not None else ""
         flux_line = f"\n- **{n_with_flux:,}** sources with broad-band flux" if n_with_flux else ""
 
+        banner_file = download_banner("chandra", tmp)
+        banner_md = banner_markdown("chandra", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Chandra X-Ray Source Catalog"
@@ -185,7 +189,7 @@ configs:
 ---
 
 # Chandra X-Ray Source Catalog
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 The Chandra Source Catalog (CSC 2.1) is the definitive catalog of X-ray sources

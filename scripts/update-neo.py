@@ -9,6 +9,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 
 CAD_API = "https://ssd-api.jpl.nasa.gov/cad.api"
 HF_REPO = "juliensimon/neo-close-approaches"
@@ -101,6 +102,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("neo", tmp)
+        banner_md = banner_markdown("neo", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Near-Earth Object Close Approaches"
@@ -134,7 +138,7 @@ configs:
 ---
 
 # Near-Earth Object Close Approaches
-
+{banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 ![Update NEO Close Approaches](https://github.com/juliensimon/space-datasets/actions/workflows/update-neo.yml/badge.svg)

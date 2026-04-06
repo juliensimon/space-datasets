@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 from vizier_tap import vizier_query
 
@@ -187,6 +188,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("gaia-cepheids", tmp)
+        banner_md = banner_markdown("gaia-cepheids", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Gaia DR3 Cepheid Variables"
@@ -219,7 +223,7 @@ configs:
 ---
 
 # Gaia DR3 Cepheid Variables
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 The Gaia Data Release 3 catalog of **{n_total:,}** Cepheid variable stars of all types --

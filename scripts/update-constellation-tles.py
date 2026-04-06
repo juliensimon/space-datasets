@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Fetch latest TLEs for 18 satellite constellations from CelesTrak and upload to HF.
 
-Uses a single bulk request (GROUP=active, FORMAT=csv) instead of per-constellation
-queries. The CSV includes TLE_LINE0/1/2 columns alongside OBJECT_NAME, so one
-request gives both structured data for filtering and raw TLE text for output.
+Uses a single bulk request (GROUP=active, FORMAT=3le) instead of per-constellation
+queries. The 3LE format gives raw TLE text with name lines, which we parse into a
+DataFrame with NORAD IDs for constellation filtering.
 
 Covers LEO broadband (OneWeb, Kuiper, Qianfan, Hulianwang), LEO comms (Iridium,
 Globalstar, ORBCOMM), Earth observation (Planet, Spire), GNSS (GPS, Galileo,
@@ -19,7 +19,6 @@ import tempfile
 import time
 from collections import OrderedDict
 from datetime import datetime, timezone
-from io import StringIO
 from pathlib import Path
 
 import pandas as pd
@@ -30,8 +29,8 @@ from validate import check_dataset
 
 HF_REPO = "juliensimon/constellation-tle-latest"
 
-# Single bulk endpoint — all active satellites in one request
-BULK_URL = "https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=csv"
+# Single bulk endpoint — all active satellites in one request (3LE = 3-line TLE text)
+BULK_URL = "https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=3le"
 MAX_RETRIES = 3
 
 # Constellation definitions: name patterns used to filter the bulk CSV.
@@ -97,13 +96,35 @@ CONSTELLATIONS = OrderedDict([
 ])
 
 
+def parse_3le_text(text: str) -> pd.DataFrame:
+    """Parse raw 3LE text into a DataFrame with OBJECT_NAME, NORAD_CAT_ID, name, line1, line2."""
+    lines = [line.rstrip() for line in text.strip().split("\n") if line.strip()]
+    rows = []
+    for i in range(0, len(lines) - 2, 3):
+        l0, l1, l2 = lines[i], lines[i + 1], lines[i + 2]
+        if l1.startswith("1 ") and l2.startswith("2 "):
+            name = l0.strip()
+            try:
+                norad_id = int(l1[2:7])
+            except (ValueError, IndexError):
+                continue
+            rows.append({
+                "OBJECT_NAME": name,
+                "NORAD_CAT_ID": norad_id,
+                "name": name,
+                "line1": l1,
+                "line2": l2,
+            })
+    return pd.DataFrame(rows)
+
+
 def fetch_bulk_catalog() -> pd.DataFrame:
-    """Fetch all active satellites from CelesTrak in a single CSV request."""
+    """Fetch all active satellites from CelesTrak in 3LE format."""
     for attempt in range(MAX_RETRIES):
         try:
             r = requests.get(BULK_URL, timeout=120)
             r.raise_for_status()
-            df = pd.read_csv(StringIO(r.text))
+            df = parse_3le_text(r.text)
             print(f"  Fetched {len(df):,} satellites from CelesTrak (single request)")
             return df
         except requests.RequestException as e:
@@ -119,11 +140,9 @@ def fetch_bulk_catalog() -> pd.DataFrame:
 def match_constellation(row: pd.Series, cdef: dict) -> bool:
     """Check if a satellite row matches a constellation definition."""
     name = str(row.get("OBJECT_NAME", "")).upper()
-    # Match by NORAD ID (for SBAS and similar with heterogeneous names)
     norad_ids = cdef.get("norad_ids")
     if norad_ids and int(row.get("NORAD_CAT_ID", 0)) in norad_ids:
         return True
-    # Match by name prefix
     for prefix in cdef["patterns"]:
         if name.startswith(prefix):
             return True
@@ -131,28 +150,11 @@ def match_constellation(row: pd.Series, cdef: dict) -> bool:
 
 
 def extract_tle_text(group_df: pd.DataFrame) -> str:
-    """Build raw 3-line TLE text from CSV TLE_LINE columns."""
+    """Build raw 3-line TLE text from parsed DataFrame."""
     lines = []
     for _, row in group_df.iterrows():
-        l0 = str(row.get("TLE_LINE0", row.get("OBJECT_NAME", "")))
-        l1 = str(row.get("TLE_LINE1", ""))
-        l2 = str(row.get("TLE_LINE2", ""))
-        if l1.startswith("1 ") and l2.startswith("2 "):
-            # TLE_LINE0 is "0 NAME" format; strip the "0 " prefix for display
-            name = l0[2:].strip() if l0.startswith("0 ") else l0.strip()
-            lines.extend([name, l1, l2])
+        lines.extend([row["name"], row["line1"], row["line2"]])
     return "\n".join(lines) + "\n" if lines else ""
-
-
-def build_tle_dataframe(tle_text: str) -> pd.DataFrame:
-    """Parse 3-line TLE blocks into a name/line1/line2 DataFrame."""
-    lines = [line.strip() for line in tle_text.strip().split("\n") if line.strip()]
-    rows = []
-    for i in range(0, len(lines) - 2, 3):
-        name, l1, l2 = lines[i], lines[i + 1], lines[i + 2]
-        if l1.startswith("1 ") and l2.startswith("2 "):
-            rows.append({"name": name, "line1": l1, "line2": l2})
-    return pd.DataFrame(rows)
 
 
 def build_readme(results: dict, banner_md: str, snapshot_time: str) -> str:
@@ -374,10 +376,10 @@ def main():
     catalog = fetch_bulk_catalog()
 
     # Verify expected columns
-    required = {"OBJECT_NAME", "NORAD_CAT_ID", "TLE_LINE0", "TLE_LINE1", "TLE_LINE2"}
+    required = {"OBJECT_NAME", "NORAD_CAT_ID", "name", "line1", "line2"}
     missing = required - set(catalog.columns)
     if missing:
-        print(f"::error::Bulk CSV missing expected columns: {missing}")
+        print(f"::error::Catalog missing expected columns: {missing}")
         print(f"  Available columns: {list(catalog.columns)}")
         sys.exit(1)
 
@@ -396,7 +398,7 @@ def main():
         assigned.update(group_df["NORAD_CAT_ID"].tolist())
 
         tle_text = extract_tle_text(group_df)
-        df = build_tle_dataframe(tle_text)
+        df = group_df[["name", "line1", "line2"]].reset_index(drop=True)
 
         if len(df) == 0:
             print(f"  {cid:15s} — SKIPPED (0 valid TLEs)")

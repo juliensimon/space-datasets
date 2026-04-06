@@ -12,6 +12,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 API_URL = "http://www.asterank.com/api/asterank"
@@ -224,6 +225,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet, {n_total:,} rows")
 
+        banner_file = download_banner("asterank", tmp)
+        banner_md = banner_markdown("asterank", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Asterank Asteroid Mining Economics"
@@ -253,7 +257,7 @@ configs:
 ---
 
 # Asterank Asteroid Mining Economics
-
+{banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 Economic analysis of **{n_total:,}** asteroids for space mining potential, combining NASA/JPL orbital data

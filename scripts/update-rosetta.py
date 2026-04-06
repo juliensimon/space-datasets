@@ -16,6 +16,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 HF_REPO = "juliensimon/esa-rosetta-observations"
@@ -247,6 +248,9 @@ def main():
             f"  - **{name}**: {count:,}" for name, count in top_targets.items()
         )
 
+        banner_file = download_banner("rosetta", tmp)
+        banner_md = banner_markdown("rosetta", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "ESA Rosetta Mission Observations"
@@ -280,7 +284,7 @@ configs:
 ---
 
 # ESA Rosetta Mission Observations
-
+{banner_md}
 *Part of the [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2) collection on Hugging Face.*
 
 The complete observation metadata catalog from ESA's Rosetta mission — **{n:,}**

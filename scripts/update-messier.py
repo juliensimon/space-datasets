@@ -10,6 +10,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -102,6 +103,9 @@ def main():
         df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
         print(f"  {out.stat().st_size / 1024:.0f} KB parquet")
 
+        banner_file = download_banner("messier", tmp_dir)
+        banner_md = banner_markdown("messier", banner_file)
+
         (tmp_dir / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Messier Catalog"
@@ -134,7 +138,7 @@ configs:
 ---
 
 # Messier Catalog
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 ![Update Messier](https://github.com/juliensimon/space-datasets/actions/workflows/update-messier.yml/badge.svg)

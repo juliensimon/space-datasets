@@ -13,6 +13,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -127,6 +128,9 @@ def main():
             for c in df.columns
         )
 
+        banner_file = download_banner("auger", tmp)
+        banner_md = banner_markdown("auger", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Pierre Auger Observatory Cosmic Rays"
@@ -155,7 +159,7 @@ configs:
 ---
 
 # Pierre Auger Observatory Cosmic Rays
-
+{banner_md}
 *Part of the [Physics Datasets](https://huggingface.co/collections/juliensimon/physics-datasets-69c2d4682d37dfdb77447bd7) collection on Hugging Face.*
 
 Summary data from the [Pierre Auger Observatory](https://www.auger.org/),

@@ -10,6 +10,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -87,6 +88,9 @@ def main():
 
         type_lines = "\n".join(f"  - {k}: **{v:,}**" for k, v in sorted(type_counts.items()))
 
+        banner_file = download_banner("swpc-alerts", tmp)
+        banner_md = banner_markdown("swpc-alerts", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "NOAA SWPC Space Weather Alerts"
@@ -117,7 +121,7 @@ configs:
 ---
 
 # NOAA SWPC Space Weather Alerts
-
+{banner_md}
 *Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
 
 ![Update SWPC Alerts](https://github.com/juliensimon/space-datasets/actions/workflows/update-swpc-alerts.yml/badge.svg)

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-Automated data pipelines that fetch public space data (orbital mechanics, space weather, astronomy, physics), convert to Parquet with zstd compression, and upload to Hugging Face under `juliensimon/`. Currently 60+ datasets with 45 GitHub Actions workflows for daily/weekly updates. Static datasets (uploaded once) have no workflow.
+Automated data pipelines that fetch public space data (orbital mechanics, space weather, astronomy, physics), convert to Parquet with zstd compression, and upload to Hugging Face under `juliensimon/`. Currently 170+ datasets with 45 GitHub Actions workflows for daily/weekly updates. Static datasets (uploaded once) have no workflow.
 
 ## Running a Dataset Pipeline
 
@@ -42,6 +42,7 @@ There is no test suite, linter, or build system. Validation happens inside each 
 - `scripts/vizier_tap.py` — shared VizieR TAP client with automatic pagination via `recno` filtering (VizieR doesn't support OFFSET). Returns CSV, exits on VOTable.
 - `scripts/jpl_api.py` — shared helpers for NASA JPL SSD API (NEO, SBDB, Sentry, NHATS). Converts `{"fields": [...], "data": [[...]]}` format to DataFrame.
 - `scripts/update-status.py` — updates `status.json` with date and optional row count.
+- `scripts/dataset_images.py` — centralized banner image config for HF READMEs. Maps datasets to domains, provides `download_banner()` and `banner_markdown()` helpers. Images are NASA public domain / ESA CC-BY 4.0. New datasets must be added to `DATASET_DOMAIN` dict.
 - `scripts/add-to-collections.py` — adds datasets to HF domain collections.
 - `status.json` — tracks last-updated date per dataset + `_rows` dict with row counts.
 - `CHECKLIST.md` — detailed checklist for adding new datasets (frontmatter fields, workflow template, pitfalls).

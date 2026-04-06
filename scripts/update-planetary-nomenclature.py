@@ -15,6 +15,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 S3_BASE = "https://asc-planetarynames-data.s3.us-west-2.amazonaws.com"
@@ -158,6 +159,9 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        banner_file = download_banner("planetary-nomenclature", tmp)
+        banner_md = banner_markdown("planetary-nomenclature", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "IAU Planetary Nomenclature"
@@ -191,7 +195,7 @@ configs:
 ---
 
 # IAU Planetary Nomenclature
-
+{banner_md}
 *Part of the [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2) collection on Hugging Face.*
 
 IAU-approved named features on Moon, Mars, Venus, and Mercury -- **{len(df):,}** features

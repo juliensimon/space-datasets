@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 from vizier_tap import vizier_query
 
@@ -101,6 +102,9 @@ def main():
         size_kb = out.stat().st_size / 1024
         print(f"  {size_kb:.1f} KB parquet")
 
+        banner_file = download_banner("hawc", tmp)
+        banner_md = banner_markdown("hawc", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "3HWC HAWC TeV Gamma-Ray Source Catalog"
@@ -131,7 +135,7 @@ configs:
 ---
 
 # 3HWC HAWC TeV Gamma-Ray Source Catalog
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 The Third HAWC Catalog (3HWC) of Very-High-Energy Gamma-Ray Sources, containing **{n_total}** sources

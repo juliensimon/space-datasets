@@ -15,6 +15,7 @@ import requests
 from bs4 import BeautifulSoup
 
 sys.path.insert(0, str(Path(__file__).parent))
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 HF_REPO = "juliensimon/pulsar-glitch-catalog"
@@ -328,6 +329,9 @@ def main():
             schema_rows.append(f"| `{col}` | {dtype} | {desc} |")
         schema_table = "\n".join(schema_rows)
 
+        banner_file = download_banner("pulsar-glitches", tmp)
+        banner_md = banner_markdown("pulsar-glitches", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Jodrell Bank Pulsar Glitch Catalogue"
@@ -358,7 +362,7 @@ configs:
 ---
 
 # Jodrell Bank Pulsar Glitch Catalogue
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) and [Stellar Catalogs](https://huggingface.co/collections/juliensimon/stellar-catalogs-69c24caf2f17e36128946744) collections on Hugging Face.*
 
 ![Update Pulsar Glitches](https://github.com/juliensimon/space-datasets/actions/workflows/update-pulsar-glitches.yml/badge.svg)

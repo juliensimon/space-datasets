@@ -18,6 +18,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -141,7 +142,7 @@ def is_isl_capable(inc: float, launch_year: int) -> bool:
     return False
 
 
-def generate_readme(df_latest: pd.DataFrame, df_daily: pd.DataFrame, active: int) -> str:
+def generate_readme(df_latest: pd.DataFrame, df_daily: pd.DataFrame, active: int, banner_md: str = "") -> str:
     """Generate a comprehensive README.md for the HF dataset."""
     total = len(df_latest)
     daily_rows = len(df_daily)
@@ -184,7 +185,7 @@ configs:
 ---
 
 # Starlink Fleet Data
-
+{banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 ![Update Starlink Fleet](https://github.com/juliensimon/space-datasets/actions/workflows/update-starlink.yml/badge.svg)
@@ -444,7 +445,9 @@ def main():
         active = len(df_latest[df_latest["status"] == "operational"])
         print(f"  {active:,} operational, {len(df_latest):,} total")
 
-        (tmp_dir / "README.md").write_text(generate_readme(df_latest, df_daily, active))
+        banner_file = download_banner("starlink", tmp_dir)
+        starlink_banner_md = banner_markdown("starlink", banner_file)
+        (tmp_dir / "README.md").write_text(generate_readme(df_latest, df_daily, active, starlink_banner_md))
 
         raising = int((df_latest["status"] == "raising").sum())
         deorbiting = int((df_latest["status"] == "deorbiting").sum())

@@ -12,6 +12,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -136,6 +137,9 @@ def main():
             for c in df.columns
         )
 
+        banner_file = download_banner("icecube", tmp)
+        banner_md = banner_markdown("icecube", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "IceCube Neutrino Point Source Catalog"
@@ -164,7 +168,7 @@ configs:
 ---
 
 # IceCube Neutrino Point Source Catalog
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 Point source catalog from the [IceCube Neutrino Observatory](https://icecube.wisc.edu/),

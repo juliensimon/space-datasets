@@ -1,6 +1,6 @@
 # space-datasets — Open Space, Astronomy & Physics Datasets on Hugging Face
 
-Open-source data pipelines that publish **160+ space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
+Open-source data pipelines that publish **170+ space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
 
 All datasets are loadable in one line (`load_dataset("juliensimon/...")`), require no API keys, and work with `pandas`, `polars`, or any Parquet-compatible tool.
 
@@ -127,6 +127,7 @@ Track every object orbiting Earth and beyond. This collection covers the complet
 | [reentry-events](https://huggingface.co/datasets/juliensimon/reentry-events) | 35K satellite and debris reentry events with decay dates and locations | ![Reentry](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['reentry-events']&label=updated&color=brightgreen) | Daily | <1 MB |
 | [satnogs-transmitters](https://huggingface.co/datasets/juliensimon/satnogs-transmitters) | 10K+ satellite radio transmitters and frequencies from SatNOGS | ![SatNOGS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.satnogs&label=updated&color=brightgreen) | Weekly | 5 MB |
 | [sentry-impact-risk](https://huggingface.co/datasets/juliensimon/sentry-impact-risk) | Near-Earth objects with non-zero Earth impact probability | ![Sentry](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.sentry&label=updated&color=brightgreen) | Daily | <1 MB |
+| [tno-centaur-properties](https://huggingface.co/datasets/juliensimon/tno-centaur-properties) | 652 TNO/Centaur physical properties (diameter, albedo, density) from PDS | — | Static | <1 MB |
 | [space-agency-database](https://huggingface.co/datasets/juliensimon/space-agency-database) | Space agencies and governmental space organizations worldwide | ![Space Agencies](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['space-agencies']&label=updated&color=brightgreen) | Quarterly | <1 MB |
 | [space-launch-log](https://huggingface.co/datasets/juliensimon/space-launch-log) | Every orbital and suborbital launch since 1957 with sites and outcomes | ![Launches](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['launch-log']&label=updated&color=brightgreen) | Weekly | 2.4 MB |
 | [space-missions](https://huggingface.co/datasets/juliensimon/space-missions) | 24K+ crewed and uncrewed space missions from Wikidata | ![Space Missions](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['space-missions']&label=updated&color=brightgreen) | Quarterly | <1 MB |
@@ -160,6 +161,7 @@ Data returned by humanity's most distant spacecraft and surface explorers. Inclu
 | [mars-chemcam-compositions](https://huggingface.co/datasets/juliensimon/mars-chemcam-compositions) | 30K+ Mars rock/soil oxide compositions from Curiosity ChemCam LIBS | — | Static | 1 MB |
 | [mars-perseverance-weather](https://huggingface.co/datasets/juliensimon/mars-perseverance-weather) | Mars surface weather from Perseverance MEDA (temperature, pressure, wind, UV) | ![MEDA](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['meda-weather']&label=updated&color=brightgreen) | Monthly | ~100 MB |
 | [nasa-eva-chronology](https://huggingface.co/datasets/juliensimon/nasa-eva-chronology) | 375 spacewalks (EVAs) — complete history from Gemini to ISS | — | Static | <1 MB |
+| [pluto-atmosphere](https://huggingface.co/datasets/juliensimon/pluto-atmosphere) | Pluto atmospheric profiles (temperature, pressure, composition, haze) from New Horizons | — | Static | <1 MB |
 | [pds-planetary-missions](https://huggingface.co/datasets/juliensimon/pds-planetary-missions) | NASA PDS mission catalog — 98 missions, 115 spacecraft, 748 instruments with targets and cross-references | — | Static | <5 MB |
 | [esa-venus-express-observations](https://huggingface.co/datasets/juliensimon/esa-venus-express-observations) | 525K observation metadata from ESA Venus Express (5 instruments, 2006–2014) | ![Venus Express](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['venus-express']&label=updated&color=brightgreen) | Weekly | 21 MB |
 | [gcat-deep-space](https://huggingface.co/datasets/juliensimon/gcat-deep-space) | 1,206 deep space objects and 469 planetary landings from GCAT | ![GCAT Deep Space](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['gcat-deep-space']&label=updated&color=brightgreen) | Weekly | <1 MB |
@@ -175,6 +177,9 @@ Explore the surfaces of other worlds through impact crater databases and geochem
 | [impact-craters](https://huggingface.co/datasets/juliensimon/impact-craters) | 4K+ impact craters across the solar system (Earth, Moon, Mars, etc.) from Wikidata | ![Impact Craters](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['impact-craters']&label=updated&color=brightgreen) | Quarterly | <1 MB |
 | [lunar-craters-robbins](https://huggingface.co/datasets/juliensimon/lunar-craters-robbins) | 1.3M+ lunar impact craters from the Robbins 2019 database | — | Static | 200 MB |
 | [mars-craters-robbins](https://huggingface.co/datasets/juliensimon/mars-craters-robbins) | 384K+ Mars impact craters from the Robbins & Hynek 2012 database | — | Static | 50 MB |
+| [lunar-sample-geochemistry](https://huggingface.co/datasets/juliensimon/lunar-sample-geochemistry) | 58K geochemical analyses of Apollo/Luna/Chang'e 5 lunar samples (Astromat) | — | Static | 1.4 MB |
+| [mercury-crater-degradation](https://huggingface.co/datasets/juliensimon/mercury-crater-degradation) | 3,253 Mercury craters with degradation classification (Kinczyk et al. 2020) | — | Static | <1 MB |
+| [mercury-craters-herrick](https://huggingface.co/datasets/juliensimon/mercury-craters-herrick) | 16,876 Mercury impact craters from MESSENGER imagery (Herrick et al. 2011) | — | Static | <1 MB |
 | [meteorite-database](https://huggingface.co/datasets/juliensimon/meteorite-database) | 1,200+ named meteorites with classification, mass, and fall location from Wikidata | ![Meteorites](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['meteorites']&label=updated&color=brightgreen) | Quarterly | <1 MB |
 | [meteorite-landings](https://huggingface.co/datasets/juliensimon/meteorite-landings) | 45K+ known meteorite landings with classification and mass | — | Static | 5 MB |
 | [planetary-nomenclature](https://huggingface.co/datasets/juliensimon/planetary-nomenclature) | 15K+ IAU-approved named features on Moon, Mars, Venus, and Mercury | — | Static | 5 MB |
@@ -189,6 +194,7 @@ Monitor the Sun-Earth connection in near real-time. These datasets track solar f
 | [celestrak-space-weather](https://huggingface.co/datasets/juliensimon/celestrak-space-weather) | Consolidated space weather data for orbit propagation (Kp, Ap, F10.7) | ![CelesTrak SW](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['celestrak-sw']&label=updated&color=brightgreen) | Daily | 5 MB |
 | [donki-space-weather-events](https://huggingface.co/datasets/juliensimon/donki-space-weather-events) | 12K+ coronal mass ejections, geomagnetic storms, and solar particle events (2010+) | ![DONKI](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.donki&label=updated&color=brightgreen) | Daily | 1.0 MB |
 | [dst-index](https://huggingface.co/datasets/juliensimon/dst-index) | 600K+ hourly geomagnetic storm intensity readings since 1957 (Dst index) | ![Dst](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['dst-index']&label=updated&color=brightgreen) | Daily | 1.7 MB |
+| [forbush-decreases](https://huggingface.co/datasets/juliensimon/forbush-decreases) | 7,097 Forbush decrease events (1957-2016) with solar wind, IMF, and CME parameters from IZMIRAN | — | Static | <1 MB |
 | [f107-solar-flux](https://huggingface.co/datasets/juliensimon/f107-solar-flux) | Daily F10.7 cm solar radio flux since 1947 — primary proxy for atmospheric drag | ![F10.7](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.f107&label=updated&color=brightgreen) | Daily | 2 MB |
 | [geomagnetic-kp-index](https://huggingface.co/datasets/juliensimon/geomagnetic-kp-index) | 3-hourly geomagnetic disturbance index (Kp 0-9) with NOAA storm scale | ![Kp](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['kp-index']&label=updated&color=brightgreen) | Daily | 4 KB |
 | [iers-earth-orientation](https://huggingface.co/datasets/juliensimon/iers-earth-orientation) | Daily Earth orientation parameters (polar motion, UT1-UTC, LOD) since 1973 | ![IERS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['iers-eop']&label=updated&color=brightgreen) | Daily | 5 MB |
@@ -199,6 +205,7 @@ Monitor the Sun-Earth connection in near real-time. These datasets track solar f
 | [solar-radio-bursts](https://huggingface.co/datasets/juliensimon/solar-radio-bursts) | Solar radio burst events (Type II/III/IV/V) from HEASARC | ![Solar Radio](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['solar-radio']&label=updated&color=brightgreen) | Weekly | 5 MB |
 | [solar-wind](https://huggingface.co/datasets/juliensimon/solar-wind) | Real-time solar wind speed, density, temperature, and magnetic field from L1 | ![Solar Wind](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['solar-wind']&label=updated&color=brightgreen) | Daily | 0.2 MB |
 | [space-weather-indices](https://huggingface.co/datasets/juliensimon/space-weather-indices) | Daily Kp, Ap, F10.7 solar and geomagnetic indices since 1957 | ![Space Weather](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['space-weather']&label=updated&color=brightgreen) | Daily | 0.8 MB |
+| [substorm-onsets](https://huggingface.co/datasets/juliensimon/substorm-onsets) | 253K+ magnetospheric substorm onsets from 5 detection algorithms (SuperMAG) | ![Substorms](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['substorm-onsets']&label=updated&color=brightgreen) | Quarterly | 3 MB |
 | [swpc-alerts](https://huggingface.co/datasets/juliensimon/swpc-alerts) | Official NOAA space weather alerts, watches, and warnings | ![SWPC](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['swpc-alerts']&label=updated&color=brightgreen) | Daily | 2 MB |
 
 ### Astronomy & Reference
@@ -254,6 +261,10 @@ A broad survey of the observable universe — from exoplanets in our galactic ne
 | [wds-double-stars](https://huggingface.co/datasets/juliensimon/wds-double-stars) | 157K visual double star systems from the Washington Double Star Catalog | ![WDS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.wds&label=updated&color=brightgreen) | Weekly | 50 MB |
 | [wise-hii-regions](https://huggingface.co/datasets/juliensimon/wise-hii-regions) | 8,000+ Galactic HII regions from WISE mid-infrared survey (Anderson+ 2014) | ![HII](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['hii-regions']&label=updated&color=brightgreen) | Quarterly | <1 MB |
 | [xray-binary-catalog](https://huggingface.co/datasets/juliensimon/xray-binary-catalog) | 500+ high-mass and low-mass X-ray binaries (Liu et al. 2006/2007) | ![XRBs](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['xray-binaries']&label=updated&color=brightgreen) | Quarterly | <1 MB |
+| [4xmm-dr14-xray-sources](https://huggingface.co/datasets/juliensimon/4xmm-dr14-xray-sources) | 630K+ unique X-ray sources from ESA XMM-Newton serendipitous survey (4XMM) | — | Static | ~80 MB |
+| [roma-bzcat-blazars](https://huggingface.co/datasets/juliensimon/roma-bzcat-blazars) | 3,561 confirmed blazars (BL Lac + FSRQ) from Roma-BZCAT 5th edition | — | Static | <1 MB |
+| [planck-cold-clumps](https://huggingface.co/datasets/juliensimon/planck-cold-clumps) | 13K+ Galactic cold clumps — pre-stellar cores and star-forming regions from Planck | — | Static | <1 MB |
+| [gaia-dr3-spectroscopic-binaries](https://huggingface.co/datasets/juliensimon/gaia-dr3-spectroscopic-binaries) | 180K+ spectroscopic binary star orbital solutions (SB1+SB2) from Gaia DR3 | — | Static | ~20 MB |
 
 ### Physics
 
@@ -273,6 +284,7 @@ Fundamental particle properties and high-energy astrophysics catalogs. Includes 
 | [physics-nobel-laureates](https://huggingface.co/datasets/juliensimon/physics-nobel-laureates) | 229 Physics Nobel Prize laureates with institutions and cited work from Wikidata | ![Nobel](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['physics-nobel']&label=updated&color=brightgreen) | Quarterly | <1 MB |
 | [swift-bat-hard-xray-survey](https://huggingface.co/datasets/juliensimon/swift-bat-hard-xray-survey) | 1,893 hard X-ray sources (14–195 keV) from Swift-BAT 157-month survey | — | Static | 0.3 MB |
 | [tevcat-tev-gamma-ray](https://huggingface.co/datasets/juliensimon/tevcat-tev-gamma-ray) | 322 TeV gamma-ray sources — THE ground-based VHE reference catalog | — | Static | <1 MB |
+| [fermi-3pc-gamma-ray-pulsars](https://huggingface.co/datasets/juliensimon/fermi-3pc-gamma-ray-pulsars) | 7K+ gamma-ray pulsars from Fermi LAT Third Pulsar Catalog (3PC) | — | Static | 2.2 MB |
 
 ## Collections on Hugging Face
 
@@ -318,6 +330,7 @@ python scripts/update-satcat.py
 python scripts/update-satnogs.py
 python scripts/update-sbdb.py
 python scripts/update-sentry.py
+python scripts/update-tno-centaur.py
 python scripts/update-space-agencies.py
 python scripts/update-space-missions.py
 python scripts/update-spacecraft.py
@@ -333,6 +346,9 @@ python scripts/update-ceres-craters.py
 python scripts/update-impact-craters.py
 python scripts/update-lunar-craters.py
 python scripts/update-mars-craters.py
+python scripts/update-lunar-geochemistry.py
+python scripts/update-mercury-craters.py
+python scripts/update-mercury-degradation.py
 python scripts/update-meteorite-landings.py
 python scripts/update-meteorites.py
 pip install dbfread && python scripts/update-planetary-nomenclature.py
@@ -350,7 +366,9 @@ python scripts/update-solar-radio.py
 python scripts/update-solar-wind.py
 python scripts/update-space-weather.py
 python scripts/update-sunspot.py
+python scripts/update-substorm-onsets.py
 python scripts/update-swpc-alerts.py
+python scripts/update-forbush-decreases.py
 
 # Space Probes & Missions
 python scripts/update-astronauts.py
@@ -365,6 +383,7 @@ python scripts/update-mars-express.py
 python scripts/update-meda-weather.py
 python scripts/update-pds-missions.py
 python scripts/update-rosetta.py
+python scripts/update-pluto-atmosphere.py
 python scripts/update-venus-express.py
 python scripts/update-exomars-tgo.py
 python scripts/update-gcat-deep-space.py
@@ -416,6 +435,10 @@ python scripts/update-tgss.py
 python scripts/update-vlass.py
 python scripts/update-wds.py
 python scripts/update-xray-binaries.py
+python scripts/update-4xmm-dr14.py
+python scripts/update-roma-bzcat.py
+python scripts/update-planck-pgcc.py
+python scripts/update-gaia-sb.py
 
 # Physics
 python scripts/update-auger.py
@@ -430,6 +453,7 @@ pip install particle && python scripts/update-pdg.py
 python scripts/update-physics-nobel.py
 python scripts/update-swift-bat.py
 python scripts/update-tevcat.py
+python scripts/update-fermi-3pc.py
 
 ```
 

@@ -16,6 +16,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 HF_REPO = "juliensimon/launch-cost-to-leo"
@@ -168,6 +169,9 @@ def main():
         size_kb = out.stat().st_size / 1024
         print(f"  {size_kb:.0f} KB parquet")
 
+        banner_file = download_banner("launch-cost", tmp)
+        banner_md = banner_markdown("launch-cost", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Launch Cost to LEO"
@@ -198,7 +202,7 @@ configs:
 ---
 
 # Launch Cost to LEO
-
+{banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 How much does it cost to put one kilogram into low Earth orbit? This dataset tracks

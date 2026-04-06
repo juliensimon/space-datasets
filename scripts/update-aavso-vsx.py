@@ -9,6 +9,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 HF_REPO = "juliensimon/aavso-vsx-variable-stars"
@@ -134,6 +135,9 @@ def main():
             f"| `{t}` | {c:,} |" for t, c in top_types.items()
         )
 
+        banner_file = download_banner("aavso-vsx", tmp)
+        banner_md = banner_markdown("aavso-vsx", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "AAVSO Variable Star Index (VSX)"
@@ -163,7 +167,7 @@ configs:
 ---
 
 # AAVSO Variable Star Index (VSX)
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
 
 The AAVSO Variable Star Index (VSX) is the most comprehensive catalog of variable stars,

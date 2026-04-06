@@ -9,6 +9,7 @@ from pathlib import Path
 import pandas as pd
 from particle import Particle
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 HF_REPO = "juliensimon/pdg-particle-properties"
@@ -134,6 +135,9 @@ def main():
         if heaviest is not None:
             heaviest_str = f"- Heaviest particle: **{heaviest['name']}** ({heaviest['mass_mev']:,.0f} MeV)"
 
+        banner_file = download_banner("pdg", tmp)
+        banner_md = banner_markdown("pdg", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "PDG Particle Properties"
@@ -164,7 +168,7 @@ configs:
 ---
 
 # PDG Particle Properties
-
+{banner_md}
 *Part of the [Physics Datasets](https://huggingface.co/collections/juliensimon/physics-datasets-69c2d4682d37dfdb77447bd7) collection on Hugging Face.*
 
 ![Update PDG](https://github.com/juliensimon/space-datasets/actions/workflows/update-pdg.yml/badge.svg)

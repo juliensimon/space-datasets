@@ -9,6 +9,7 @@ from pathlib import Path
 import pandas as pd
 
 from jpl_api import jpl_query
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -79,6 +80,9 @@ def main():
         size_kb = out.stat().st_size / 1024
         print(f"  {size_kb:.0f} KB parquet")
 
+        banner_file = download_banner("sentry", tmp)
+        banner_md = banner_markdown("sentry", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "NASA Sentry: Earth Impact Risk Assessment"
@@ -111,7 +115,7 @@ configs:
 ---
 
 # NASA Sentry: Earth Impact Risk Assessment
-
+{banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 ![Update Sentry](https://github.com/juliensimon/space-datasets/actions/workflows/update-sentry.yml/badge.svg)

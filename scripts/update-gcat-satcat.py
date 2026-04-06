@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -81,6 +82,9 @@ def main():
         n_decayed = int((df["status"] == "R").sum()) if "status" in df.columns else 0
         n_types = df["type"].nunique() if "type" in df.columns else 0
 
+        banner_file = download_banner("gcat-satcat", tmp_dir)
+        banner_md = banner_markdown("gcat-satcat", banner_file)
+
         (tmp_dir / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "GCAT Satellite Catalog"
@@ -110,7 +114,7 @@ size_categories:
 ---
 
 # GCAT Satellite Catalog
-
+{banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 Comprehensive catalog of **{len(df):,}** space objects from

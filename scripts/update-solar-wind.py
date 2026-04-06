@@ -16,6 +16,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -124,7 +125,7 @@ configs:
 ---
 
 # Real-Time Solar Wind
-
+{banner_md}
 *Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
 
 ![Update Solar Wind](https://github.com/juliensimon/space-datasets/actions/workflows/update-solar-wind.yml/badge.svg)
@@ -264,7 +265,9 @@ def main():
         df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
         print(f"  {out.stat().st_size / 1024 / 1024:.1f} MB parquet")
 
-        (tmp_dir / "README.md").write_text(generate_readme(df))
+        banner_file = download_banner("solar-wind", tmp_dir)
+        _banner_md = banner_markdown("solar-wind", banner_file)
+        (tmp_dir / "README.md").write_text(generate_readme(df, _banner_md))
 
         print("Uploading to HF...")
         commit_msg = f"Update solar wind: {len(df):,} readings"

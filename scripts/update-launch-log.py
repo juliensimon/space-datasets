@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -66,6 +67,9 @@ def main():
         latest_year = df["launch_date"].str[:4].max() if "launch_date" in df.columns else "2026"
         n_site_types = sites["type"].nunique() if "type" in sites.columns else 0
 
+        banner_file = download_banner("launch-log", tmp_dir)
+        banner_md = banner_markdown("launch-log", banner_file)
+
         (tmp_dir / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Global Space Launch Log"
@@ -101,7 +105,7 @@ size_categories:
 ---
 
 # Space Launch Log
-
+{banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 ![Update Launch Log](https://github.com/juliensimon/space-datasets/actions/workflows/update-launch-log.yml/badge.svg)

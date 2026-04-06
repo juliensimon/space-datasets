@@ -10,6 +10,7 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent))
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 from vizier_tap import vizier_query
 
@@ -198,6 +199,9 @@ def main():
             schema_lines.append(f"| `{col}` | {dtype} | {desc} |")
         schema_block = "\n".join(schema_lines)
 
+        banner_file = download_banner("cosmic-voids", tmp)
+        banner_md = banner_markdown("cosmic-voids", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "Cosmic Void Catalog"
@@ -228,7 +232,7 @@ configs:
 ---
 
 # Cosmic Void Catalog
-
+{banner_md}
 *Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) and [Galaxies & Cosmology](https://huggingface.co/collections/juliensimon/galaxies-cosmology-datasets-6849da7f5e6455f6a7b2afb9) collections on Hugging Face.*
 
 ![Update Cosmic Voids](https://github.com/juliensimon/space-datasets/actions/workflows/update-cosmic-voids.yml/badge.svg)

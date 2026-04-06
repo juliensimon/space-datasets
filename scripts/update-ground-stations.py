@@ -27,6 +27,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 INSIDER_URL = "https://starlinkinsider.com/starlink-gateway-locations/"
@@ -241,7 +242,7 @@ def fetch_fcc_stations() -> list[dict]:
 
 # ── HF README ────────────────────────────────────────────────────────────────
 
-def build_readme(n_gateways: int, n_operational: int, n_planned: int) -> str:
+def build_readme(n_gateways: int, n_operational: int, n_planned: int, banner_md: str = "") -> str:
     return f"""---
 license: cc-by-4.0
 pretty_name: "Starlink Ground Stations and PoPs"
@@ -275,7 +276,7 @@ size_categories:
 ---
 
 # Starlink Ground Stations & Points of Presence
-
+{banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
 ![Update Ground Stations](https://github.com/juliensimon/space-datasets/actions/workflows/update-ground-stations.yml/badge.svg)
@@ -483,8 +484,10 @@ def main():
         print(f"  gateways.parquet: {gw_path.stat().st_size / 1024:.1f} KB")
         print(f"  pops.parquet: {pop_path.stat().st_size / 1024:.1f} KB")
 
+        banner_file = download_banner("ground-stations", tmp)
+        _banner_md = banner_markdown("ground-stations", banner_file)
         readme_path = tmp / "README.md"
-        readme_path.write_text(build_readme(len(gw_df), n_operational, n_planned))
+        readme_path.write_text(build_readme(len(gw_df), n_operational, n_planned, _banner_md))
 
         print("\nUploading to HF...")
         commit_msg = (

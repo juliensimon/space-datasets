@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from dataset_images import banner_markdown, download_banner
 from validate import check_dataset
 
 
@@ -140,6 +141,9 @@ def main():
         else:
             strongest_line = ""
 
+        banner_file = download_banner("insight-marsquakes", tmp)
+        banner_md = banner_markdown("insight-marsquakes", banner_file)
+
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "InSight Marsquake Catalog"
@@ -171,7 +175,7 @@ configs:
 ---
 
 # InSight Marsquake Catalog
-
+{banner_md}
 *Part of the [Space Probe and Mission Datasets](https://huggingface.co/collections/juliensimon/space-probe-and-mission-datasets-69c3fe82d410a42b1e313167) collection on Hugging Face.*
 
 Complete catalog of marsquakes detected by NASA InSight's SEIS seismometer on Mars,
