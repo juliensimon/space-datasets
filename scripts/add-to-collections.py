@@ -133,6 +133,7 @@ DATASETS = {
         "juliensimon/astronaut-database",
         "juliensimon/cassini-saturn-observations",
         "juliensimon/deep-space-probes",
+        "juliensimon/esa-exomars-tgo-observations",
         "juliensimon/esa-mars-express-observations",
         "juliensimon/esa-rosetta-observations",
         "juliensimon/galileo-jupiter-atmosphere",
@@ -150,6 +151,7 @@ DATASETS = {
     # ── Parent: Planetary Science ──────────────────────────────────────────
     PLANETARY: [
         "juliensimon/ceres-craters-dawn",
+        "juliensimon/esa-exomars-tgo-observations",
         "juliensimon/impact-craters",
         "juliensimon/lunar-craters-robbins",
         "juliensimon/mars-craters-robbins",
@@ -325,7 +327,6 @@ DATASETS = {
     ],
     # ── Sub: Sky Surveys ───────────────────────────────────────────────────
     SKY_SURVEYS: [
-        "juliensimon/astronaut-database",
         "juliensimon/chandra-x-ray-sources",
         "juliensimon/chime-frb-catalog",
         "juliensimon/erosita-erass1-xray",
@@ -367,6 +368,7 @@ DATASETS = {
         "juliensimon/cassini-saturn-observations",
         "juliensimon/ceres-craters-dawn",
         "juliensimon/deep-space-probes",
+        "juliensimon/esa-exomars-tgo-observations",
         "juliensimon/esa-mars-express-observations",
         "juliensimon/esa-rosetta-observations",
         "juliensimon/galileo-jupiter-atmosphere",

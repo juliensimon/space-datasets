@@ -81,7 +81,7 @@ def load_existing(tmp_dir):
     return None
 
 
-def generate_readme(df):
+def generate_readme(df, banner_md=""):
     """Generate HF dataset README."""
     n = len(df)
     date_min = df["time_tag"].min().strftime("%Y-%m-%d")
@@ -266,8 +266,8 @@ def main():
         print(f"  {out.stat().st_size / 1024 / 1024:.1f} MB parquet")
 
         banner_file = download_banner("solar-wind", tmp_dir)
-        _banner_md = banner_markdown("solar-wind", banner_file)
-        (tmp_dir / "README.md").write_text(generate_readme(df, _banner_md))
+        banner_md = banner_markdown("solar-wind", banner_file)
+        (tmp_dir / "README.md").write_text(generate_readme(df, banner_md))
 
         print("Uploading to HF...")
         commit_msg = f"Update solar wind: {len(df):,} readings"

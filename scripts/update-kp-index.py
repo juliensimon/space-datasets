@@ -78,7 +78,7 @@ def load_existing(tmp_dir):
     return None
 
 
-def generate_readme(df):
+def generate_readme(df, banner_md=""):
     """Generate HF dataset README."""
     n = len(df)
     date_min = df["datetime"].min().strftime("%Y-%m-%d")
@@ -259,8 +259,8 @@ def main():
         print(f"  {out.stat().st_size / 1024:.0f} KB parquet")
 
         banner_file = download_banner("kp-index", tmp_dir)
-        _banner_md = banner_markdown("kp-index", banner_file)
-        (tmp_dir / "README.md").write_text(generate_readme(df, _banner_md))
+        banner_md = banner_markdown("kp-index", banner_file)
+        (tmp_dir / "README.md").write_text(generate_readme(df, banner_md))
 
         print("Uploading to HF...")
         commit_msg = f"Update Kp index: {len(df):,} readings"

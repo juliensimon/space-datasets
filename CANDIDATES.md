@@ -2,13 +2,13 @@
 
 *Researched 2026-03-24, expanded 2026-03-26, solar system missions added 2026-03-27, Wikidata datasets added 2026-03-31. Goal: the most comprehensive free, tabular space data collection on Hugging Face.*
 
-**Built: 153 dataset scripts (152 uploaded, 1 blocked on USGS)** | **Remaining candidates: 13** | All sources free, no auth.
+**Built: 174 dataset scripts** | **Remaining candidates: 20** | All sources free, no auth.
 
 ---
 
-## Already Built (153 dataset scripts)
+## Already Built (174 dataset scripts)
 
-All P0 and P1 candidates are built, plus 4 P2 and 8 Wikidata datasets. Scripts in `scripts/update-*.py`, workflows in `.github/workflows/`.
+All P0 and P1 candidates are built, plus many P2 and 8 Wikidata datasets. Scripts in `scripts/update-*.py`, workflows in `.github/workflows/`.
 
 **From P0 (all 14):** JPL SBDB, NVSS, Lunar Craters, FIRST, eROSITA, Mars Craters, Sunspot, GCVS, Fermi 4FGL, CHIME/FRB, Sentry, Fireballs, Pantheon+, PDG
 
@@ -34,7 +34,7 @@ All P0 and P1 candidates are built, plus 4 P2 and 8 Wikidata datasets. Scripts i
 
 **New research (1):** SpaceX Launches (659, monthly) — all SpaceX missions with timelines, descriptions, and carousel photos from spacex.com
 
-**From P1 Solar System Missions (5 of 6 uploaded, 2026-03-27):** PDS Planetary Missions (137+115+748, multi-config), InSight Marsquakes (2,715), IAU Planetary Nomenclature (13,723 features across Moon/Mars/Venus/Mercury), Galileo Jupiter Atmosphere (686, entry+descent), Huygens Titan Atmosphere (2,727, entry+descent+velocity). *Blocked: Ceres Craters Dawn (44K, USGS Astropedia 503)*
+**From P1 Solar System Missions (8 uploaded):** PDS Planetary Missions (137+115+748, multi-config), InSight Marsquakes (2,715), IAU Planetary Nomenclature (13,723 features across Moon/Mars/Venus/Mercury), Ceres Craters (44K), Galileo Jupiter Atmosphere (686, entry+descent), Huygens Titan Atmosphere (2,727, entry+descent+velocity), GCAT Deep Space Missions, Venus Express Observations
 
 **From new research (2026-04-04, 7):** Mercury Craters Herrick (16.9K, static), Substorm Onsets SuperMAG (253K, quarterly), Forbush Decreases IZMIRAN (7.1K, static), TNO/Centaur Properties PDS (652, static), Mercury Crater Degradation Kinczyk (3.3K, static), Pluto Atmosphere New Horizons (1.9K, static), Lunar Sample Geochemistry Astromat (58K, static)
 
@@ -46,17 +46,17 @@ All P0 and P1 candidates are built, plus 4 P2 and 8 Wikidata datasets. Scripts i
 
 ## P1 — Solar System Missions (researched 2026-03-27)
 
-Built and uploaded: #1 PDS Missions, #2 InSight Marsquakes, #3 IAU Nomenclature, #5 Galileo Atmosphere, #6 Huygens Atmosphere. Blocked: #4 Ceres Craters (USGS 503).
+Built and uploaded: #1 PDS Missions, #2 InSight Marsquakes, #3 IAU Nomenclature, #4 Ceres Craters, #5 Galileo Atmosphere, #6 Huygens Atmosphere, #7 GCAT Deep Space, #12 Venus Express.
 
 | # | Dataset | Domain | Rows | Size | Incr? | Schedule | Source | Notes |
 |---|---------|--------|-----:|------|:-----:|----------|--------|-------|
-| 4 | **Ceres Crater Database** | Planetary | 44,594 | 9 MB | No | Static | USGS Astropedia | **Script ready**, blocked on USGS 503. CSV in zip. Zeilnhofer 2020 |
-| 7 | GCAT Deep Space Missions | Missions | 600+ | ~5 MB | No | Monthly | `planet4589.org/space/deepcat/` | TSV. deepcat.tsv + mission phases. All interplanetary objects/encounters |
+| 4 | ~~Ceres Crater Database~~ | Planetary | 44,594 | 9 MB | No | Static | USGS Astropedia | **Built 2026-04** as `ceres-craters`. CSV in zip. Zeilnhofer 2020 |
+| 7 | ~~GCAT Deep Space Missions~~ | Missions | 600+ | ~5 MB | No | Monthly | `planet4589.org/space/deepcat/` | **Built 2026-04** as `gcat-deep-space`. TSV. deepcat.tsv + mission phases. All interplanetary objects/encounters |
 | 8 | ~~Mercury Craters (Herrick)~~ | Planetary | 16,876 | <1 MB | No | Static | U. Alaska | **Built 2026-04-04** as `mercury-craters-herrick` |
 | 9 | Venus Craters (Herrick/USGS) | Planetary | ~900 | <1 MB | No | Static | USGS Astropedia CSV | Site currently down for maintenance. ~900 Magellan-era craters |
 | 10 | ~~TNO/Centaur Properties~~ | Outer SS | 652 | <1 MB | No | Static | PDS Small Bodies Node | **Built 2026-04-04** as `tno-centaur-properties` |
 | 11 | Mars Odyssey GRS Elements | Mars | ~grid | ~5 MB | No | Static | PDS Geosciences | .tab files. Cl, Fe, H2O, K, Si, Th maps at 2x2/5x5/10x10 deg bins |
-| 12 | Venus Express Observations | Venus | ~10K+ | ~10 MB | No | Static | ESA COSMOS portal | XLS. Full mission observation tracking table (2006-2014) |
+| 12 | ~~Venus Express Observations~~ | Venus | ~10K+ | ~10 MB | No | Static | ESA COSMOS portal | **Built 2026-04** as `venus-express`. XLS. Full mission observation tracking table (2006-2014) |
 | 13 | ~~New Horizons Pluto Atmospherics~~ | Pluto | 1,869 | <1 MB | No | Static | PDS SBN | **Built 2026-04-04** as `pluto-atmosphere` |
 | 14 | MAVEN Key Parameters | Mars | millions | ~100 MB | No | Static | LASP SDC API | Tab-delimited ASCII. Multi-instrument atmospheric data. Large, needs chunked download |
 | 15 | ~~Astromat Lunar Geochemistry~~ | Moon | 58,289 | 1.4 MB | No | Static | EarthChem Library | **Built 2026-04-04** as `lunar-sample-geochemistry` |
@@ -99,13 +99,13 @@ Built and uploaded: #1 PDS Missions, #2 InSight Marsquakes, #3 IAU Nomenclature,
 
 | Type | Count | Datasets |
 |------|------:|----------|
-| **Static** | 10 | Ceres Craters (blocked), Mercury Craters, Venus Craters, TNO/Centaur, GRS Elements, Venus Express, Pluto Atmospherics, Lunar Geochemistry, Mercury Degradation, Juno Mag |
+| **Static** | 12 | Venus Craters, GRS Elements, MAVEN, Juno Mag, Orbital Debris, Thermospheric Density, Gaia RR Lyrae full, SpaceTrack-TimeSeries, EGM2008, NANOGrav, NASA Fragmentation, ESA OPS-SAT |
 | **Daily** | 2 | Ionosonde, Transients (TNS) |
 | **Weekly** | 2 | GPS NANU, Aerospace Reentries |
-| **Monthly** | 1 | GCAT Deep Space |
-| **Quarterly** | 2 | Habitable Worlds, Substorm Onset |
+| **Monthly** | 1 | AstDyS Proper Elements |
+| **Quarterly** | 2 | Habitable Worlds, ASAS-SN |
 | **Yearly** | 1 | OGLE |
-| **Total remaining** | **20** | (12 solar system + 6 P2 + 2 P3 feasible) |
+| **Total remaining** | **20** | (4 solar system + 4 P2 + 12 P3) |
 
 ## Skip
 
@@ -150,11 +150,11 @@ Built and uploaded: #1 PDS Missions, #2 InSight Marsquakes, #3 IAU Nomenclature,
 
 ## Auth Summary
 
-- **No auth needed**: 19 of 20 remaining candidates
+- **No auth needed**: 19 of 20 remaining candidates (all except TNS)
 - **Free API key**: TNS (#18 Transients) — free bot key registration
 
 ## If You Could Only Build 3 More
 
-1. Mercury Craters / Herrick (7K+ — completes the crater quad: Moon+Mars+Ceres+Mercury)
-2. GCAT Deep Space Missions (600+ — all interplanetary mission phases/encounters in TSV)
-3. Transients/TNS (10–50K — supernovae/TDEs, needs API key registration)
+1. Transients/TNS (10–50K — supernovae/TDEs, needs API key registration)
+2. Venus Craters / Herrick (900 — completes crater collection, blocked on USGS maintenance)
+3. AstDyS Proper Elements (1.5M — bulk orbital element catalog)
