@@ -7,20 +7,20 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ### Top downloads
 
 <!-- TOP_DOWNLOADS_START -->
-**8,532** downloads (+940)  ·  **1** likes  ·  **178** datasets  ·  updated 2026-04-06
+**9,180** downloads (+648)  ·  **1** likes  ·  **178** datasets  ·  updated 2026-04-07
 
 | # | Dataset | Downloads |
 |--:|---------|----------:|
-| 1 | [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) | 807 (+16) |
-| 2 | [starlink-fleet-data](https://huggingface.co/datasets/juliensimon/starlink-fleet-data) | 215 (+6) |
-| 3 | [gaia-dr3-eclipsing-binaries](https://huggingface.co/datasets/juliensimon/gaia-dr3-eclipsing-binaries) | 209 (+116) |
-| 4 | [gaia-dr3-white-dwarfs](https://huggingface.co/datasets/juliensimon/gaia-dr3-white-dwarfs) | 206 (+109) |
-| 5 | [gaia-dr3-young-stellar-objects](https://huggingface.co/datasets/juliensimon/gaia-dr3-young-stellar-objects) | 201 (+102) |
-| 6 | [gaia-dr3-cepheids](https://huggingface.co/datasets/juliensimon/gaia-dr3-cepheids) | 190 (+97) |
-| 7 | [gaia-dr3-rrlyrae](https://huggingface.co/datasets/juliensimon/gaia-dr3-rrlyrae) | 187 (+105) |
-| 8 | [constellation-census](https://huggingface.co/datasets/juliensimon/constellation-census) | 124 (+11) |
-| 9 | [donki-space-weather-events](https://huggingface.co/datasets/juliensimon/donki-space-weather-events) | 121 (+6) |
-| 10 | [starlink-tle-latest](https://huggingface.co/datasets/juliensimon/starlink-tle-latest) | 120 (+5) |
+| 1 | [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) | 822 (+15) |
+| 2 | [gaia-dr3-eclipsing-binaries](https://huggingface.co/datasets/juliensimon/gaia-dr3-eclipsing-binaries) | 229 (+20) |
+| 3 | [starlink-fleet-data](https://huggingface.co/datasets/juliensimon/starlink-fleet-data) | 224 (+9) |
+| 4 | [gaia-dr3-white-dwarfs](https://huggingface.co/datasets/juliensimon/gaia-dr3-white-dwarfs) | 222 (+16) |
+| 5 | [gaia-dr3-young-stellar-objects](https://huggingface.co/datasets/juliensimon/gaia-dr3-young-stellar-objects) | 221 (+20) |
+| 6 | [gaia-dr3-rrlyrae](https://huggingface.co/datasets/juliensimon/gaia-dr3-rrlyrae) | 210 (+23) |
+| 7 | [gaia-dr3-cepheids](https://huggingface.co/datasets/juliensimon/gaia-dr3-cepheids) | 210 (+20) |
+| 8 | [constellation-census](https://huggingface.co/datasets/juliensimon/constellation-census) | 135 (+11) |
+| 9 | [donki-space-weather-events](https://huggingface.co/datasets/juliensimon/donki-space-weather-events) | 131 (+10) |
+| 10 | [starlink-tle-latest](https://huggingface.co/datasets/juliensimon/starlink-tle-latest) | 131 (+11) |
 <!-- TOP_DOWNLOADS_END -->
 
 <!-- Orbital Mechanics -->
