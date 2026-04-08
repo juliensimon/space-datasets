@@ -83,7 +83,6 @@ def parse_image(img, mission):
         "mast_azimuth": ext.get("mast_az"),
         "mast_elevation": ext.get("mast_el"),
         "sample_type": ext.get("sample_type"),
-        "filter_name": ext.get("filter_name"),
         "local_mean_solar_time": ext.get("lmst"),
         "image_url": img.get("https_url"),
         "is_thumbnail": bool(img.get("is_thumbnail")),
@@ -240,7 +239,6 @@ Image metadata from NASA's Mars rovers: **{n_m2020:,}** Perseverance images (sol
 | `mast_azimuth` | float | Mast azimuth angle (degrees) |
 | `mast_elevation` | float | Mast elevation angle (degrees) |
 | `sample_type` | string | Image sample type (full, subframe, thumbnail) |
-| `filter_name` | string | Camera filter name |
 | `local_mean_solar_time` | string | Local Mean Solar Time on Mars |
 | `image_url` | string | Direct HTTPS URL to download the raw image |
 | `is_thumbnail` | bool | Whether this is a thumbnail image |

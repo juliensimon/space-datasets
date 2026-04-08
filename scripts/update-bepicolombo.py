@@ -188,14 +188,14 @@ def main():
     for inst, count in instruments_summary.items():
         print(f"    {inst}: {count:,}")
 
-    # Drop columns that are >95% null (optional EPN-TAP fields)
+    # Drop columns that are >80% null (optional EPN-TAP fields)
     before_cols = len(df.columns)
     for col in list(df.columns):
-        if df[col].isna().mean() > 0.95:
+        if df[col].isna().mean() > 0.80:
             df = df.drop(columns=[col])
     dropped = before_cols - len(df.columns)
     if dropped:
-        print(f"  Dropped {dropped} columns (>95% null)")
+        print(f"  Dropped {dropped} columns (>80% null)")
 
     # ── Validate ──────────────────────────────────────────────────────
     check_dataset(df, "bepicolombo", min_rows=50_000,

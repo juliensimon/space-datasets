@@ -238,7 +238,7 @@ def main():
     first_part = sorted(parts_dir.glob("*.parquet"))[0]
     sample = pd.read_parquet(first_part)
     sample = _clean_chunk(sample)
-    drop_cols = [col for col in sample.columns if sample[col].isna().mean() > 0.95]
+    drop_cols = [col for col in sample.columns if sample[col].isna().mean() > 0.80]
     del sample
 
     dropped = len(drop_cols)
