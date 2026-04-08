@@ -31,9 +31,9 @@ from validate import check_dataset
 BASE_URL = "https://lasp.colorado.edu/maven/sdc/public/data/sci/kp/insitu/"
 HF_REPO = "juliensimon/nasa-maven-kp-insitu"
 
-# For initial build, start from 2024 to keep runtime manageable.
-# Future runs pick up new data incrementally.
-START_YEAR = 2024
+# For initial build, start from 2025 to keep GH Actions runtime under 1 hour.
+# Each file is ~43 MB text, ~30s download+parse. Future incremental runs extend.
+START_YEAR = 2025
 START_MONTH = 1
 
 SESSION = requests.Session()
