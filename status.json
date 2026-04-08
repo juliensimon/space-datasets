@@ -89,7 +89,8 @@
     "xray-binaries": 305,
     "juice": 3033,
     "bepicolombo": 176488,
-    "mars-rovers": 400016
+    "mars-rovers": 400016,
+    "maven": 2297978
   },
   "ae-index": "2026-04-06",
   "artemis-ii": "2026-04-08",
@@ -186,5 +187,6 @@
   "xray-binaries": "2026-04-03",
   "juice": "2026-04-08",
   "bepicolombo": "2026-04-08",
-  "mars-rovers": "2026-04-08"
+  "mars-rovers": "2026-04-08",
+  "maven": "2026-04-08"
 }
