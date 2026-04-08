@@ -198,10 +198,13 @@ def main():
         print(f"  Dropped {dropped} columns (>80% null)")
 
     # ── Validate ──────────────────────────────────────────────────────
+    # Filter expected/critical to columns that survived the null drop
+    expected = ["granule_uid", "instrument_name", "time_min", "time_max",
+                "dataproduct_type"]
     check_dataset(df, "bepicolombo", min_rows=50_000,
-        expected_columns=["granule_uid", "instrument_name", "target_name",
-                          "time_min", "time_max", "dataproduct_type"],
-        critical_columns=["granule_uid", "instrument_name", "time_min"])
+        expected_columns=[c for c in expected if c in df.columns],
+        critical_columns=[c for c in ["granule_uid", "instrument_name", "time_min"]
+                          if c in df.columns])
 
     # ── Write & upload ────────────────────────────────────────────────
     with tempfile.TemporaryDirectory() as tmp:

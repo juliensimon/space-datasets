@@ -363,6 +363,19 @@ def main():
     else:
         size_cat = "100K<n<1M"
 
+    # Drop all-null and >80% null columns (MAVEN has ~30 instrument columns
+    # that are empty depending on orbit phase and instrument availability)
+    before = len(df.columns)
+    for col in list(df.columns):
+        if col == "time":
+            continue
+        null_pct = df[col].isna().mean()
+        if null_pct > 0.80 or null_pct == 1.0:
+            df = df.drop(columns=[col])
+    dropped = before - len(df.columns)
+    if dropped:
+        print(f"  Dropped {dropped} columns (>80% null or all-null)")
+
     # Validate
     expected_cols = ["time"]
     critical_cols = ["time"]
