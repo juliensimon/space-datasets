@@ -358,7 +358,7 @@ def main():
     if df_existing is not None and len(df_existing) > 0:
         if not df_new.empty:
             df = pd.concat([df_existing, df_new], ignore_index=True)
-            df = df.drop_duplicates("id", keep="last")
+            df = df.drop_duplicates(["id", "mission"], keep="last")
             print(f"Merged: {len(df):,} total ({len(df) - len(df_existing):+,} net new)")
         else:
             df = df_existing
