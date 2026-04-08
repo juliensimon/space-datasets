@@ -472,7 +472,7 @@ print(df.describe())
 
 ## Update schedule
 
-Weekly (Monday at 10:30 UTC) via [GitHub Actions](https://github.com/juliensimon/space-datasets).
+Quarterly via [GitHub Actions](https://github.com/juliensimon/space-datasets). LASP publishes KP data with a ~6-8 month lag.
 
 ## Related datasets
 
