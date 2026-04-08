@@ -57,43 +57,106 @@ def list_tab_files(year: int, month: int) -> list[str]:
     return sorted(set(filenames))
 
 
+def _extract_column_names(lines: list[str]) -> list[str]:
+    """Build column names from the description section of the header.
+
+    Lines 100-337 (approx) have format:
+      # Column description    Instrument    Unit    ColNum  Format    Note
+    We extract the column number and description to build names like:
+      'time', 'lpw_electron_density', 'lpw_electron_density_quality', ...
+
+    Fallback: use generic col_1, col_2, ... col_235.
+    """
+    names = {}
+    for line in lines:
+        if not line.startswith("#"):
+            continue
+        stripped = line[1:].strip()
+        # Look for description lines with column numbers (e.g. "  123  F16.8")
+        # Format: "# Description    Instrument    Unit    ColNum  Format    Note"
+        parts = stripped.split()
+        if len(parts) < 3:
+            continue
+        # Find column number: look for a standalone integer in the range 1-235
+        for i, p in enumerate(parts):
+            try:
+                col_num = int(p)
+                if 1 <= col_num <= 235 and i >= 2:
+                    # Build name from parts before the column number
+                    desc_parts = parts[:i]
+                    # Remove instrument/unit parts that come after the description
+                    # Keep first meaningful words, snake_case them
+                    name = "_".join(desc_parts).lower()
+                    # Clean up common patterns
+                    name = re.sub(r"[^a-z0-9_]", "_", name)
+                    name = re.sub(r"_+", "_", name).strip("_")
+                    if name:
+                        names[col_num] = name
+                    break
+            except ValueError:
+                continue
+
+    if not names:
+        return ["time"] + [f"col_{i}" for i in range(1, 235)]
+
+    # Build ordered list: col 1 is time, then 2-235
+    result = ["time"]
+    for i in range(2, 236):
+        result.append(names.get(i, f"col_{i}"))
+    return result
+
+
 def parse_tab_file(content: str) -> pd.DataFrame | None:
     """Parse a MAVEN KP .tab file (fixed-width text with # header lines).
 
-    Returns a DataFrame or None if parsing fails.
+    The header contains metadata including the line number where data begins.
+    Data is whitespace-delimited with 235 columns.
     """
     lines = content.splitlines()
 
-    # Find header lines (start with #) and extract column names from the last one
-    header_lines = [line for line in lines if line.startswith("#")]
-    if not header_lines:
+    # Extract data start line from header (line ~8: "#     348   Line on which data begins")
+    data_start_line = None
+    for line in lines[:20]:
+        if "Line on which data begins" in line:
+            match = re.search(r"#\s+(\d+)\s+Line on which", line)
+            if match:
+                data_start_line = int(match.group(1)) - 1  # 0-indexed
+                break
+
+    if data_start_line is None:
+        # Fallback: find first non-# non-empty line
+        for i, line in enumerate(lines):
+            if not line.startswith("#") and line.strip():
+                data_start_line = i
+                break
+
+    if data_start_line is None or data_start_line >= len(lines):
         return None
 
-    # The last header line contains column names
-    last_header = header_lines[-1].lstrip("#").strip()
-    col_names = last_header.split()
-
-    # Data lines are everything after the header
-    data_start = len(header_lines)
-    data_lines = lines[data_start:]
+    # Use generic column names (numbered) — the multi-line header is too
+    # complex to parse reliably. Column 1 is time, rest are instrument params.
+    data_lines = [l for l in lines[data_start_line:] if l.strip()]
     if not data_lines:
         return None
 
-    # Join data lines and parse as whitespace-delimited
     data_text = "\n".join(data_lines)
     try:
         df = pd.read_csv(
             io.StringIO(data_text),
             sep=r"\s+",
-            names=col_names,
             header=None,
-            na_values=["-9.99999990E+30", "-1.00000000E+31", "NO_DATA"],
+            na_values=["-9.99999990E+30", "-1.00000000E+31", "NO_DATA", "NaN"],
         )
     except Exception:
         return None
 
     if df.empty:
         return None
+
+    # Assign column names: col 0 = time, rest = col_2 through col_235
+    n_cols = len(df.columns)
+    col_names = ["time"] + [f"col_{i+1}" for i in range(1, n_cols)]
+    df.columns = col_names[:n_cols]
 
     return df
 
