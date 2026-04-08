@@ -251,6 +251,12 @@ def generate_months(start_year: int, start_month: int, end_year: int, end_month:
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--year", type=int, default=None,
+                        help="Fetch only this single year (e.g. --year 2020)")
+    args = parser.parse_args()
+
     print("Fetching NASA MAVEN KP in-situ data...")
 
     yesterday = date.today() - timedelta(days=1)
@@ -259,17 +265,28 @@ def main():
     with tempfile.TemporaryDirectory() as probe:
         df_existing = load_existing(Path(probe))
 
-    if df_existing is not None and len(df_existing) > 0:
+    if args.year:
+        # Single-year mode: fetch one year, merge with existing
+        fetch_start_year = args.year
+        fetch_start_month = 1
+        fetch_end_year = args.year
+        fetch_end_month = 12
+        print(f"  Single-year mode: fetching {args.year}")
+    elif df_existing is not None and len(df_existing) > 0:
         # Incremental: fetch from the month of the last data point
         max_time = df_existing["time"].max()
         fetch_start_year = max_time.year
         fetch_start_month = max_time.month
+        fetch_end_year = yesterday.year
+        fetch_end_month = yesterday.month
         print(f"  Incremental from {fetch_start_year}-{fetch_start_month:02d}")
     else:
         # Full rebuild from START_YEAR
         df_existing = None
         fetch_start_year = START_YEAR
         fetch_start_month = START_MONTH
+        fetch_end_year = yesterday.year
+        fetch_end_month = yesterday.month
         print(f"  Full rebuild from {fetch_start_year}-{fetch_start_month:02d}")
 
     # Fetch new data month by month
@@ -277,7 +294,7 @@ def main():
     total_files = 0
 
     for year, month in generate_months(fetch_start_year, fetch_start_month,
-                                       yesterday.year, yesterday.month):
+                                       fetch_end_year, fetch_end_month):
         print(f"  {year}-{month:02d}...", end="", flush=True)
         filenames = list_tab_files(year, month)
         if not filenames:
