@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetch ESA Mars Express observation catalog from PSA EPN-TAP and upload to HF."""
+"""Fetch ESA Huygens Titan descent observation catalog from PSA EPN-TAP and upload to HF."""
 
 import os
 import subprocess
@@ -16,18 +16,18 @@ from validate import check_dataset
 
 
 TAP_URL = "https://psa.esa.int/psa-tap/tap/sync"
-HF_REPO = "juliensimon/esa-mars-express-observations"
+HF_REPO = "juliensimon/esa-huygens-titan-descent"
 
-# Mars Express instruments in order of expected catalog size
+# Huygens instruments in order of expected catalog size
 INSTRUMENTS = [
-    "ASPERA-3",
-    "HRSC",
-    "VMC",
-    "MaRS",
-    "PFS",
-    "SPICAM",
-    "MARSIS",
-    "OMEGA",
+    "DISR",
+    "GCMS",
+    "HASI",
+    "HUYGENS_HK",
+    "SSP",
+    "DTWG",
+    "ACP",
+    "DWE",
 ]
 
 PAGE_SIZE = 500_000
@@ -36,7 +36,7 @@ PAGE_SIZE = 500_000
 def fetch_count() -> int:
     """Sanity-check: fetch total row count."""
     query = ("SELECT COUNT(*) AS n FROM epn_core "
-             "WHERE instrument_host_name = 'Mars Express'")
+             "WHERE instrument_host_name LIKE '%Huygens%'")
     print("Checking total row count...")
     resp = requests.get(TAP_URL, params={
         "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "json",
@@ -61,7 +61,7 @@ def fetch_instrument(instrument: str) -> pd.DataFrame:
     while True:
         query = (
             f"SELECT TOP {PAGE_SIZE} * FROM epn_core "
-            f"WHERE instrument_host_name = 'Mars Express' "
+            f"WHERE instrument_host_name LIKE '%Huygens%' "
             f"AND instrument_name = '{instrument}' "
             f"AND granule_uid > '{last_id}' "
             f"ORDER BY granule_uid"
@@ -100,7 +100,7 @@ def fetch_instrument(instrument: str) -> pd.DataFrame:
 
 
 def main():
-    print("Fetching ESA Mars Express observation catalog...")
+    print("Fetching ESA Huygens Titan descent observation catalog...")
 
     # Verify expected size
     total_expected = fetch_count()
@@ -120,7 +120,7 @@ def main():
     df = pd.concat(dfs, ignore_index=True)
     print(f"  Total fetched: {len(df):,} rows")
 
-    # ── Column cleanup ────────────────────────────────────────────────
+    # -- Column cleanup --------------------------------------------------------
     # Columns already arrive in snake_case from EPN-TAP; ensure consistency
     df.columns = [c.strip().lower() for c in df.columns]
 
@@ -172,7 +172,7 @@ def main():
     # Sort by observation start time
     df = df.sort_values("time_min", na_position="last").reset_index(drop=True)
 
-    # ── Stats ─────────────────────────────────────────────────────────
+    # -- Stats -----------------------------------------------------------------
     n_total = len(df)
     n_instruments = df["instrument_name"].nunique()
     instruments_summary = (df["instrument_name"].value_counts()
@@ -194,19 +194,19 @@ def main():
     if dropped:
         print(f"  Dropped {dropped} columns (>95% null)")
 
-    # ── Validate ──────────────────────────────────────────────────────
-    check_dataset(df, "mars-express", min_rows=1_000_000,
+    # -- Validate --------------------------------------------------------------
+    check_dataset(df, "huygens", min_rows=5_000,
         expected_columns=["granule_uid", "instrument_name", "target_name",
                           "time_min", "time_max", "dataproduct_type"],
         critical_columns=["granule_uid", "instrument_name", "time_min"])
 
-    # ── Write & upload ────────────────────────────────────────────────
+    # -- Write & upload --------------------------------------------------------
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         data_dir = tmp / "data"
         data_dir.mkdir()
 
-        out = data_dir / "mars_express_observations.parquet"
+        out = data_dir / "huygens_observations.parquet"
         df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
@@ -217,62 +217,48 @@ def main():
             for inst, count in instruments_summary.items()
         )
 
-        banner_file = download_banner("mars-express", tmp)
-        banner_md = banner_markdown("mars-express", banner_file)
+        banner_file = download_banner("huygens-atmosphere", tmp)
+        banner_md = banner_markdown("huygens-atmosphere", banner_file)
 
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
-pretty_name: "ESA Mars Express Observations"
+pretty_name: "ESA Huygens Titan Descent"
 language:
   - en
-description: "Complete observation metadata catalog from the ESA Mars Express mission ({n_total:,} observations across {n_instruments} instruments), orbiting Mars since 2003. Updated weekly from the ESA Planetary Science Archive."
+description: "In-situ observation catalog from the ESA Huygens probe descent through Titan's atmosphere and landing ({n_total:,} observations across {n_instruments} instruments). Static dataset from the ESA Planetary Science Archive."
 task_categories:
   - tabular-classification
 tags:
   - space
-  - mars
-  - mars-express
+  - titan
+  - huygens
+  - cassini
+  - saturn
   - esa
   - planetary-science
+  - atmosphere
   - open-data
   - tabular-data
   - parquet
 size_categories:
-  - 1M<n<10M
+  - 10K<n<100K
 configs:
   - config_name: default
     data_files:
       - split: train
-        path: data/mars_express_observations.parquet
+        path: data/huygens_observations.parquet
     default: true
 ---
 
-# ESA Mars Express Observations
+# ESA Huygens Titan Descent
 {banner_md}
-*Part of the [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c24cb17e3db14fc30f0716) collection on Hugging Face.*
+*Part of the [Solar System Datasets](https://huggingface.co/collections/juliensimon/solar-system-datasets-67d1e3b4343a25fc6cf402b4) and [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c24cb17e3db14fc30f0716) collections on Hugging Face.*
 
-![Update Mars Express](https://github.com/juliensimon/space-datasets/actions/workflows/update-mars-express.yml/badge.svg)
-![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['mars-express']&label=updated&color=brightgreen)
-
-Complete observation metadata catalog from the **ESA Mars Express** mission \u2014 **{n_total:,}**
-observations across {n_instruments} instruments, covering over two decades of Mars exploration
-since the spacecraft entered orbit in December 2003.
+On January 14, 2005, the ESA Huygens probe made history as the first human-made object to land on a body in the outer Solar System. Released from the Cassini orbiter, Huygens descended through Titan's thick nitrogen-methane atmosphere for 2 hours 27 minutes, transmitting data from 160 km altitude down to the surface. The Descent Imager/Spectral Radiometer (DISR) captured images revealing drainage channels, shorelines, and a landscape shaped by liquid methane \u2014 evidence of an active hydrological cycle on another world. The Gas Chromatograph Mass Spectrometer (GCMS) analyzed atmospheric composition during descent, while the Huygens Atmospheric Structure Instrument (HASI) measured temperature, pressure, and density profiles. The Surface Science Package (SSP) recorded the impact and confirmed Huygens landed on a soft, damp surface \u2014 likely methane-saturated hydrocarbon sediment. This dataset is the only in-situ observation catalog from Titan's surface and atmosphere.
 
 ## Dataset description
 
-Mars Express is a European Space Agency mission that has been studying the Martian atmosphere,
-surface, subsurface, and space environment since 2003. It carries a suite of instruments
-including a high-resolution stereo camera (HRSC), radar sounder (MARSIS), infrared imaging
-spectrometer (OMEGA), atmospheric spectrometers (PFS, SPICAM), plasma analyzer (ASPERA-3),
-radio science experiment (MaRS), and visual monitoring camera (VMC).
-
-This dataset contains the full observation metadata from the ESA Planetary Science Archive
-(PSA), conforming to the EPN-TAP standard. Each row represents one observation or data
-granule, with timing, spatial coverage, instrument parameters, and access URLs.
-
-Mars Express has been one of the most scientifically productive Mars missions ever flown. HRSC has produced the most complete high-resolution stereo topographic map of Mars, essential for geological mapping and landing site characterization. MARSIS, a subsurface radar sounder, detected reflections consistent with liquid water beneath the south polar layered deposits — a finding that reshaped understanding of present-day Mars hydrology. OMEGA mapped the global mineralogy of the Martian surface, identifying phyllosilicates, sulfates, and other aqueous alteration minerals that constrain the planet's climatic history. SPICAM and PFS have tracked the seasonal behavior of water vapor, ozone, and dust in the Martian atmosphere across multiple Mars years.
-
-The longevity of the mission — over two decades in Mars orbit — makes this observation catalog uniquely valuable for studying long-term variability. It captures multiple complete Martian years of atmospheric monitoring, seasonal polar cap evolution, and dust storm cycles, including the planet-encircling dust event of 2018. The temporal baseline also enables detection of surface changes such as fresh impact craters, slope streaks, and CO2 geyser activity at the south pole. Cross-referencing observations from different instruments at the same location and time supports multi-wavelength analysis that no single instrument could achieve alone.
+This dataset contains **{n_total:,}** observations across {n_instruments} instruments from the ESA Planetary Science Archive (PSA), conforming to the EPN-TAP standard. Each row represents one observation or data granule, with timing, spatial coverage, instrument parameters, and access URLs.
 
 ## Instruments
 
@@ -286,9 +272,9 @@ The longevity of the mission — over two decades in Mars orbit — makes this o
 | `granule_gid` | string | Group identifier |
 | `obs_id` | string | Observation ID |
 | `dataproduct_type` | string | Data product type (e.g. spectrum, image, profile) |
-| `target_name` | string | Target body (Mars, Phobos, Deimos, etc.) |
-| `target_class` | string | Target class (planet, satellite, etc.) |
-| `instrument_name` | string | Instrument name (HRSC, MARSIS, OMEGA, etc.) |
+| `target_name` | string | Target body (Titan) |
+| `target_class` | string | Target class (satellite) |
+| `instrument_name` | string | Instrument name (DISR, GCMS, HASI, SSP, etc.) |
 | `time_min` | float64 | Observation start time (JD) |
 | `time_max` | float64 | Observation end time (JD) |
 | `c1min`/`c1max` | float64 | Spatial coordinate 1 range |
@@ -313,21 +299,20 @@ The full schema contains up to ~50 columns following the EPN-TAP standard.
 ```python
 from datasets import load_dataset
 
-ds = load_dataset("juliensimon/esa-mars-express-observations", split="train")
+ds = load_dataset("juliensimon/esa-huygens-titan-descent", split="train")
 df = ds.to_pandas()
 
 # Observations per instrument
 print(df["instrument_name"].value_counts())
 
-# HRSC images
-hrsc = df[df["instrument_name"] == "HRSC"]
-print(f"{{len(hrsc):,}} HRSC observations")
+# DISR imaging observations
+disr = df[df["instrument_name"] == "DISR"]
+print(f"{{len(disr):,}} DISR observations")
 
-# Timeline of observations
+# Filter by descent phase (time range)
 import matplotlib.pyplot as plt
-df["year"] = ((df["time_min"] - 2451545.0) / 365.25 + 2000).astype(int)
-df.groupby(["year", "instrument_name"]).size().unstack().plot(kind="bar", stacked=True)
-plt.title("Mars Express observations per year")
+df.groupby("instrument_name").size().sort_values(ascending=False).plot(kind="bar")
+plt.title("Huygens observations by instrument")
 plt.ylabel("Count")
 ```
 
@@ -336,16 +321,12 @@ plt.ylabel("Count")
 [ESA Planetary Science Archive](https://psa.esa.int/) \u2014 EPN-TAP service at
 `https://psa.esa.int/psa-tap/tap/sync`.
 
-## Update schedule
-
-Weekly (Monday at 07:00 UTC) via [GitHub Actions](https://github.com/juliensimon/space-datasets).
-
 ## Related datasets
 
-- [esa-exomars-tgo-observations](https://huggingface.co/datasets/juliensimon/esa-exomars-tgo-observations) \u2014 ESA ExoMars TGO observation catalog
-- [nasa-maven-kp-insitu](https://huggingface.co/datasets/juliensimon/nasa-maven-kp-insitu) \u2014 MAVEN Mars atmosphere key parameters
-- [nasa-mars-rover-images](https://huggingface.co/datasets/juliensimon/nasa-mars-rover-images) \u2014 Perseverance and Curiosity image metadata
-- [mars-craters](https://huggingface.co/datasets/juliensimon/mars-craters-robbins) \u2014 Robbins Mars crater catalog
+- [esa-rosetta-observations](https://huggingface.co/datasets/juliensimon/esa-rosetta-observations) \u2014 ESA Rosetta comet mission
+- [cassini](https://huggingface.co/datasets/juliensimon/cassini) \u2014 Cassini Saturn orbiter
+- [galileo-atmosphere](https://huggingface.co/datasets/juliensimon/galileo-atmosphere) \u2014 Galileo Jupiter atmospheric probe
+- [huygens-atmosphere](https://huggingface.co/datasets/juliensimon/huygens-atmosphere) \u2014 Huygens atmospheric profiles
 
 ## Pipeline
 
@@ -353,17 +334,17 @@ Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-d
 
 ## Support
 
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/esa-mars-express-observations) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
+If you find this dataset useful, please give it a \u2764\ufe0f on the [dataset page](https://huggingface.co/datasets/juliensimon/esa-huygens-titan-descent) and share feedback in the Community tab! Also consider giving a \u2b50\ufe0f to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
 
 ## Citation
 
 ```bibtex
-@dataset{{mars_express_observations,
+@dataset{{huygens_titan_descent,
   author = {{Simon, Julien}},
-  title = {{ESA Mars Express Observations}},
+  title = {{ESA Huygens Titan Descent}},
   year = {{2026}},
   publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/esa-mars-express-observations}},
+  url = {{https://huggingface.co/datasets/juliensimon/esa-huygens-titan-descent}},
   note = {{Based on ESA Planetary Science Archive (PSA) EPN-TAP service}}
 }}
 ```
@@ -374,7 +355,7 @@ If you find this dataset useful, please give it a ❤️ on the [dataset page](h
 """)
 
         print("Uploading to HF...")
-        commit_msg = f"Update Mars Express observations: {n_total:,} observations"
+        commit_msg = f"Upload Huygens Titan descent observations: {n_total:,} observations"
         subprocess.run(
             ["hf", "upload", HF_REPO, str(tmp), ".",
              "--repo-type", "dataset",

@@ -147,6 +147,11 @@ DATASETS = {
         "juliensimon/gcat-deep-space",
         "juliensimon/isro-missions",
         "juliensimon/esa-venus-express-observations",
+        "juliensimon/esa-bepicolombo-observations",
+        "juliensimon/esa-huygens-titan-descent",
+        "juliensimon/esa-juice-observations",
+        "juliensimon/nasa-maven-kp-insitu",
+        "juliensimon/nasa-mars-rover-images",
     ],
     # ── Parent: Planetary Science ──────────────────────────────────────────
     PLANETARY: [
@@ -162,6 +167,10 @@ DATASETS = {
         "juliensimon/meteorite-landings",
         "juliensimon/planetary-nomenclature",
         "juliensimon/solar-system-moons",
+        "juliensimon/esa-bepicolombo-observations",
+        "juliensimon/esa-huygens-titan-descent",
+        "juliensimon/nasa-maven-kp-insitu",
+        "juliensimon/nasa-mars-rover-images",
     ],
     # ── Parent: Space Weather ──────────────────────────────────────────────
     WEATHER: [
@@ -391,6 +400,11 @@ DATASETS = {
         "juliensimon/solar-system-moons",
         "juliensimon/gcat-deep-space",
         "juliensimon/esa-venus-express-observations",
+        "juliensimon/esa-bepicolombo-observations",
+        "juliensimon/esa-huygens-titan-descent",
+        "juliensimon/esa-juice-observations",
+        "juliensimon/nasa-maven-kp-insitu",
+        "juliensimon/nasa-mars-rover-images",
     ],
     # ── Sub: Space Essentials (general public, no jargon) ────────────────────
     ESSENTIALS: [

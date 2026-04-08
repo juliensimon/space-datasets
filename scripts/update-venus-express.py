@@ -356,8 +356,9 @@ Weekly (Monday at 08:00 UTC) via [GitHub Actions](https://github.com/juliensimon
 ## Related datasets
 
 - [esa-mars-express-observations](https://huggingface.co/datasets/juliensimon/esa-mars-express-observations) \u2014 ESA Mars Express observation catalog
-- [esa-rosetta-observations](https://huggingface.co/datasets/juliensimon/esa-rosetta-observations) \u2014 ESA Rosetta observation catalog
-- [exoplanet-archive](https://huggingface.co/datasets/juliensimon/nasa-exoplanets) \u2014 NASA Exoplanet Archive
+- [esa-bepicolombo-observations](https://huggingface.co/datasets/juliensimon/esa-bepicolombo-observations) \u2014 ESA BepiColombo Mercury mission
+- [esa-rosetta-observations](https://huggingface.co/datasets/juliensimon/esa-rosetta-observations) \u2014 ESA Rosetta comet mission
+- [esa-exomars-tgo-observations](https://huggingface.co/datasets/juliensimon/esa-exomars-tgo-observations) \u2014 ESA ExoMars TGO Mars orbiter
 
 ## Pipeline
 

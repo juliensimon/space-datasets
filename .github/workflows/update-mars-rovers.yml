@@ -1,0 +1,37 @@
+name: Update Mars Rovers
+on:
+  schedule:
+    - cron: '0 11 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    environment: HF
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pandas pyarrow requests huggingface_hub[hf_xet]
+      - id: update
+        run: python scripts/update-mars-rovers.py
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      - name: Update and push status
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          for i in 1 2 3; do
+            git pull --rebase || true
+            git checkout status.json 2>/dev/null || true
+            python scripts/update-status.py mars-rovers --rows ${{ steps.update.outputs.rows }}
+            git add status.json
+            git diff --cached --quiet && break
+            git commit -m "status: mars-rovers updated $(date -u +%Y-%m-%d)"
+            git push && break
+            echo "Push failed (attempt $i), retrying..."
+            git reset HEAD~1
+            sleep 2
+          done

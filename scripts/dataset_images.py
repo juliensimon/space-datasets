@@ -275,6 +275,26 @@ DATASET_IMAGES = {
         "alt": "NASA's DART spacecraft approaching the Didymos asteroid system",
         "credit": "NASA/Johns Hopkins APL",
     },
+    "bepicolombo": {
+        "url": "https://images-assets.nasa.gov/image/PIA11245/PIA11245~small.jpg",
+        "alt": "Mercury as seen by the MESSENGER spacecraft",
+        "credit": "NASA/Johns Hopkins APL/Carnegie Institution of Washington",
+    },
+    "juice": {
+        "url": "https://images-assets.nasa.gov/image/PIA00600/PIA00600~small.jpg",
+        "alt": "Jupiter's Great Red Spot and the Galilean satellites",
+        "credit": "NASA/JPL-Caltech",
+    },
+    "maven": {
+        "url": "https://images-assets.nasa.gov/image/PIA24309/PIA24309~small.jpg",
+        "alt": "Exploring Jezero Crater on Mars (illustration)",
+        "credit": "NASA/JPL-Caltech",
+    },
+    "mars-rovers": {
+        "url": "https://images-assets.nasa.gov/image/PIA19808/PIA19808~small.jpg",
+        "alt": "NASA's Curiosity rover on the surface of Mars",
+        "credit": "NASA/JPL-Caltech/MSSS",
+    },
     "insight-marsquakes": {
         "url": "https://images-assets.nasa.gov/image/PIA24309/PIA24309~small.jpg",
         "alt": "Exploring Jezero Crater on Mars (illustration)",
@@ -437,6 +457,10 @@ DATASET_DOMAIN = {
     "rosetta": "probes",
     "space-missions": "probes",
     "spacecraft": "probes",
+    "bepicolombo": "probes",
+    "juice": "probes",
+    "maven": "probes",
+    "mars-rovers": "probes",
     "venus-express": "probes",
     # Planetary science
     "ceres-craters": "planetary",

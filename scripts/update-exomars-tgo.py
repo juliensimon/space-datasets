@@ -277,6 +277,19 @@ def main():
         time_range_max = max(time_maxs) if time_maxs else 0
         print(f"  {n_total:,} observations across {n_instruments} instruments, {total_size:.1f} MB total")
 
+        # ── Validate using a sample part ─────────────────────────────
+        sample_parts = sorted(data_dir.rglob("*.parquet"))
+        if sample_parts:
+            df_sample = pd.read_parquet(sample_parts[0])
+            check_dataset(df_sample, "exomars-tgo", min_rows=1,
+                expected_columns=["granule_uid", "instrument_name", "target_name",
+                                  "time_min", "time_max", "obs_id"],
+                critical_columns=["granule_uid", "instrument_name"])
+            del df_sample
+        if n_total < 100_000:
+            print(f"::error::Only {n_total:,} rows — expected at least 100,000")
+            sys.exit(1)
+
         # ── Size category ─────────────────────────────────────────────
         if n_total >= 10_000_000:
             size_cat = "10M<n<100M"
@@ -430,9 +443,10 @@ Weekly (Monday at 09:00 UTC) via [GitHub Actions](https://github.com/juliensimon
 
 ## Related datasets
 
+- [nasa-maven-kp-insitu](https://huggingface.co/datasets/juliensimon/nasa-maven-kp-insitu) \u2014 MAVEN Mars atmosphere key parameters
 - [esa-mars-express-observations](https://huggingface.co/datasets/juliensimon/esa-mars-express-observations) \u2014 ESA Mars Express observation catalog
-- [mars-craters](https://huggingface.co/datasets/juliensimon/mars-craters-robbins) \u2014 Robbins Mars crater catalog
-- [esa-venus-express-observations](https://huggingface.co/datasets/juliensimon/esa-venus-express-observations) \u2014 ESA Venus Express observation catalog
+- [nasa-mars-rover-images](https://huggingface.co/datasets/juliensimon/nasa-mars-rover-images) \u2014 Perseverance and Curiosity image metadata
+- [esa-bepicolombo-observations](https://huggingface.co/datasets/juliensimon/esa-bepicolombo-observations) \u2014 ESA BepiColombo Mercury mission
 
 ## Pipeline
 

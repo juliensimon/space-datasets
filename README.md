@@ -1,6 +1,6 @@
 # space-datasets — Open Space, Astronomy & Physics Datasets on Hugging Face
 
-Open-source data pipelines that publish **172 space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
+Open-source data pipelines that publish **178 space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
 
 All datasets are loadable in one line (`load_dataset("juliensimon/...")`), require no API keys, and work with `pandas`, `polars`, or any Parquet-compatible tool.
 
@@ -93,11 +93,15 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![Cosmic Voids](https://github.com/juliensimon/space-datasets/actions/workflows/update-cosmic-voids.yml/badge.svg)
 <!-- Space Probes -->
 ![Astronauts](https://github.com/juliensimon/space-datasets/actions/workflows/update-astronauts.yml/badge.svg)
+![BepiColombo](https://github.com/juliensimon/space-datasets/actions/workflows/update-bepicolombo.yml/badge.svg)
 ![ExoMars TGO](https://github.com/juliensimon/space-datasets/actions/workflows/update-exomars-tgo.yml/badge.svg)
+![JUICE](https://github.com/juliensimon/space-datasets/actions/workflows/update-juice.yml/badge.svg)
+![Mars Express](https://github.com/juliensimon/space-datasets/actions/workflows/update-mars-express.yml/badge.svg)
+![Mars Rovers](https://github.com/juliensimon/space-datasets/actions/workflows/update-mars-rovers.yml/badge.svg)
+![MAVEN](https://github.com/juliensimon/space-datasets/actions/workflows/update-maven.yml/badge.svg)
 ![Venus Express](https://github.com/juliensimon/space-datasets/actions/workflows/update-venus-express.yml/badge.svg)
 ![Artemis II](https://github.com/juliensimon/space-datasets/actions/workflows/update-artemis-ii.yml/badge.svg)
 ![Deep Space Probes](https://github.com/juliensimon/space-datasets/actions/workflows/update-deep-space-probes.yml/badge.svg)
-![Mars Express](https://github.com/juliensimon/space-datasets/actions/workflows/update-mars-express.yml/badge.svg)
 ![MEDA Weather](https://github.com/juliensimon/space-datasets/actions/workflows/update-meda-weather.yml/badge.svg)
 <!-- Planetary Science -->
 ![Impact Craters](https://github.com/juliensimon/space-datasets/actions/workflows/update-impact-craters.yml/badge.svg)
@@ -156,16 +160,19 @@ Track every object orbiting Earth and beyond. This collection covers the complet
 
 ### Space Probes & Missions
 
-Data returned by humanity's most distant spacecraft and surface explorers. Includes 50+ years of interplanetary measurements from Voyager and Pioneer, Cassini's Saturn observations, Mars surface weather from Perseverance, rock compositions from Curiosity's laser spectrometer, marsquake detections from InSight, and million-record observation logs from ESA's Mars Express and Rosetta missions. Ideal for planetary science, mission planning studies, and multi-instrument data fusion.
+Data returned by humanity's most distant spacecraft and surface explorers. Includes 50+ years of interplanetary measurements from Voyager and Pioneer, Cassini's Saturn observations, Mars surface weather and 2M+ images from Perseverance and Curiosity, MAVEN atmospheric key parameters, rock compositions from Curiosity's laser spectrometer, marsquake detections from InSight, and million-record observation logs from ESA's Mars Express, ExoMars TGO, Rosetta, BepiColombo, JUICE, and Huygens missions. Ideal for planetary science, mission planning studies, and multi-instrument data fusion.
 
 | Dataset | Description | Last Updated | Schedule | Size |
 |---------|-------------|-------------|----------|------|
 | [artemis-ii](https://huggingface.co/datasets/juliensimon/artemis-ii) | Artemis II crewed lunar flyby: 1,285 trajectory vectors, crew manifest, mission timeline, payloads | ![Artemis II](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['artemis-ii']&label=updated&color=brightgreen) | Daily | <1 MB |
 | [cassini-saturn-observations](https://huggingface.co/datasets/juliensimon/cassini-saturn-observations) | 63K Saturn observation records from the Cassini mission (2004-2017) | — | Static | 1.6 MB |
 | [deep-space-probes](https://huggingface.co/datasets/juliensimon/deep-space-probes) | 1.2M hourly readings from Voyager 1+2 and Pioneer 10+11 (1972-2025) | ![Probes](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['deep-space-probes']&label=updated&color=blue) | Monthly | 32 MB |
+| [esa-bepicolombo-observations](https://huggingface.co/datasets/juliensimon/esa-bepicolombo-observations) | 176K+ observation records from ESA/JAXA BepiColombo Mercury mission (11 instruments, cruise + flybys) | ![BepiColombo](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['bepicolombo']&label=updated&color=brightgreen) | Weekly | ~20 MB |
 | [esa-exomars-tgo-observations](https://huggingface.co/datasets/juliensimon/esa-exomars-tgo-observations) | 27M+ observation records from ESA ExoMars TGO (4 instruments, since 2018) | ![ExoMars TGO](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['exomars-tgo']&label=updated&color=brightgreen) | Weekly | ~2 GB |
+| [esa-huygens-titan-descent](https://huggingface.co/datasets/juliensimon/esa-huygens-titan-descent) | 14K+ observation metadata from ESA Huygens Titan descent (8 instruments, 2005) | — | Static | <1 MB |
+| [esa-juice-observations](https://huggingface.co/datasets/juliensimon/esa-juice-observations) | 6K+ observation records from ESA JUICE Jupiter mission (cruise phase, growing) | ![JUICE](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['juice']&label=updated&color=brightgreen) | Weekly | <1 MB |
 | [esa-mars-express-observations](https://huggingface.co/datasets/juliensimon/esa-mars-express-observations) | 1.66M observation metadata from ESA Mars Express (8 instruments, since 2003) | ![Mars Express](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['mars-express']&label=updated&color=brightgreen) | Weekly | 200 MB |
-| [esa-rosetta-observations](https://huggingface.co/datasets/juliensimon/esa-rosetta-observations) | 8.3M observation records from ESA Rosetta at comet 67P | — | Static | 1 GB |
+| [esa-rosetta-observations](https://huggingface.co/datasets/juliensimon/esa-rosetta-observations) | 14M+ observation records from ESA Rosetta at comet 67P (15 instruments incl. Philae) | — | Static | ~2 GB |
 | [esa-venus-express-observations](https://huggingface.co/datasets/juliensimon/esa-venus-express-observations) | 525K observation metadata from ESA Venus Express (5 instruments, 2006-2014) | ![Venus Express](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['venus-express']&label=updated&color=brightgreen) | Weekly | 21 MB |
 | [galileo-jupiter-atmosphere](https://huggingface.co/datasets/juliensimon/galileo-jupiter-atmosphere) | Jupiter atmospheric profile from Galileo Probe descent (1995) — temperature, pressure, density to 24 bar | — | Static | <1 MB |
 | [gcat-deep-space](https://huggingface.co/datasets/juliensimon/gcat-deep-space) | 1,206 deep space objects and 469 planetary landings from GCAT | ![GCAT Deep Space](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['gcat-deep-space']&label=updated&color=brightgreen) | Weekly | <1 MB |
@@ -174,6 +181,8 @@ Data returned by humanity's most distant spacecraft and surface explorers. Inclu
 | [isro-missions](https://huggingface.co/datasets/juliensimon/isro-missions) | ISRO spacecraft, launchers, customer satellites, and research centres | ![ISRO](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['isro']&label=updated&color=brightgreen) | Quarterly | <1 MB |
 | [mars-chemcam-compositions](https://huggingface.co/datasets/juliensimon/mars-chemcam-compositions) | 30K+ Mars rock/soil oxide compositions from Curiosity ChemCam LIBS | — | Static | 1 MB |
 | [mars-perseverance-weather](https://huggingface.co/datasets/juliensimon/mars-perseverance-weather) | Mars surface weather from Perseverance MEDA (temperature, pressure, wind, UV) | ![MEDA](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['meda-weather']&label=updated&color=brightgreen) | Monthly | ~100 MB |
+| [nasa-mars-rover-images](https://huggingface.co/datasets/juliensimon/nasa-mars-rover-images) | 400K+ image metadata from Perseverance and Curiosity rovers (sol, camera, position, URLs) | ![Mars Rovers](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['mars-rovers']&label=updated&color=brightgreen) | Weekly | ~50 MB |
+| [nasa-maven-kp-insitu](https://huggingface.co/datasets/juliensimon/nasa-maven-kp-insitu) | MAVEN Mars atmosphere key parameters: solar wind, magnetic field, ion composition at 4-8s cadence | ![MAVEN](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['maven']&label=updated&color=brightgreen) | Weekly | ~500 MB |
 | [nasa-eva-chronology](https://huggingface.co/datasets/juliensimon/nasa-eva-chronology) | 375 spacewalks (EVAs) — complete history from Gemini to ISS | — | Static | <1 MB |
 | [pds-planetary-missions](https://huggingface.co/datasets/juliensimon/pds-planetary-missions) | NASA PDS mission catalog — 98 missions, 115 spacecraft, 748 instruments with targets and cross-references | — | Static | <5 MB |
 | [pluto-atmosphere](https://huggingface.co/datasets/juliensimon/pluto-atmosphere) | Pluto atmospheric profiles (temperature, pressure, composition, haze) from New Horizons | — | Static | <1 MB |
@@ -405,10 +414,16 @@ python scripts/update-swpc-alerts.py
 # Space Probes & Missions
 python scripts/update-artemis-ii.py
 python scripts/update-astronauts.py
+python scripts/update-bepicolombo.py
 python scripts/update-deep-space-probes.py
 python scripts/update-exomars-tgo.py
+python scripts/update-huygens.py
+python scripts/update-juice.py
 python scripts/update-mars-express.py
+python scripts/update-mars-rovers.py
+python scripts/update-maven.py
 python scripts/update-meda-weather.py
+python scripts/update-rosetta.py
 python scripts/update-venus-express.py
 
 # Astronomy

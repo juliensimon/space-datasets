@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetch ESA Mars Express observation catalog from PSA EPN-TAP and upload to HF."""
+"""Fetch ESA BepiColombo observation catalog from PSA EPN-TAP and upload to HF."""
 
 import os
 import subprocess
@@ -16,18 +16,21 @@ from validate import check_dataset
 
 
 TAP_URL = "https://psa.esa.int/psa-tap/tap/sync"
-HF_REPO = "juliensimon/esa-mars-express-observations"
+HF_REPO = "juliensimon/esa-bepicolombo-observations"
 
-# Mars Express instruments in order of expected catalog size
+# BepiColombo instruments in order of expected catalog size
 INSTRUMENTS = [
-    "ASPERA-3",
-    "HRSC",
-    "VMC",
-    "MaRS",
-    "PFS",
-    "SPICAM",
-    "MARSIS",
-    "OMEGA",
+    "MORE",
+    "MPO-MAG",
+    "SIXS",
+    "BERM",
+    "MIXS",
+    "SERENA",
+    "PHEBUS",
+    "MCAM",
+    "MGNS",
+    "MERTIS",
+    "BELA",
 ]
 
 PAGE_SIZE = 500_000
@@ -36,7 +39,7 @@ PAGE_SIZE = 500_000
 def fetch_count() -> int:
     """Sanity-check: fetch total row count."""
     query = ("SELECT COUNT(*) AS n FROM epn_core "
-             "WHERE instrument_host_name = 'Mars Express'")
+             "WHERE instrument_host_name = 'BepiColombo'")
     print("Checking total row count...")
     resp = requests.get(TAP_URL, params={
         "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "json",
@@ -61,7 +64,7 @@ def fetch_instrument(instrument: str) -> pd.DataFrame:
     while True:
         query = (
             f"SELECT TOP {PAGE_SIZE} * FROM epn_core "
-            f"WHERE instrument_host_name = 'Mars Express' "
+            f"WHERE instrument_host_name = 'BepiColombo' "
             f"AND instrument_name = '{instrument}' "
             f"AND granule_uid > '{last_id}' "
             f"ORDER BY granule_uid"
@@ -100,7 +103,7 @@ def fetch_instrument(instrument: str) -> pd.DataFrame:
 
 
 def main():
-    print("Fetching ESA Mars Express observation catalog...")
+    print("Fetching ESA BepiColombo observation catalog...")
 
     # Verify expected size
     total_expected = fetch_count()
@@ -176,7 +179,7 @@ def main():
     n_total = len(df)
     n_instruments = df["instrument_name"].nunique()
     instruments_summary = (df["instrument_name"].value_counts()
-                           .head(8).to_dict())
+                           .head(11).to_dict())
     n_targets = df["target_name"].nunique() if "target_name" in df.columns else 0
     time_range_min = df["time_min"].min()
     time_range_max = df["time_max"].max()
@@ -195,7 +198,7 @@ def main():
         print(f"  Dropped {dropped} columns (>95% null)")
 
     # ── Validate ──────────────────────────────────────────────────────
-    check_dataset(df, "mars-express", min_rows=1_000_000,
+    check_dataset(df, "bepicolombo", min_rows=50_000,
         expected_columns=["granule_uid", "instrument_name", "target_name",
                           "time_min", "time_max", "dataproduct_type"],
         critical_columns=["granule_uid", "instrument_name", "time_min"])
@@ -206,7 +209,7 @@ def main():
         data_dir = tmp / "data"
         data_dir.mkdir()
 
-        out = data_dir / "mars_express_observations.parquet"
+        out = data_dir / "bepicolombo_observations.parquet"
         df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
@@ -217,62 +220,55 @@ def main():
             for inst, count in instruments_summary.items()
         )
 
-        banner_file = download_banner("mars-express", tmp)
-        banner_md = banner_markdown("mars-express", banner_file)
+        banner_file = download_banner("bepicolombo", tmp)
+        banner_md = banner_markdown("bepicolombo", banner_file)
 
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
-pretty_name: "ESA Mars Express Observations"
+pretty_name: "ESA BepiColombo Observations"
 language:
   - en
-description: "Complete observation metadata catalog from the ESA Mars Express mission ({n_total:,} observations across {n_instruments} instruments), orbiting Mars since 2003. Updated weekly from the ESA Planetary Science Archive."
+description: "Complete observation metadata catalog from the ESA/JAXA BepiColombo mission to Mercury ({n_total:,} observations across {n_instruments} instruments). Updated weekly from the ESA Planetary Science Archive."
 task_categories:
   - tabular-classification
 tags:
   - space
-  - mars
-  - mars-express
+  - mercury
+  - bepicolombo
   - esa
   - planetary-science
   - open-data
   - tabular-data
   - parquet
 size_categories:
-  - 1M<n<10M
+  - 100K<n<1M
 configs:
   - config_name: default
     data_files:
       - split: train
-        path: data/mars_express_observations.parquet
+        path: data/bepicolombo_observations.parquet
     default: true
 ---
 
-# ESA Mars Express Observations
+# ESA BepiColombo Observations
 {banner_md}
-*Part of the [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c24cb17e3db14fc30f0716) collection on Hugging Face.*
+*Part of the [Solar System Datasets](https://huggingface.co/collections/juliensimon/solar-system-datasets-67e50e61c0b86a3f0e5b8845) and [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c24cb17e3db14fc30f0716) collections on Hugging Face.*
 
-![Update Mars Express](https://github.com/juliensimon/space-datasets/actions/workflows/update-mars-express.yml/badge.svg)
-![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['mars-express']&label=updated&color=brightgreen)
+![Update BepiColombo](https://github.com/juliensimon/space-datasets/actions/workflows/update-bepicolombo.yml/badge.svg)
+![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['bepicolombo']&label=updated&color=brightgreen)
 
-Complete observation metadata catalog from the **ESA Mars Express** mission \u2014 **{n_total:,}**
-observations across {n_instruments} instruments, covering over two decades of Mars exploration
-since the spacecraft entered orbit in December 2003.
+Complete observation metadata catalog from the **ESA/JAXA BepiColombo** mission \u2014 **{n_total:,}**
+observations across {n_instruments} instruments, collected during the spacecraft's cruise to Mercury.
 
 ## Dataset description
 
-Mars Express is a European Space Agency mission that has been studying the Martian atmosphere,
-surface, subsurface, and space environment since 2003. It carries a suite of instruments
-including a high-resolution stereo camera (HRSC), radar sounder (MARSIS), infrared imaging
-spectrometer (OMEGA), atmospheric spectrometers (PFS, SPICAM), plasma analyzer (ASPERA-3),
-radio science experiment (MaRS), and visual monitoring camera (VMC).
+BepiColombo is a joint ESA/JAXA mission to Mercury, launched October 2018. It consists of two orbiters: the Mercury Planetary Orbiter (MPO) and the Mercury Magnetospheric Orbiter (Mio/MMO). After a 7-year cruise with gravity assists at Earth, Venus (x2), and Mercury (x6), it will enter Mercury orbit in late 2025. During cruise, instruments have been collecting calibration and flyby science data. Key instruments include MORE (radio science for gravity), MPO-MAG (magnetometer), SIXS (solar X-ray/particle spectrometer), BERM (radiation monitor), MIXS (X-ray spectrometer), SERENA (neutral/ion analyzer), PHEBUS (UV spectrometer), MCAM (monitoring cameras), MGNS (gamma/neutron spectrometer), MERTIS (thermal IR), and BELA (laser altimeter).
 
 This dataset contains the full observation metadata from the ESA Planetary Science Archive
 (PSA), conforming to the EPN-TAP standard. Each row represents one observation or data
 granule, with timing, spatial coverage, instrument parameters, and access URLs.
 
-Mars Express has been one of the most scientifically productive Mars missions ever flown. HRSC has produced the most complete high-resolution stereo topographic map of Mars, essential for geological mapping and landing site characterization. MARSIS, a subsurface radar sounder, detected reflections consistent with liquid water beneath the south polar layered deposits — a finding that reshaped understanding of present-day Mars hydrology. OMEGA mapped the global mineralogy of the Martian surface, identifying phyllosilicates, sulfates, and other aqueous alteration minerals that constrain the planet's climatic history. SPICAM and PFS have tracked the seasonal behavior of water vapor, ozone, and dust in the Martian atmosphere across multiple Mars years.
-
-The longevity of the mission — over two decades in Mars orbit — makes this observation catalog uniquely valuable for studying long-term variability. It captures multiple complete Martian years of atmospheric monitoring, seasonal polar cap evolution, and dust storm cycles, including the planet-encircling dust event of 2018. The temporal baseline also enables detection of surface changes such as fresh impact craters, slope streaks, and CO2 geyser activity at the south pole. Cross-referencing observations from different instruments at the same location and time supports multi-wavelength analysis that no single instrument could achieve alone.
+The cruise phase data is scientifically valuable in its own right. MPO-MAG has mapped the interplanetary magnetic field along the spacecraft's trajectory, including measurements during Venus and Mercury flybys that provide unique geometry for studying planetary magnetospheres. MORE has conducted superior solar conjunction experiments to test general relativity. SIXS and BERM have monitored the solar particle environment, building a multi-year record of solar energetic particle events and cosmic ray flux variations along the inner heliosphere trajectory. The Mercury flyby observations from MERTIS, MIXS, and MGNS provide early science returns and instrument calibration data ahead of orbital operations.
 
 ## Instruments
 
@@ -286,9 +282,9 @@ The longevity of the mission — over two decades in Mars orbit — makes this o
 | `granule_gid` | string | Group identifier |
 | `obs_id` | string | Observation ID |
 | `dataproduct_type` | string | Data product type (e.g. spectrum, image, profile) |
-| `target_name` | string | Target body (Mars, Phobos, Deimos, etc.) |
+| `target_name` | string | Target body (Mercury, Venus, etc.) |
 | `target_class` | string | Target class (planet, satellite, etc.) |
-| `instrument_name` | string | Instrument name (HRSC, MARSIS, OMEGA, etc.) |
+| `instrument_name` | string | Instrument name (MORE, MPO-MAG, SIXS, etc.) |
 | `time_min` | float64 | Observation start time (JD) |
 | `time_max` | float64 | Observation end time (JD) |
 | `c1min`/`c1max` | float64 | Spatial coordinate 1 range |
@@ -313,21 +309,21 @@ The full schema contains up to ~50 columns following the EPN-TAP standard.
 ```python
 from datasets import load_dataset
 
-ds = load_dataset("juliensimon/esa-mars-express-observations", split="train")
+ds = load_dataset("juliensimon/esa-bepicolombo-observations", split="train")
 df = ds.to_pandas()
 
 # Observations per instrument
 print(df["instrument_name"].value_counts())
 
-# HRSC images
-hrsc = df[df["instrument_name"] == "HRSC"]
-print(f"{{len(hrsc):,}} HRSC observations")
+# MORE radio science observations
+more = df[df["instrument_name"] == "MORE"]
+print(f"{{len(more):,}} MORE observations")
 
 # Timeline of observations
 import matplotlib.pyplot as plt
 df["year"] = ((df["time_min"] - 2451545.0) / 365.25 + 2000).astype(int)
 df.groupby(["year", "instrument_name"]).size().unstack().plot(kind="bar", stacked=True)
-plt.title("Mars Express observations per year")
+plt.title("BepiColombo observations per year")
 plt.ylabel("Count")
 ```
 
@@ -338,14 +334,13 @@ plt.ylabel("Count")
 
 ## Update schedule
 
-Weekly (Monday at 07:00 UTC) via [GitHub Actions](https://github.com/juliensimon/space-datasets).
+Weekly (Monday at 09:30 UTC) via [GitHub Actions](https://github.com/juliensimon/space-datasets).
 
 ## Related datasets
 
+- [esa-mars-express-observations](https://huggingface.co/datasets/juliensimon/esa-mars-express-observations) \u2014 ESA Mars Express observation catalog
 - [esa-exomars-tgo-observations](https://huggingface.co/datasets/juliensimon/esa-exomars-tgo-observations) \u2014 ESA ExoMars TGO observation catalog
-- [nasa-maven-kp-insitu](https://huggingface.co/datasets/juliensimon/nasa-maven-kp-insitu) \u2014 MAVEN Mars atmosphere key parameters
-- [nasa-mars-rover-images](https://huggingface.co/datasets/juliensimon/nasa-mars-rover-images) \u2014 Perseverance and Curiosity image metadata
-- [mars-craters](https://huggingface.co/datasets/juliensimon/mars-craters-robbins) \u2014 Robbins Mars crater catalog
+- [esa-venus-express-observations](https://huggingface.co/datasets/juliensimon/esa-venus-express-observations) \u2014 ESA Venus Express observation catalog
 
 ## Pipeline
 
@@ -353,17 +348,17 @@ Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-d
 
 ## Support
 
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/esa-mars-express-observations) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
+If you find this dataset useful, please give it a \u2764\ufe0f on the [dataset page](https://huggingface.co/datasets/juliensimon/esa-bepicolombo-observations) and share feedback in the Community tab! Also consider giving a \u2b50\ufe0f to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
 
 ## Citation
 
 ```bibtex
-@dataset{{mars_express_observations,
+@dataset{{bepicolombo_observations,
   author = {{Simon, Julien}},
-  title = {{ESA Mars Express Observations}},
+  title = {{ESA BepiColombo Observations}},
   year = {{2026}},
   publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/esa-mars-express-observations}},
+  url = {{https://huggingface.co/datasets/juliensimon/esa-bepicolombo-observations}},
   note = {{Based on ESA Planetary Science Archive (PSA) EPN-TAP service}}
 }}
 ```
@@ -374,7 +369,7 @@ If you find this dataset useful, please give it a ❤️ on the [dataset page](h
 """)
 
         print("Uploading to HF...")
-        commit_msg = f"Update Mars Express observations: {n_total:,} observations"
+        commit_msg = f"Update BepiColombo observations: {n_total:,} observations"
         subprocess.run(
             ["hf", "upload", HF_REPO, str(tmp), ".",
              "--repo-type", "dataset",
