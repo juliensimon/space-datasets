@@ -40,7 +40,7 @@ def parse_xyz(xyz_str):
     return None, None, None
 
 
-def fetch_page(mission, page, order="id+desc"):
+def fetch_page(mission, page, order="id desc", max_retries=3):
     """Fetch a single page from the NASA Mars API."""
     params = {
         "mission": mission,
@@ -48,10 +48,19 @@ def fetch_page(mission, page, order="id+desc"):
         "page": page,
         "order": order,
     }
-    resp = requests.get(API_URL, params=params, timeout=60)
-    resp.raise_for_status()
-    data = resp.json()
-    return data.get("images", []), data.get("total", 0)
+    for attempt in range(max_retries):
+        try:
+            resp = requests.get(API_URL, params=params, timeout=60)
+            resp.raise_for_status()
+            data = resp.json()
+            return data.get("items", []), data.get("total", 0)
+        except requests.HTTPError as e:
+            if resp.status_code == 403 and attempt < max_retries - 1:
+                wait = 5 * (attempt + 1)
+                print(f"    403 Forbidden (attempt {attempt + 1}), retrying in {wait}s...")
+                time.sleep(wait)
+                continue
+            raise
 
 
 def parse_image(img, mission):
