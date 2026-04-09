@@ -91,7 +91,8 @@
     "wds": 157371,
     "wmo-oscar": 2255,
     "xray-binaries": 305,
-    "dst-index": 589138
+    "dst-index": 589138,
+    "neo": 41923
   },
   "ae-index": "2026-04-06",
   "artemis-ii": "2026-04-08",
@@ -147,7 +148,7 @@
   "messier": "2026-04-01",
   "meteorites": "2026-04-01",
   "nebulae": "2026-04-02",
-  "neo": "2026-04-08",
+  "neo": "2026-04-09",
   "neutron-monitor": "2026-04-08",
   "ngc-ic": "2026-04-01",
   "nhats": "2026-04-08",
