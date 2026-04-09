@@ -3,10 +3,5 @@
     "first_failure": "2026-04-08",
     "last_retry": "2026-04-08",
     "retries": 1
-  },
-  "satcat": {
-    "first_failure": "2026-04-07",
-    "last_retry": "2026-04-08",
-    "retries": 2
   }
 }
