@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Fetch solar flare events from GOES-16 (NCEI) + SWPC daily report and upload to HF."""
 
+import os
 import re
 import subprocess
 import tempfile
@@ -250,7 +251,6 @@ def main():
             df = df_ncei_only
 
         # Periodically do a full NCEI refresh (every 7 days, or if FULL_REBUILD env var set)
-        import os
         if os.environ.get("FULL_REBUILD"):
             print("  FULL_REBUILD requested, fetching NCEI...")
             ncei_df = fetch_ncei_flares()
@@ -474,6 +474,9 @@ If you find this dataset useful, please give it a ❤️ on the [dataset page](h
             check=True,
         )
 
+    if os.environ.get("GITHUB_OUTPUT"):
+        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+            f.write(f"rows={n_total}\n")
     print("Done.")
 
 

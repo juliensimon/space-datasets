@@ -17,8 +17,9 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install pandas pyarrow numpy requests netCDF4 huggingface_hub[hf_xet]
-      - run: python scripts/update-solar-flares.py
+      - id: update
+        run: python scripts/update-solar-flares.py
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
       - name: Update and push status
-        run: bash scripts/push-status.sh solar-flares
+        run: bash scripts/push-status.sh solar-flares --rows ${{ steps.update.outputs.rows }}

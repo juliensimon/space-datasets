@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Fetch hourly neutron monitor cosmic ray data from NMDB and upload to HF."""
 
+import os
 import subprocess
 import tempfile
 import time
@@ -423,7 +424,9 @@ MIT (pipeline code). Neutron monitor data: free for non-commercial use per NMDB/
             check=True,
         )
 
-    print(f"rows={n_total}")
+    if os.environ.get("GITHUB_OUTPUT"):
+        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+            f.write(f"rows={n_total}\n")
     print("Done.")
 
 

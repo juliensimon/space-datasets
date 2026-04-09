@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Fetch hourly Dst geomagnetic index from WDC Kyoto and upload to HF."""
 
+import os
 import re
 import subprocess
 import tempfile
@@ -433,6 +434,9 @@ MIT (pipeline code). Dst data: free for non-commercial use per WDC Kyoto terms.
             check=True,
         )
 
+    if os.environ.get("GITHUB_OUTPUT"):
+        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+            f.write(f"rows={n_total}\n")
     print("Done.")
 
 

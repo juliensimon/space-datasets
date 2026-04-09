@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Fetch space weather events from NASA DONKI and upload to HF."""
 
+import os
 import subprocess
 import tempfile
 import time
@@ -429,6 +430,9 @@ If you use this dataset, please cite:
             check=True,
         )
 
+    if os.environ.get("GITHUB_OUTPUT"):
+        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+            f.write(f"rows={n_total}\n")
     print("Done.")
 
 

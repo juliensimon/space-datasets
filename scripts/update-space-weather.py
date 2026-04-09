@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Fetch space weather indices from CelesTrak and upload to HF."""
 
+import os
 import subprocess
 import tempfile
 from pathlib import Path
@@ -268,6 +269,9 @@ If you find this dataset useful, please give it a ❤️ on the [dataset page](h
             check=True,
         )
 
+    if os.environ.get("GITHUB_OUTPUT"):
+        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+            f.write(f"rows={len(df)}\n")
     print("Done.")
 
 

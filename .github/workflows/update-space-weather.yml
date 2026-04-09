@@ -17,8 +17,9 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install pandas pyarrow huggingface_hub[hf_xet]
-      - run: python scripts/update-space-weather.py
+      - id: update
+        run: python scripts/update-space-weather.py
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
       - name: Update and push status
-        run: bash scripts/push-status.sh space-weather
+        run: bash scripts/push-status.sh space-weather --rows ${{ steps.update.outputs.rows }}
