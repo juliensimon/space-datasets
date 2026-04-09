@@ -166,6 +166,12 @@ def main():
         df = df.sort_values(name_col).reset_index(drop=True)
         print(f"  Sorted by '{name_col}'")
 
+    # Final guard: drop any remaining all-null columns before validation
+    all_null = [c for c in df.columns if df[c].isna().all()]
+    if all_null:
+        print(f"  Dropping {len(all_null)} remaining all-null columns: {all_null}")
+        df = df.drop(columns=all_null)
+
     n_total = len(df)
     print(f"  {n_total:,} cataclysmic variables total")
 

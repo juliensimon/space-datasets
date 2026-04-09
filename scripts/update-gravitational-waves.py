@@ -107,6 +107,12 @@ def main():
     df = df.sort_values("gps", na_position="last").reset_index(drop=True)
     print(f"  {len(df):,} unique events after deduplication")
 
+    # Drop columns that are entirely null (source may omit parameters for some catalogs)
+    all_null = [c for c in df.columns if df[c].isna().all()]
+    if all_null:
+        print(f"  Dropping {len(all_null)} all-null columns: {all_null}")
+        df = df.drop(columns=all_null)
+
     check_dataset(df, "gravitational-waves", min_rows=100,
         expected_columns=["name", "gps", "catalog", "mass_1", "luminosity_distance"],
         critical_columns=["name", "gps"])
@@ -162,7 +168,7 @@ configs:
   - config_name: default
     data_files:
       - split: train
-        path: data/gravitational_waves.parquet
+        path: data/gravitational-wave-events.parquet
     default: true
 ---
 

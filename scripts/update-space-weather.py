@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path
 
 import pandas as pd
+from dataset_images import banner_markdown, download_banner
 
 
 SW_URL = "https://celestrak.org/SpaceData/SW-All.csv"
@@ -194,7 +195,6 @@ For operational space weather applications, this dataset provides the complete s
 ## Usage
 
 ```python
-from dataset_images import banner_markdown, download_banner
 from datasets import load_dataset
 
 ds = load_dataset("juliensimon/space-weather-indices", split="train")
