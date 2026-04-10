@@ -485,9 +485,9 @@ def main():
         print(f"  pops.parquet: {pop_path.stat().st_size / 1024:.1f} KB")
 
         banner_file = download_banner("ground-stations", tmp)
-        _banner_md = banner_markdown("ground-stations", banner_file)
+        banner_md = banner_markdown("ground-stations", banner_file)
         readme_path = tmp / "README.md"
-        readme_path.write_text(build_readme(len(gw_df), n_operational, n_planned, _banner_md))
+        readme_path.write_text(build_readme(len(gw_df), n_operational, n_planned, banner_md))
 
         print("\nUploading to HF...")
         commit_msg = (

@@ -446,8 +446,8 @@ def main():
         print(f"  {active:,} operational, {len(df_latest):,} total")
 
         banner_file = download_banner("starlink", tmp_dir)
-        starlink_banner_md = banner_markdown("starlink", banner_file)
-        (tmp_dir / "README.md").write_text(generate_readme(df_latest, df_daily, active, starlink_banner_md))
+        banner_md = banner_markdown("starlink", banner_file)
+        (tmp_dir / "README.md").write_text(generate_readme(df_latest, df_daily, active, banner_md))
 
         raising = int((df_latest["status"] == "raising").sum())
         deorbiting = int((df_latest["status"] == "deorbiting").sum())

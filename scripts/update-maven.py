@@ -158,6 +158,262 @@ INSTRUMENTS = {
     "spice":  (187, 235),
 }
 
+# Human-readable descriptions per column for README schema tables
+COL_DESCRIPTIONS = {
+    # ── time ────────────────────────────────────────────────────────────────
+    "time": "Timestamp of measurement (UTC)",
+
+    # ── LPW — Langmuir Probe and Waves ──────────────────────────────────────
+    "lpw_electron_density":           "Electron number density (cm⁻³), derived from probe current",
+    "lpw_electron_density_quality":   "Quality flag for electron density (0=good)",
+    "lpw_electron_density_quality_2": "Secondary quality flag for electron density",
+    "lpw_electron_temperature":           "Electron temperature (eV), derived from probe sweep",
+    "lpw_electron_temperature_quality":   "Quality flag for electron temperature (0=good)",
+    "lpw_electron_temperature_quality_2": "Secondary quality flag for electron temperature",
+    "lpw_spacecraft_potential":           "Spacecraft electrostatic potential relative to plasma (V)",
+    "lpw_spacecraft_potential_quality":   "Quality flag for spacecraft potential (0=good)",
+    "lpw_spacecraft_potential_quality_2": "Secondary quality flag for spacecraft potential",
+    "lpw_e_field_power_2_100hz":    "Electric field power spectral density in 2–100 Hz band (V²/m²/Hz)",
+    "lpw_e_field_2_100hz_quality":  "Quality flag for 2–100 Hz electric field power",
+    "lpw_e_field_power_100_800hz":  "Electric field power spectral density in 100–800 Hz band (V²/m²/Hz)",
+    "lpw_e_field_100_800hz_quality": "Quality flag for 100–800 Hz electric field power",
+    "lpw_e_field_power_0p8_1p0mhz":  "Electric field power spectral density in 0.8–1.0 MHz band (V²/m²/Hz)",
+    "lpw_e_field_0p8_1p0mhz_quality": "Quality flag for 0.8–1.0 MHz electric field power",
+    "lpw_euv_irradiance_0p1_7nm":        "Solar EUV irradiance in 0.1–7 nm band (W/m²), X-ray/soft X-ray",
+    "lpw_euv_irradiance_0p1_7nm_quality": "Quality flag for 0.1–7 nm EUV irradiance",
+    "lpw_euv_irradiance_17_22nm":        "Solar EUV irradiance in 17–22 nm band (W/m²), He II continuum",
+    "lpw_euv_irradiance_17_22nm_quality": "Quality flag for 17–22 nm EUV irradiance",
+    "lpw_euv_irradiance_lyman_alpha":        "Solar Lyman-alpha irradiance at 121.6 nm (W/m²), dominant UV line",
+    "lpw_euv_irradiance_lyman_alpha_quality": "Quality flag for Lyman-alpha irradiance",
+
+    # ── SWEA — Solar Wind Electron Analyzer ─────────────────────────────────
+    "swea_electron_density":          "Total electron number density (cm⁻³) from SWEA energy spectra",
+    "swea_electron_density_quality":  "Quality flag for SWEA electron density (0=good)",
+    "swea_electron_temperature":          "Electron temperature (eV) from SWEA energy spectra",
+    "swea_electron_temperature_quality":  "Quality flag for SWEA electron temperature (0=good)",
+    "swea_eflux_par_5_100ev":          "Parallel electron energy flux in 5–100 eV band (eV/cm²/s/sr/eV)",
+    "swea_eflux_par_5_100ev_quality":  "Quality flag for 5–100 eV parallel electron flux",
+    "swea_eflux_par_100_500ev":        "Parallel electron energy flux in 100–500 eV band",
+    "swea_eflux_par_100_500ev_quality": "Quality flag for 100–500 eV parallel electron flux",
+    "swea_eflux_par_500_1000ev":        "Parallel electron energy flux in 500–1000 eV band",
+    "swea_eflux_par_500_1000ev_quality": "Quality flag for 500–1000 eV parallel electron flux",
+    "swea_eflux_anti_5_100ev":          "Anti-parallel electron energy flux in 5–100 eV band",
+    "swea_eflux_anti_5_100ev_quality":  "Quality flag for 5–100 eV anti-parallel electron flux",
+    "swea_eflux_anti_100_500ev":        "Anti-parallel electron energy flux in 100–500 eV band",
+    "swea_eflux_anti_100_500ev_quality": "Quality flag for 100–500 eV anti-parallel electron flux",
+    "swea_eflux_anti_500_1000ev":        "Anti-parallel electron energy flux in 500–1000 eV band",
+    "swea_eflux_anti_500_1000ev_quality": "Quality flag for 500–1000 eV anti-parallel electron flux",
+    "swea_spectrum_shape":         "Shape parameter of the electron energy spectrum (power-law index)",
+    "swea_spectrum_shape_quality": "Quality flag for electron spectrum shape",
+
+    # ── SWIA — Solar Wind Ion Analyzer ──────────────────────────────────────
+    "swia_h_density":          "Solar wind proton (H⁺) number density (cm⁻³)",
+    "swia_h_density_quality":  "Quality flag for proton density (0=good)",
+    "swia_h_velocity_mso_x":          "Proton bulk velocity, MSO X component (km/s; X points Sun→Mars)",
+    "swia_h_velocity_mso_x_quality":  "Quality flag for proton velocity MSO-X",
+    "swia_h_velocity_mso_y":          "Proton bulk velocity, MSO Y component (km/s)",
+    "swia_h_velocity_mso_y_quality":  "Quality flag for proton velocity MSO-Y",
+    "swia_h_velocity_mso_z":          "Proton bulk velocity, MSO Z component (km/s; Z toward north ecliptic pole)",
+    "swia_h_velocity_mso_z_quality":  "Quality flag for proton velocity MSO-Z",
+    "swia_h_temperature":          "Proton temperature (eV), from isotropic Maxwellian fit",
+    "swia_h_temperature_quality":  "Quality flag for proton temperature",
+    "swia_dynamic_pressure":          "Solar wind dynamic pressure (nPa), 0.5 × n × m_p × v²",
+    "swia_dynamic_pressure_quality":  "Quality flag for solar wind dynamic pressure",
+
+    # ── STATIC — Suprathermal and Thermal Ion Composition ───────────────────
+    "static_quality_flag": "Overall STATIC instrument quality flag (0=good, see IUVS guide)",
+    "static_h_density":          "Hydrogen ion (H⁺) density in the ionosphere (cm⁻³)",
+    "static_h_density_quality":  "Quality flag for H⁺ density",
+    "static_o_density":          "Oxygen ion (O⁺) density (cm⁻³), primary ionospheric ion",
+    "static_o_density_quality":  "Quality flag for O⁺ density",
+    "static_o2_density":          "Molecular oxygen ion (O₂⁺) density (cm⁻³), dominant below ~200 km",
+    "static_o2_density_quality":  "Quality flag for O₂⁺ density",
+    "static_h_temperature":          "H⁺ ion temperature (eV)",
+    "static_h_temperature_quality":  "Quality flag for H⁺ temperature",
+    "static_o_temperature":          "O⁺ ion temperature (eV)",
+    "static_o_temperature_quality":  "Quality flag for O⁺ temperature",
+    "static_o2_temperature":          "O₂⁺ ion temperature (eV)",
+    "static_o2_temperature_quality":  "Quality flag for O₂⁺ temperature",
+    "static_o2_velocity_app_x":          "O₂⁺ bulk velocity, spacecraft APP frame X component (km/s)",
+    "static_o2_velocity_app_x_quality":  "Quality flag for O₂⁺ velocity APP-X",
+    "static_o2_velocity_app_y":          "O₂⁺ bulk velocity, spacecraft APP frame Y component (km/s)",
+    "static_o2_velocity_app_y_quality":  "Quality flag for O₂⁺ velocity APP-Y",
+    "static_o2_velocity_app_z":          "O₂⁺ bulk velocity, spacecraft APP frame Z component (km/s)",
+    "static_o2_velocity_app_z_quality":  "Quality flag for O₂⁺ velocity APP-Z",
+    "static_o2_velocity_mso_x":          "O₂⁺ bulk velocity, MSO frame X component (km/s)",
+    "static_o2_velocity_mso_x_quality":  "Quality flag for O₂⁺ velocity MSO-X",
+    "static_o2_velocity_mso_y":          "O₂⁺ bulk velocity, MSO frame Y component (km/s)",
+    "static_o2_velocity_mso_y_quality":  "Quality flag for O₂⁺ velocity MSO-Y",
+    "static_o2_velocity_mso_z":          "O₂⁺ bulk velocity, MSO frame Z component (km/s)",
+    "static_o2_velocity_mso_z_quality":  "Quality flag for O₂⁺ velocity MSO-Z",
+    "static_h_omni_flux":    "H⁺ omnidirectional differential particle flux (cm⁻²s⁻¹sr⁻¹eV⁻¹)",
+    "static_h_energy":       "H⁺ characteristic energy (eV)",
+    "static_h_energy_quality": "Quality flag for H⁺ characteristic energy",
+    "static_he_omni_flux":    "He²⁺ omnidirectional differential particle flux (cm⁻²s⁻¹sr⁻¹eV⁻¹)",
+    "static_he_energy":       "He²⁺ characteristic energy (eV)",
+    "static_he_energy_quality": "Quality flag for He²⁺ characteristic energy",
+    "static_o_omni_flux":    "O⁺ omnidirectional differential particle flux (cm⁻²s⁻¹sr⁻¹eV⁻¹)",
+    "static_o_energy":       "O⁺ characteristic energy (eV)",
+    "static_o_energy_quality": "Quality flag for O⁺ characteristic energy",
+    "static_o2_omni_flux":    "O₂⁺ omnidirectional differential particle flux (cm⁻²s⁻¹sr⁻¹eV⁻¹)",
+    "static_o2_energy":       "O₂⁺ characteristic energy (eV)",
+    "static_o2_energy_quality": "Quality flag for O₂⁺ characteristic energy",
+    "static_h_dir_mso_x":   "H⁺ dominant flow direction, MSO X component (unit vector)",
+    "static_h_dir_mso_y":   "H⁺ dominant flow direction, MSO Y component (unit vector)",
+    "static_h_dir_mso_z":   "H⁺ dominant flow direction, MSO Z component (unit vector)",
+    "static_h_angular_width":         "H⁺ beam angular half-width (degrees)",
+    "static_h_angular_width_quality": "Quality flag for H⁺ angular width",
+    "static_pickup_dir_mso_x":   "Pickup ion dominant flow direction, MSO X (unit vector)",
+    "static_pickup_dir_mso_y":   "Pickup ion dominant flow direction, MSO Y (unit vector)",
+    "static_pickup_dir_mso_z":   "Pickup ion dominant flow direction, MSO Z (unit vector)",
+    "static_pickup_angular_width":         "Pickup ion beam angular half-width (degrees)",
+    "static_pickup_angular_width_quality": "Quality flag for pickup ion angular width",
+
+    # ── SEP — Solar Energetic Particle ──────────────────────────────────────
+    "sep_ion_fov1f":          "Ion integral flux, SEP sensor 1 forward FOV (cm⁻²s⁻¹sr⁻¹)",
+    "sep_ion_fov1f_quality":  "Quality flag for SEP sensor 1 forward ion flux",
+    "sep_ion_fov1r":          "Ion integral flux, SEP sensor 1 reverse FOV (cm⁻²s⁻¹sr⁻¹)",
+    "sep_ion_fov1r_quality":  "Quality flag for SEP sensor 1 reverse ion flux",
+    "sep_ion_fov2f":          "Ion integral flux, SEP sensor 2 forward FOV (cm⁻²s⁻¹sr⁻¹)",
+    "sep_ion_fov2f_quality":  "Quality flag for SEP sensor 2 forward ion flux",
+    "sep_ion_fov2r":          "Ion integral flux, SEP sensor 2 reverse FOV (cm⁻²s⁻¹sr⁻¹)",
+    "sep_ion_fov2r_quality":  "Quality flag for SEP sensor 2 reverse ion flux",
+    "sep_electron_fov1f":          "Electron integral flux, SEP sensor 1 forward FOV (cm⁻²s⁻¹sr⁻¹)",
+    "sep_electron_fov1f_quality":  "Quality flag for SEP sensor 1 forward electron flux",
+    "sep_electron_fov1r":          "Electron integral flux, SEP sensor 1 reverse FOV (cm⁻²s⁻¹sr⁻¹)",
+    "sep_electron_fov1r_quality":  "Quality flag for SEP sensor 1 reverse electron flux",
+    "sep_electron_fov2f":          "Electron integral flux, SEP sensor 2 forward FOV (cm⁻²s⁻¹sr⁻¹)",
+    "sep_electron_fov2f_quality":  "Quality flag for SEP sensor 2 forward electron flux",
+    "sep_electron_fov2r":          "Electron integral flux, SEP sensor 2 reverse FOV (cm⁻²s⁻¹sr⁻¹)",
+    "sep_electron_fov2r_quality":  "Quality flag for SEP sensor 2 reverse electron flux",
+    "sep_look_1f_mso_x": "SEP sensor 1 forward look direction, MSO X (unit vector)",
+    "sep_look_1f_mso_y": "SEP sensor 1 forward look direction, MSO Y (unit vector)",
+    "sep_look_1f_mso_z": "SEP sensor 1 forward look direction, MSO Z (unit vector)",
+    "sep_look_1r_mso_x": "SEP sensor 1 reverse look direction, MSO X (unit vector)",
+    "sep_look_1r_mso_y": "SEP sensor 1 reverse look direction, MSO Y (unit vector)",
+    "sep_look_1r_mso_z": "SEP sensor 1 reverse look direction, MSO Z (unit vector)",
+    "sep_look_2f_mso_x": "SEP sensor 2 forward look direction, MSO X (unit vector)",
+    "sep_look_2f_mso_y": "SEP sensor 2 forward look direction, MSO Y (unit vector)",
+    "sep_look_2f_mso_z": "SEP sensor 2 forward look direction, MSO Z (unit vector)",
+    "sep_look_2r_mso_x": "SEP sensor 2 reverse look direction, MSO X (unit vector)",
+    "sep_look_2r_mso_y": "SEP sensor 2 reverse look direction, MSO Y (unit vector)",
+    "sep_look_2r_mso_z": "SEP sensor 2 reverse look direction, MSO Z (unit vector)",
+
+    # ── MAG — Magnetometer ───────────────────────────────────────────────────
+    "mag_mso_x":         "Magnetic field vector, MSO X component (nT; X points Sun→Mars)",
+    "mag_mso_x_quality": "Quality flag for magnetic field MSO-X",
+    "mag_mso_y":         "Magnetic field vector, MSO Y component (nT)",
+    "mag_mso_y_quality": "Quality flag for magnetic field MSO-Y",
+    "mag_mso_z":         "Magnetic field vector, MSO Z component (nT; Z toward north ecliptic pole)",
+    "mag_mso_z_quality": "Quality flag for magnetic field MSO-Z",
+    "mag_geo_x":         "Magnetic field vector, areocentric GEO X component (nT)",
+    "mag_geo_x_quality": "Quality flag for magnetic field GEO-X",
+    "mag_geo_y":         "Magnetic field vector, areocentric GEO Y component (nT)",
+    "mag_geo_y_quality": "Quality flag for magnetic field GEO-Y",
+    "mag_geo_z":         "Magnetic field vector, areocentric GEO Z component (nT; Z toward Mars north pole)",
+    "mag_geo_z_quality": "Quality flag for magnetic field GEO-Z",
+    "mag_rms_deviation": "RMS deviation of the magnetic field magnitude over the accumulation window (nT)",
+    "mag_rms_quality":   "Quality flag for magnetic field RMS deviation",
+
+    # ── NGIMS — Neutral Gas and Ion Mass Spectrometer ────────────────────────
+    "ngims_he":           "Helium (He) neutral number density in the upper atmosphere (cm⁻³)",
+    "ngims_he_precision": "1-sigma precision of the He density measurement",
+    "ngims_he_quality":   "Quality flag for He density (0=good)",
+    "ngims_o":            "Atomic oxygen (O) neutral number density (cm⁻³)",
+    "ngims_o_precision":  "1-sigma precision of the O density measurement",
+    "ngims_o_quality":    "Quality flag for O density",
+    "ngims_co":           "Carbon monoxide (CO) neutral number density (cm⁻³)",
+    "ngims_co_precision": "1-sigma precision of the CO density measurement",
+    "ngims_co_quality":   "Quality flag for CO density",
+    "ngims_n2":           "Molecular nitrogen (N₂) neutral number density (cm⁻³), dominant above ~200 km",
+    "ngims_n2_precision": "1-sigma precision of the N₂ density measurement",
+    "ngims_n2_quality":   "Quality flag for N₂ density",
+    "ngims_no":           "Nitric oxide (NO) neutral number density (cm⁻³)",
+    "ngims_no_precision": "1-sigma precision of the NO density measurement",
+    "ngims_no_quality":   "Quality flag for NO density",
+    "ngims_ar":           "Argon (Ar) neutral number density (cm⁻³), used as inert tracer",
+    "ngims_ar_precision": "1-sigma precision of the Ar density measurement",
+    "ngims_ar_quality":   "Quality flag for Ar density",
+    "ngims_co2":           "Carbon dioxide (CO₂) neutral number density (cm⁻³), dominant below ~200 km",
+    "ngims_co2_precision": "1-sigma precision of the CO₂ density measurement",
+    "ngims_co2_quality":   "Quality flag for CO₂ density",
+    "ngims_ion32":           "Ion density at m/z=32, primarily O₂⁺ (cm⁻³)",
+    "ngims_ion32_precision": "1-sigma precision of the m/z=32 ion density",
+    "ngims_ion32_quality":   "Quality flag for m/z=32 ion density",
+    "ngims_ion44":           "Ion density at m/z=44, primarily CO₂⁺ (cm⁻³)",
+    "ngims_ion44_precision": "1-sigma precision of the m/z=44 ion density",
+    "ngims_ion44_quality":   "Quality flag for m/z=44 ion density",
+    "ngims_ion30":           "Ion density at m/z=30, primarily NO⁺ (cm⁻³)",
+    "ngims_ion30_precision": "1-sigma precision of the m/z=30 ion density",
+    "ngims_ion30_quality":   "Quality flag for m/z=30 ion density",
+    "ngims_ion16":           "Ion density at m/z=16, primarily O⁺ (cm⁻³)",
+    "ngims_ion16_precision": "1-sigma precision of the m/z=16 ion density",
+    "ngims_ion16_quality":   "Quality flag for m/z=16 ion density",
+    "ngims_ion28":           "Ion density at m/z=28, CO⁺ or N₂⁺ (cm⁻³)",
+    "ngims_ion28_precision": "1-sigma precision of the m/z=28 ion density",
+    "ngims_ion28_quality":   "Quality flag for m/z=28 ion density",
+    "ngims_ion12":           "Ion density at m/z=12, primarily C⁺ (cm⁻³)",
+    "ngims_ion12_precision": "1-sigma precision of the m/z=12 ion density",
+    "ngims_ion12_quality":   "Quality flag for m/z=12 ion density",
+    "ngims_ion17":           "Ion density at m/z=17, primarily OH⁺ (cm⁻³)",
+    "ngims_ion17_precision": "1-sigma precision of the m/z=17 ion density",
+    "ngims_ion17_quality":   "Quality flag for m/z=17 ion density",
+    "ngims_ion14":           "Ion density at m/z=14, primarily N⁺ (cm⁻³)",
+    "ngims_ion14_precision": "1-sigma precision of the m/z=14 ion density",
+    "ngims_ion14_quality":   "Quality flag for m/z=14 ion density",
+
+    # ── SPICE — Spacecraft Ephemeris ─────────────────────────────────────────
+    "spice_geo_x": "Spacecraft position, areocentric GEO X component (km)",
+    "spice_geo_y": "Spacecraft position, areocentric GEO Y component (km)",
+    "spice_geo_z": "Spacecraft position, areocentric GEO Z component (km; toward Mars north pole)",
+    "spice_mso_x": "Spacecraft position, MSO frame X component (km; X points Sun→Mars)",
+    "spice_mso_y": "Spacecraft position, MSO frame Y component (km)",
+    "spice_mso_z": "Spacecraft position, MSO frame Z component (km; Z toward north ecliptic pole)",
+    "spice_longitude":          "Sub-spacecraft point east longitude on Mars (degrees, 0–360)",
+    "spice_latitude":           "Sub-spacecraft point latitude on Mars (degrees, −90 to +90)",
+    "spice_solar_zenith_angle": "Solar zenith angle at the sub-spacecraft point (degrees, 0=subsolar)",
+    "spice_local_time":         "Local solar time at the sub-spacecraft point (hours, 0–24)",
+    "spice_altitude":           "Spacecraft altitude above Mars areoid (km)",
+    "spice_sc_att_geo_x": "Spacecraft +Z axis direction, GEO frame X component (unit vector)",
+    "spice_sc_att_geo_y": "Spacecraft +Z axis direction, GEO frame Y component (unit vector)",
+    "spice_sc_att_geo_z": "Spacecraft +Z axis direction, GEO frame Z component (unit vector)",
+    "spice_sc_att_mso_x": "Spacecraft +Z axis direction, MSO frame X component (unit vector)",
+    "spice_sc_att_mso_y": "Spacecraft +Z axis direction, MSO frame Y component (unit vector)",
+    "spice_sc_att_mso_z": "Spacecraft +Z axis direction, MSO frame Z component (unit vector)",
+    "spice_app_geo_x": "Articulated Payload Platform (APP) boresight, GEO frame X (unit vector)",
+    "spice_app_geo_y": "Articulated Payload Platform (APP) boresight, GEO frame Y (unit vector)",
+    "spice_app_geo_z": "Articulated Payload Platform (APP) boresight, GEO frame Z (unit vector)",
+    "spice_app_mso_x": "Articulated Payload Platform (APP) boresight, MSO frame X (unit vector)",
+    "spice_app_mso_y": "Articulated Payload Platform (APP) boresight, MSO frame Y (unit vector)",
+    "spice_app_mso_z": "Articulated Payload Platform (APP) boresight, MSO frame Z (unit vector)",
+    "spice_orbit_number":       "MAVEN orbit number since Mars orbit insertion (September 2014)",
+    "spice_inbound_outbound":   "Orbit phase flag: +1=inbound (before periapsis), -1=outbound (after periapsis)",
+    "spice_mars_season_ls":     "Mars solar longitude Ls (degrees; 0=northern spring equinox)",
+    "spice_mars_sun_distance_au": "Mars–Sun distance (AU)",
+    "spice_subsolar_longitude": "Sub-solar point east longitude on Mars (degrees)",
+    "spice_subsolar_latitude":  "Sub-solar point latitude on Mars (degrees)",
+    "spice_submars_sun_longitude": "Sub-Mars point longitude as seen from the Sun (degrees)",
+    "spice_submars_sun_latitude":  "Sub-Mars point latitude as seen from the Sun (degrees)",
+    "spice_rot_mars_r1c1": "Mars body-fixed → inertial rotation matrix, element [1,1]",
+    "spice_rot_mars_r1c2": "Mars body-fixed → inertial rotation matrix, element [1,2]",
+    "spice_rot_mars_r1c3": "Mars body-fixed → inertial rotation matrix, element [1,3]",
+    "spice_rot_mars_r2c1": "Mars body-fixed → inertial rotation matrix, element [2,1]",
+    "spice_rot_mars_r2c2": "Mars body-fixed → inertial rotation matrix, element [2,2]",
+    "spice_rot_mars_r2c3": "Mars body-fixed → inertial rotation matrix, element [2,3]",
+    "spice_rot_mars_r3c1": "Mars body-fixed → inertial rotation matrix, element [3,1]",
+    "spice_rot_mars_r3c2": "Mars body-fixed → inertial rotation matrix, element [3,2]",
+    "spice_rot_mars_r3c3": "Mars body-fixed → inertial rotation matrix, element [3,3]",
+    "spice_rot_sc_r1c1": "Spacecraft body → inertial rotation matrix, element [1,1]",
+    "spice_rot_sc_r1c2": "Spacecraft body → inertial rotation matrix, element [1,2]",
+    "spice_rot_sc_r1c3": "Spacecraft body → inertial rotation matrix, element [1,3]",
+    "spice_rot_sc_r2c1": "Spacecraft body → inertial rotation matrix, element [2,1]",
+    "spice_rot_sc_r2c2": "Spacecraft body → inertial rotation matrix, element [2,2]",
+    "spice_rot_sc_r2c3": "Spacecraft body → inertial rotation matrix, element [2,3]",
+    "spice_rot_sc_r3c1": "Spacecraft body → inertial rotation matrix, element [3,1]",
+    "spice_rot_sc_r3c2": "Spacecraft body → inertial rotation matrix, element [3,2]",
+    "spice_rot_sc_r3c3": "Spacecraft body → inertial rotation matrix, element [3,3]",
+}
+
 # Human-readable descriptions for README
 INSTRUMENT_DESCRIPTIONS = {
     "lpw":    "Langmuir Probe and Waves — electron density, temperature, EUV irradiance",
@@ -324,19 +580,10 @@ def extract_instrument_df(df: pd.DataFrame, instrument: str) -> pd.DataFrame:
 
 
 def clean_instrument_df(df: pd.DataFrame) -> pd.DataFrame:
-    """Drop >80% null columns and all-null rows for an instrument DataFrame."""
-    # Drop columns that are >80% null (excluding time)
-    for col in list(df.columns):
-        if col == "time":
-            continue
-        if df[col].isna().mean() > 0.80:
-            df = df.drop(columns=[col])
-
-    # Drop rows where all non-time columns are null
+    """Drop rows where all non-time columns are null. Keep all columns as-is."""
     non_time = [c for c in df.columns if c != "time"]
     if non_time:
         df = df.dropna(subset=non_time, how="all")
-
     return df
 
 
@@ -557,6 +804,25 @@ def main():
             cols = len(instrument_dfs[instrument].columns)
             inst_table += f"| **{instrument.upper()}** | {desc} | {rows:,} | {cols} |\n"
 
+        # ── Per-instrument schema sections for README ────────────────────────
+        # Coordinate frames used across instruments:
+        # MSO = Mars-Sun-Orbit: X toward Sun, Z toward north ecliptic pole, Y completes right-hand
+        # GEO = areocentric geographic: Z toward Mars north pole, X through 0° longitude
+        # APP = Articulated Payload Platform body frame
+        schema_sections = ""
+        for instrument in INSTRUMENTS:
+            if instrument not in instrument_dfs:
+                continue
+            df_inst = instrument_dfs[instrument]
+            inst_full = INSTRUMENT_DESCRIPTIONS.get(instrument, instrument.upper())
+            schema_sections += f"\n### {instrument.upper()} — {inst_full}\n\n"
+            schema_sections += "| Column | Type | Description |\n"
+            schema_sections += "|--------|------|-------------|\n"
+            for col in df_inst.columns:
+                desc = COL_DESCRIPTIONS.get(col, "")
+                dtype = str(df_inst[col].dtype)
+                schema_sections += f"| `{col}` | {dtype} | {desc} |\n"
+
         # ── Banner ───────────────────────────────────────────────────────────
         banner_file = download_banner("maven", tmp)
         banner_md = banner_markdown("maven", banner_file)
@@ -605,6 +871,13 @@ Data spans **{time_min}** to **{time_max}**, split into {len(instrument_dfs)} in
 {inst_table}
 
 Each config shares the same `time` column, enabling cross-instrument joins. Per-instrument splitting reduces download size — load only the instruments you need.
+
+## Schema
+
+**Coordinate frames:** MSO (Mars-Sun-Orbit) has X pointing Sun→Mars, Z toward north ecliptic pole, Y completing the right-hand system. GEO (areocentric geographic) has Z toward the Mars north pole, X through 0° longitude. APP is the Articulated Payload Platform body frame used by NGIMS, IUVS, and STATIC.
+
+**Quality flags:** Each physical measurement has one or two integer quality flags. 0 = good; higher values indicate caution levels defined in the MAVEN KP SIS document. Use `flag == 0` for the highest-quality science data.
+{schema_sections}
 
 ## Usage
 

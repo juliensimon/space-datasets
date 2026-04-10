@@ -658,8 +658,8 @@ def main():
         print(f"\n  {operational:,} operational across {n_constellations} constellations")
 
         banner_file = download_banner("constellation-census", tmp_dir)
-        _banner_md = banner_markdown("constellation-census", banner_file)
-        (tmp_dir / "README.md").write_text(generate_readme(df, df_daily, _banner_md))
+        banner_md = banner_markdown("constellation-census", banner_file)
+        (tmp_dir / "README.md").write_text(generate_readme(df, df_daily, banner_md))
 
         print("Uploading to HF...")
         commit_msg = (

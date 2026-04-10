@@ -1,7 +1,7 @@
 name: Update SpaceX Launches
 on:
   schedule:
-    - cron: '0 11 * * *'  # daily at 11:00 UTC
+    - cron: '15 11 * * *'  # daily at 11:15 UTC
   workflow_dispatch:
 
 permissions:

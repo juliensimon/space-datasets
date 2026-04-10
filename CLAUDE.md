@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-Automated data pipelines that fetch public space data (orbital mechanics, space weather, astronomy, physics), convert to Parquet with zstd compression, and upload to Hugging Face under `juliensimon/`. Currently 170+ datasets with 45 GitHub Actions workflows for daily/weekly updates. Static datasets (uploaded once) have no workflow.
+Automated data pipelines that fetch public space data (orbital mechanics, space weather, astronomy, physics), convert to Parquet with zstd compression, and upload to Hugging Face under `juliensimon/`. Currently 170+ datasets with 79 GitHub Actions workflows for daily/weekly updates. Static datasets (uploaded once) have no workflow.
 
 ## Running a Dataset Pipeline
 
