@@ -177,16 +177,16 @@ The depth-to-diameter ratios recorded in this catalog also carry important infor
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `crater_id` | int64 | Unique crater identifier |
-| `latitude_deg` | float64 | Crater center latitude (degrees, planetocentric) |
-| `longitude_deg` | float64 | Crater center longitude (degrees, 0-360 E) |
-| `diameter_km` | float64 | Crater rim-to-rim diameter (km) |
-| `depth_km` | float64 | Rim-to-floor depth (km, from MOLA topography) |
-| `ejecta_morphology_1` | string | Primary ejecta morphology classification |
-| `ejecta_morphology_2` | string | Secondary ejecta morphology classification |
-| `ejecta_morphology_3` | string | Tertiary ejecta morphology classification |
-| `n_ejecta_layers` | int64 | Number of ejecta layers |
-| `size_class` | string | Derived: small (<5 km), medium (5-20), large (20-100), giant (>100) |
+| `crater_id` | int64 | Unique crater identifier assigned by Robbins & Hynek; integer starting from 1 |
+| `latitude_deg` | float64 | Crater center planetocentric latitude in degrees (-90 to +90) |
+| `longitude_deg` | float64 | Crater center east longitude in degrees (0–360 E; Mars uses east-positive convention) |
+| `diameter_km` | float64 | Rim-to-rim crater diameter in km; catalog minimum is 1 km; maximum is ~2300 km (Hellas basin) |
+| `depth_km` | float64 | Rim-to-floor depth in km derived from MOLA topography; null for heavily degraded or partially buried craters where the rim is poorly defined |
+| `ejecta_morphology_1` | string | Primary ejecta blanket morphology class (e.g. "Rd" = radial, "SLEP" = single-layer ejecta, "DLEP" = double-layer, "MLEPX" = multiple-layer; null if ejecta not preserved); indicates subsurface volatile content at time of impact |
+| `ejecta_morphology_2` | string | Secondary ejecta morphology layer class; null if only one layer type is present |
+| `ejecta_morphology_3` | string | Tertiary ejecta morphology layer class; null for most craters |
+| `n_ejecta_layers` | int64 | Number of distinct ejecta layers identified; 0 = no preserved ejecta, 1–3+ for layered ejecta craters; null if not determined |
+| `size_class` | string | Derived size category: "small" (<5 km), "medium" (5–20 km), "large" (20–100 km), "giant" (>100 km) |
 
 ## Quick stats
 

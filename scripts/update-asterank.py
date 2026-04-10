@@ -286,50 +286,50 @@ The profit estimates should be understood as theoretical upper bounds under opti
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `full_name` | string | Full formatted name (e.g. "1 Ceres") |
-| `name` | string | IAU name if assigned (e.g. "Ceres") |
-| `designation_number` | int | Permanent designation number |
-| `provisional_designation` | string | Provisional designation (e.g. "2024 YR4") |
-| `orbit_class` | string | Orbital class (MBA, APO, ATE, AMO, etc.) |
-| `spectral_type_smassii` | string | SMASS II spectral classification |
-| `spectral_type_bus` | string | Bus (Tholen-like) spectral classification |
-| `spectral_type_tholen` | string | Tholen spectral classification |
-| `is_neo` | bool | Near-Earth Object flag |
-| `is_pha` | bool | Potentially Hazardous Asteroid flag |
-| `absolute_magnitude` | float64 | Absolute magnitude H |
-| `magnitude_slope` | float64 | Magnitude slope parameter G |
-| `diameter_km` | float64 | Measured diameter (km) |
-| `diameter_sigma_km` | float64 | Diameter uncertainty (km) |
-| `albedo` | float64 | Geometric albedo |
-| `extent_km` | string | Tri-axial extents (km) |
-| `rotation_period_h` | float64 | Rotation period (hours) |
-| `gm_km3_s2` | float64 | GM gravitational parameter (km^3/s^2) |
-| `semi_major_axis_au` | float64 | Semi-major axis (AU) |
-| `eccentricity` | float64 | Orbital eccentricity |
-| `inclination_deg` | float64 | Orbital inclination (degrees) |
-| `ascending_node_deg` | float64 | Longitude of ascending node (degrees) |
-| `argument_perihelion_deg` | float64 | Argument of perihelion (degrees) |
-| `mean_anomaly_deg` | float64 | Mean anomaly (degrees) |
-| `perihelion_au` | float64 | Perihelion distance (AU) |
-| `aphelion_au` | float64 | Aphelion distance (AU) |
-| `orbital_period_yr` | float64 | Orbital period (years) |
-| `mean_motion_deg_day` | float64 | Mean motion (degrees/day) |
-| `tisserand_jupiter` | float64 | Tisserand parameter w.r.t. Jupiter |
-| `earth_moid_au` | float64 | Minimum orbit intersection distance to Earth (AU) |
-| `earth_moid_ld` | float64 | Earth MOID in Lunar Distances |
-| `jupiter_moid_au` | float64 | Minimum orbit intersection distance to Jupiter (AU) |
-| `estimated_value_usd` | float64 | Estimated total resource value (USD) |
-| `estimated_profit_usd` | float64 | Estimated mining profit (USD) |
-| `closeness_score` | float64 | Accessibility score (higher = easier to reach) |
-| `asterank_score` | float64 | Composite Asterank ranking score |
-| `orbit_condition_code` | float64 | JPL orbit condition code (0=best, 9=worst) |
-| `data_arc_days` | float64 | Observation arc length (days) |
-| `n_obs_used` | float64 | Number of observations used in orbit fit |
-| `first_obs_date` | datetime | Date of first observation |
-| `last_obs_date` | datetime | Date of last observation |
-| `orbit_rms` | float64 | Orbit fit RMS residual |
-| `color_index_bv` | float64 | B-V color index |
-| `color_index_ub` | float64 | U-B color index |
+| `full_name` | string | Full IAU-formatted name including number and name where available (e.g. "1 Ceres", "3552 Don Quixote"); for unnumbered objects contains the provisional designation |
+| `name` | string | Short IAU proper name if assigned (e.g. "Ceres", "Eros"); null for the majority of asteroids that have only a provisional designation and no proper name |
+| `designation_number` | int | Permanent MPC asteroid number assigned after a sufficiently well-determined orbit (e.g. 1 for Ceres); null for unnumbered asteroids whose orbits are not yet secure enough for permanent numbering |
+| `provisional_designation` | string | MPC provisional designation in YYYY-XNX format assigned at discovery (e.g. "2024 YR4"); null for numbered asteroids where the provisional form has been retired |
+| `orbit_class` | string | JPL/MPC orbital class: MBA (Main Belt Asteroid, 2.0–3.3 AU), APO (Apollo, a>=1 AU, q<1.017 AU), ATE (Aten, a<1 AU, Q>0.983 AU), AMO (Amor, 1.017<q<1.3 AU), TJN (Jupiter Trojan), CEN (Centaur), TNO (Trans-Neptunian), COM (Comet-like), IEO (Interior-Earth) |
+| `spectral_type_smassii` | string | SMASS II (Bus 2002) spectral class based on visible/near-IR reflectance: C (carbonaceous, ~75% of asteroids, dark/primitive), S (silicaceous, ~17%, rocky/stony), X (metallic or featureless, includes M/E/P sub-types), B/D/K/L/Q/R/T/V (minor classes); null when no spectral observation exists |
+| `spectral_type_bus` | string | Bus spectral classification (precursor to SMASS II); similar taxonomy to SMASS II; null for most asteroids; may agree or disagree with spectral_type_smassii due to different wavelength coverage |
+| `spectral_type_tholen` | string | Tholen (1984) spectral classification from ECAS broadband photometry: C (carbonaceous), S (silicaceous), M (metallic, high radar albedo), E (enstatite achondrite, very high albedo), R, V (vestoid), T, D, F, G, B, P; null for objects not in the ECAS survey; the oldest major taxonomy, now largely superseded by SMASS II |
+| `is_neo` | bool | Near-Earth Object flag: true if the asteroid's orbit brings it within 1.3 AU of the Sun (perihelion q < 1.3 AU); false otherwise; null if classification is unavailable |
+| `is_pha` | bool | Potentially Hazardous Asteroid flag: true if absolute magnitude H<=22 (diameter roughly >140 m) AND Earth MOID <=0.05 AU; false otherwise; PHA status is reviewed as orbits are refined |
+| `absolute_magnitude` | float64 | H magnitude — intrinsic brightness at zero solar phase angle and 1 AU distance; lower H = brighter = larger: H~18 is ~1 km, H~22 is ~140 m, H~26 is ~20 m; primary proxy for size when no direct diameter exists |
+| `magnitude_slope` | float64 | G slope parameter in the H-G magnitude system describing how brightness varies with solar phase angle; typical value ~0.15; affects apparent brightness estimates at different elongations |
+| `diameter_km` | float64 | Physically measured or radiometrically derived diameter in kilometers; null for the vast majority of asteroids (~99%) where no direct size measurement exists; when present, far more reliable than H-magnitude estimates |
+| `diameter_sigma_km` | float64 | 1-sigma uncertainty on diameter_km in kilometers; null when diameter_km is null |
+| `albedo` | float64 | Geometric albedo — fraction of incident sunlight reflected back at zero phase angle; C-type ~0.03–0.09 (very dark), S-type ~0.10–0.30, M-type ~0.10–0.30, E-type ~0.40–0.60; used with H magnitude to compute diameter |
+| `extent_km` | string | Tri-axial body dimensions as "AxBxC" in kilometers for elongated or irregular objects with detailed shape models; null for the vast majority of asteroids |
+| `rotation_period_h` | float64 | Sidereal rotation period in hours from lightcurve observations; null for most asteroids; typical range 2–1000 hours; fast rotators (<2.2 h) constrain internal strength |
+| `gm_km3_s2` | float64 | Gravitational parameter GM in km³/s²; derived from spacecraft flyby or binary companion mass estimates; null for nearly all asteroids except the largest or visited ones |
+| `semi_major_axis_au` | float64 | Keplerian semi-major axis of the heliocentric orbit in AU: inner main belt ~2.0–2.5 AU, outer main belt ~2.5–3.3 AU, near-Earth asteroids <1.3 AU perihelion, Trojans ~5.2 AU |
+| `eccentricity` | float64 | Orbital eccentricity (dimensionless, 0–1): 0=circular, >0=elliptical; main belt typically 0.0–0.3; near-Earth asteroids often 0.1–0.7; value near 1 indicates a highly elongated or comet-like orbit |
+| `inclination_deg` | float64 | Orbital inclination relative to the ecliptic plane in degrees; main belt typically 0–30°; high inclination (>30°) reduces mission accessibility; Aten/Apollo/Amor groups cover wide range |
+| `ascending_node_deg` | float64 | Longitude of the ascending node in degrees (0–360); defines where the orbit crosses the ecliptic from south to north; one of the six Keplerian elements |
+| `argument_perihelion_deg` | float64 | Argument of perihelion in degrees (0–360); angular distance from ascending node to perihelion point along the orbit; one of the six Keplerian elements |
+| `mean_anomaly_deg` | float64 | Mean anomaly at epoch in degrees (0–360); angular position along the orbit at the reference epoch assuming uniform angular motion; one of the six Keplerian elements |
+| `perihelion_au` | float64 | Closest approach distance to the Sun in AU; perihelion < 1.017 AU means the asteroid crosses Earth's orbit; perihelion < 0.307 AU classifies it as Vulcanoid-like |
+| `aphelion_au` | float64 | Farthest distance from the Sun in AU; along with perihelion, defines the orbit extent; aphelion > 3.3 AU for Jupiter-crossing or outer solar system objects |
+| `orbital_period_yr` | float64 | Time to complete one heliocentric orbit in years; main belt ~3–6 years; near-Earth asteroids ~1–3 years; derived from semi-major axis via Kepler's third law |
+| `mean_motion_deg_day` | float64 | Average angular velocity in degrees per day; reciprocal of orbital period; faster motion = shorter period = smaller orbit |
+| `tisserand_jupiter` | float64 | Tisserand parameter with respect to Jupiter (dimensionless); T_J > 3: main-belt asteroid; 2 < T_J < 3: Jupiter-family comet or Centaur; T_J < 2: Halley-type or long-period comet; key classifier for distinguishing asteroids from comets |
+| `earth_moid_au` | float64 | Minimum Orbit Intersection Distance to Earth in AU — the minimum possible distance between Earth's orbit and the asteroid's orbit; <0.05 AU is the PHA threshold; <0.002 AU warrants close-approach monitoring; does not predict an actual collision |
+| `earth_moid_ld` | float64 | Earth MOID expressed in Lunar Distances (1 LD ≈ 0.00257 AU ≈ 384,400 km); <7.3 LD is the PHA threshold in these units; null when earth_moid_au is null |
+| `jupiter_moid_au` | float64 | Minimum Orbit Intersection Distance to Jupiter in AU; low values indicate potential for Jupiter gravitational perturbations that can reshape the orbit over time |
+| `estimated_value_usd` | float64 | Asterank's estimated total extractable resource value in USD, derived by mapping spectral type to bulk composition and scaling by estimated mass; highly speculative order-of-magnitude estimate; null if spectral type or size data is insufficient for estimation |
+| `estimated_profit_usd` | float64 | Asterank's estimated mining profit in USD: estimated_value_usd minus modeled mission cost (a function of delta-v); negative values indicate missions that cost more than the resources are worth; null if value or accessibility cannot be estimated |
+| `closeness_score` | float64 | Asterank accessibility metric encoding delta-v cost to reach the asteroid; higher score = lower delta-v = easier to reach; combines orbital elements into a single dimensionless figure of merit; targets with closeness > threshold are reachable by current propulsion (~7 km/s) |
+| `asterank_score` | float64 | Composite Asterank ranking score combining estimated_profit_usd and closeness_score to identify the most economically interesting and accessible targets; higher = more attractive for mining; primary sort key in Asterank's public interface |
+| `orbit_condition_code` | float64 | JPL orbit condition code (0–9): 0 = best-determined orbit, 9 = very uncertain; high codes indicate sparse or short-arc observations; objects with code >= 7 have orbits that may change significantly with new data |
+| `data_arc_days` | float64 | Total observation arc length in days from first to last observation; longer arcs produce more reliable orbital solutions; < 30 days indicates a newly discovered or poorly-tracked object |
+| `n_obs_used` | float64 | Number of individual astrometric observations used in the orbital solution; more observations generally means a tighter orbit determination |
+| `first_obs_date` | datetime | Date of the earliest observation used in the orbit fit; indicates how long the object has been tracked |
+| `last_obs_date` | datetime | Date of the most recent observation used in the orbit fit; gap between last_obs_date and today indicates how stale the orbital solution is |
+| `orbit_rms` | float64 | Root mean square residual of the orbit fit in arcseconds; lower values indicate a tighter fit to observations; typical good fit < 0.5 arcseconds |
+| `color_index_bv` | float64 | B-V photometric color index (Johnson B minus V magnitudes); C-type asteroids ~0.7, S-type ~0.9, reflects surface composition and space weathering; null for most asteroids |
+| `color_index_ub` | float64 | U-B photometric color index (Johnson U minus B magnitudes); provides additional compositional discrimination alongside B-V; null for most asteroids |
 
 ## Quick stats
 

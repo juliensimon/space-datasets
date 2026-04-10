@@ -158,16 +158,16 @@ that would be impossible from any single contemporary survey alone.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `gcvs_name` | string | GCVS designation (e.g. "R And", "delta Cep") |
-| `ra_deg` | float64 | Right ascension J2000 (degrees) |
-| `dec_deg` | float64 | Declination J2000 (degrees) |
-| `variable_type` | string | Variability type (e.g. M, SR, EA, DCEP, RR) |
-| `magnitude_max` | float64 | Maximum brightness (mag, lower = brighter) |
-| `magnitude_min_flag` | string | Flag on minimum magnitude (e.g. "(" for amplitude) |
-| `magnitude_min` | float64 | Minimum brightness (mag) |
-| `period_days` | float64 | Period in days |
-| `epoch_jd` | float64 | Epoch of maximum/minimum (Julian Date) |
-| `spectral_type` | string | Spectral type |
+| `gcvs_name` | string | GCVS official designation — Greek letter + constellation for bright variables (e.g. "R And", "delta Cep"), or V+number for fainter ones (e.g. "V1500 Cyg"); IAU-recognized identifier |
+| `ra_deg` | float64 | Right ascension, ICRS J2000.0, in decimal degrees (0–360) |
+| `dec_deg` | float64 | Declination, ICRS J2000.0, in decimal degrees (−90 to +90) |
+| `variable_type` | string | GCVS variability type code; common values: DCEP (classical Cepheid, period-luminosity standard candle), RR (RR Lyrae, old metal-poor horizontal-branch pulsator), M (Mira, AGB long-period pulsator), SR (semi-regular), EA/EB/EW (eclipsing binaries), UV (UV Ceti/flare star), N (nova), SN (supernova); ~100 distinct types |
+| `magnitude_max` | float64 | Brightness at maximum light in V-band (mag); lower value = brighter star; null for a small number of entries |
+| `magnitude_min_flag` | string | Qualifier on `magnitude_min`: "(" means value is amplitude (mag range) rather than absolute minimum magnitude; blank otherwise |
+| `magnitude_min` | float64 | Brightness at minimum light in V-band (mag); for eclipsing binaries this is the primary minimum; amplitude = magnitude_min − magnitude_max; null for irregular variables with poorly defined minima |
+| `period_days` | float64 | Pulsation or orbital period in days; null for irregular variables (type L, I), single-event novae, and eruptive stars with no recurring period |
+| `epoch_jd` | float64 | Julian Date of the light curve reference point — epoch of maximum light for pulsators, epoch of primary minimum for eclipsing binaries; null when no reliable epoch has been established |
+| `spectral_type` | string | MK spectral type at the phase of maximum light; null for ~40% of entries where spectral classification is unavailable |
 
 ## Quick stats
 

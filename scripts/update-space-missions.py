@@ -196,11 +196,11 @@ This dataset draws on Wikidata's structured knowledge base using three entity ty
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `wikidata_id` | string | Wikidata entity ID (e.g. Q183294) |
-| `name` | string | Mission name |
-| `operator` | string | Operating agency or organization (~13% coverage) |
+| `wikidata_id` | string | Wikidata entity ID (e.g. "Q183294"); stable URI for enrichment; present for all rows |
+| `name` | string | Official mission name as recorded in Wikidata (e.g. "Apollo 11", "Voyager 1", "Mars Odyssey"); null for missions with no label |
+| `operator` | string | Launching or operating space agency/organization (e.g. "NASA", "ESA", "ISRO", "Roscosmos", "CNSA"); null for ~87% of entries where Wikidata has no operator recorded |
 
-Additional columns (launch_date, destination, etc.) appear when Wikidata coverage exceeds 5%.
+Additional columns (launch_date, destination, status, mission_type, etc.) appear dynamically when Wikidata coverage for that property exceeds 5% of missions. Coverage varies by property and dataset refresh date.
 
 ## Quick stats
 

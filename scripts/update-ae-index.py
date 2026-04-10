@@ -310,14 +310,14 @@ AE is widely used in magnetospheric physics to quantify substorm occurrence rate
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `datetime` | datetime | Observation time (UTC, hourly) |
-| `ae_index` | int | AE value in nanotesla (nT) |
-| `au_index` | int | AU value in nanotesla (nT) |
-| `al_index` | int | AL value in nanotesla (nT), typically negative |
-| `ao_index` | int | AO value in nanotesla (nT) |
-| `quality` | string | Data quality: "provisional" or "realtime" |
-| `is_active` | bool | True if AE >= 500 nT |
-| `activity_level` | string | "quiet" (< 100), "moderate" (100-300), "active" (300-500), "minor_storm" (500-1000), "major_storm" (> 1000) |
+| `datetime` | datetime | Timestamp of the 1-minute measurement averaged to hourly cadence (UTC); coverage starts 2021 |
+| `ae_index` | int | Auroral Electrojet index in nT — range of H-component variation across auroral-zone stations (AU − AL); quiet: 50–200 nT, substorm onset: >300 nT, active: >500 nT |
+| `au_index` | int | Auroral Upper index in nT — most positive H-component deviation across the 12 contributing stations; measures the eastward electrojet current; typically 0–1000 nT |
+| `al_index` | int | Auroral Lower index in nT — most negative H-component deviation; measures the westward electrojet current; typically 0 to −2000 nT; strongly negative values indicate substorm activity |
+| `ao_index` | int | Auroral Overall index in nT — average of AU and AL, i.e. (AU + AL) / 2; general substorm activity proxy; typically −500 to +200 nT |
+| `quality` | string | Data quality flag: "provisional" (recent data pending full processing) or "realtime" (near-real-time, subject to revision) |
+| `is_active` | bool | True if AE >= 500 nT, indicating active auroral substorm conditions |
+| `activity_level` | string | Derived geomagnetic activity category based on AE: "quiet" (< 100 nT), "moderate" (100–300 nT), "active" (300–500 nT), "minor_storm" (500–1000 nT), "major_storm" (> 1000 nT) |
 
 ## Quick stats
 

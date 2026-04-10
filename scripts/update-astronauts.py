@@ -226,17 +226,17 @@ which is maintained by the WikiProject Spaceflight community and updated as new 
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `wikidata_id` | string | Wikidata entity ID (e.g. Q1029) |
-| `name` | string | Full name |
-| `birth_date` | string | Date of birth (YYYY-MM-DD) |
-| `death_date` | string | Date of death if deceased |
-| `sex` | string | Sex (male/female) |
-| `nationality` | string | Nationality |
-| `employers` | string | Employers, semicolon-separated (space agencies, contractors) |
-| `num_flights` | int | Number of spaceflights |
-| `time_in_space_min` | int | Total time in space (minutes) |
-| `birth_year` | int | Year of birth (derived) |
-| `time_in_space_hours` | float | Total time in space (hours, derived) |
+| `wikidata_id` | string | Wikidata entity ID (e.g. "Q1029"); resolves to https://www.wikidata.org/wiki/Q1029 — links to the astronaut's full biography, mission list, and nationality data |
+| `name` | string | Full legal name as recorded in Wikidata (English transliteration for non-Latin scripts) |
+| `birth_date` | string | Date of birth in ISO 8601 format (YYYY-MM-DD); null for living persons who have not disclosed their birth date or for historical records with unresolvable uncertainty |
+| `death_date` | string | Date of death in ISO 8601 format (YYYY-MM-DD); null for living astronauts |
+| `sex` | string | Recorded biological sex; values: "male", "female"; null if not recorded in Wikidata |
+| `nationality` | string | Country of citizenship at the time of primary spaceflight career (e.g. "United States", "Russia"); uses full English country name; may differ from country of birth |
+| `employers` | string | Space agencies or contractors that employed the astronaut, semicolon-separated (e.g. "NASA;Boeing"); null if no employer is recorded in Wikidata |
+| `num_flights` | int | Number of distinct spaceflights completed (each separate launch counts as one flight); null if career status is uncertain or the astronaut trained but never flew |
+| `time_in_space_min` | int | Cumulative time spent in space across all missions, in minutes; null for astronauts with no recorded flights |
+| `birth_year` | int | Integer year extracted from `birth_date`; enables age-group analysis when full date is unavailable; null only if birth date is entirely unknown |
+| `time_in_space_hours` | float | Cumulative time in space in decimal hours, derived from `time_in_space_min` (divide by 60); null for astronauts with no recorded flights |
 
 ## Quick stats
 

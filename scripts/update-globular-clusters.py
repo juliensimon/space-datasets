@@ -460,41 +460,49 @@ suitable for comparison with theoretical models and numerical simulations.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `name` | string | Cluster name (e.g. "NGC 104", "Pal 5") |
-| `ra_deg` / `dec_deg` | float64 | Position in decimal degrees (J2000) |
-| `distance_kpc` | float64 | Distance from the Sun (kpc) |
-| `distance_err_kpc` | float64 | Distance uncertainty (kpc) |
-| `distance_gc_kpc` | float64 | Galactocentric distance (kpc) |
-| `metallicity_fe_h` | float64 | Metallicity [Fe/H] (dex) |
-| `reddening_e_bv` | float64 | Foreground reddening E(B\u2212V) |
-| `apparent_mag_v` | float64 | Apparent integrated V magnitude |
-| `absolute_mag_v` | float64 | Absolute integrated V magnitude |
-| `color_u_b` / `color_b_v` / `color_v_r` / `color_v_i` | float64 | Integrated color indices |
-| `spectral_type` | string | Integrated spectral type |
-| `ellipticity` | float64 | Projected ellipticity e = 1\u2212b/a |
-| `mass_msun` | float64 | Total cluster mass (M\u2609) |
-| `mass_err_msun` | float64 | Mass uncertainty |
-| `mass_to_light_v` | float64 | V-band mass-to-light ratio (M\u2609/L\u2609) |
-| `log_initial_mass_msun` | float64 | Log\u2081\u2080 initial mass (M\u2609) |
-| `dissolution_time_gyr` | float64 | Predicted dissolution time (Gyr) |
-| `core_radius_pc` | float64 | Core radius (pc) |
-| `half_light_radius_pc` | float64 | Projected half-light radius (pc) |
-| `half_mass_radius_pc` | float64 | 3D half-mass radius (pc) |
-| `tidal_radius_pc` | float64 | Tidal radius (pc) |
-| `log_central_density_msun_pc3` | float64 | Log\u2081\u2080 central density (M\u2609/pc\u00b3) |
-| `log_half_mass_density_msun_pc3` | float64 | Log\u2081\u2080 half-mass density (M\u2609/pc\u00b3) |
-| `log_half_mass_relaxation_time_yr` | float64 | Log\u2081\u2080 half-mass relaxation time (yr) |
-| `velocity_dispersion_km_s` | float64 | Central velocity dispersion (km/s) |
-| `escape_velocity_km_s` | float64 | Central escape velocity (km/s) |
-| `radial_velocity_km_s` | float64 | Heliocentric radial velocity (km/s) |
-| `anisotropy_central` / `anisotropy_half_mass` | float64 | Velocity anisotropy (\u03b7) |
-| `rotation_amplitude_km_s` | float64 | Rotation amplitude (km/s) |
-| `rotation_probability_pct` | float64 | Probability of significant rotation (%) |
-| `mass_function_slope` | float64 | Present-day mass function slope (\u03b1) |
-| `n_radial_velocity_stars` | int | Stars with radial velocity measurements |
-| `n_proper_motion_stars` | int | Stars with proper motion measurements |
-| `core_collapsed` | bool | Core-collapsed cluster (Harris) |
-| `concentration_harris` | float64 | King-model concentration c = log(r_t/r_c) |
+| `name` | string | Cluster name (e.g. "NGC 104", "Pal 5"); Baumgardt name where available, Harris name otherwise |
+| `ra_deg` / `dec_deg` | float64 | Right ascension and declination of the cluster center in decimal degrees, J2000.0 epoch |
+| `distance_kpc` | float64 | Distance from the Sun (kpc; 1 kpc = 3260 light-years); derived from Baumgardt N-body fits to Gaia proper motions and HST data; typical range 2--100 kpc |
+| `distance_err_kpc` | float64 | 1-sigma uncertainty on the heliocentric distance (kpc) from the Baumgardt N-body model fits; null for Harris-only clusters |
+| `distance_gc_kpc` | float64 | Distance from the Galactic center (kpc), assuming R\u2609 = 8.1 kpc; used to study spatial distribution and orbital properties |
+| `distance_gc_err_kpc` | float64 | 1-sigma uncertainty on the Galactocentric distance (kpc); null for Harris-only clusters |
+| `metallicity_fe_h` | float64 | Iron abundance [Fe/H] in dex (log\u2081\u2080 of Fe/H relative to the Sun); dex = decimal exponent, so [Fe/H] = -1 means 1/10 solar iron; typical globular cluster range -2.5 to +0.5; lower values indicate older, more metal-poor clusters |
+| `reddening_e_bv` | float64 | Foreground dust reddening E(B\u2212V) in magnitudes from the Harris catalog; measures differential extinction between B and V bands due to interstellar dust along the line of sight; must be corrected before comparing intrinsic colors |
+| `apparent_mag_v` | float64 | Apparent integrated V-band (550 nm) magnitude summing light from all cluster member stars; this is the total cluster flux, not a single star's brightness; typical range 5--16 mag; Baumgardt value where available, Harris otherwise |
+| `absolute_mag_v` | float64 | Absolute integrated V-band magnitude (apparent magnitude corrected for distance and reddening); proxy for total stellar luminosity; typical range -5 to -10 mag; null for Baumgardt-only clusters |
+| `distance_modulus_v` | float64 | V-band distance modulus \u03bc = m_V \u2212 M_V (mag), where \u03bc = 5 log\u2081\u2080(d/10 pc); includes reddening; null for Baumgardt-only clusters |
+| `color_u_b` / `color_b_v` / `color_v_r` / `color_v_i` | float64 | Integrated broadband color indices (mag) from Harris catalog; measure the integrated stellar population color; redder values indicate more dust reddening or more metal-rich/older populations; null for Baumgardt-only clusters |
+| `spectral_type` | string | Integrated spectral type of the cluster from the Harris catalog (e.g. "F5", "G0"); reflects the luminosity-weighted mean stellar temperature; null for most clusters |
+| `ellipticity` | float64 | Projected ellipticity e = 1 \u2212 b/a where a and b are the major and minor axis lengths; 0 = perfectly circular, values up to ~0.3 for the most flattened clusters; from Harris catalog |
+| `mass_msun` | float64 | Total dynamical mass (M\u2609) from Baumgardt N-body fits to velocity dispersion profiles; typical range 10\u2074--10\u2076 M\u2609; null for Harris-only clusters |
+| `mass_err_msun` | float64 | 1-sigma uncertainty on the total dynamical mass (M\u2609) from the N-body fit; null for Harris-only clusters |
+| `mass_to_light_v` | float64 | Present-day V-band mass-to-light ratio (M\u2609/L\u2609); higher values indicate more mass in faint or dark remnants (neutron stars, black holes, white dwarfs); typical range 1--4 M\u2609/L\u2609 |
+| `mass_to_light_v_err` | float64 | 1-sigma uncertainty on the V-band mass-to-light ratio (M\u2609/L\u2609) |
+| `log_initial_mass_msun` | float64 | Log\u2081\u2080 of the initial (birth) cluster mass (M\u2609) estimated from the present-day mass and the modeled mass lost to stellar evolution and tidal stripping |
+| `dissolution_time_gyr` | float64 | Predicted time until the cluster is fully disrupted by the Galactic tidal field (Gyr), based on current mass and orbit; null for Harris-only clusters |
+| `core_radius_pc` | float64 | Core radius r_c (pc): the projected radius at which the surface brightness falls to half its central value in a King model; small values (~0.1 pc) indicate a dense or core-collapsed cluster |
+| `half_light_radius_pc` | float64 | Projected (2D) half-light radius r_h (pc): the radius enclosing half the cluster's total V-band luminosity as seen on the sky; the most directly observable structural size parameter |
+| `half_mass_radius_pc` | float64 | Three-dimensional half-mass radius r_hm (pc) from N-body fits: the radius enclosing half the total cluster mass in 3D; slightly larger than the projected half-light radius |
+| `tidal_radius_pc` | float64 | Tidal (Jacobi) radius r_t (pc): the distance from the cluster center at which the Galactic tidal force equals the cluster's self-gravity; stars beyond this radius are unbound |
+| `log_central_density_msun_pc3` | float64 | Log\u2081\u2080 of the central mass density (M\u2609/pc\u00b3) from N-body fits; core-collapsed clusters can exceed 10\u2076 M\u2609/pc\u00b3 |
+| `log_half_mass_density_msun_pc3` | float64 | Log\u2081\u2080 of the mean mass density within the 3D half-mass radius (M\u2609/pc\u00b3); less sensitive to core-collapse than central density |
+| `log_central_surface_density_msun_pc2` | float64 | Log\u2081\u2080 of the projected central surface mass density (M\u2609/pc\u00b2); the column density at the cluster center |
+| `log_half_mass_surface_density_msun_pc2` | float64 | Log\u2081\u2080 of the mean projected surface mass density within the projected half-mass radius (M\u2609/pc\u00b2) |
+| `log_half_mass_relaxation_time_yr` | float64 | Log\u2081\u2080 of the half-mass relaxation time (yr): the timescale on which two-body gravitational encounters redistribute energy and erase memory of initial conditions; clusters with log T_rh < 10 are dynamically evolved |
+| `velocity_dispersion_km_s` | float64 | Central 1D line-of-sight velocity dispersion \u03c3\u2080 (km/s) from N-body fits; related to cluster mass via the virial theorem; typical range 2--20 km/s; null for Harris-only clusters |
+| `escape_velocity_km_s` | float64 | Central escape velocity v_esc (km/s) from the cluster potential; stars moving faster than this are unbound; typical range 10--50 km/s |
+| `radial_velocity_km_s` | float64 | Heliocentric line-of-sight (systemic) radial velocity of the cluster (km/s) from Harris catalog; positive = receding; used to determine cluster orbits |
+| `radial_velocity_err_km_s` | float64 | 1-sigma uncertainty on the systemic radial velocity (km/s) |
+| `anisotropy_central` / `anisotropy_half_mass` | float64 | Velocity anisotropy parameter \u03b7 at the center and half-mass radius; \u03b7 > 0 indicates radially biased orbits, \u03b7 < 0 tangentially biased; isotropic = 0 |
+| `rotation_amplitude_km_s` | float64 | Peak amplitude of internal cluster rotation (km/s) from Baumgardt fits; higher values indicate significant solid-body-like rotation |
+| `rotation_probability_pct` | float64 | Statistical probability (%) that the detected rotation signal is real rather than noise; values > 95% are considered significant detections |
+| `mass_function_slope` | float64 | Present-day stellar mass function slope \u03b1 (where dN/dm \u221d m^\u03b1) over the fitted mass range; a steep negative slope (e.g. \u03b1 ~ -2) means many low-mass stars; a flat or positive slope indicates preferential loss of low-mass stars through tidal stripping |
+| `mass_function_slope_err` | float64 | 1-sigma uncertainty on the present-day mass function slope \u03b1 |
+| `mass_function_low_msun` / `mass_function_high_msun` | float64 | Lower and upper stellar mass limits (M\u2609) over which the mass function slope was fitted |
+| `n_radial_velocity_stars` | int | Number of individual member stars with radial velocity measurements used in the Baumgardt N-body fit; larger samples yield more reliable dispersion profiles |
+| `n_proper_motion_stars` | int | Number of individual member stars with proper motion measurements (mostly from Gaia DR3) used in the N-body fit |
+| `core_collapsed` | bool | True if the cluster has undergone core collapse (gravothermal catastrophe), as flagged in the Harris catalog; core-collapsed clusters show a cusp-like central brightness profile rather than a flat core |
+| `concentration_harris` | float64 | King-model concentration parameter c = log\u2081\u2080(r_t / r_c), the log ratio of tidal to core radius; higher c means a more centrally concentrated cluster; null for Baumgardt-only clusters; core-collapsed clusters are assigned c = 2.5 by convention |
 
 ## Quick stats
 

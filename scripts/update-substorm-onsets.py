@@ -219,13 +219,13 @@ Each algorithm has different sensitivity and false-positive rates, so researcher
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `datetime_utc` | datetime | Substorm onset time (UTC) |
-| `mlt_hours` | float64 | Magnetic Local Time of onset (hours, 0-24) |
-| `magnetic_latitude_deg` | float64 | Magnetic latitude of onset (degrees) |
-| `geographic_longitude_deg` | float64 | Geographic longitude of onset (degrees) |
-| `geographic_latitude_deg` | float64 | Geographic latitude of onset (degrees) |
-| `source` | string | Detection algorithm: newell, forsyth, ohtani, frey, liou |
-| `method` | string | Detection method description |
+| `datetime_utc` | datetime | UTC timestamp of the substorm onset — the start of the expansion phase when energy stored in the magnetotail is explosively released. Accurate to ±1–2 minutes for ground-based detections; ±1 minute for auroral imager detections. |
+| `mlt_hours` | float64 | Magnetic Local Time (MLT) of the onset location (0–24 h, where 0/24 = magnetic midnight, 12 = magnetic noon). MLT is fixed relative to the Sun-Earth axis and rotates with Earth's magnetic field. Midnight-sector onsets (22–02 MLT) are most common. |
+| `magnetic_latitude_deg` | float64 | Magnetic latitude (MLAT) of the onset location in degrees. Substorm onsets typically occur at 60–75° MLAT within the auroral oval. Values outside this range may indicate unusual geomagnetic conditions or catalog artifacts. |
+| `geographic_longitude_deg` | float64 | Geographic (geodetic) longitude of the onset location in degrees (-180 to 180). Suitable for plotting on standard world maps; differs from magnetic longitude. |
+| `geographic_latitude_deg` | float64 | Geographic (geodetic) latitude of the onset location in degrees. Use with `geographic_longitude_deg` for ground-track mapping. Differs from `magnetic_latitude_deg` due to offset between geographic and magnetic poles. |
+| `source` | string | Detection algorithm that identified this onset: `newell` (SML index threshold), `forsyth` (SME index derivative), `ohtani` (negative bay in SML), `frey` (IMAGE satellite UV imager), `liou` (Polar satellite UV imager). Each algorithm has different sensitivity and false-positive characteristics. |
+| `method` | string | Human-readable detection method category: "Ground magnetometer" (SML/SME index-based methods) or "Auroral imager" (UV camera aboard IMAGE or Polar satellites). Use this column to filter by methodology or compare ground vs. space-based detections. |
 
 ## Quick stats
 

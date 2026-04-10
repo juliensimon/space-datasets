@@ -159,10 +159,10 @@ During solar maximum, F10.7 can exceed 300 SFU for extended periods, increasing 
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `date` | datetime | Observation date (UTC) |
-| `observed_flux_sfu` | float64 | Observed flux at local noon (SFU) |
-| `adjusted_flux_sfu` | float64 | Flux adjusted to 1 AU distance (SFU) |
-| `absolute_flux_sfu` | float64 | Absolute flux calibration (SFU) |
+| `date` | datetime | Observation date (UTC); Penticton, Canada measurements continuous since 1947 |
+| `observed_flux_sfu` | float64 | Daily solar radio flux at 10.7 cm (2800 MHz) measured at local noon in Solar Flux Units (1 SFU = 10⁻²² W/m²/Hz); quiet sun: 65–70 SFU; solar maximum: 200–300+ SFU; required input to atmospheric drag models |
+| `adjusted_flux_sfu` | float64 | F10.7 flux corrected to 1 AU from the Sun, removing the ~3.3% variation caused by Earth's orbital eccentricity; preferred value for solar cycle analysis and most operational models |
+| `absolute_flux_sfu` | float64 | F10.7 tied to the primary calibration scale (slightly differs from observed due to gain corrections); null for early historical records |
 
 ## Quick stats
 

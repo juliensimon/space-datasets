@@ -221,25 +221,25 @@ The dataset has {n_total:,} total eclipses, {n_annular:,} annular eclipses, {n_h
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `catalog_number` | int64 | Sequential catalog number (1 to {n_total_eclipses:,}) |
-| `date` | string | Date of greatest eclipse (YYYY-MM-DD, negative years for BCE) |
-| `year` | int64 | Calendar year (negative for BCE) |
-| `td_of_greatest_eclipse` | string | Time of greatest eclipse (Terrestrial Dynamical Time) |
-| `delta_t` | float64 | Delta-T: difference TDT minus UT in seconds |
-| `luna_number` | int64 | Lunation number (Brown's series) |
-| `saros_number` | int64 | Saros series number |
-| `eclipse_type` | string | Eclipse type code: T (total), A (annular), H (hybrid), P (partial) |
-| `eclipse_type_name` | string | Full name of eclipse type |
-| `is_total` | bool | True if eclipse is total |
-| `is_annular` | bool | True if eclipse is annular |
-| `gamma` | float64 | Distance of Moon shadow axis from Earth center |
-| `magnitude` | float64 | Eclipse magnitude (fraction of Sun diameter covered) |
-| `latitude` | float64 | Latitude of greatest eclipse (degrees, + N / - S) |
-| `longitude` | float64 | Longitude of greatest eclipse (degrees, + E / - W) |
-| `sun_altitude` | float64 | Sun altitude at greatest eclipse (degrees) |
-| `path_width_km` | float64 | Width of central eclipse path (km, null for partial) |
-| `central_duration` | string | Duration of central eclipse (e.g. "04m57s", null for partial) |
-| `century` | int64 | Derived century (year / 100, truncated) |
+| `catalog_number` | int64 | Sequential catalog number (1 to {n_total_eclipses:,}), monotonically increasing with time |
+| `date` | string | Date of greatest eclipse in ISO format (YYYY-MM-DD); negative year values indicate BCE dates |
+| `year` | int64 | Calendar year; negative for BCE (e.g., -500 = 500 BCE); range −1999 to +3000 |
+| `td_of_greatest_eclipse` | string | Time of greatest eclipse in Terrestrial Dynamical Time (TDT), format HH:MM:SS |
+| `delta_t` | float64 | Difference between Terrestrial Dynamical Time and Universal Time (TDT − UT) in seconds; large and uncertain for ancient dates (e.g., >10,000 s before 1000 CE) |
+| `luna_number` | int64 | Lunation count in Brown's series (consecutive new-moon numbering since 1923-01-17) |
+| `saros_number` | int64 | Saros series number (1–180+); each series repeats every 18 years 11 days 8 hours and produces 70–80 eclipses over ~1,300 years |
+| `eclipse_type` | string | Eclipse type code: "T" (total — Moon fully covers Sun), "A" (annular — ring of sunlight visible), "H" (hybrid — transitions between total and annular), "P" (partial — Moon only partially covers Sun) |
+| `eclipse_type_name` | string | Full English name of eclipse type corresponding to the `eclipse_type` code |
+| `is_total` | bool | True if eclipse_type == "T" (total eclipse with totality path on Earth's surface) |
+| `is_annular` | bool | True if eclipse_type == "A" (annular eclipse with annularity path on Earth's surface) |
+| `gamma` | float64 | Signed minimum distance of the Moon's shadow axis from Earth's center in units of Earth's equatorial radius; |gamma| < 0.9972 → central (total or annular) eclipse path exists; |gamma| > 1 → partial eclipse only; positive = axis passes north of center |
+| `magnitude` | float64 | Eclipse magnitude: fraction of the Sun's diameter covered at greatest eclipse; > 1.0 for total eclipses, < 1.0 for annular/partial |
+| `latitude` | float64 | Geographic latitude of the point of greatest eclipse in decimal degrees (+ = North, − = South); null for partial eclipses |
+| `longitude` | float64 | Geographic longitude of the point of greatest eclipse in decimal degrees (+ = East, − = West); null for partial eclipses |
+| `sun_altitude` | float64 | Altitude of the Sun above the horizon at the point of greatest eclipse in degrees (0–90°); low values indicate grazing central paths near the poles |
+| `path_width_km` | float64 | Width of the central eclipse path (umbra or annular path) in km; null for partial eclipses; total eclipse paths: typically 100–270 km; annular paths: up to ~320 km |
+| `central_duration` | string | Maximum duration of totality or annularity at the point of greatest eclipse (format "MMmSSs", e.g. "04m57s"); null for partial eclipses; maximum total: ~7m32s; maximum annular: ~12m |
+| `century` | int64 | Derived century computed as year // 100 (e.g., 2024 → 20, −500 → −5); useful for aggregating eclipses by historical period |
 
 ## Quick stats
 

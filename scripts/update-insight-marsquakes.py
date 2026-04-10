@@ -203,21 +203,21 @@ The temporal distribution of marsquakes across the catalog shows strong seasonal
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `event_id` | string | MQS event identifier (e.g. "mqs2022wrzi") |
-| `event_time` | datetime | Origin time of the seismic event (UTC) |
-| `latitude` | float64 | Event latitude on Mars (degrees, null if undetermined) |
-| `longitude` | float64 | Event longitude on Mars (degrees, null if undetermined) |
-| `depth_km` | float64 | Event depth in km (null if undetermined) |
-| `author` | string | Author of the event origin |
-| `catalog` | string | Source catalog identifier |
-| `contributor` | string | Contributing agency |
-| `contributor_id` | string | InSight sol-based event name (e.g. "S1415a") |
-| `mag_type` | string | Magnitude type (MW, MbS, etc.) |
-| `magnitude` | float64 | Event magnitude |
-| `mag_author` | string | Author of the magnitude estimate |
-| `event_location_name` | string | Named region on Mars (e.g. "Elysium Southwest") |
-| `event_type` | string | MQS event type classification (BROADBAND, LOW_FREQUENCY, etc.) |
-| `event_type_short` | string | Short event type label (BB, LF, HF, VF, SF, 2.4Hz) |
+| `event_id` | string | IRIS-assigned event identifier (e.g. "mqs2022wrzi") |
+| `event_time` | datetime | Origin time of the seismic event (UTC); InSight operated Nov 2018 – Dec 2022 |
+| `latitude` | float64 | Estimated epicentral latitude on Mars (degrees, -90 to +90); null for most events — InSight is a single-station network, so location requires surface wave or polarization analysis |
+| `longitude` | float64 | Estimated epicentral longitude on Mars (degrees, east-positive 0–360); null if location could not be determined |
+| `depth_km` | float64 | Estimated source depth in km; null if undetermined; LF events typically 20–50 km, HF events <10 km |
+| `author` | string | Name or team identifier of the analyst who determined the event origin solution |
+| `catalog` | string | MQS catalog version identifier (e.g. "InSight_MQS_public_v14") |
+| `contributor` | string | Institution or agency that contributed the event solution (e.g. "MQS" for InSight MarsQuake Service) |
+| `contributor_id` | string | MQS sol-based event designation (e.g. "S0173a" = sol 173, first event; S=seismic, sol number, letter suffix) |
+| `mag_type` | string | Magnitude scale used (e.g. "MW" = moment magnitude, "MbS" = body-wave magnitude for Mars) |
+| `magnitude` | float64 | Event magnitude on the specified scale; InSight detected events ranging from ~0.5 to 5.0 M_w |
+| `mag_author` | string | Name or team identifier of the analyst who determined the magnitude estimate |
+| `event_location_name` | string | Named Martian region near the estimated epicenter (e.g. "Elysium Southwest", "Cerberus Fossae"); null if location undetermined |
+| `event_type` | string | MQS event type: "LOW_FREQUENCY" (deep mantle, clear P+S waves), "BROADBAND" (intermediate depth), "HIGH_FREQUENCY" (shallow crustal), "VERY_HIGH_FREQUENCY" (very shallow), "SUPER_HIGH_FREQUENCY" (near-surface), "2.4_HZ" (characteristic spectral resonance) |
+| `event_type_short` | string | Abbreviated event type: "LF", "BB", "HF", "VF", "SF", or "2.4Hz" |
 
 ## Quick stats
 

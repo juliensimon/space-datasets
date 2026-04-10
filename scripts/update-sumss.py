@@ -152,19 +152,19 @@ The survey has been cross-matched extensively with X-ray catalogs (ROSAT, eROSIT
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `ra_deg` | float64 | Right ascension J2000 (degrees) |
-| `dec_deg` | float64 | Declination J2000 (degrees) |
-| `peak_flux_mjy` | float64 | Peak flux density (mJy/beam) |
-| `integrated_flux_mjy` | float64 | Integrated flux density (mJy) |
-| `e_integrated_flux_mjy` | float64 | Error on integrated flux (mJy) |
-| `major_axis_arcsec` | float64 | Fitted major axis FWHM (arcsec) |
-| `minor_axis_arcsec` | float64 | Fitted minor axis FWHM (arcsec) |
-| `position_angle_deg` | float64 | Position angle (degrees) |
-| `deconv_major_arcsec` | float64 | Deconvolved major axis (arcsec) |
-| `deconv_minor_arcsec` | float64 | Deconvolved minor axis (arcsec) |
-| `deconv_pa_deg` | float64 | Deconvolved position angle (degrees) |
-| `mosaic_name` | string | Mosaic image name |
-| `is_resolved` | bool | True if deconvolved major axis > 0 |
+| `ra_deg` | float64 | ICRS J2000.0 right ascension in degrees (0–360); survey covers the southern sky (declination < −30°); astrometric accuracy ~1–2 arcsec for bright sources |
+| `dec_deg` | float64 | ICRS J2000.0 declination in degrees; survey lower limit is −90°, upper limit −30°; the elliptical beam is elongated at lower elevations |
+| `peak_flux_mjy` | float64 | Peak surface brightness at 843 MHz in mJy/beam; beam size is 45×45 arcsec² × sec|dec|, so the effective beam area increases toward the south; equals total flux for compact sources |
+| `integrated_flux_mjy` | float64 | Total integrated flux density in mJy at 843 MHz; exceeds peak flux for resolved sources such as nearby galaxies or supernova remnants |
+| `e_integrated_flux_mjy` | float64 | 1-sigma uncertainty on integrated flux density in mJy; increases for resolved sources due to deconvolution errors |
+| `major_axis_arcsec` | float64 | Fitted (beam-convolved) major axis FWHM in arcseconds; includes the synthesized beam contribution; use deconvolved axes for intrinsic source size |
+| `minor_axis_arcsec` | float64 | Fitted (beam-convolved) minor axis FWHM in arcseconds; always ≥ the effective beam minor axis |
+| `position_angle_deg` | float64 | Fitted position angle of the major axis in degrees east from north (0–180); reflects the beam orientation for unresolved sources |
+| `deconv_major_arcsec` | float64 | Deconvolved major axis FWHM in arcseconds after removing the synthesized beam; null or zero for unresolved point sources where only an upper limit applies |
+| `deconv_minor_arcsec` | float64 | Deconvolved minor axis FWHM in arcseconds; null or zero for point sources; nonzero confirms the source is spatially resolved at 45 arcsec resolution |
+| `deconv_pa_deg` | float64 | Deconvolved position angle of the major axis in degrees east from north; null for circular or unresolved sources |
+| `mosaic_name` | string | Identifier of the SUMSS survey mosaic tile containing this source; maps to a specific observed field and can be used to retrieve the parent image |
+| `is_resolved` | bool | True if the deconvolved major axis is > 0, indicating the source is spatially resolved; False for point sources; derived flag not present in the original catalog |
 
 ## Quick stats
 

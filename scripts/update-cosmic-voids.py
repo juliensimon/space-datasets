@@ -174,20 +174,20 @@ def main():
 
         # Build schema table from actual columns
         col_descriptions = {
-            "void_id": ("int/string", "Void identifier"),
-            "void_name": ("string", "Void name or designation"),
-            "ra_deg": ("float", "Right ascension J2000 (degrees)"),
-            "dec_deg": ("float", "Declination J2000 (degrees)"),
-            "glon_deg": ("float", "Galactic longitude (degrees)"),
-            "glat_deg": ("float", "Galactic latitude (degrees)"),
-            "redshift": ("float", "Void center redshift"),
-            "radius_eff_mpc": ("float", "Effective void radius (Mpc)"),
-            "radius_max_mpc": ("float", "Maximum void radius (Mpc)"),
-            "density_contrast": ("float", "Central density contrast (delta)"),
-            "distance_mpc": ("float", "Comoving distance to void center (Mpc)"),
-            "n_galaxies": ("int", "Number of galaxies defining the void"),
-            "volume_mpc3": ("float", "Void volume (Mpc^3)"),
-            "ellipticity": ("float", "Void ellipticity"),
+            "void_id": ("int/string", "Catalog-assigned void identifier; integer index or string label depending on the source catalog"),
+            "void_name": ("string", "Void name or designation from the originating catalog; null if unnamed"),
+            "ra_deg": ("float", "ICRS J2000.0 right ascension of the void center in degrees (0–360)"),
+            "dec_deg": ("float", "ICRS J2000.0 declination of the void center in degrees (-90–+90)"),
+            "glon_deg": ("float", "Galactic longitude of the void center in degrees (0–360)"),
+            "glat_deg": ("float", "Galactic latitude of the void center in degrees (-90–+90)"),
+            "redshift": ("float", "Redshift of the void center; survey range typically 0.02 < z < 0.5"),
+            "radius_eff_mpc": ("float", "Effective (spherically-equivalent) void radius in Mpc; typical range 10–100 Mpc"),
+            "radius_max_mpc": ("float", "Maximum extent of the void from center to the most distant wall galaxy, in Mpc"),
+            "density_contrast": ("float", "Relative underdensity delta = (rho - rho_bar) / rho_bar; voids have delta < 0, typically -0.8 to -0.9 at center"),
+            "distance_mpc": ("float", "Comoving distance from the observer to the void center in Mpc"),
+            "n_galaxies": ("int", "Number of tracer galaxies used to define the void boundary; higher counts indicate better-constrained voids"),
+            "volume_mpc3": ("float", "Effective volume of the void in Mpc^3; scales as ~(4/3)*pi*radius_eff_mpc^3"),
+            "ellipticity": ("float", "Void shape ellipticity (0 = perfectly spherical, >0 = elongated); derived from the eigenvalues of the inertia tensor"),
         }
         schema_lines = ["| Column | Type | Description |", "|--------|------|-------------|"]
         for col in df.columns:

@@ -174,21 +174,21 @@ theories and the dynamical stability of few-body stellar configurations.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `wds_id` | string | WDS designation (based on J2000 coordinates) |
-| `ra_deg` | float64 | Right ascension J2000 (degrees) |
-| `dec_deg` | float64 | Declination J2000 (degrees) |
-| `components` | string | Component designation (e.g. AB, AC) |
-| `first_observation_year` | float64 | Year of first observation |
-| `last_observation_year` | float64 | Year of last observation |
-| `n_observations` | float64 | Number of observations |
-| `position_angle_first` | float64 | Position angle at first observation (degrees) |
-| `position_angle_last` | float64 | Position angle at last observation (degrees) |
-| `separation_first_arcsec` | float64 | Separation at first observation (arcsec) |
-| `separation_last_arcsec` | float64 | Separation at last observation (arcsec) |
-| `magnitude_primary` | float64 | Magnitude of primary component |
-| `magnitude_secondary` | float64 | Magnitude of secondary component |
-| `spectral_type` | string | Spectral type |
-| `discoverer_code` | string | Discoverer code and number |
+| `wds_id` | string | WDS designation in format "HHMMM+DDMMM" encoding the J2000 position (e.g. "00055+5258"); the standard identifier for double stars in this catalog |
+| `ra_deg` | float64 | Right ascension of the primary star, ICRS J2000.0 (degrees, 0–360) |
+| `dec_deg` | float64 | Declination of the primary star, ICRS J2000.0 (degrees, -90 to +90) |
+| `components` | string | Component pair designation (e.g. "AB" = primary+secondary, "AC" = primary+tertiary); systems may have multiple entries for different pairs |
+| `first_observation_year` | float64 | Year of the earliest published observation of this pair (fractional year, e.g. 1889.0) |
+| `last_observation_year` | float64 | Year of the most recent published observation (fractional year); span indicates how long the pair has been monitored |
+| `n_observations` | float64 | Total number of published position-angle/separation measurements for this pair |
+| `position_angle_first` | float64 | Position angle of secondary relative to primary at epoch of first observation (degrees, 0–359, measured East from North); change over time may reveal orbital motion |
+| `position_angle_last` | float64 | Position angle at epoch of last observation (degrees, 0–359); compare with position_angle_first to detect orbital motion |
+| `separation_first_arcsec` | float64 | Angular separation between primary and secondary at first observation (arcseconds); decreasing separation may indicate an inclined orbit |
+| `separation_last_arcsec` | float64 | Angular separation at last observation (arcseconds); null if only one observation exists |
+| `magnitude_primary` | float64 | Visual (V-band) magnitude of the primary star; null if not measured |
+| `magnitude_secondary` | float64 | Visual (V-band) magnitude of the secondary star; null if not measured; difference = magnitude contrast |
+| `spectral_type` | string | MK spectral type of the primary component (e.g. "G2V", "K0III"); null if not cataloged |
+| `discoverer_code` | string | Standard WDS discoverer code + sequence number (e.g. "STF2272" = Struve discovery #2272); identifies the original survey or observer |
 
 ## Quick stats
 

@@ -229,16 +229,16 @@ Understanding launch cost trends is essential for space policy analysis, mission
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `vehicle` | string | Launch vehicle name and variant |
-| `operator` | string | Primary operator or manufacturer |
-| `country` | string | Country or region of origin |
-| `first_flight_year` | int | Year of first flight |
-| `payload_leo_kg` | int | Maximum payload to LEO in kg |
-| `cost_per_launch_usd` | int | Cost per launch in 2024 USD |
-| `cost_per_kg_usd` | int | Derived cost per kg to LEO (cost / payload) |
-| `reusable` | bool | Whether the vehicle is partially or fully reusable |
-| `status` | string | Current status: active, retired, or in development |
-| `source` | string | Data source citation |
+| `vehicle` | string | Launch vehicle name and variant (e.g. "Falcon 9 Block 5", "Saturn V", "Ariane 5 ECA") |
+| `operator` | string | Primary operator or manufacturer (e.g. "SpaceX", "ULA", "Arianespace", "ISRO") |
+| `country` | string | Country or region of origin (e.g. "USA", "Europe", "Russia", "China", "India") |
+| `first_flight_year` | int | Year the vehicle first flew; range 1957 (R-7/Sputnik) to present |
+| `payload_leo_kg` | int | Manufacturer-stated maximum payload capacity to LEO (400 km, 28°) in kg; range ~100 kg (small rideshare) to 140,000 kg (SLS Block 1) |
+| `cost_per_launch_usd` | int | Estimated or published cost per launch in 2024 USD; combines government list prices, commercial pricing, and analyst estimates |
+| `cost_per_kg_usd` | int | Derived cost per kilogram to LEO = cost_per_launch_usd / payload_leo_kg; range ~$1,500/kg (Falcon 9 reuse) to >$1,000,000/kg (early 1960s vehicles); primary comparison metric |
+| `reusable` | bool | True if the vehicle recovers and re-flies at least its first stage; False for fully expendable vehicles |
+| `status` | string | Current operational status: "active" (flying), "retired" (no longer operating), or "in development" (not yet flown) |
+| `source` | string | Citation for the cost estimate (e.g. NASA OIG report, FAA AST Compendium, published price sheet); useful for inflation-adjustment context |
 
 ## Quick stats
 

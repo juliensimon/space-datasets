@@ -133,23 +133,23 @@ This dataset underpins a wide range of applications: space traffic management, c
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `object_name` | string | Official name (e.g. "STARLINK-1234", "ISS (ZARYA)") |
-| `intl_designator` | string | International designator / COSPAR ID (e.g. "2024-123A") |
-| `norad_id` | int32 | NORAD catalog number (unique identifier) |
-| `object_type` | string | `PAY` (payload), `R/B` (rocket body), `DEB` (debris), `UNK` (unknown) |
-| `ops_status` | string | Operational status code (see below) |
-| `owner` | string | Owner/operator country or organization code |
-| `launch_date` | datetime | Launch date (UTC) |
-| `launch_site` | string | Launch site code (e.g. "AFETR", "TYMSC") |
-| `decay_date` | datetime | Reentry/decay date, if applicable |
-| `period_min` | float | Orbital period in minutes |
-| `inclination` | float | Orbital inclination in degrees |
-| `apogee_km` | float | Apogee altitude in km |
-| `perigee_km` | float | Perigee altitude in km |
-| `rcs_m2` | float | Radar cross-section in m² |
-| `data_status` | string | Data quality/status flag |
-| `orbit_center` | string | Central body (e.g. "EA" for Earth) |
-| `orbit_type` | string | Orbit classification |
+| `object_name` | string | Official name as listed in the NORAD catalog (e.g. "STARLINK-1234", "ISS (ZARYA)"); rocket bodies include "R/B", debris includes "DEB" |
+| `intl_designator` | string | COSPAR international designator in the format YYYY-NNNX (e.g. "2024-123A"): launch year, sequential launch number within that year, and piece letter (A = primary payload, B = first secondary, etc.); assigned by COSPAR |
+| `norad_id` | int32 | NORAD catalog number — sequential integer assigned by the 18th Space Defense Squadron at launch; primary key for cross-referencing with TLE databases |
+| `object_type` | string | Object classification: `PAY` (payload/spacecraft), `R/B` (rocket body or upper stage), `DEB` (fragmentation debris), `UNK` (unknown/unclassified) |
+| `ops_status` | string | Operational status code from the Space-Track catalog; see table below for all values; null for decayed or historically untracked objects |
+| `owner` | string | ISO 3166-based two-letter country code or special organization code (e.g. "US", "RU", "CN", "ESA", "ISS") identifying the launch owner or responsible party |
+| `launch_date` | datetime | Date the object was launched into orbit (UTC); null for a small number of objects with incomplete catalog records |
+| `launch_site` | string | Encoded launch site identifier (e.g. "AFETR" = Cape Canaveral, "TYMSC" = Baikonur, "TTMTR" = Tanegashima); null if unknown |
+| `decay_date` | datetime | Date of atmospheric reentry or decay (UTC); null for objects still in orbit — a non-null value means the object has reentered |
+| `period_min` | float | Current orbital period in minutes; LEO: 88–128 min, MEO: 128–600 min, GEO: ~1436 min (24 h), HEO: highly variable; null for decayed objects |
+| `inclination` | float | Orbital inclination in degrees (0–180); angle between the orbital plane and Earth's equatorial plane; 0° = equatorial, 90° = polar, >90° = retrograde |
+| `apogee_km` | float | Apogee altitude (highest point of orbit) above Earth's surface in km; null for decayed objects or those with incomplete orbital data |
+| `perigee_km` | float | Perigee altitude (lowest point of orbit) above Earth's surface in km; objects with perigee below ~200 km reenter within weeks; null for decayed objects |
+| `rcs_m2` | float | Radar cross-section in m²; proxy for object physical size as observed by surveillance radars; null for objects too small to characterize or where data was not published |
+| `data_status` | string | Catalog data quality flag indicating whether the entry has full orbital data (`S` = standard, `D` = no current elements) or is a historical record; null in many cases |
+| `orbit_center` | string | Central gravitational body code (e.g. "EA" = Earth, "MO" = Moon); nearly all objects are Earth-orbiting; useful for filtering lunar or Lagrange-point objects |
+| `orbit_type` | string | Orbit regime classification (e.g. "LEO" = low Earth orbit <2000 km, "MEO" = medium Earth orbit, "GEO" = geostationary, "HEO" = highly elliptical, "DSO" = deep space); null for many historical objects |
 
 ### Operational status codes
 

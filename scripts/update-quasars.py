@@ -148,11 +148,11 @@ The SIMBAD database aggregates classifications from thousands of publications, p
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `name` | string | Primary SIMBAD identifier |
-| `ra_deg` | float | Right ascension (degrees) |
-| `dec_deg` | float | Declination (degrees) |
-| `object_type` | string | SIMBAD type code (QSO, AGN, Sy1, Sy2, BLL, Bla, LIN) |
-| `agn_category` | string | Readable category (Quasar, Seyfert 1, Blazar, etc.) |
+| `name` | string | Primary SIMBAD identifier (e.g. "QSO J1230+1223" or "3C 273"); unique within SIMBAD but may differ from other catalog designations |
+| `ra_deg` | float | Right ascension of the AGN nucleus in the ICRS J2000.0 frame, decimal degrees (0–360) |
+| `dec_deg` | float | Declination of the AGN nucleus in the ICRS J2000.0 frame, decimal degrees (−90 to +90) |
+| `object_type` | string | SIMBAD machine-readable type code: "QSO" = radio-quiet quasar, "AGN" = broad-line active galactic nucleus, "Sy1" = Seyfert 1 (broad + narrow lines, type-1 viewing angle), "Sy2" = Seyfert 2 (narrow lines only, obscured nucleus), "BLL" = BL Lac object (featureless continuum, jet pointing toward observer), "Bla" = blazar (BL Lac or FSRQ with relativistic jet), "LIN" = LINER (Low Ionization Nuclear Emission Region, weak AGN activity) |
+| `agn_category` | string | Human-readable category derived from `object_type`: one of "Quasar", "AGN", "Seyfert 1", "Seyfert 2", "BL Lac", "Blazar", "LINER"; useful for grouped analysis without parsing SIMBAD codes |
 
 
 

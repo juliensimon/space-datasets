@@ -154,11 +154,11 @@ The 3-hourly cadence of Kp captures the temporal evolution of geomagnetic storms
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `datetime` | datetime | 3-hour interval start (UTC) |
-| `kp_value` | float | Kp index (0.0 to 9.0) |
-| `ap_running` | float | Running ap equivalent index |
-| `station_count` | float | Number of contributing stations |
-| `storm_level` | string | NOAA storm classification (quiet/G1-G5) |
+| `datetime` | datetime | Start timestamp of the 3-hour observation window (UTC). Kp is reported at 00, 03, 06, 09, 12, 15, 18, and 21 UT each day — 8 readings per day. |
+| `kp_value` | float | Planetary K-index (Kp), a quasi-logarithmic scale (0.0–9.0) measuring global geomagnetic disturbance. Derived from standardized magnetometer readings at up to 13 mid-latitude observatories worldwide. Values ≥5 indicate a geomagnetic storm; ≥7 indicate a severe storm capable of disrupting power grids and satellites. |
+| `ap_running` | float | Running 24-hour average of the ap index, the linear-scale equivalent of Kp (range 0–400 nT). More mathematically convenient than Kp for averaging and modeling. Used as a required input to atmospheric drag models such as NRLMSISE-00 and JB2008. |
+| `station_count` | float | Number of geomagnetic observatories that contributed data for this 3-hour window (maximum 13). Counts below ~5 reduce index reliability; null or low counts are common for historical records before 1960. |
+| `storm_level` | string | NOAA geomagnetic storm scale: quiet (Kp<5), G1 (Kp=5, minor), G2 (Kp=6, moderate), G3 (Kp=7, strong), G4 (Kp=8, severe), G5 (Kp=9, extreme). G3+ events can cause HF radio blackouts, GPS degradation, and increased satellite drag. |
 
 ## Quick stats
 

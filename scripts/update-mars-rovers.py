@@ -225,24 +225,24 @@ Image metadata from NASA's Mars rovers: **{n_m2020:,}** Perseverance images (sol
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `id` | int | Unique image ID from NASA |
-| `mission` | string | Mission identifier: "mars2020" (Perseverance) or "msl" (Curiosity) |
-| `sol` | int | Martian sol number (days since landing) |
-| `instrument` | string | Camera instrument name |
-| `date_taken` | string | UTC datetime when image was captured |
-| `date_received` | string | UTC datetime when image was received on Earth |
-| `site` | int | Site number along the rover traverse |
-| `drive` | int | Drive number within the site |
-| `rover_x` | float | Rover X position in site frame (meters) |
-| `rover_y` | float | Rover Y position in site frame (meters) |
-| `rover_z` | float | Rover Z position in site frame (meters) |
-| `mast_azimuth` | float | Mast azimuth angle (degrees) |
-| `mast_elevation` | float | Mast elevation angle (degrees) |
-| `sample_type` | string | Image sample type (full, subframe, thumbnail) |
-| `local_mean_solar_time` | string | Local Mean Solar Time on Mars |
-| `image_url` | string | Direct HTTPS URL to download the raw image |
-| `is_thumbnail` | bool | Whether this is a thumbnail image |
-| `title` | string | Image title/caption |
+| `id` | int | NASA-assigned unique integer image ID; monotonically increasing per mission |
+| `mission` | string | Mission identifier: "mars2020" (Perseverance, Jezero Crater, landed Feb 18 2021) or "msl" (Curiosity, Gale Crater, landed Aug 6 2012) |
+| `sol` | int | Martian solar day since rover landing (sol 0 = landing date, ~1.0275 Earth days per sol) |
+| `instrument` | string | Camera instrument name (e.g. "FRONT_HAZCAM_LEFT_A", "NAVCAM_LEFT", "MCZ_RIGHT", "MASTCAM_LEFT"; null rare) |
+| `date_taken` | string | UTC datetime when image was captured on Mars |
+| `date_received` | string | UTC datetime when image was received on Earth via Deep Space Network |
+| `site` | int | Terrain site index along the rover traverse; increments when the rover drives to a new location |
+| `drive` | int | Drive sequence number within a site; tracks individual driving sessions |
+| `rover_x` | float | Rover X position in local site frame (meters); coordinate origin at site establishment point |
+| `rover_y` | float | Rover Y position in local site frame (meters) |
+| `rover_z` | float | Rover Z position in local site frame (meters); typically near zero on flat terrain |
+| `mast_azimuth` | float | Remote sensing mast azimuth angle in degrees (0–360, clockwise from north) |
+| `mast_elevation` | float | Remote sensing mast elevation angle in degrees; positive = above horizon, negative = below |
+| `sample_type` | string | Image sampling mode: "full" (full-resolution), "subframe" (cropped region), "thumbnail" (reduced-resolution preview) |
+| `local_mean_solar_time` | string | Local Mean Solar Time at image capture (format "sol HH:MM:SS"); approximates the position of the sun in the sky |
+| `image_url` | string | Direct HTTPS URL to download the raw image from the NASA Mars Raw Images server |
+| `is_thumbnail` | bool | True if this row represents a thumbnail image (lower resolution preview), False for full/subframe images |
+| `title` | string | Human-readable image title composed from instrument, sol, and sequence identifiers; may be null |
 
 ## Usage
 

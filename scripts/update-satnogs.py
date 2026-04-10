@@ -136,19 +136,19 @@ This dataset is essential for amateur radio satellite operators planning contact
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `uuid` | string | Unique transmitter identifier |
-| `description` | string | Transmitter description |
-| `alive` | bool | Whether the transmitter is currently active |
-| `type` | string | Transmitter type |
-| `uplink_low_hz` | float64 | Uplink low frequency (Hz) |
-| `uplink_high_hz` | float64 | Uplink high frequency (Hz) |
-| `downlink_low_hz` | float64 | Downlink low frequency (Hz) |
-| `downlink_high_hz` | float64 | Downlink high frequency (Hz) |
-| `downlink_mhz` | float64 | Downlink low frequency (MHz, derived) |
-| `mode` | string | Transmission mode (e.g. FM, AFSK, BPSK) |
-| `baud` | float64 | Baud rate |
-| `norad_id` | int | NORAD catalog ID |
-| `status` | string | Operational status |
+| `uuid` | string | SatNOGS DB unique transmitter identifier (UUID v4); stable primary key for this record |
+| `description` | string | Human-readable label for the transmitter (e.g. "NOAA 15 APT", "ISS FM Voice"); null for unlabeled entries |
+| `alive` | bool | True if the transmitter is known to be currently active; False if confirmed dead; based on community-verified observations |
+| `type` | string | Transmitter functional type (e.g. "Transmitter" for downlink-only, "Transceiver" for uplink+downlink, "Transponder" for linear/inverting) |
+| `uplink_low_hz` | float64 | Lower bound of the uplink (ground-to-satellite) frequency range in Hz; null for downlink-only transmitters |
+| `uplink_high_hz` | float64 | Upper bound of the uplink frequency range in Hz; equals uplink_low_hz for single-frequency uplinks; null for downlink-only |
+| `downlink_low_hz` | float64 | Lower bound of the downlink (satellite-to-ground) frequency range in Hz; primary frequency for fixed-frequency beacons |
+| `downlink_high_hz` | float64 | Upper bound of the downlink frequency range in Hz; equals downlink_low_hz for fixed-frequency transmitters; null for beacon-only |
+| `downlink_mhz` | float64 | Downlink low frequency in MHz (derived: downlink_low_hz / 1e6); useful for band filtering (VHF: 30–300 MHz, UHF: 300–3000 MHz, S-band: 2000–4000 MHz) |
+| `mode` | string | RF modulation and encoding scheme (e.g. "FM" = frequency modulation voice/AFSK, "BPSK" = binary phase-shift keying telemetry, "CW" = Morse code beacon, "AFSK" = audio FSK, "GFSK" = Gaussian FSK); null if unspecified |
+| `baud` | float64 | Symbol/bit rate in baud (symbols per second); range ~50 baud (CW) to 9600+ baud (high-rate telemetry); null if not applicable or unspecified |
+| `norad_id` | int | NORAD Space Surveillance Network catalog number of the parent satellite; join key with TLE and SATCAT datasets |
+| `status` | string | SatNOGS DB curation status: "active" (confirmed working), "inactive" (confirmed not transmitting), "unknown" (unverified) |
 
 ## Quick stats
 

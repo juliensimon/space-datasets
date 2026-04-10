@@ -132,17 +132,17 @@ NVSS is widely used as a finding chart for radio follow-up observations, as a po
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `source_name` | string | NVSS source name (HHMMSS+DDMMSS format) |
-| `ra_deg` | float64 | Right ascension J2000 (degrees) |
-| `dec_deg` | float64 | Declination J2000 (degrees) |
-| `flux_1400mhz_mjy` | float64 | Integrated flux density at 1.4 GHz (mJy) |
-| `flux_error_mjy` | float64 | Flux density uncertainty (mJy) |
-| `major_axis_arcsec` | float64 | Fitted major axis FWHM (arcsec) |
-| `minor_axis_arcsec` | float64 | Fitted minor axis FWHM (arcsec) |
-| `position_angle_deg` | float64 | Fitted position angle (degrees) |
-| `ra_error_arcsec` | float64 | RA position uncertainty (arcsec) |
-| `dec_error_arcsec` | float64 | Dec position uncertainty (arcsec) |
-| `residual_flux` | float64 | Residual flux from Gaussian fitting (mJy) |
+| `source_name` | string | NVSS source identifier in the format "JHHMMSS+DDMMSS" derived from J2000 position |
+| `ra_deg` | float64 | ICRS J2000.0 right ascension in degrees (0–360); positional accuracy typically < 1 arcsec for sources > 15 mJy |
+| `dec_deg` | float64 | ICRS J2000.0 declination in degrees (-40–+90); survey covers declination > -40 deg |
+| `flux_1400mhz_mjy` | float64 | Integrated flux density at 1.4 GHz in mJy; catalog completeness limit ~2.5 mJy (5-sigma); range from ~2.5 mJy to >100 Jy for the brightest sources |
+| `flux_error_mjy` | float64 | 1-sigma uncertainty on the integrated flux density in mJy; includes thermal noise and systematic calibration error |
+| `major_axis_arcsec` | float64 | Deconvolved major-axis FWHM of the source in arcsec; null or zero for unresolved point sources (beam = 45 arcsec) |
+| `minor_axis_arcsec` | float64 | Deconvolved minor-axis FWHM in arcsec; null or zero for unresolved sources; always <= major_axis_arcsec |
+| `position_angle_deg` | float64 | Position angle of the major axis in degrees east from north (0–180); null for unresolved or circular sources |
+| `ra_error_arcsec` | float64 | 1-sigma uncertainty on the RA position in arcsec; ~1 arcsec near the flux limit, < 0.3 arcsec for bright sources |
+| `dec_error_arcsec` | float64 | 1-sigma uncertainty on the Dec position in arcsec; similar magnitude to ra_error_arcsec |
+| `residual_flux` | float64 | Residual flux density remaining after Gaussian component subtraction in mJy; large values indicate complex or multi-component sources not well-described by a single Gaussian |
 
 ## Quick stats
 

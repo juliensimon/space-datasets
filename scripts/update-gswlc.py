@@ -232,33 +232,33 @@ This catalog is the standard reference for calibrating star formation rate indic
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `objid` | int64 | SDSS photometric object ID |
-| `glxid` | int64 | GALEX photometric ID (null if no UV match) |
-| `plate` | int64 | SDSS spectroscopic plate number |
-| `mjd` | int64 | SDSS spectroscopic plate date (MJD) |
-| `fiber_id` | int64 | SDSS spectroscopic fiber ID |
-| `ra` | float64 | Right Ascension (J2000, degrees) |
-| `dec` | float64 | Declination (J2000, degrees) |
-| `redshift` | float64 | Spectroscopic redshift from SDSS |
-| `chi2_r` | float64 | Reduced chi-squared of SED fit |
-| `log_mstar` | float64 | Log stellar mass (solar masses) |
-| `log_mstar_err` | float64 | Error on log stellar mass |
-| `log_sfr_sed` | float64 | Log UV/optical SFR (solar masses/yr) |
-| `log_sfr_sed_err` | float64 | Error on log SFR |
-| `a_fuv` | float64 | Dust attenuation in rest-frame FUV (mag) |
-| `a_fuv_err` | float64 | Error on A_FUV |
-| `a_b` | float64 | Dust attenuation in rest-frame B band (mag) |
-| `a_b_err` | float64 | Error on A_B |
-| `a_v` | float64 | Dust attenuation in rest-frame V band (mag) |
-| `a_v_err` | float64 | Error on A_V |
-| `flag_sed` | int64 | SED fitting flag (0=OK, 1=broad-line, 2=chi2>30, 5=missing photometry) |
-| `uv_survey` | int64 | UV survey depth (1=shallow/A, 2=medium/M, 3=deep/D) |
-| `flag_uv` | int64 | UV detection flag (0=none, 1=FUV only, 2=NUV only, 3=both) |
-| `flag_midir` | int64 | Mid-IR flag (0=none, 1=12um, 2=22um, 5=AGN-corrected) |
-| `flag_mgs` | int64 | SDSS Main Galaxy Sample flag (0=no, 1=yes) |
-| `log_ssfr` | float64 | Derived: log specific SFR (log SFR - log M*, yr^-1) |
-| `is_star_forming` | bool | Derived: log sSFR > -11 |
-| `uv_survey_name` | string | Derived: human-readable UV survey name |
+| `objid` | int64 | SDSS photometric object ID (18-digit integer from the SDSS imaging pipeline); primary cross-match key |
+| `glxid` | int64 | GALEX photometric object ID for UV cross-match; null (originally -99) if no GALEX source within matching radius |
+| `plate` | int64 | SDSS spectroscopic plate number; combined with mjd and fiber_id uniquely identifies the spectrum |
+| `mjd` | int64 | Modified Julian Date of the SDSS spectroscopic observation; integer days since 1858-11-17 |
+| `fiber_id` | int64 | SDSS spectroscopic fiber number on the plate (1–1000); combined with plate+mjd locates the spectrum |
+| `ra` | float64 | ICRS J2000.0 right ascension in degrees (0–360) |
+| `dec` | float64 | ICRS J2000.0 declination in degrees (-90–+90) |
+| `redshift` | float64 | Spectroscopic redshift from SDSS; catalog range 0.01 < z < 0.30 |
+| `chi2_r` | float64 | Reduced chi-squared of the best-fit SED model; values > 5 indicate a poor fit; null for failed fits |
+| `log_mstar` | float64 | Log10 stellar mass in solar masses from SED fitting; range ~8 to ~12 (i.e., 10^8–10^12 M_sun); null if SED fit failed |
+| `log_mstar_err` | float64 | 1-sigma uncertainty on log_mstar in dex; typically 0.05–0.15 dex; null if log_mstar is null |
+| `log_sfr_sed` | float64 | Log10 star formation rate from UV+optical SED fit in M_sun/yr; quiescent: < -1, main sequence star-forming: 0–3; null if SED fit failed |
+| `log_sfr_sed_err` | float64 | 1-sigma uncertainty on log_sfr_sed in dex; typically 0.1–0.3 dex; null if log_sfr_sed is null |
+| `a_fuv` | float64 | Dust attenuation in the rest-frame far-UV (FUV ~1528 Å) in magnitudes; 0 = transparent, ~5 for heavily obscured starbursts; null if SED fit failed |
+| `a_fuv_err` | float64 | 1-sigma uncertainty on a_fuv in magnitudes; null if a_fuv is null |
+| `a_b` | float64 | Dust attenuation in the rest-frame B band (~4400 Å) in magnitudes; typically 0–2 mag; null if SED fit failed |
+| `a_b_err` | float64 | 1-sigma uncertainty on a_b in magnitudes; null if a_b is null |
+| `a_v` | float64 | Dust attenuation in the rest-frame V band (~5500 Å) in magnitudes; 0 = transparent, 2+ = heavily obscured; null if SED fit failed |
+| `a_v_err` | float64 | 1-sigma uncertainty on a_v in magnitudes; null if a_v is null |
+| `flag_sed` | int64 | SED fitting quality flag: 0 = good fit; 1 = broad-line AGN (UV contaminated); 2 = poor fit (chi2_r > 30); 5 = missing photometry |
+| `uv_survey` | int64 | GALEX UV survey depth used: 1 = shallow (AIS, ~100 s), 2 = medium (MIS, ~1500 s), 3 = deep (DIS, ~30000 s) |
+| `flag_uv` | int64 | UV detection status: 0 = no UV detection, 1 = FUV only detected, 2 = NUV only detected, 3 = both FUV and NUV detected |
+| `flag_midir` | int64 | WISE mid-IR photometry flag: 0 = no WISE detection, 1 = W3 (12 um) only, 2 = W4 (22 um) only, 5 = AGN contribution corrected |
+| `flag_mgs` | int64 | SDSS Main Galaxy Sample membership: 1 = in the MGS (r < 17.77, complete flux-limited sample), 0 = outside MGS selection |
+| `log_ssfr` | float64 | Derived: log10 specific star formation rate = log_sfr_sed - log_mstar in yr^-1; quiescent galaxies: < -11, main-sequence: -9.5 to -10.5; null if either parent column is null |
+| `is_star_forming` | bool | Derived: True if log_ssfr > -11 (above the quenching threshold); False for quiescent/passive galaxies |
+| `uv_survey_name` | string | Derived: human-readable UV survey label ("GSWLC-A", "GSWLC-M", or "GSWLC-D") mapped from uv_survey |
 
 ## Usage
 

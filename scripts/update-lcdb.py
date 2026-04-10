@@ -235,25 +235,25 @@ The taxonomic classifications and albedo values in the LCDB enable population-le
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `number` | Int64 | IAU asteroid number (null if unnumbered) |
-| `name` | string | Asteroid name (e.g., "Ceres", "Eros") |
-| `designation` | string | Provisional designation (e.g., "2024 YR4") |
-| `family` | Int64 | Dynamical family code |
-| `taxonomy` | string | Taxonomic class (Tholen/Bus-DeMeo, e.g., S, C, V) |
-| `diameter_km` | float64 | Diameter in km |
-| `abs_magnitude_h` | float64 | Absolute magnitude H |
-| `g_param` | float64 | Slope parameter G |
-| `g1_param` | float64 | Phase function parameter G1 |
-| `g2_param` | float64 | Phase function parameter G2 |
-| `albedo` | float64 | Geometric albedo |
-| `period_h` | float64 | Rotation period in hours |
-| `period_flag` | string | Period qualifier: `>` (lower limit), `S` (synodic), `<`, `D`, `U` |
-| `period_description` | string | Additional period notes |
-| `amplitude_min` | float64 | Minimum lightcurve amplitude (mag) |
-| `amplitude_max` | float64 | Maximum lightcurve amplitude (mag) |
-| `quality_code_u` | string | U quality rating: 1, 1+, 2-, 2, 2+, 3-, 3 |
-| `notes` | string | Additional notes |
-| `binary_type` | string | Binary/multiple system indicator: B (binary), M (multiple), ? (suspected) |
+| `number` | Int64 | IAU catalog number (positive integer); null for unnumbered asteroids with only a provisional designation |
+| `name` | string | IAU proper name (e.g., "Ceres", "Eros"); null for unnamed objects |
+| `designation` | string | MPC provisional designation (e.g., "2024 YR4"); null for numbered objects without a recorded provisional designation |
+| `family` | Int64 | Dynamical family membership code from the LCDB family list; null if the asteroid is not assigned to a known collisional family |
+| `taxonomy` | string | Spectral taxonomic class (Tholen or Bus-DeMeo system, e.g., S, C, V, Sq); null for asteroids without a published classification |
+| `diameter_km` | float64 | Estimated effective diameter in km; null for asteroids without a published size estimate; sources vary (IRAS, WISE, radar, occultation) |
+| `abs_magnitude_h` | float64 | Absolute magnitude H (magnitude at 1 AU, zero phase angle); null for a small fraction of entries |
+| `g_param` | float64 | IAU HG photometric slope parameter G; typical range 0.0–0.5; null if not published |
+| `g1_param` | float64 | HG1G2 phase function parameter G1; alternative to G for non-standard phase curves; null if not published |
+| `g2_param` | float64 | HG1G2 phase function parameter G2; used together with G1; null if not published |
+| `albedo` | float64 | Geometric albedo (fraction of incident light reflected, 0–1); typical C-type 0.03–0.10, S-type 0.15–0.35; null if not published |
+| `period_h` | float64 | Best-estimate rotation period in hours; range ~0.0003 h (super-fast rotators) to >1000 h for slow rotators; null if no period has been determined |
+| `period_flag` | string | Qualifier for the period value: `>` = lower limit only, `<` = upper limit, `S` = synodic period, `D` = double-peaked, `U` = uncertain; null if no flag |
+| `period_description` | string | Free-text notes on the period determination (e.g., method, caveats); null if none |
+| `amplitude_min` | float64 | Minimum observed lightcurve amplitude in magnitudes; lower bound across all available apparitions; null if undetermined |
+| `amplitude_max` | float64 | Maximum observed lightcurve amplitude in magnitudes; >0.9 mag implies axis ratio ≥2.5:1; null if undetermined |
+| `quality_code_u` | string | Lightcurve quality rating U: 1 = tentative/very uncertain, 2 = fair (may be refined), 3 = reliable/unambiguous; suffixes `+`/`-` indicate borderline ratings |
+| `notes` | string | Miscellaneous flags and comments from the LCDB; null if none |
+| `binary_type` | string | Binary or multiple system designation: B = confirmed binary, M = confirmed multiple, ? = suspected; null if no binary evidence |
 
 ## Quick stats
 

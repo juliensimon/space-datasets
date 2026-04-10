@@ -234,16 +234,16 @@ Sourced from Wikidata's structured knowledge base using the Q31855 (space agency
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `wikidata_id` | string | Wikidata entity ID (e.g. Q23548) |
-| `name` | string | Agency name |
-| `country` | string | Country of operation |
-| `founded` | string | Founding date (YYYY-MM-DD) |
-| `headquarters` | string | Headquarters city/location |
-| `head` | string | Head of agency |
-| `budget_usd` | float | Annual budget in USD |
-| `employees` | int | Number of employees |
-| `website` | string | Official website URL |
-| `founded_year` | int | Founding year (derived) |
+| `wikidata_id` | string | Wikidata entity ID (e.g. "Q23548" for NASA); resolves to https://www.wikidata.org/wiki/Q23548 — links to the agency's full knowledge graph entry including founding date, budget history, and program list |
+| `name` | string | Official agency name in English (e.g. "NASA", "ESA", "ISRO", "Roscosmos"); canonical form as recorded in Wikidata |
+| `country` | string | Country or intergovernmental organization that operates the agency (e.g. "United States", "European Union"); uses full English name |
+| `founded` | string | Date the agency was formally established, ISO 8601 (YYYY-MM-DD); null if only a founding year is known (see `founded_year`) |
+| `headquarters` | string | City or region where the agency's primary administrative office is located (e.g. "Washington, D.C.", "Paris"); null if not recorded in Wikidata |
+| `head` | string | Name of the current or most-recently recorded director or administrator; null if leadership data is absent from Wikidata |
+| `budget_usd` | float | Most recently recorded annual operating budget converted to US dollars; null for agencies that do not publicly disclose budget figures; values are point-in-time and may lag by several years |
+| `employees` | int | Most recently recorded staff headcount (full-time equivalents); null if workforce data is absent from Wikidata |
+| `website` | string | Official agency website URL (e.g. "https://www.nasa.gov"); null if not recorded in Wikidata |
+| `founded_year` | int | Integer year extracted from `founded`; enables numeric filtering when full date is unavailable; null only if founding date is entirely unknown |
 
 ## Quick stats
 

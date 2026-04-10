@@ -123,8 +123,24 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
+        COL_DESCRIPTIONS = {
+            "energy":        "Cosmic ray energy in EeV (10¹⁸ eV); Auger detects events typically 1–300 EeV; the GZK suppression steepens the spectrum above ~40 EeV due to interactions with CMB photons",
+            "log_e":         "Base-10 logarithm of the cosmic ray energy in eV (e.g. 19.5 = 10^19.5 eV ≈ 3 EeV); convenient for plotting the steeply falling energy spectrum",
+            "lgne":          "Base-10 logarithm of the cosmic ray energy (alternate column name for log_e; same units and range)",
+            "ra":            "Reconstructed right ascension of the cosmic ray arrival direction (ICRS J2000.0, degrees, 0–360); deflected by Galactic and extragalactic magnetic fields, so this is an approximate source direction, not exact; angular uncertainty ~1° for the highest-energy events",
+            "dec":           "Reconstructed declination of the cosmic ray arrival direction (ICRS J2000.0, degrees, −90 to +90); limited to the Auger Observatory sky coverage centered on the Southern Hemisphere",
+            "gal_l":         "Galactic longitude of the reconstructed arrival direction (degrees, 0–360); used to search for correlations with Galactic structures (magnetic field, sources near the Galactic plane)",
+            "gal_b":         "Galactic latitude of the reconstructed arrival direction (degrees, −90 to +90); |b| < 10° indicates directions close to the Galactic plane where magnetic deflection is largest",
+            "zenith":        "Zenith angle of the incoming air shower at the Auger array (degrees); <60° = vertical shower dominated by electromagnetic component, 60–80° = inclined shower with muon-rich content at ground; affects the reconstruction method and energy calibration",
+            "theta":         "Shower zenith angle (degrees); equivalent to zenith column when both are present; see zenith description",
+            "azimuth":       "Azimuth angle of the shower arrival direction measured at the array (degrees, 0–360 clockwise from north); combined with zenith angle, defines the reconstructed particle trajectory",
+            "phi":           "Azimuth angle of the shower (degrees); equivalent to azimuth column when both are present",
+            "xmax":          "Atmospheric depth of shower maximum X_max (g/cm²); the depth in the atmosphere at which the air shower reaches peak particle multiplicity; heavier nuclei (iron) have smaller X_max than lighter nuclei (protons) at the same energy; key observable for mass composition measurements",
+            "s1000":         "Signal at 1000 m from the shower core measured by the surface detector array (in VEM — Vertical Equivalent Muon units); the primary energy estimator for surface-detector-only events; calibrated against fluorescence detector energies",
+            "source_file":   "Identifier of the source file within the Zenodo archive from which this event was extracted; useful for tracing events back to the original release tables",
+        }
         col_table = "\n".join(
-            f"| `{c}` | {str(df[c].dtype)} | |"
+            f"| `{c}` | {str(df[c].dtype)} | {COL_DESCRIPTIONS.get(c, '')} |"
             for c in df.columns
         )
 

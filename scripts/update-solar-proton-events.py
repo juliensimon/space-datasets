@@ -260,16 +260,16 @@ The associations with Type II and Type IV radio bursts recorded in this dataset 
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `start_datetime` | datetime | Event start time (UTC) |
-| `peak_datetime` | datetime | Time of peak >10 MeV flux (UTC) |
-| `peak_flux_pfu` | int | Peak proton flux >10 MeV (particle flux units) |
-| `region_number` | string | NOAA active region number |
-| `location` | string | Heliographic coordinates of associated flare |
-| `flare_class` | string | X-ray flare class (e.g., X5, M7, C3) |
-| `flare_optical` | string | Optical flare classification (e.g., 2B, 3B) |
-| `type_ii_radio` | bool | Type II radio emission observed |
-| `type_iv_radio` | bool | Type IV radio emission observed |
-| `cme_speed_km_s` | int | CME linear speed (km/s), where available |
+| `start_datetime` | datetime | UTC time when the >10 MeV proton flux first exceeded 10 pfu (NOAA S1 storm threshold) |
+| `peak_datetime` | datetime | UTC time of maximum >10 MeV proton flux during the event |
+| `peak_flux_pfu` | int | Peak proton flux at energies >10 MeV in Particle Flux Units (1 PFU = 1 proton/cm²/s/sr); NOAA storm scale: S1 ≥ 10, S2 ≥ 100, S3 ≥ 1,000, S4 ≥ 10,000, S5 ≥ 100,000 PFU |
+| `region_number` | string | NOAA active region number of the source sunspot group (e.g., "2673"); null if no associated active region was identified |
+| `location` | string | Heliographic coordinates of the associated flare in Stonyhurst format (e.g., "N05W88"); W = western hemisphere events have better magnetic connectivity to Earth |
+| `flare_class` | string | GOES X-ray flare classification of the associated flare (e.g., "X9.3", "M5.8", "C7.2"); most large SPEs follow M5+ or X-class flares; null if no associated flare was identified |
+| `flare_optical` | string | Optical (Hα) flare importance class (e.g., "2B", "3B", "SF"); digit = area class (1–4), letter = brightness (F=faint, N=normal, B=bright); null if not observed optically |
+| `type_ii_radio` | bool | True if a Type II radio burst (metric wavelength, indicative of a CME-driven coronal shock) was observed during the event; strong predictor of energetic SEP events |
+| `type_iv_radio` | bool | True if a Type IV radio burst (post-flare broadband continuum from trapped electrons) was observed; associated with the most intense and prolonged SPEs |
+| `cme_speed_km_s` | int | Linear plane-of-sky speed of the associated coronal mass ejection in km/s from LASCO coronagraph data; null if no CME was observed or measured; fast CMEs (>1000 km/s) are strongly correlated with major SPEs |
 
 ## Quick stats
 

@@ -187,20 +187,20 @@ The QSO probability percentages included for candidate objects make this catalog
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `name` | string | Object name/designation |
-| `ra_deg` | float64 | Right ascension J2000 (degrees) |
-| `dec_deg` | float64 | Declination J2000 (degrees) |
-| `object_type` | string | Classification type (Q = QSO, A = AGN, B = BL Lac, etc.) |
-| `redshift` | float64 | Spectroscopic redshift |
-| `r_mag` | float64 | Red optical magnitude |
-| `b_mag` | float64 | Blue optical magnitude |
-| `qso_probability_pct` | float64 | QSO probability percentage |
-| `reference` | string | Literature reference code |
-| `radio_name` | string | Associated radio source name |
-| `xray_name` | string | Associated X-ray source name |
-| `is_qso` | bool | True if object type contains "Q" |
-| `has_radio` | bool | True if radio association exists |
-| `has_xray` | bool | True if X-ray association exists |
+| `name` | string | Source designation from the radio or X-ray catalog that first identified the counterpart (e.g., "SDSS J123456.78+123456.7", "3C 273"); not always the most commonly used name |
+| `ra_deg` | float64 | Right ascension in decimal degrees (J2000.0 ICRS); range 0–360 |
+| `dec_deg` | float64 | Declination in decimal degrees (J2000.0 ICRS); range −90 to +90 |
+| `object_type` | string | Source classification code: "Q" (type-I quasar, L_bol > 10¹² L☉), "A" (AGN/Seyfert, lower luminosity), "B" (BL Lac object, featureless spectrum), "N" (narrow-line AGN/Seyfert 2), "K" (known QSO from literature, not re-classified), "q" (photometric quasar candidate, not spectroscopically confirmed) |
+| `redshift` | float64 | Spectroscopic or photometric redshift; the most complete compilation of known QSO redshifts globally; range 0.006 to 7.6+; null for ~30% of entries lacking a measured redshift |
+| `r_mag` | float64 | Optical magnitude in the R band (red, ~6500 Å); null for radio-selected sources without optical counterpart or magnitude measurement |
+| `b_mag` | float64 | Optical magnitude in the B band (blue, ~4400 Å); null for sources without blue-band photometry |
+| `qso_probability_pct` | float64 | Probability (0–100%) that the object is a genuine QSO, based on photometric classification; populated for candidate objects; null for spectroscopically confirmed sources |
+| `reference` | string | Milliquas internal reference code pointing to the publication or survey that provided the classification or redshift |
+| `radio_name` | string | Name of the associated radio source from a radio survey (e.g., FIRST, NVSS, VLBI catalog); null if no radio counterpart has been identified |
+| `xray_name` | string | Name of the associated X-ray source (e.g., from ROSAT, Chandra, XMM-Newton); null if no X-ray counterpart has been identified |
+| `is_qso` | bool | True if `object_type` contains the letter "Q" (type-I quasar or known QSO); derived convenience flag |
+| `has_radio` | bool | True if a non-null radio source name is associated with this object; ~15% of catalog entries have radio counterparts |
+| `has_xray` | bool | True if a non-null X-ray source name is associated with this object; ~30% of catalog entries have X-ray counterparts |
 
 ## Quick stats
 

@@ -157,31 +157,31 @@ The 3HWC catalog's flux normalization at 7 TeV provides a standardized reference
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `source_name` | string | 3HWC designation (e.g., 3HWC J0534+220) |
-| `source_name_flag` | string | Flag on source name |
-| `ra_deg` | float64 | Right ascension J2000 (degrees) |
-| `dec_deg` | float64 | Declination J2000 (degrees) |
-| `glon_deg` | float64 | Galactic longitude (degrees) |
-| `glat_deg` | float64 | Galactic latitude (degrees) |
-| `pos_error_deg` | float64 | Positional uncertainty (degrees) |
-| `search_radius_deg` | float64 | Search radius used (degrees) |
-| `test_statistic` | float64 | Detection test statistic (TS) |
-| `separation_deg` | float64 | Separation from nearest TeVCat source (degrees) |
-| `tevcat_flag` | string | TeVCat association flag |
-| `tevcat_name` | string | Associated TeVCat source name |
-| `tevcat_note` | string | Note on TeVCat association |
-| `flux_7tev` | float64 | Differential flux at 7 TeV (10^-15 cm^-2 s^-1 TeV^-1) |
-| `flux_7tev_err_upper` | float64 | Upper statistical error on flux |
-| `flux_7tev_err_lower` | float64 | Lower statistical error on flux |
-| `spectral_index` | float64 | Power-law spectral index |
-| `spectral_index_err_upper` | float64 | Upper statistical error on index |
-| `spectral_index_err_lower` | float64 | Lower statistical error on index |
-| `flux_7tev_sys_upper` | float64 | Upper systematic error on flux |
-| `flux_7tev_sys_lower` | float64 | Lower systematic error on flux |
-| `spectral_index_sys_upper` | float64 | Upper systematic error on index |
-| `spectral_index_sys_lower` | float64 | Lower systematic error on index |
-| `energy_range_min_tev` | float64 | Minimum energy of analysis range (TeV) |
-| `energy_range_max_tev` | float64 | Maximum energy of analysis range (TeV) |
+| `source_name` | string | 3HWC catalog designation in format "3HWC JHHMM±DDd" (e.g., 3HWC J0534+220 = Crab Nebula) |
+| `source_name_flag` | string | Flag indicating naming notes (e.g., "e" = extended source fit, "c" = confused region) |
+| `ra_deg` | float64 | Right ascension, ICRS J2000.0 (degrees, 0–360); HAWC angular resolution ~0.1–0.5° depending on energy |
+| `dec_deg` | float64 | Declination, ICRS J2000.0 (degrees); HAWC sky coverage approximately −26° to +64° |
+| `glon_deg` | float64 | Galactic longitude (degrees, 0–360) |
+| `glat_deg` | float64 | Galactic latitude (degrees, −90 to +90) |
+| `pos_error_deg` | float64 | 1-sigma statistical positional uncertainty (degrees); typically 0.05–0.3° |
+| `search_radius_deg` | float64 | Radius of the spatial template used in the likelihood fit (degrees); larger for extended sources |
+| `test_statistic` | float64 | Detection test statistic TS = −2 ln(L_null/L_src); catalog threshold TS > 25 (equivalent to ~5σ) |
+| `separation_deg` | float64 | Angular separation to the nearest TeVCat source (degrees); used for cross-match assessment |
+| `tevcat_flag` | string | TeVCat association status: "Y" if within the search radius of a known TeVCat source, "N" otherwise |
+| `tevcat_name` | string | Name of the associated TeVCat source; null if no TeVCat counterpart within search radius |
+| `tevcat_note` | string | Notes on the TeVCat association (e.g., "extended", "confused", "new"); null if no association |
+| `flux_7tev` | float64 | Differential photon flux at 7 TeV in units of 10⁻¹⁵ cm⁻² s⁻¹ TeV⁻¹; 7 TeV is the decorrelation energy for the 3HWC fit |
+| `flux_7tev_err_upper` | float64 | Upper 1-sigma statistical uncertainty on flux_7tev (same units: 10⁻¹⁵ cm⁻² s⁻¹ TeV⁻¹) |
+| `flux_7tev_err_lower` | float64 | Lower 1-sigma statistical uncertainty on flux_7tev (same units: 10⁻¹⁵ cm⁻² s⁻¹ TeV⁻¹) |
+| `spectral_index` | float64 | Power-law photon spectral index Γ (dN/dE ∝ E^−Γ); typical range 2.0–3.5 for TeV sources |
+| `spectral_index_err_upper` | float64 | Upper 1-sigma statistical uncertainty on spectral_index |
+| `spectral_index_err_lower` | float64 | Lower 1-sigma statistical uncertainty on spectral_index |
+| `flux_7tev_sys_upper` | float64 | Upper systematic uncertainty on flux_7tev from detector calibration and background model (10⁻¹⁵ cm⁻² s⁻¹ TeV⁻¹) |
+| `flux_7tev_sys_lower` | float64 | Lower systematic uncertainty on flux_7tev (10⁻¹⁵ cm⁻² s⁻¹ TeV⁻¹) |
+| `spectral_index_sys_upper` | float64 | Upper systematic uncertainty on spectral_index from detector and analysis systematics |
+| `spectral_index_sys_lower` | float64 | Lower systematic uncertainty on spectral_index |
+| `energy_range_min_tev` | float64 | Lower bound of the energy range used in the spectral fit (TeV) |
+| `energy_range_max_tev` | float64 | Upper bound of the energy range used in the spectral fit (TeV) |
 
 ## Quick stats
 

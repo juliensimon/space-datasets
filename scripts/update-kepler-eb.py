@@ -160,6 +160,26 @@ Eclipsing binaries are astrophysical laboratories of extraordinary precision. Be
 
 The Kepler eclipsing binary catalog is a cornerstone of binary star research. Its uniform four-year photometric baseline and micro-magnitude precision enabled the discovery of systems with period changes, apsidal motion, third-body eclipse timing variations, and pulsating components (e.g., tidally excited oscillations in heartbeat stars). These phenomena probe tidal dissipation, stellar interior structure, and hierarchical triple-star dynamics in ways that ground-based surveys cannot match. The catalog also provides a critical training set for machine learning classifiers designed to identify eclipsing binaries in TESS, LSST, and other modern surveys.
 
+## Schema
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `kic_id` | float | Kepler Input Catalog (KIC) identifier for the host star; used to cross-reference Kepler photometry and stellar parameters |
+| `period_days` | float | Orbital period in days derived from eclipse timing; contact binaries: <1 day, detached systems: up to ~1000 days; null if period could not be determined |
+| `morphology` | float | Continuous morphology parameter (0–1) describing light curve shape; 0 = well-detached (two distinct eclipses with flat out-of-eclipse baseline), 1 = contact/over-contact (sinusoidal, stars fill or overflow Roche lobes); intermediate values indicate semi-detached systems |
+| `teff_k` | float | Host star effective temperature in Kelvin from KIC or spectroscopic follow-up; range ~3500–10000 K; null if not available in the catalog |
+| `log_g` | float | Host star log surface gravity in cm/s² (cgs); main sequence: 4–5 dex, subgiants: 3–4 dex, giants: <3 dex; used with Teff to classify stellar evolution stage |
+| `kepler_mag` | float | Kepler-band (white-light, ~430–900 nm) apparent magnitude of the system; brighter targets have better photometric precision |
+| `ra_deg` | float | Right ascension in decimal degrees (ICRS J2000.0) |
+| `dec_deg` | float | Declination in decimal degrees (ICRS J2000.0) |
+| `epoch_bjd` | float | Reference epoch of primary eclipse minimum in Barycentric Julian Date (BJD); used as the zero-point for computing eclipse timing residuals |
+| `period_err` | float | Uncertainty on the orbital period in days |
+| `duration_primary` | float | Duration of primary eclipse (deeper minimum) in days |
+| `duration_secondary` | float | Duration of secondary eclipse in days; asymmetry between primary and secondary durations indicates orbital eccentricity |
+| `depth_primary` | float | Primary eclipse depth as fractional flux loss; equals (R₂/R₁)² for a total eclipse; diagnostic of the stellar radius ratio |
+| `depth_secondary` | float | Secondary eclipse depth as fractional flux loss; ratio of primary to secondary depth constrains the temperature ratio of the two components |
+| `separation` | float | Fractional phase separation between primary and secondary eclipses; 0.5 = circular orbit; deviations indicate nonzero eccentricity |
+
 ## Quick stats
 
 - **{n_total:,}** eclipsing binaries

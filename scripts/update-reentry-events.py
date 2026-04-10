@@ -149,19 +149,19 @@ This dataset supports orbital lifetime prediction modeling, compliance monitorin
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `norad_id` | int32 | NORAD catalog number (unique identifier) |
-| `object_name` | string | Official name (e.g. "COSMOS 1234 DEB") |
-| `object_type` | string | `PAY` (payload), `R/B` (rocket body), `DEB` (debris), `UNK` (unknown) |
-| `country_code` | string | Owner/operator country or organization code |
-| `launch_date` | datetime | Launch date (UTC) |
-| `decay_date` | datetime | Date of atmospheric reentry (UTC) |
-| `period_min` | float | Last recorded orbital period in minutes |
-| `inclination_deg` | float | Last recorded orbital inclination in degrees |
-| `apogee_km` | float | Last recorded apogee altitude in km |
-| `perigee_km` | float | Last recorded perigee altitude in km |
-| `rcs_size` | string | Radar cross-section size category (SMALL, MEDIUM, LARGE) |
-| `days_in_orbit` | int | Days between launch and decay |
-| `decay_year` | int32 | Year of reentry (for grouping/filtering) |
+| `norad_id` | int32 | NORAD catalog number — sequential integer assigned by the 18th Space Defense Squadron at launch; primary key for cross-referencing with TLE databases and the SATCAT |
+| `object_name` | string | Official name as listed in the NORAD catalog (e.g. "COSMOS 1234 DEB"); rocket bodies typically include "R/B" and debris fragments include "DEB" in the name |
+| `object_type` | string | Object classification: `PAY` (payload/spacecraft), `R/B` (rocket body or upper stage), `DEB` (fragmentation debris), `UNK` (unknown/unclassified) |
+| `country_code` | string | ISO 3166-based two-letter country code or special organization code (e.g. "US", "RU", "CN", "ISS" for ISS-associated objects) identifying the launch owner |
+| `launch_date` | datetime | Date the object was launched into orbit (UTC); null for a small number of objects with incomplete catalog entries |
+| `decay_date` | datetime | Date the object reentered Earth's atmosphere (UTC); for uncontrolled reentries this is the date radar tracking was lost; for controlled reentries it is the planned impact date |
+| `period_min` | float | Last recorded orbital period in minutes before reentry; LEO objects typically 88–128 min; null if no orbital period was recorded |
+| `inclination_deg` | float | Last recorded orbital inclination in degrees (0–180); the angle between the orbital plane and the equatorial plane; polar orbits are ~90°, equatorial ~0° |
+| `apogee_km` | float | Last recorded apogee (highest point) altitude above Earth's surface in km; null if not recorded; typically low and declining for objects near reentry |
+| `perigee_km` | float | Last recorded perigee (lowest point) altitude above Earth's surface in km; null if not recorded; objects with perigee below ~200 km reenter within days to weeks |
+| `rcs` | float | Radar cross-section in m²; proxy for object size used by space surveillance radars; null for many objects where RCS was not published or was too small to measure reliably |
+| `days_in_orbit` | int | Number of days between launch and reentry (decay_date − launch_date); null if either date is missing; ranges from 0 (immediate reentry) to tens of thousands (objects launched in the 1960s) |
+| `decay_year` | int32 | Calendar year of reentry; derived from decay_date for efficient grouping and time-series analysis |
 
 ## Quick stats
 

@@ -176,14 +176,14 @@ This dataset supports research into EVA scheduling efficiency, crew workload ana
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `eva_number` | Int64 | Sequential EVA number |
-| `country` | string | Country (USA / Russia) |
-| `crew` | string | Crew member(s) |
-| `vehicle` | string | Spacecraft or station (Gemini, Apollo, ISS, etc.) |
-| `date` | datetime | Date of EVA |
-| `duration` | string | Duration in H:MM format |
-| `duration_minutes` | float64 | Duration in total minutes |
-| `purpose` | string | Free-text description of EVA activities |
+| `eva_number` | Int64 | Sequential EVA number within the NASA/Roscosmos program chronology; not unique across countries |
+| `country` | string | Country responsible for the EVA: "USA" or "Russia" |
+| `crew` | string | Astronaut/cosmonaut names performing the EVA, comma-separated (e.g. "White, McDivitt"); may be a single name for solo EVAs |
+| `vehicle` | string | Spacecraft or station from which the EVA was conducted (e.g. "Gemini 4", "Apollo 11", "ISS", "Mir", "Shuttle") |
+| `date` | datetime | UTC date the EVA began |
+| `duration` | string | EVA duration in H:MM format (e.g. "2:20"); exact logged time from hatch open to hatch close |
+| `duration_minutes` | float64 | EVA duration in total minutes (e.g. 140.0); range roughly 6 min to ~540 min; null if source duration was unparseable |
+| `purpose` | string | Free-text description of primary EVA objectives (e.g. "Solar array repair", "Hardware installation", "First American spacewalk"); null for early program entries with no recorded objective |
 
 ## Quick stats
 

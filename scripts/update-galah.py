@@ -210,25 +210,25 @@ Key properties:
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `sobject_id` | string | GALAH observation identifier |
-| `star_id` | string | GALAH unique star identifier |
-| `tmass_id` | string | 2MASS identifier |
-| `gaiadr3_source_id` | string | Gaia DR3 source identifier |
-| `ra` | float64 | Right Ascension J2000 (degrees) |
-| `dec` | float64 | Declination J2000 (degrees) |
-| `teff_k` | float64 | Effective temperature (K) |
-| `logg` | float64 | Surface gravity (log cm/s^2) |
-| `fe_h_dex` | float64 | Iron abundance [Fe/H] (dex) |
-| `vmic` | float64 | Microturbulence velocity (km/s) |
-| `vsini` | float64 | Projected rotational velocity (km/s) |
-| `radial_velocity_kms` | float64 | Barycentric radial velocity (km/s) |
-| `radial_velocity_comp2_kms` | float64 | Binary companion RV (km/s) |
-| `snr_px_ccd1`..`snr_px_ccd4` | float64 | Signal-to-noise per pixel (4 CCDs) |
-| `snr_mean` | float64 | Mean SNR across all 4 CCDs |
-| `flag_sp` | Int64 | Spectroscopic quality flag (0 = best) |
-| `flag_red` | Int64 | Reduction pipeline quality flag |
-| `li_fe`..`eu_fe` | float64 | Elemental abundances [X/Fe] (dex) — 31 elements |
-| `n_abundances` | Int64 | Count of non-null abundance measurements |
+| `sobject_id` | string | GALAH spectroscopic observation identifier (unique per exposure); format encodes field and fiber number |
+| `star_id` | string | GALAH unique star identifier; a star observed multiple times shares the same `star_id` but has distinct `sobject_id` values |
+| `tmass_id` | string | 2MASS photometric catalog cross-identifier (e.g. "J12345678+1234567"); null if no 2MASS match |
+| `gaiadr3_source_id` | string | Gaia DR3 astrometric source identifier; enables cross-match for precise positions, proper motions, and parallaxes; null if unmatched |
+| `ra` | float64 | Right ascension, ICRS J2000.0, in decimal degrees (0–360) |
+| `dec` | float64 | Declination, ICRS J2000.0, in decimal degrees (−90 to +90) |
+| `teff_k` | float64 | Effective temperature in Kelvin from spectral synthesis; GALAH targets FGK stars, typical range 4000–7500 K; uncertainty ~100 K; null if spectral pipeline failed (flag_sp > 0) |
+| `logg` | float64 | Log surface gravity in cgs (log cm/s²); main sequence dwarfs: 4.0–5.0, subgiants: 3.5–4.5, red giants: 1.5–3.5; null if flag_sp > 0 |
+| `fe_h_dex` | float64 | [Fe/H] iron abundance in dex relative to solar; GALAH surveys −2.5 to +0.5 dex; typical uncertainty ~0.1 dex; null if flag_sp > 0 |
+| `vmic` | float64 | Microturbulence velocity in km/s; internal parameter of the spectral model capturing small-scale turbulent broadening; typical range 0.5–2.0 km/s |
+| `vsini` | float64 | Projected rotational velocity v sin i in km/s; slow rotators (FGK dwarfs) typically < 10 km/s; null for stars where rotation is unresolved at R~28,000 |
+| `radial_velocity_kms` | float64 | Barycentric radial velocity in km/s from cross-correlation; precision ~0.1 km/s; null for very low S/N spectra |
+| `radial_velocity_comp2_kms` | float64 | Barycentric radial velocity of a detected binary companion in km/s; non-null only for double-lined spectroscopic binaries (SB2) |
+| `snr_px_ccd1`..`snr_px_ccd4` | float64 | Signal-to-noise ratio per pixel for each of the 4 HERMES CCD channels (blue, green, red, IR); drives which abundances can be measured; typical values 20–200 |
+| `snr_mean` | float64 | Mean S/N per pixel averaged across all four HERMES CCDs; derived column; stars with snr_mean < 30 have fewer reliable abundance measurements |
+| `flag_sp` | Int64 | Spectroscopic analysis quality flag; 0 = good stellar parameters; >0 encodes specific problems (binary contamination, emission, grid edge); use flag_sp == 0 for clean samples |
+| `flag_red` | Int64 | Reduction pipeline quality flag; 0 = successful reduction; >0 indicates issues with sky subtraction, cross-talk, or cosmic rays |
+| `li_fe`..`eu_fe` | float64 | [X/Fe] elemental abundance ratios in dex for 31 elements (see table below); null when S/N is insufficient or no spectral lines are available for that element at the star's temperature (flag_X_fe > 0) |
+| `n_abundances` | Int64 | Count of non-null [X/Fe] abundance measurements for this star; ranges 0–31; derived column useful for selecting well-characterised stars |
 
 ### Abundance columns
 

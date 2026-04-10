@@ -229,16 +229,16 @@ and updated continuously.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `wikidata_id` | string | Wikidata entity ID (e.g. Q935) |
-| `name` | string | Full name |
-| `birth_date` | string | Date of birth (YYYY-MM-DD) |
-| `death_date` | string | Date of death if deceased |
-| `sex` | string | Sex (male/female) |
-| `nationality` | string | Nationality |
-| `employers` | string | Employers, semicolon-separated (universities, observatories, institutes) |
-| `awards` | string | Awards received, semicolon-separated |
-| `fields_of_work` | string | Fields of work, semicolon-separated (e.g. astrophysics, cosmology) |
-| `birth_year` | int | Year of birth (derived) |
+| `wikidata_id` | string | Wikidata entity ID (e.g. "Q935" for Galileo Galilei); resolves to https://www.wikidata.org/wiki/Q935 — links to full biographical and bibliographic data including publications, awards, and institutional affiliations |
+| `name` | string | Full name in English as recorded in Wikidata (Latin transliteration for non-Latin scripts) |
+| `birth_date` | string | Date of birth in ISO 8601 format (YYYY-MM-DD); null for ancient or medieval astronomers whose birth year is uncertain, and occasionally for modern astronomers with private records |
+| `death_date` | string | Date of death in ISO 8601 format (YYYY-MM-DD); null for living astronomers |
+| `sex` | string | Recorded biological sex; values: "male", "female"; null if not recorded in Wikidata |
+| `nationality` | string | Country of primary professional affiliation or citizenship (e.g. "United States", "Germany"); uses full English country name; may differ from country of birth |
+| `employers` | string | Universities, observatories, and research institutes where the astronomer has worked, semicolon-separated (e.g. "Harvard University;Smithsonian Astrophysical Observatory"); null if no employer is recorded in Wikidata |
+| `awards` | string | Honours and prizes received, semicolon-separated (e.g. "Nobel Prize in Physics;Kavli Prize"); null if no awards are recorded in Wikidata |
+| `fields_of_work` | string | Primary research specializations, semicolon-separated (e.g. "astrophysics;cosmology;stellar astronomy"); drawn from Wikidata property P101; null if not categorized |
+| `birth_year` | int | Integer year extracted from `birth_date`; enables era-based filtering (e.g. pre-telescopic vs. modern) when full date is unavailable; null only if birth date is entirely unknown |
 
 ## Quick stats
 

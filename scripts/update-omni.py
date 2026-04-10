@@ -310,38 +310,38 @@ The derived quantities in the dataset encode important plasma physics. Plasma be
 | `sigma_bx_nt` | float64 | RMS std dev of Bx, GSE (nT) |
 | `sigma_by_nt` | float64 | RMS std dev of By, GSE (nT) |
 | `sigma_bz_nt` | float64 | RMS std dev of Bz, GSE (nT) |
-| `proton_temperature_k` | float64 | Proton temperature (K) |
-| `proton_density_cm3` | float64 | Proton number density (N/cm^3) |
-| `flow_speed_kms` | float64 | Plasma bulk flow speed (km/s) |
-| `flow_lon_angle_deg` | float64 | Flow longitude angle, quasi-GSE (deg) |
-| `flow_lat_angle_deg` | float64 | Flow latitude angle, GSE (deg) |
-| `alpha_proton_ratio` | float64 | Alpha-to-proton density ratio Na/Np |
-| `flow_pressure_npa` | float64 | Flow (ram) pressure (nPa) |
-| `sigma_t_k` | float64 | Sigma of proton temperature (K) |
-| `sigma_n_cm3` | float64 | Sigma of proton density (N/cm^3) |
-| `sigma_v_kms` | float64 | Sigma of flow speed (km/s) |
-| `sigma_phi_v_deg` | float64 | Sigma of flow longitude (deg) |
-| `sigma_theta_v_deg` | float64 | Sigma of flow latitude (deg) |
-| `sigma_alpha_proton_ratio` | float64 | Sigma of Na/Np |
-| `electric_field_mvpm` | float64 | Electric field -V*Bz (mV/m) |
-| `plasma_beta` | float64 | Plasma beta (ratio of thermal to magnetic pressure) |
-| `alfven_mach_number` | float64 | Alfven Mach number |
-| `kp_index` | float64 | Planetary geomagnetic Kp index (0-90 scale, multiply by 0.1) |
-| `sunspot_number` | float64 | International sunspot number (v2) |
-| `dst_index_nt` | float64 | Disturbance Storm Time index (nT) |
-| `ae_index_nt` | float64 | Auroral Electrojet AE index (nT) |
-| `proton_flux_gt1mev` | float64 | Energetic proton flux >1 MeV (1/cm^2 s sr) |
-| `proton_flux_gt2mev` | float64 | Energetic proton flux >2 MeV |
-| `proton_flux_gt4mev` | float64 | Energetic proton flux >4 MeV |
-| `proton_flux_gt10mev` | float64 | Energetic proton flux >10 MeV |
-| `proton_flux_gt30mev` | float64 | Energetic proton flux >30 MeV |
-| `proton_flux_gt60mev` | float64 | Energetic proton flux >60 MeV |
-| `ap_index_nt` | float64 | Geomagnetic ap index (nT) |
-| `f107_index_sfu` | float64 | F10.7 solar radio flux (SFU) |
-| `pc_n_index` | float64 | Polar Cap (North) PC(N) index |
-| `al_index_nt` | float64 | Auroral Electrojet AL index (nT) |
-| `au_index_nt` | float64 | Auroral Electrojet AU index (nT) |
-| `magnetosonic_mach_number` | float64 | Magnetosonic Mach number |
+| `proton_temperature_k` | float64 | Solar wind proton temperature (K); typical range 1×10⁴–5×10⁵ K; elevated in fast streams, depressed in ICMEs |
+| `proton_density_cm3` | float64 | Solar wind proton number density (cm⁻³); typical 5–10 cm⁻³ at 1 AU; spikes during CME sheaths |
+| `flow_speed_kms` | float64 | Solar wind bulk plasma speed (km/s); slow wind: 350–450 km/s, fast streams: 600–800 km/s |
+| `flow_lon_angle_deg` | float64 | Flow longitude angle in quasi-GSE coordinates (degrees); small departures from 180° indicate non-radial flow |
+| `flow_lat_angle_deg` | float64 | Flow latitude angle in GSE coordinates (degrees); small departures from 0° indicate north/south deflections |
+| `alpha_proton_ratio` | float64 | He²⁺ to H⁺ number density ratio (Na/Np); typical 0.02–0.08; elevated in fast streams and CMEs |
+| `flow_pressure_npa` | float64 | Solar wind dynamic (ram) pressure ½ρv² (nPa); typical 1–10 nPa; high values compress the dayside magnetopause |
+| `sigma_t_k` | float64 | Intra-hour standard deviation of proton temperature (K); reflects solar wind variability within the averaging window |
+| `sigma_n_cm3` | float64 | Intra-hour standard deviation of proton density (cm⁻³) |
+| `sigma_v_kms` | float64 | Intra-hour standard deviation of flow speed (km/s) |
+| `sigma_phi_v_deg` | float64 | Intra-hour standard deviation of flow longitude angle (degrees) |
+| `sigma_theta_v_deg` | float64 | Intra-hour standard deviation of flow latitude angle (degrees) |
+| `sigma_alpha_proton_ratio` | float64 | Intra-hour standard deviation of the He²⁺/H⁺ density ratio |
+| `electric_field_mvpm` | float64 | Interplanetary electric field component −V×Bz (mV/m); negative (southward Bz) drives magnetospheric energy input; typical range −10 to +10 mV/m |
+| `plasma_beta` | float64 | Ratio of thermal pressure to magnetic pressure (nkT / B²/8π); β<1 = magnetically dominated, β>1 = thermally dominated |
+| `alfven_mach_number` | float64 | Solar wind speed divided by Alfvén speed; typical ~8–10 at 1 AU; determines bow shock and magnetopause standoff |
+| `kp_index` | float64 | Planetary geomagnetic 3-hourly Kp index stored as integer×10 (e.g. 27 = Kp 2.7); scale 0–90; Kp≥50 = geomagnetic storm |
+| `sunspot_number` | float64 | International sunspot number (SILSO v2); tracks the 11-year solar cycle; range ~0–300 |
+| `dst_index_nt` | float64 | Disturbance Storm Time ring-current index (nT); 0 = quiet; −30 to −50 nT = minor storm; <−100 nT = intense storm |
+| `ae_index_nt` | float64 | Auroral Electrojet AE index (nT) = AU − AL; measures substorm and auroral zone current intensity; 0–2000+ nT |
+| `proton_flux_gt1mev` | float64 | Energetic proton flux for particles >1 MeV (1/cm²·s·sr); elevated during solar proton events (SPEs) |
+| `proton_flux_gt2mev` | float64 | Energetic proton flux for particles >2 MeV (1/cm²·s·sr) |
+| `proton_flux_gt4mev` | float64 | Energetic proton flux for particles >4 MeV (1/cm²·s·sr) |
+| `proton_flux_gt10mev` | float64 | Energetic proton flux for particles >10 MeV (1/cm²·s·sr); NOAA SPE threshold: 10 pfu at this energy |
+| `proton_flux_gt30mev` | float64 | Energetic proton flux for particles >30 MeV (1/cm²·s·sr) |
+| `proton_flux_gt60mev` | float64 | Energetic proton flux for particles >60 MeV (1/cm²·s·sr) |
+| `ap_index_nt` | float64 | Linear equivalent of Kp index (nT); 3-hourly; range 0–400 nT; ap≥100 = major geomagnetic storm |
+| `f107_index_sfu` | float64 | Solar 10.7 cm radio flux index (Solar Flux Units, 1 SFU = 10⁻²² W/m²/Hz); solar cycle range ~65–300 SFU; proxy for EUV output driving ionospheric variability |
+| `pc_n_index` | float64 | Polar Cap (North) magnetic activity index derived from Thule/Qaanaaq magnetometer; tracks cross-polar-cap potential and substorm precursors |
+| `al_index_nt` | float64 | Auroral Electrojet lower (AL) index (nT); measures westward electrojet intensity; negative excursions indicate substorm onset |
+| `au_index_nt` | float64 | Auroral Electrojet upper (AU) index (nT); measures eastward electrojet intensity; AE = AU − AL |
+| `magnetosonic_mach_number` | float64 | Solar wind speed divided by the fast magnetosonic wave speed; determines bow shock geometry; typical ~6–8 at 1 AU |
 
 ## Quick stats
 

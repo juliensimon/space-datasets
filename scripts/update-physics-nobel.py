@@ -215,17 +215,17 @@ updated as new laureates are announced each October.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `wikidata_id` | string | Wikidata entity ID (e.g. Q7240) |
-| `name` | string | Full name |
-| `birth_date` | string | Date of birth (YYYY-MM-DD) |
-| `death_date` | string | Date of death if deceased |
-| `sex` | string | Sex (male/female) |
-| `nationality` | string | Nationality |
-| `award_year` | int | Year the Nobel Prize was awarded |
-| `employers` | string | Employers, semicolon-separated (universities, research institutes) |
-| `fields_of_work` | string | Fields of work, semicolon-separated |
-| `cited_work` | string | Work or discovery cited by the Nobel Committee |
-| `birth_year` | int | Year of birth (derived) |
+| `wikidata_id` | string | Wikidata entity ID for the laureate (e.g. "Q7240" for Max Planck); use as stable cross-reference key |
+| `name` | string | Full legal name of the laureate as recorded in Wikidata |
+| `birth_date` | string | Date of birth in ISO 8601 format (YYYY-MM-DD); null for historical figures with only a birth year |
+| `death_date` | string | Date of death in ISO 8601 format (YYYY-MM-DD); null if laureate is still living |
+| `sex` | string | Sex as recorded in Wikidata: "male" or "female" |
+| `nationality` | string | Nationality at time of award or primary nationality (may be comma-separated for dual nationals) |
+| `award_year` | int | Year the Nobel Prize in Physics was awarded (1901–present); up to 3 laureates may share a prize year |
+| `employers` | string | Semicolon-separated list of known employers (universities, labs, research institutes) at time of award or career |
+| `fields_of_work` | string | Semicolon-separated physics subfields (e.g. "quantum mechanics; atomic physics; condensed matter") |
+| `cited_work` | string | Official Nobel Committee citation describing the discovery or contribution that earned the prize |
+| `birth_year` | int | Year of birth derived from birth_date; used for age-at-award calculations |
 
 ## Quick stats
 

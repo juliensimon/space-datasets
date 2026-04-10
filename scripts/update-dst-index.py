@@ -341,12 +341,12 @@ The Dst index has direct applications in satellite operations: empirical models 
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `datetime` | datetime | Observation time (UTC, hourly) |
-| `dst_nt` | int | Dst value in nanotesla (nT). Negative = disturbed. |
-| `daily_mean_nt` | int | Daily mean Dst (nT) |
-| `quality` | string | Data quality: "final" (definitive), "provisional", or "realtime" |
-| `is_storm` | bool | True if Dst <= -50 nT |
-| `storm_intensity` | string | "quiet" (> -50), "weak" (-50 to -100), "moderate" (-100 to -250), "intense" (-250 to -500), "super" (< -500) |
+| `datetime` | datetime | Hour-averaged timestamp (UTC); Dst has been reported at 1-hour cadence since 1957 |
+| `dst_nt` | int | Disturbance Storm Time index in nT — measures ring current injection at mid-latitudes; negative values indicate ring current enhancement; quiet: −20 to 0 nT, minor storm: −30 to −50 nT, moderate: −50 to −100 nT, intense: < −100 nT, extreme: < −250 nT |
+| `daily_mean_nt` | int | 24-hour mean Dst (nT) for the calendar day containing this record; smooths over short-duration spikes to represent overall storm level |
+| `quality` | string | Data quality flag: "final" (definitive WDC-processed values), "provisional" (recent months, pending full processing), or "realtime" (near-real-time, subject to revision) |
+| `is_storm` | bool | True if Dst <= −50 nT, the conventional threshold for a geomagnetic storm |
+| `storm_intensity` | string | Derived storm severity: "quiet" (> −50 nT), "weak" (−50 to −100 nT), "moderate" (−100 to −250 nT), "intense" (−250 to −500 nT), "super" (< −500 nT, extremely rare; Carrington 1859 estimated at −850 nT) |
 
 ## Quick stats
 

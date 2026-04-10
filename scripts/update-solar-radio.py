@@ -219,15 +219,15 @@ Solar radio bursts are among the earliest detectable signatures of eruptive sola
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `start_date` | datetime | Event start time (UTC) |
-| `end_date` | datetime | Event end time (UTC) |
-| `max_date` | datetime | Time of maximum intensity (UTC) |
-| `type` | string | Event type: spectral_sweep, fixed_freq_burst, noise_storm |
-| `frequency` | string | Observation frequency in MHz (single value or range like "025-180") |
-| `observatory` | string | Reporting observatory code |
-| `quality` | string | Data quality flag |
-| `burst_class` | string | For spectral sweeps: Roman numeral classification (e.g., "III/2") |
-| `region` | string | NOAA active region number (if associated) |
+| `start_date` | datetime | UTC time when the radio burst began |
+| `end_date` | datetime | UTC time when the radio burst ended; null if event was still in progress at report time |
+| `max_date` | datetime | UTC time of maximum radio flux intensity; null for noise storms where peak is ill-defined |
+| `type` | string | SWPC event type mapped to descriptive label: "spectral_sweep" (RSP — frequency-drifting burst including Type II/III/IV/V), "fixed_freq_burst" (RBR — discrete burst at a single frequency), "noise_storm" (RNS — sustained broadband emission from active regions) |
+| `frequency` | string | Observing frequency or frequency range in MHz (e.g., "245" or "025-180"); Type III bursts can drift from >100 MHz to <10 MHz in seconds as electron beams propagate outward |
+| `observatory` | string | SWPC station code reporting the event (e.g., "SGD", "LEA", "BOU"); multiple observatories may report the same event independently |
+| `quality` | string | SWPC data quality flag indicating analyst confidence in the event classification (e.g., "Good", "Poor"); null if not assigned |
+| `burst_class` | string | Roman numeral subtype for spectral sweep events (e.g., "III/2", "II", "IV"); Roman numeral indicates burst type (I=noise storm enhancement, II=slow-drift shock, III=fast electron beam, IV=continuum, V=post-III continuum); null for fixed-frequency bursts and noise storms |
+| `region` | string | NOAA active region number causally associated with the burst; null if no active region link was established |
 
 ## Quick stats
 

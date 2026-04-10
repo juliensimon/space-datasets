@@ -174,14 +174,14 @@ These parameters are not merely of academic interest -- they are operationally c
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `date` | datetime | Calendar date (UTC) |
-| `mjd` | float64 | Modified Julian Date |
-| `x_pole_arcsec` | float64 | Pole coordinate x (arcseconds) |
-| `y_pole_arcsec` | float64 | Pole coordinate y (arcseconds) |
-| `ut1_utc_sec` | float64 | UT1-UTC difference (seconds) |
-| `lod_ms` | float64 | Length of Day excess (milliseconds) |
-| `dx_mas` | float64 | Celestial pole offset dX (milliarcseconds) |
-| `dy_mas` | float64 | Celestial pole offset dY (milliarcseconds) |
+| `date` | datetime | Calendar date in UTC of the EOP measurement; daily cadence from 1962-01-01 to present; values after the last bulletin date are IERS short-term predictions, not observations |
+| `mjd` | float64 | Modified Julian Date = Julian Date − 2400000.5; a compact decimal day count used throughout astronomy and geodesy; J2000.0 corresponds to MJD 51544.5; enables direct arithmetic on time differences without calendar conversions |
+| `x_pole_arcsec` | float64 | x-component of polar motion in arcseconds — eastward offset of Earth's instantaneous rotation pole from the IERS Reference Pole along the Greenwich meridian; typical range ±0.5 arcsec; driven by atmospheric and oceanic angular momentum exchanges and solid Earth effects; a 1 mas error causes ~3 cm surface positioning error |
+| `y_pole_arcsec` | float64 | y-component of polar motion in arcseconds — offset of Earth's rotation pole along the 90°W meridian; typical range ±0.5 arcsec; required together with x_pole_arcsec to transform between celestial (ICRF) and terrestrial (ITRF) coordinate frames |
+| `ut1_utc_sec` | float64 | Difference UT1 − UTC in seconds; UT1 tracks Earth's actual rotational angle while UTC uses fixed SI seconds; Earth's irregular rotation causes this value to drift; bounded to ±0.9 s by periodic leap-second insertions; essential for sidereal time and spacecraft antenna pointing calculations |
+| `lod_ms` | float64 | Excess length of day above 86400 SI seconds, in milliseconds; positive = Earth rotating slower than nominal; reflects the instantaneous time derivative of UT1-UTC; driven mainly by atmospheric angular momentum exchange on sub-annual timescales |
+| `dx_mas` | float64 | Celestial pole offset dX in milliarcseconds — observed deviation of the celestial intermediate pole from the IAU 2000/2006 precession-nutation model along the X axis; typically a few hundred microarcseconds; corrects for unpredictable fluid-core free nutation with ~430-day period |
+| `dy_mas` | float64 | Celestial pole offset dY in milliarcseconds — observed deviation along the Y axis complementing dX; together dX and dY provide the residual nutation corrections needed for the highest-precision celestial mechanics and VLBI analysis |
 
 ## Quick stats
 

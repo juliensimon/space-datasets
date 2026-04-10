@@ -231,41 +231,41 @@ The stratigraphic context of these measurements is central to understanding the 
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `file` | string | Source spectrum filename |
-| `target` | string | Named target on the Martian surface |
-| `sio2` | float64 | Silicon dioxide (wt%) |
-| `sio2_rmsep` | float64 | SiO2 RMSEP uncertainty from calibration model |
-| `sio2_shots_stdev` | float64 | SiO2 shot-to-shot standard deviation |
-| `tio2` | float64 | Titanium dioxide (wt%) |
-| `tio2_rmsep` | float64 | TiO2 RMSEP uncertainty from calibration model |
-| `tio2_shots_stdev` | float64 | TiO2 shot-to-shot standard deviation |
-| `al2o3` | float64 | Aluminum oxide (wt%) |
-| `al2o3_rmsep` | float64 | Al2O3 RMSEP uncertainty from calibration model |
-| `al2o3_shots_stdev` | float64 | Al2O3 shot-to-shot standard deviation |
-| `feot` | float64 | Total iron as FeO (wt%) |
-| `feot_rmsep` | float64 | FeOT RMSEP uncertainty from calibration model |
-| `feot_shots_stdev` | float64 | FeOT shot-to-shot standard deviation |
-| `mgo` | float64 | Magnesium oxide (wt%) |
-| `mgo_rmsep` | float64 | MgO RMSEP uncertainty from calibration model |
-| `mgo_shots_stdev` | float64 | MgO shot-to-shot standard deviation |
-| `cao` | float64 | Calcium oxide (wt%) |
-| `cao_rmsep` | float64 | CaO RMSEP uncertainty from calibration model |
-| `cao_shots_stdev` | float64 | CaO shot-to-shot standard deviation |
-| `na2o` | float64 | Sodium oxide (wt%) |
-| `na2o_rmsep` | float64 | Na2O RMSEP uncertainty from calibration model |
-| `na2o_shots_stdev` | float64 | Na2O shot-to-shot standard deviation |
-| `k2o` | float64 | Potassium oxide (wt%) |
-| `k2o_rmsep` | float64 | K2O RMSEP uncertainty from calibration model |
-| `k2o_shots_stdev` | float64 | K2O shot-to-shot standard deviation |
-| `mno` | float64 | Manganese oxide (wt%) |
-| `mno_rmsep` | float64 | MnO RMSEP uncertainty from calibration model |
-| `mno_shots_stdev` | float64 | MnO shot-to-shot standard deviation |
-| `sum_of_oxides` | float64 | Sum of all oxide compositions (wt%) |
-| `distance_m` | float64 | Distance from rover to target (meters) |
-| `laser_power` | string | Laser power settings |
-| `spectrum_total` | string | Total spectrum intensity |
-| `sol_range_min` | int64 | Start of sol range for this data file |
-| `sol_range_max` | int64 | End of sol range for this data file |
+| `file` | string | PDS spectrum filename (encodes sol, sequence, shot number) |
+| `target` | string | Rock or soil target name assigned by the mission team (e.g. "Jake_M", "Bathurst_Inlet"); each target receives ~30 laser shots |
+| `sio2` | float64 | Silicon dioxide weight percent (wt%); Martian basalt typically 45–55 wt%, felsic outliers >60 wt% |
+| `sio2_rmsep` | float64 | SiO2 root-mean-square error of prediction (wt%) from the PLS+ICA calibration model |
+| `sio2_shots_stdev` | float64 | SiO2 standard deviation across individual laser shots within this analysis point |
+| `tio2` | float64 | Titanium dioxide weight percent (wt%); typically 0.5–2 wt% in Martian basalts |
+| `tio2_rmsep` | float64 | TiO2 RMSEP from calibration model (wt%) |
+| `tio2_shots_stdev` | float64 | TiO2 shot-to-shot standard deviation (wt%) |
+| `al2o3` | float64 | Aluminum oxide weight percent (wt%); typically 8–15 wt%, higher in evolved/felsic rocks |
+| `al2o3_rmsep` | float64 | Al2O3 RMSEP from calibration model (wt%) |
+| `al2o3_shots_stdev` | float64 | Al2O3 shot-to-shot standard deviation (wt%) |
+| `feot` | float64 | Total iron reported as FeO weight percent (wt%); typically 15–25 wt% in Martian basalts |
+| `feot_rmsep` | float64 | FeOT RMSEP from calibration model (wt%) |
+| `feot_shots_stdev` | float64 | FeOT shot-to-shot standard deviation (wt%) |
+| `mgo` | float64 | Magnesium oxide weight percent (wt%); typically 5–15 wt% in mafic compositions |
+| `mgo_rmsep` | float64 | MgO RMSEP from calibration model (wt%) |
+| `mgo_shots_stdev` | float64 | MgO shot-to-shot standard deviation (wt%) |
+| `cao` | float64 | Calcium oxide weight percent (wt%); typically 5–12 wt%; high values indicate calcium-rich minerals |
+| `cao_rmsep` | float64 | CaO RMSEP from calibration model (wt%) |
+| `cao_shots_stdev` | float64 | CaO shot-to-shot standard deviation (wt%) |
+| `na2o` | float64 | Sodium oxide weight percent (wt%); typically 1–4 wt%; high values indicate alkali-rich rocks |
+| `na2o_rmsep` | float64 | Na2O RMSEP from calibration model (wt%) |
+| `na2o_shots_stdev` | float64 | Na2O shot-to-shot standard deviation (wt%) |
+| `k2o` | float64 | Potassium oxide weight percent (wt%); typically 0.2–1.5 wt%; enriched in some evolved rocks |
+| `k2o_rmsep` | float64 | K2O RMSEP from calibration model (wt%) |
+| `k2o_shots_stdev` | float64 | K2O shot-to-shot standard deviation (wt%) |
+| `mno` | float64 | Manganese oxide weight percent (wt%); typically <0.5 wt%; high values indicate oxidizing aqueous conditions |
+| `mno_rmsep` | float64 | MnO RMSEP from calibration model (wt%) |
+| `mno_shots_stdev` | float64 | MnO shot-to-shot standard deviation (wt%) |
+| `sum_of_oxides` | float64 | Sum of all nine major oxide weight percents; should total ~100 wt% for unaltered rock |
+| `distance_m` | float64 | Distance from ChemCam to target in meters; range 1.5–7 m |
+| `laser_power` | string | Laser pulse energy setting used for this analysis point (mJ) |
+| `spectrum_total` | string | Sum of all spectral channel intensities (arbitrary units); quality indicator for the LIBS plasma |
+| `sol_range_min` | int64 | Minimum sol number in the source MOC data file; Curiosity sol 0 = Aug 6 2012 |
+| `sol_range_max` | int64 | Maximum sol number in the source MOC data file; each ~1.0275 Earth days |
 
 ## Quick stats
 

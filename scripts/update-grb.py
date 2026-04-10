@@ -201,23 +201,23 @@ This catalog is a cornerstone for multi-messenger astrophysics: GBM triggers ini
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `name` | string | GRB trigger name (e.g. "GRB230101123") |
-| `trigger_time` | datetime | Trigger time (UTC) |
-| `ra` | float | Right ascension (degrees) |
-| `dec` | float | Declination (degrees) |
-| `t90` | float | T90 duration in seconds (time containing 90% of fluence) |
-| `t90_error` | float | T90 uncertainty |
-| `t50` | float | T50 duration in seconds (time containing 50% of fluence) |
-| `t50_error` | float | T50 uncertainty |
-| `fluence` | float | Total fluence (erg/cm^2) |
-| `fluence_error` | float | Fluence uncertainty |
-| `flux_256` | float | Peak flux on 256 ms timescale (ph/cm^2/s) |
-| `pflx_best_fitting_model` | string | Best-fit spectral model for peak flux |
-| `flnc_band_ampl` | float | Band function amplitude |
-| `flnc_band_epeak` | float | Band function peak energy (keV) |
-| `flnc_band_alpha` | float | Band function low-energy index |
-| `flnc_band_beta` | float | Band function high-energy index |
-| `duration_class` | string | "short" (T90 < 2 s) or "long" (T90 >= 2 s) |
+| `name` | string | GRB designation encoding the discovery date and sequence letter (e.g. "GRB 170817A" = Aug 17 2017, first event that day); "GRB 170817A" is the electromagnetic counterpart to GW170817, the first confirmed neutron-star merger |
+| `trigger_time` | datetime | UTC time of the GBM on-board trigger; converted from Modified Julian Date; precision ~milliseconds |
+| `ra` | float | Right ascension of best-fit GRB position (ICRS J2000.0, degrees, 0–360); initial GBM localization uncertainty is several degrees; null if localization failed |
+| `dec` | float | Declination of best-fit GRB position (ICRS J2000.0, degrees, −90 to +90); null if localization failed |
+| `t90` | float | Duration containing 90% of the burst's total photon counts (seconds); short GRBs have T90 < 2 s (neutron star mergers), long GRBs have T90 > 2 s (massive star collapse); bimodal distribution separates two physically distinct progenitor populations; null for bursts with insufficient counts |
+| `t90_error` | float | 1-sigma statistical uncertainty on T90 (seconds); null when T90 is not measured |
+| `t50` | float | Duration containing the central 50% of burst counts (seconds); narrower than T90, less sensitive to faint extended emission; useful for comparing burst timescales across detectors |
+| `t50_error` | float | 1-sigma statistical uncertainty on T50 (seconds); null when T50 is not measured |
+| `fluence` | float | Total gamma-ray fluence integrated over the burst duration (erg/cm²; 1 erg = 10⁻⁷ J); proxy for apparent isotropic energy release; null when spectral fit did not converge |
+| `fluence_error` | float | 1-sigma uncertainty on fluence (erg/cm²); null when fluence is not measured |
+| `flux_256` | float | Peak photon flux measured on a 256 ms timescale (photons/cm²/s); determines detectability and is used in the logN-logP distribution; null when peak flux measurement failed |
+| `pflx_best_fitting_model` | string | Name of the spectral model providing the best fit to the peak-flux time interval (e.g. "band", "comp", "plaw", "sbpl"); drives which set of spectral parameters is most reliable |
+| `flnc_band_ampl` | float | Amplitude (normalization) of the Band function fit to the time-integrated (fluence) spectrum (photons/cm²/s/keV at pivot energy); null when the Band model is not the best fit or fit failed |
+| `flnc_band_epeak` | float | Peak energy of the νFν spectrum from the Band function fit (keV); most GRBs fall between 100–2000 keV; correlates with isotropic luminosity (Amati relation); null when Band fit failed |
+| `flnc_band_alpha` | float | Low-energy photon spectral index of the Band function (dimensionless); typically −1.5 to 0; values harder than −2/3 violate synchrotron line-of-death, constraining emission models; null when Band fit failed |
+| `flnc_band_beta` | float | High-energy photon spectral index of the Band function (dimensionless); typically −3 to −2; describes the steep spectral cutoff above E_peak; null when Band fit failed or high-energy data insufficient |
+| `duration_class` | string | Physical classification by T90: "short" (T90 < 2 s, compact binary merger progenitor) or "long" (T90 ≥ 2 s, massive star core collapse progenitor); null when T90 is unavailable |
 
 ## Quick stats
 

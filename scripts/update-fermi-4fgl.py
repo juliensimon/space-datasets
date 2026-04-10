@@ -180,25 +180,25 @@ The variability index and monthly light curves in 4FGL are particularly powerful
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `source_name` | string | 4FGL source name (e.g. "4FGL J0001.2+3738") |
-| `ra_deg` | float64 | Right Ascension J2000 (degrees) |
-| `dec_deg` | float64 | Declination J2000 (degrees) |
-| `glon_deg` | float64 | Galactic longitude (degrees) |
-| `glat_deg` | float64 | Galactic latitude (degrees) |
-| `significance` | float64 | Detection significance (sigma) |
-| `flux_1000_mev` | float64 | Photon flux above 1 GeV (photons/cm2/s) |
-| `energy_flux_100_mev` | float64 | Energy flux above 100 MeV (erg/cm2/s) |
-| `spectrum_type` | string | Spectral model type (PowerLaw, LogParabola, etc.) |
-| `variability_index` | float64 | Variability index (>18.48 = variable at 99%) |
-| `source_class` | string | Source classification (e.g. "bll", "psr", "fsrq") |
-| `association` | string | Associated source name at other wavelengths |
-| `redshift` | float64 | Redshift (where available) |
-| `flags` | Int64 | Analysis flags |
-| `pivot_energy_mev` | float64 | Pivot energy (MeV) |
-| `power_law_index` | float64 | Power-law spectral index |
-| `log_parabola_index` | float64 | Log-parabola spectral index |
-| `log_parabola_beta` | float64 | Log-parabola curvature parameter |
-| `is_variable` | bool | Variability flag (variability_index > 18.48) |
+| `source_name` | string | 4FGL catalog designation encoding position (e.g. "4FGL J0001.2+3738" = J2000 RA 00h01m, Dec +37°38'); the "4FGL" prefix identifies this as the Fourth Fermi LAT catalog |
+| `ra_deg` | float64 | Right ascension of source centroid (ICRS J2000.0, degrees, 0–360); LAT angular resolution is ~0.1° at 10 GeV, ~1° at 1 GeV |
+| `dec_deg` | float64 | Declination of source centroid (ICRS J2000.0, degrees, −90 to +90) |
+| `glon_deg` | float64 | Galactic longitude (degrees, 0–360); sources at low |b| sit in the Galactic plane where diffuse emission and source confusion are highest |
+| `glat_deg` | float64 | Galactic latitude (degrees, −90 to +90); |b| < 10° indicates Galactic plane sources; extragalactic sources (blazars, radio galaxies) populate high latitudes |
+| `significance` | float64 | Detection significance averaged over the full energy range (sigma); threshold for catalog inclusion is ~4σ; bright sources exceed 100σ |
+| `flux_1000_mev` | float64 | Integral photon flux above 1 GeV (photons/cm²/s); chosen to minimize dependence on the poorly constrained low-energy spectral shape; null for very soft sources that fall below threshold above 1 GeV |
+| `energy_flux_100_mev` | float64 | Integral energy flux from 100 MeV to 100 GeV (erg/cm²/s); the most physically meaningful flux measure because it captures the bolometric gamma-ray output over the LAT band |
+| `spectrum_type` | string | Best-fit spectral model: "PowerLaw" (single power law, typical for young pulsars and flat-spectrum radio quasars), "LogParabola" (curved spectrum, typical for BL Lacs and GeV-peaking blazars), "PLSuperExpCutoff" (power law with exponential cutoff, characteristic of millisecond and young pulsars) |
+| `variability_index` | float64 | Sum of log-likelihood ratio test statistics from monthly light curve fits; values above 18.48 indicate flux variability at >99% confidence (chi-squared threshold for 11 degrees of freedom); blazars typically show values of 20–1000 |
+| `source_class` | string | Astrophysical classification of the associated counterpart: "bll" (BL Lac object), "fsrq" (Flat Spectrum Radio Quasar), "psr" (pulsar), "snr" (supernova remnant), "pwn" (pulsar wind nebula), "glc" (globular cluster), "rdg" (radio galaxy), "sbg" (starburst galaxy), "spp" (potential association with SNR or PWN), "" / null (unassociated — no confirmed counterpart); uppercase indicates high-confidence association |
+| `association` | string | Name of the counterpart source at other wavelengths (e.g. radio, X-ray, optical); null for unassociated sources (~26% of catalog); the basis for `source_class` |
+| `redshift` | float64 | Spectroscopic redshift of the associated extragalactic counterpart; null for Galactic sources and unassociated sources; confirmed range spans 0.002 to ~3.1 for blazars |
+| `flags` | Int64 | Bitmask of analysis quality and caution flags (see 4FGL paper Table 3); bit 0 = source is in a region of bright diffuse emission; bit 1 = localization quality is poor; non-zero flags indicate results should be used with caution |
+| `pivot_energy_mev` | float64 | Reference energy at which the spectral normalization and index are decorrelated (MeV); chosen to minimize the covariance between flux normalization and spectral index; varies per source (typically 500–5000 MeV) |
+| `power_law_index` | float64 | Photon spectral index Γ for sources fit with a power law (flux ∝ E^−Γ); typical values: Γ ~ 1.5–2.0 for hard blazars, 2.0–3.0 for soft sources and pulsars; null for sources using a different spectral model |
+| `log_parabola_index` | float64 | Spectral index α at the pivot energy for sources fit with a log-parabola (flux ∝ (E/E₀)^−(α+β log(E/E₀))); null for sources using a different spectral model |
+| `log_parabola_beta` | float64 | Spectral curvature parameter β for log-parabola sources; β > 0 means the spectrum curves downward (softer at higher energies); β ~ 0.1–0.8 for BL Lacs; null for sources using a different spectral model |
+| `is_variable` | bool | True when `variability_index` exceeds 18.48 (99% confidence variability threshold); predominantly blazars; False includes both truly steady sources and sources with insufficient statistics to detect variability |
 
 ## Quick stats
 

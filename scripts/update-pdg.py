@@ -198,23 +198,23 @@ This machine-readable version of the PDG listings supports automated analysis pi
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `pdg_id` | int64 | PDG Monte Carlo particle ID |
-| `name` | string | Particle name (e.g. "pi+", "K*(892)0") |
-| `latex_name` | string | LaTeX-formatted name |
-| `mass_mev` | float64 | Mass (MeV/c^2) |
-| `mass_uncertainty_mev` | float64 | Mass upper uncertainty (MeV/c^2) |
-| `width_mev` | float64 | Decay width (MeV) |
-| `width_uncertainty_mev` | float64 | Width upper uncertainty (MeV) |
-| `charge` | float64 | Electric charge (units of e) |
-| `spin` | float64 | Spin J |
-| `parity` | Int64 | Parity P (+1 or -1) |
-| `isospin` | string | Isospin I |
-| `g_parity` | Int64 | G-parity (+1 or -1) |
-| `c_parity` | Int64 | C-parity (+1 or -1) |
-| `anti_flag` | int64 | Anti-particle flag |
-| `is_self_conjugate` | bool | Whether particle is its own antiparticle |
-| `lifetime_ns` | float64 | Lifetime (nanoseconds) |
-| `ctau_mm` | float64 | Proper decay length c*tau (mm) |
+| `pdg_id` | int64 | PDG Monte Carlo numbering scheme particle ID; e.g. 11 = electron, 12 = electron neutrino, 13 = muon, 22 = photon, 2212 = proton, 2112 = neutron; negative values denote the corresponding antiparticle |
+| `name` | string | PDG standard particle name including charge superscript and resonance mass in parentheses where applicable (e.g. "pi+", "K*(892)0", "Upsilon(1S)") |
+| `latex_name` | string | LaTeX-formatted particle name for typesetting in publications (e.g. "\\pi^+", "K^*(892)^0"); render with a LaTeX engine or MathJax |
+| `mass_mev` | float64 | Particle rest mass in MeV/c² (mega-electron-volts per c²); electron: 0.511 MeV, muon: 105.7 MeV, proton: 938.3 MeV, W boson: 80,400 MeV, Higgs: 125,100 MeV; null for massless particles (photon, gluon) |
+| `mass_uncertainty_mev` | float64 | Upper (asymmetric) uncertainty on the PDG world-average mass in MeV/c²; reflects experimental precision and averaging of multiple measurements; null when mass is null |
+| `width_mev` | float64 | Total decay width Γ in MeV, related to mean lifetime by τ = ℏ/Γ; Z boson: ~2,495 MeV, pion: ~7.8×10⁻⁹ MeV; null for stable or effectively stable particles (electron, proton, photon) |
+| `width_uncertainty_mev` | float64 | Upper (asymmetric) uncertainty on the decay width in MeV; null when width is null |
+| `charge` | float64 | Electric charge in units of the elementary charge e; quarks carry fractional charges (u/c/t: +2/3, d/s/b: −1/3); leptons and hadrons carry integer charges; photon and Z boson: 0 |
+| `spin` | float64 | Total spin quantum number J; fermions (quarks, leptons) have half-integer spin (1/2, 3/2); gauge bosons have spin 1; the Higgs boson has spin 0; graviton (hypothetical) would have spin 2 |
+| `parity` | Int64 | Intrinsic parity P under spatial inversion; +1 or −1 for particles with a well-defined parity eigenstate; null for particles where parity is not defined (e.g. leptons in weak interactions) |
+| `isospin` | string | Isospin quantum number I as a string (e.g. "1/2", "1", "0"); relevant for hadrons composed of u and d quarks; null for leptons, heavy-flavor hadrons, and gauge bosons |
+| `g_parity` | Int64 | G-parity quantum number, the combined charge-conjugation and isospin rotation symmetry; +1 or −1; defined only for non-strange mesons with zero baryon number; null otherwise |
+| `c_parity` | Int64 | Charge-conjugation parity C; +1 or −1; defined only for electrically neutral self-conjugate particles (e.g. π⁰, photon, J/ψ); null for charged particles and particles without a well-defined C eigenstate |
+| `anti_flag` | int64 | Encodes the relationship between this entry and its antiparticle; 0 = own antiparticle (self-conjugate), 1 = particle (antiparticle listed separately), −1 = antiparticle entry |
+| `is_self_conjugate` | bool | True if the particle is its own antiparticle (e.g. photon, π⁰, Z boson, Higgs); false for particles with a distinct antiparticle (e.g. electron/positron, proton/antiproton) |
+| `lifetime_ns` | float64 | Mean lifetime in nanoseconds (1 ns = 10⁻⁹ s); muon: 2,197 ns, pion (π±): 26.0 ns, kaon (K±): 12.4 ns, Z boson: ~3×10⁻¹⁶ ns; null for stable particles (electron, proton, photon) and for very short-lived resonances where only the width is quoted |
+| `ctau_mm` | float64 | Proper decay length c·τ in millimetres; useful for estimating how far a particle travels before decaying in a detector; pion: ~7,800 mm, kaon (K±): ~3,700 mm, B meson: ~0.45 mm; null when lifetime is null |
 
 ## Quick stats
 

@@ -472,21 +472,21 @@ One row per satellite. Currently **{total:,}** satellites across
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `norad_id` | int32 | NORAD catalog number |
-| `name` | string | Object name |
-| `constellation` | string | Constellation ID (e.g. "starlink", "oneweb") |
-| `operator` | string | Operator name |
-| `country` | string | Country code |
-| `orbit_type` | string | LEO / MEO / GEO |
-| `shell_id` | int | Shell within constellation |
-| `shell_name` | string | Human-readable shell name |
-| `altitude_km` | float | Perigee altitude in km |
-| `inclination` | float | Orbital inclination in degrees |
-| `eccentricity` | float | Orbital eccentricity |
-| `mean_motion` | float | Mean motion in rev/day |
-| `status` | string | operational / raising / deorbiting / decayed / anomalous / non-operational |
-| `launch_year` | int | Launch year from COSPAR ID |
-| `epoch_utc` | datetime | TLE epoch (UTC) |
+| `norad_id` | int32 | NORAD catalog number — sequential integer assigned by the 18th Space Defense Squadron; primary key for cross-referencing with TLE databases and SATCAT |
+| `name` | string | Satellite common name from the NORAD catalog (e.g. "STARLINK-1234", "NAVSTAR 78", "ONEWEB-0001") |
+| `constellation` | string | Lowercase constellation identifier (e.g. "starlink", "oneweb", "gps", "galileo"); matches the keys in the pipeline's `CONSTELLATIONS` config |
+| `operator` | string | Name of the constellation operator or agency (e.g. "SpaceX", "Eutelsat OneWeb", "USSF", "EU/ESA") |
+| `country` | string | ISO 3166-based two-letter country code of the operating nation (e.g. "US", "GB", "CN", "EU") |
+| `orbit_type` | string | Orbit regime: `LEO` (low Earth orbit, <2000 km), `MEO` (medium, 2000–35000 km), `GEO` (geostationary, ~35786 km) |
+| `shell_id` | int | Integer shell index within the constellation (0-based); for single-shell constellations always 0; for Starlink 0–4 mapping to the five inclination/altitude shells |
+| `shell_name` | string | Human-readable shell label encoding inclination and target altitude (e.g. "Shell 3 (53°/550km)", "GPS (55°/20200km)") |
+| `altitude_km` | float | Perigee altitude above Earth's surface in km, derived from TLE mean motion and eccentricity; for near-circular orbits this approximates the operational altitude |
+| `inclination` | float | Orbital inclination in degrees (0–180); angle between the orbital plane and Earth's equatorial plane; determines ground coverage latitudes |
+| `eccentricity` | float | Orbital eccentricity (dimensionless, 0–1); 0 = perfectly circular; operational LEO satellites typically <0.001; values >0.005 are flagged as anomalous |
+| `mean_motion` | float | Mean motion in revolutions per day from the TLE; LEO ~14–17 rev/day, MEO ~2 rev/day, GEO ~1 rev/day; related to semi-major axis via Kepler's third law |
+| `status` | string | Operational classification: `operational` (within shell altitude band), `raising` (maneuvering to target altitude, LEO only), `deorbiting` (actively decaying, LEO only), `decayed` (below 150 km or stale epoch), `anomalous` (high eccentricity), `non-operational` (MEO/GEO outside expected band) |
+| `launch_year` | int | Year the satellite was launched, extracted from the COSPAR international designator; 0 if the designator was missing or malformed |
+| `epoch_utc` | datetime | Reference epoch of the TLE set (UTC); orbital elements are most accurate at this moment; position error grows roughly 1–3 km/day for LEO objects |
 
 ## Config: `daily_snapshots`
 
@@ -494,14 +494,14 @@ Per-constellation daily aggregates. Currently **{daily_rows:,}** rows{date_range
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `date` | datetime | Snapshot date (UTC) |
-| `constellation` | string | Constellation ID |
-| `operator` | string | Operator name |
-| `orbit_type` | string | LEO / MEO / GEO |
-| `total_count` | int | Total satellites |
-| `operational_count` | int | Operational satellites |
-| `median_altitude_km` | float | Median altitude in km |
-| `median_inclination` | float | Median inclination in degrees |
+| `date` | datetime | UTC date of the daily census snapshot; one row per constellation per date |
+| `constellation` | string | Lowercase constellation identifier matching the `latest_satellites` config (e.g. "starlink", "gps") |
+| `operator` | string | Name of the constellation operator or agency (e.g. "SpaceX", "USSF", "EU/ESA") |
+| `orbit_type` | string | Orbit regime of this constellation: `LEO`, `MEO`, or `GEO` |
+| `total_count` | int | Total number of satellites tracked in this constellation on this date, across all operational statuses |
+| `operational_count` | int | Number of satellites with altitude within the constellation's defined shell band(s) on this date |
+| `median_altitude_km` | float | Median perigee altitude in km across all satellites in this constellation; useful for detecting constellation-wide altitude drift or shell transitions |
+| `median_inclination` | float | Median orbital inclination in degrees across all satellites in this constellation |
 
 ### Usage
 

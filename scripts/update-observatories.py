@@ -217,16 +217,16 @@ community with contributions from professional astronomers and enthusiasts world
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `wikidata_id` | string | Wikidata entity ID (e.g. Q179224) |
-| `name` | string | Observatory name |
-| `country` | string | Country where the observatory is located |
-| `latitude` | float | Geographic latitude (decimal degrees) |
-| `longitude` | float | Geographic longitude (decimal degrees) |
-| `elevation_m` | float | Elevation above sea level (metres) |
-| `aperture_m` | float | Primary mirror/dish aperture (metres) |
-| `operator` | string | Operating organization or agency |
-| `opening_date` | string | Date the observatory opened (YYYY-MM-DD) |
-| `wavelengths` | string | Observed wavelength bands, semicolon-separated |
+| `wikidata_id` | string | Wikidata entity ID (e.g. "Q179224"); stable URI for enrichment and cross-referencing |
+| `name` | string | Full official observatory name (e.g. "Palomar Observatory", "European Southern Observatory") |
+| `country` | string | Country in which the observatory is physically located (e.g. "United States", "Chile", "Hawaii" mapped to "United States") |
+| `latitude` | float | Geographic latitude in decimal degrees; range −90 to +90; positive = North; null if not recorded |
+| `longitude` | float | Geographic longitude in decimal degrees; range −180 to +180; positive = East; null if not recorded |
+| `elevation_m` | float | Altitude above sea level in metres; relevant for atmospheric transparency and seeing quality; range sea level to ~5,640 m (Atacama sites); null if not recorded |
+| `aperture_m` | float | Primary mirror or dish diameter in metres; range ~0.1 m (amateur facilities) to 39 m (ELT); null for multi-telescope complexes or space observatories without a single aperture |
+| `operator` | string | Institution or agency operating the observatory (e.g. "NASA", "ESO", "Caltech"); null if not recorded in Wikidata |
+| `opening_date` | string | Date the observatory was inaugurated or began operations (YYYY-MM-DD or YYYY); null if unknown |
+| `wavelengths` | string | Observed electromagnetic bands, semicolon-separated (e.g. "optical; infrared"; "radio"; "X-ray; gamma-ray"); null if not specified |
 
 ## Quick stats
 

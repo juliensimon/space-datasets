@@ -190,35 +190,35 @@ The multi-band flux decomposition across 8 sub-bands from 17 to 290 keV enables 
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `source_id` | Int32 | Unique source identifier |
-| `source_name` | string | Source name |
-| `ra_deg` | float64 | Right ascension J2000 (degrees) |
-| `dec_deg` | float64 | Declination J2000 (degrees) |
-| `flux_17_60kev` | float64 | Flux in 17--60 keV band (mCrab) |
-| `flux_err_17_60kev` | float64 | Flux uncertainty in 17--60 keV band |
-| `snr_17_60kev` | float64 | Signal-to-noise ratio in 17--60 keV band |
-| `source_type` | string | Source classification |
-| `redshift` | float64 | Redshift (when available) |
-| `transient_flag` | string | Transient source flag |
-| `extended_flag` | string | Extended source flag |
-| `confused_flag` | string | Confused source flag |
-| `noisy_flag` | string | Noisy region flag |
-| `references` | string | Literature references |
-| `counterpart` | string | Counterpart identification |
-| `notes` | string | Additional notes |
-| `flux_17_35kev` | float64 | Flux in 17--35 keV sub-band |
-| `flux_35_80kev` | float64 | Flux in 35--80 keV sub-band |
-| `flux_80_150kev` | float64 | Flux in 80--150 keV sub-band |
-| `flux_150_290kev` | float64 | Flux in 150--290 keV sub-band |
-| `flux_17_80kev` | float64 | Flux in 17--80 keV sub-band |
-| `flux_35_150kev` | float64 | Flux in 35--150 keV sub-band |
-| `flux_80_290kev` | float64 | Flux in 80--290 keV sub-band |
-| `flux_17_290kev` | float64 | Flux in 17--290 keV full band |
-| `flux_err_*` | float64 | Corresponding flux uncertainties for each sub-band |
-| `snr_*` | float64 | Signal-to-noise ratios for each sub-band |
-| `plate` | string | Sky plate identifier |
-| `simbad_name` | string | SIMBAD cross-matched name |
-| `has_redshift` | bool | True if redshift is available |
+| `source_id` | Int32 | Sequential catalog number from Krivonos et al. 2022 (MNRAS 510, 4796) |
+| `source_name` | string | Primary source name — IBIS catalog designation (e.g., "IGR J17480-2446") or standard name (e.g., "Cyg X-1") |
+| `ra_deg` | float64 | Right ascension, ICRS J2000.0 (degrees, 0–360); IBIS angular resolution ~12 arcmin |
+| `dec_deg` | float64 | Declination, ICRS J2000.0 (degrees, −90 to +90) |
+| `flux_17_60kev` | float64 | Hard X-ray flux in the primary 17–60 keV band (mCrab); 1 Crab ≈ 2.4×10⁻⁸ erg/cm²/s; catalog detection threshold ~5 mCrab |
+| `flux_err_17_60kev` | float64 | 1-sigma statistical uncertainty on flux_17_60kev (mCrab) |
+| `snr_17_60kev` | float64 | Detection signal-to-noise ratio in the 17–60 keV band; catalog inclusion threshold >4.7σ |
+| `source_type` | string | Astrophysical classification (e.g., "AGN", "HMXB", "LMXB", "CV", "PSR", "SNR", "Galaxy cluster", "Unidentified") |
+| `redshift` | float64 | Spectroscopic redshift for extragalactic sources; null for Galactic sources or sources lacking optical identification |
+| `transient_flag` | string | "T" if the source is a known transient (flux variable by >factor 2); null or blank otherwise |
+| `extended_flag` | string | "E" if the source is spatially extended in the IBIS image (e.g., a galaxy cluster); null otherwise |
+| `confused_flag` | string | "C" if the source is in a confused region with nearby bright sources that may affect flux accuracy; null otherwise |
+| `noisy_flag` | string | "N" if the source lies in a noisy sky region due to proximity to very bright sources or the Galactic center; null otherwise |
+| `references` | string | ADS bibcode(s) for the primary identification or classification reference |
+| `counterpart` | string | Name of the multiwavelength counterpart used for source classification |
+| `notes` | string | Additional remarks on the source (e.g., known aliases, special observational circumstances) |
+| `flux_17_35kev` | float64 | Flux in the 17–35 keV sub-band (mCrab); null if source not detected in this band |
+| `flux_35_80kev` | float64 | Flux in the 35–80 keV sub-band (mCrab); null if source not detected in this band |
+| `flux_80_150kev` | float64 | Flux in the 80–150 keV sub-band (mCrab); null if source not detected in this band |
+| `flux_150_290kev` | float64 | Flux in the 150–290 keV sub-band (mCrab); null if source not detected in this band |
+| `flux_17_80kev` | float64 | Flux in the combined 17–80 keV sub-band (mCrab) |
+| `flux_35_150kev` | float64 | Flux in the combined 35–150 keV sub-band (mCrab) |
+| `flux_80_290kev` | float64 | Flux in the combined 80–290 keV sub-band (mCrab) |
+| `flux_17_290kev` | float64 | Total broadband flux over 17–290 keV (mCrab) |
+| `flux_err_*` | float64 | 1-sigma statistical uncertainty on the corresponding flux column (mCrab) |
+| `snr_*` | float64 | Detection signal-to-noise ratio for the corresponding energy sub-band |
+| `plate` | string | INTEGRAL sky plate identifier indicating the mosaic tile used for this detection |
+| `simbad_name` | string | Resolved SIMBAD source name for cross-referencing with the CDS database |
+| `has_redshift` | bool | True if redshift is non-null; derived convenience column |
 
 ## Quick stats
 

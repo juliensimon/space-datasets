@@ -245,33 +245,33 @@ The orbital elements of each shower constrain the identity of its parent body. E
 | `submission_date` | string | Date submitted to MDC |
 | `shower_name` | string | Full shower name-designation |
 | `activity_type` | string | Activity pattern (annual, variable, etc.) |
-| `sol_lon_begin_deg` | float64 | Solar longitude at activity start (deg) |
-| `sol_lon_end_deg` | float64 | Solar longitude at activity end (deg) |
-| `sol_lon_peak_deg` | float64 | Solar longitude at peak (deg) |
-| `ra_deg` | float64 | Right ascension of radiant (deg, J2000) |
-| `dec_deg` | float64 | Declination of radiant (deg, J2000) |
-| `ra_daily_motion` | float64 | Daily motion in RA (deg/day) |
-| `dec_daily_motion` | float64 | Daily motion in Dec (deg/day) |
-| `geocentric_velocity_kms` | float64 | Geocentric velocity (km/s) |
-| `sun_centered_ecliptic_lon_deg` | float64 | Sun-centered ecliptic longitude of radiant (deg) |
-| `sun_centered_ecliptic_lat_deg` | float64 | Sun-centered ecliptic latitude of radiant (deg) |
-| `ecliptic_lat_deg` | float64 | Ecliptic latitude of radiant (deg) |
-| `theta_deg` | float64 | Angular distance parameter theta (deg) |
-| `phi_deg` | float64 | Angular distance parameter phi (deg) |
-| `flags` | string | Data quality/validation flags |
-| `semi_major_axis_au` | float64 | Orbital semi-major axis (AU) |
-| `perihelion_distance_au` | float64 | Perihelion distance (AU) |
-| `eccentricity` | float64 | Orbital eccentricity |
-| `arg_perihelion_deg` | float64 | Argument of perihelion (deg) |
-| `ascending_node_deg` | float64 | Longitude of ascending node (deg) |
-| `inclination_deg` | float64 | Orbital inclination (deg) |
-| `n_meteors` | int32 | Number of meteors in the analysis |
-| `group_no` | int32 | Shower group number |
-| `cg` | string | Shower complex/group code |
-| `parent_body` | string | Identified parent body (comet or asteroid) |
-| `remarks` | string | Additional notes |
-| `ote` | string | OTE classification flag |
-| `references` | string | Literature reference |
+| `sol_lon_begin_deg` | float64 | Solar longitude at start of detectable activity (degrees, 0°=vernal equinox, increases ~1°/day); more stable than calendar date for inter-annual comparison |
+| `sol_lon_end_deg` | float64 | Solar longitude at end of detectable activity (degrees); activity window = sol_lon_end − sol_lon_begin |
+| `sol_lon_peak_deg` | float64 | Solar longitude at peak activity (degrees); the most reproducible parameter for scheduling observations year to year |
+| `ra_deg` | float64 | Right ascension of the radiant — the sky point from which meteors appear to diverge — ICRS J2000.0 (degrees, 0–360); drifts during the shower due to Earth's orbital motion |
+| `dec_deg` | float64 | Declination of the radiant, ICRS J2000.0 (degrees, -90 to +90); showers with dec < −30° are poorly observable from northern mid-latitudes |
+| `ra_daily_motion` | float64 | Rate of change of radiant right ascension during the shower (degrees/day); caused by Earth's changing viewing geometry |
+| `dec_daily_motion` | float64 | Rate of change of radiant declination during the shower (degrees/day) |
+| `geocentric_velocity_kms` | float64 | Meteor entry speed relative to Earth (km/s); range ~11–72 km/s; slow meteors leave short, faint trains; fast meteors produce persistent trains and fireballs |
+| `sun_centered_ecliptic_lon_deg` | float64 | Ecliptic longitude of the radiant in a Sun-centered frame (degrees); invariant of Earth's position, useful for orbital analysis |
+| `sun_centered_ecliptic_lat_deg` | float64 | Ecliptic latitude of the radiant in a Sun-centered frame (degrees) |
+| `ecliptic_lat_deg` | float64 | Ecliptic latitude of the radiant in standard (Earth-centered) ecliptic coordinates (degrees) |
+| `theta_deg` | float64 | Angular distance from the apex of Earth's way (degrees); used in the Southworth-Hawkins D-criterion for stream association |
+| `phi_deg` | float64 | Angular distance from the ecliptic plane (degrees); used in stream orbital similarity calculations |
+| `flags` | string | MDC data quality or provenance flags (e.g. "R" for refined solution); null if no flag |
+| `semi_major_axis_au` | float64 | Semi-major axis of the meteoroid stream's mean orbit (AU); null for hyperbolic or unresolved orbits |
+| `perihelion_distance_au` | float64 | Perihelion distance of the stream orbit (AU); must be ≤1 AU for Earth-crossing showers |
+| `eccentricity` | float64 | Orbital eccentricity of the stream (0=circular, 1=parabolic); most showers: 0.7–1.0 |
+| `arg_perihelion_deg` | float64 | Argument of perihelion of the stream orbit (degrees, 0–360) |
+| `ascending_node_deg` | float64 | Longitude of ascending node of the stream orbit (degrees, 0–360); approximately equals the solar longitude at peak when node ≈ Earth's orbit |
+| `inclination_deg` | float64 | Inclination of the stream orbit to the ecliptic (degrees, 0–180); >90° indicates retrograde stream |
+| `n_meteors` | int32 | Number of individual meteor observations used to derive this radiant/orbit solution; null if not reported |
+| `group_no` | int32 | IAU stream group number linking related showers in the same complex |
+| `cg` | string | Shower complex or group code (e.g. "JFC" for Jupiter-family comet streams) |
+| `parent_body` | string | Identified parent comet or asteroid (e.g. "109P/Swift-Tuttle" for Perseids, "3200 Phaethon" for Geminids); null if parent unknown |
+| `remarks` | string | Free-text notes from the MDC submitter (null if none) |
+| `ote` | string | OTE (Orbital Type) classification flag from the MDC |
+| `references` | string | Literature reference(s) for this solution |
 
 ## Quick stats
 

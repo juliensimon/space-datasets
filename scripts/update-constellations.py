@@ -157,13 +157,13 @@ Sourced from Wikidata's structured knowledge base (property P31=Q8928 for instan
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `wikidata_id` | string | Wikidata entity ID (e.g. Q8928) |
-| `name` | string | Full English name of the constellation |
-| `iau_abbreviation` | string | IAU three-letter abbreviation (e.g. Ori, UMa) |
-| `symbol` | string | Traditional symbol or figure |
-| `brightest_star` | string | Common name of the brightest star |
-| `area_sq_deg` | float | Area of the constellation in square degrees |
-| `named_after` | string | Mythological figure, animal, or object it represents |
+| `wikidata_id` | string | Wikidata entity ID (e.g. Q8928); stable URI for cross-referencing enrichment sources |
+| `name` | string | Full IAU-recognized English name (e.g. "Orion", "Ursa Major"); all 88 official constellations |
+| `iau_abbreviation` | string | IAU 3-letter abbreviation used in star names and catalogs (e.g. "Ori", "UMa"); standardized by Delporte 1930 |
+| `symbol` | string | Traditional figure or symbol the constellation depicts (e.g. "hunter", "bear"); null for unnamed asterisms |
+| `brightest_star` | string | Common name of the visually brightest star in the constellation (e.g. "Rigel" for Orion); null if not recorded in Wikidata |
+| `area_sq_deg` | float | Area enclosed by IAU boundary in square degrees; range 0.24 sq deg (Crux) to 1303 sq deg (Hydra); total sky = 41,253 sq deg |
+| `named_after` | string | Mythological figure, animal, instrument, or object the constellation represents (e.g. "Orion the hunter"); null for unnamed patterns |
 
 ## Quick stats
 

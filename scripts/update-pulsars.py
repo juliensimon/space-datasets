@@ -201,26 +201,26 @@ Pulsars are natural laboratories for fundamental physics. Their extraordinary ro
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `name` | string | Pulsar J-name |
-| `alt_name` | string | Alternative B-name designation |
-| `ra` | float | Right ascension (degrees) |
-| `dec` | float | Declination (degrees) |
-| `period` | float | Barycentric period (seconds) |
-| `period_dot` | float | Period derivative (s/s) |
-| `dm` | float | Dispersion measure (pc/cm^3) |
-| `flux_1400_mhz` | float | Mean flux density at 1400 MHz (mJy) |
-| `companion_type` | string | Binary companion classification |
-| `dm_distance` | float | DM-derived distance (kpc) |
-| `age` | float | Characteristic spin-down age (years) |
-| `b_surf` | float | Surface magnetic field (Gauss) |
-| `e_dot` | float | Spin-down luminosity (erg/s) |
-| `pulsar_type` | string | Pulsar type classification |
-| `pm_tot` | float | Total proper motion (mas/yr) |
-| `discovery_date` | int | Year of discovery publication |
-| `assoc_object` | string | Associated objects (e.g. SNR, globular cluster) |
-| `binary_model` | string | Binary model type |
-| `is_millisecond` | bool | True if period < 30 ms |
-| `is_binary` | bool | True if in a binary system |
+| `name` | string | Primary pulsar designation in the J2000 naming convention (e.g. "J0437−4715"); encodes approximate right ascension (HHMM) and declination (±DDMM) |
+| `alt_name` | string | Alternative B1950 designation (e.g. "B0833−45" for Vela); many historically important pulsars are better known by their B-names; null for recently discovered pulsars |
+| `ra` | float | Right ascension in decimal degrees (ICRS J2000.0) |
+| `dec` | float | Declination in decimal degrees (ICRS J2000.0) |
+| `period` | float | Barycentric spin period in seconds, corrected for Earth's orbital motion; normal pulsars: 0.1–5 s, millisecond pulsars: <0.03 s (fastest known: ~1.4 ms); the most precisely measured quantity for each pulsar |
+| `period_dot` | float | First time derivative of the spin period (dimensionless, s/s); positive values indicate spin-down (energy loss); normal pulsars: ~10⁻¹⁵, millisecond pulsars: ~10⁻²⁰, magnetars: ~10⁻¹¹; null if timing baseline is too short |
+| `dm` | float | Dispersion measure in pc/cm³ — the integrated column density of free electrons along the line of sight; used with Galactic electron density models (NE2001, YMW16) to estimate distance; higher DM implies greater distance or denser intervening medium |
+| `flux_1400_mhz` | float | Mean radio flux density at 1400 MHz in milliJansky (mJy); most pulsars: 0.1–10 mJy; null for pulsars not detected at this frequency or measured only at other frequencies |
+| `companion_type` | string | Classification of the binary companion star when present: "NS" (neutron star), "WD" (white dwarf), "MS" (main sequence), "He" (helium white dwarf), "UL" (ultra-light/planet-mass); null for isolated pulsars |
+| `dm_distance` | float | Distance estimate in kiloparsecs derived from the dispersion measure using a Galactic free-electron density model; typical uncertainty ~20–30%; null if DM is unmeasured |
+| `age` | float | Characteristic spin-down age in years, defined as τ = P / (2Ṗ); an upper limit on true age since it assumes the pulsar was born spinning infinitely fast; normal pulsars: 10⁴–10⁸ yr, millisecond pulsars: often exceed the Hubble time |
+| `b_surf` | float | Estimated surface dipole magnetic field strength in Gauss, derived as B = 3.2×10¹⁹ √(P·Ṗ); magnetars: 10¹⁴–10¹⁵ G, normal pulsars: 10¹²–10¹³ G, millisecond pulsars (recycled): 10⁸–10⁹ G; null if period_dot is unavailable |
+| `e_dot` | float | Spin-down luminosity (rotational energy loss rate) in erg/s, defined as Ė = −4π²Iİ/P³ where I ~ 10⁴⁵ g cm² is the moment of inertia; ranges from ~10³⁰ to ~10³⁸ erg/s; the Crab pulsar has Ė ~ 5×10³⁸ erg/s |
+| `pulsar_type` | string | Physical classification: "PSR" (radio pulsar), "SGR" (soft gamma repeater / magnetar), "AXP" (anomalous X-ray pulsar / magnetar), "XINS" (X-ray isolated neutron star), "RRAT" (rotating radio transient emitting sporadic bursts); null for unclassified sources |
+| `pm_tot` | float | Total proper motion in mas/yr (milliarcseconds per year), combining RA and Dec components; pulsars have high space velocities (median ~200 km/s) due to natal supernova kicks; null if astrometric solution is unavailable |
+| `discovery_date` | int | Year of discovery publication; ranges from 1967 (first pulsar, CP 1919) to present |
+| `assoc_object` | string | Astrophysical associations such as supernova remnant (SNR), globular cluster name, or X-ray source; important for age and formation history; null for isolated field pulsars with no known association |
+| `binary_model` | string | Orbital dynamics model used to fit the binary system (e.g. "BT" for Blandford-Teukolsky, "DD" for Damour-Deruelle, "ELL1" for near-circular orbits); null for isolated (non-binary) pulsars |
+| `is_millisecond` | bool | Derived flag: True if period < 30 ms, indicating a recycled pulsar spun up by accretion from a companion; millisecond pulsars are among the most stable clocks in the universe and anchor pulsar timing arrays |
+| `is_binary` | bool | Derived flag: True if binary_model is non-null, indicating the pulsar has a detected orbital companion |
 
 ## Quick stats
 

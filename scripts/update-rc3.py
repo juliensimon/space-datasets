@@ -160,22 +160,22 @@ Although compiled in 1991, RC3 remains widely cited because no subsequent catalo
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `name` | string | Galaxy name/designation |
-| `pgc_number` | string | PGC (Principal Galaxies Catalogue) number |
-| `ra_deg` | float64 | Right ascension J2000 (degrees) |
-| `dec_deg` | float64 | Declination J2000 (degrees) |
-| `morphological_type` | string | Morphological type string (e.g. "SBbc", "E3") |
-| `morphological_type_t` | float64 | Numerical Hubble type T (-5=E to +10=Irr) |
-| `luminosity_class` | float64 | Luminosity class (van den Bergh system) |
-| `surface_brightness` | float64 | Mean surface brightness |
-| `bt_magnitude` | float64 | Total apparent B magnitude |
-| `e_bt_magnitude` | float64 | Error on B magnitude |
-| `b_v_color` | float64 | B-V color index |
-| `u_b_color` | float64 | U-B color index |
-| `helio_radial_velocity` | float64 | Heliocentric radial velocity (km/s) |
-| `e_helio_radial_velocity` | float64 | Error on radial velocity (km/s) |
-| `log_diameter_d25` | float64 | Log of isophotal diameter D25 (0.1 arcmin) |
-| `log_axis_ratio_r25` | float64 | Log of axis ratio at D25 isophote |
+| `name` | string | Galaxy primary designation (e.g., "NGC 1068", "M 77", "IC 342"); null for objects cataloged only by PGC number |
+| `pgc_number` | string | PGC (Principal Galaxies Catalogue) identifier; the standard cross-reference number used by HyperLEDA and most modern galaxy databases |
+| `ra_deg` | float64 | ICRS J2000.0 right ascension in degrees (0–360) |
+| `dec_deg` | float64 | ICRS J2000.0 declination in degrees (-90–+90) |
+| `morphological_type` | string | de Vaucouleurs revised Hubble type string (e.g., "SA(rs)bc", "SBb", "E0", "Irr"); encodes bar strength (SA/SAB/SB), inner ring, and arm openness; null if unclassified |
+| `morphological_type_t` | float64 | Numerical de Vaucouleurs type T: -5 = elliptical (E), -3 = lenticular (S0-), 0 = lenticular (S0), 1–9 = spiral (Sa=1 to Sd=7, Sdm=8), 10 = irregular; null if unclassified |
+| `luminosity_class` | float64 | van den Bergh luminosity class I–V (lower = brighter); distinguishes supergiant spirals (I) from dwarf spirals (V); null for ellipticals and most non-spiral types |
+| `surface_brightness` | float64 | Mean effective surface brightness within the D25 isophote in B mag/arcsec^2; higher values indicate fainter (lower surface brightness) galaxies; null if not measured |
+| `bt_magnitude` | float64 | Total apparent B-band magnitude (Johnson B); null for objects without CCD photometry; bright galaxies typically 8–15 mag |
+| `e_bt_magnitude` | float64 | Uncertainty on bt_magnitude in magnitudes; null if bt_magnitude is null |
+| `b_v_color` | float64 | Total B-V color index in magnitudes; ellipticals: ~0.90, spirals: ~0.45–0.80, irregulars: ~0.30–0.50; null if not measured |
+| `u_b_color` | float64 | Total U-B color index in magnitudes; traces young stellar populations; star-forming galaxies: ~-0.3 to 0.0, old ellipticals: ~0.5; null if not measured |
+| `helio_radial_velocity` | float64 | Heliocentric recession velocity in km/s from optical spectroscopy; null if no spectrum available |
+| `e_helio_radial_velocity` | float64 | 1-sigma uncertainty on helio_radial_velocity in km/s; null if helio_radial_velocity is null |
+| `log_diameter_d25` | float64 | Log10 of the major-axis isophotal diameter at 25 B-mag/arcsec^2 in units of 0.1 arcmin (i.e., diameter in arcmin = 10^log_diameter_d25 / 10); null if not measured |
+| `log_axis_ratio_r25` | float64 | Log10 of the major-to-minor axis ratio at the D25 isophote (log10(a/b)); 0 = circular, higher = more inclined/elongated; null if not measured |
 
 ## Quick stats
 

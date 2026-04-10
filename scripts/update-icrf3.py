@@ -130,9 +130,9 @@ ICRF3 is the authoritative astrometric reference for missions such as Gaia, whic
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `iers_name` | string | IERS designation of the source |
-| `ra_deg` | float64 | Right ascension (degrees, ICRS) |
-| `dec_deg` | float64 | Declination (degrees, ICRS) |
+| `iers_name` | string | Official IERS source designation in B1950 sexagesimal format (HHMM+DDd, e.g. "0002-478"); this is the authoritative name used in geodetic VLBI scheduling, Earth orientation monitoring, and spacecraft navigation — do not confuse with J2000 designations used in optical catalogs |
+| `ra_deg` | float64 | Right ascension of the extragalactic radio source in degrees, ICRS J2000.0 epoch; range 0–360; defining sources carry positional accuracies of ~30 microarcseconds, making these the most precisely located objects in the sky; based on multi-decade VLBI observations, not optical positions |
+| `dec_deg` | float64 | Declination of the extragalactic radio source in degrees, ICRS J2000.0; range −90 to +90; positive north of celestial equator; southern hemisphere coverage is sparser due to fewer southern VLBI stations |
 
 Additional columns from the catalog are included with snake_case names.
 

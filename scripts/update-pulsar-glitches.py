@@ -309,14 +309,18 @@ def main():
 
         # Build schema table from actual columns
         col_descriptions = {
-            "jname": ("string", "Pulsar J-name (e.g. J0534+2200)"),
-            "bname": ("string", "Pulsar B-name (e.g. B0531+21)"),
-            "epoch_mjd": ("float", "Glitch epoch (Modified Julian Date)"),
-            "epoch_datetime": ("datetime", "Glitch epoch (UTC datetime, derived from MJD)"),
-            "delta_nu_nu": ("float", "Fractional frequency change (delta_nu/nu), the glitch size"),
-            "delta_nudot_nudot": ("float", "Fractional frequency derivative change (delta_nudot/nudot)"),
-            "is_large_glitch": ("bool", "True if delta_nu/nu > 1e-6 (giant glitch)"),
-            "references": ("string", "Literature references"),
+            "jname": ("string", "Pulsar J2000 designation (e.g. J0534+2200 = Crab, J0835-4510 = Vela); format encodes position"),
+            "bname": ("string", "Pulsar B1950 designation (e.g. B0531+21 = Crab, B0833-45 = Vela); older naming convention, not all pulsars have a B-name"),
+            "n_glitches": ("int", "Total number of glitches recorded from this pulsar in the catalog; Vela-like pulsars glitch most frequently (~every 2–3 years)"),
+            "epoch_mjd": ("float", "Glitch epoch in Modified Julian Date (MJD = JD − 2400000.5); MJD 40000 ≈ 1968, MJD 60000 ≈ 2023"),
+            "epoch_mjd_err": ("float", "1σ uncertainty on glitch epoch (MJD); typically days to weeks depending on timing cadence"),
+            "epoch_datetime": ("datetime", "Glitch epoch as UTC datetime, derived from epoch_mjd; provided for convenience"),
+            "delta_nu_nu": ("float", "Fractional spin-up magnitude ΔΩ/Ω (dimensionless); typical range 10⁻⁹–10⁻⁵; large (Vela-class) glitches: ~10⁻⁶; converted from catalog units of 10⁻⁹"),
+            "delta_nu_nu_err": ("float", "1σ uncertainty on delta_nu_nu (dimensionless)"),
+            "delta_nudot_nudot": ("float", "Fractional change in spin-down rate Δν̇/ν̇ (dimensionless) after the glitch; typically negative (spin-down rate increases); often partially recovers on timescales of days to months; null for smaller glitches where this component is unresolved; converted from catalog units of 10⁻³"),
+            "delta_nudot_nudot_err": ("float", "1σ uncertainty on delta_nudot_nudot (dimensionless)"),
+            "is_large_glitch": ("bool", "True if delta_nu_nu > 10⁻⁶ (giant/Vela-class glitch involving large angular momentum transfer from the superfluid interior); False for smaller glitches; null if delta_nu_nu is unmeasured"),
+            "references": ("string", "Bibliographic references for this glitch event; may cite multiple papers if the glitch was reported or reanalysed in multiple studies"),
         }
 
         schema_rows = []

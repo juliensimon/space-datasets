@@ -169,14 +169,14 @@ that may share a common origin in the same star-forming complex.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `ra_deg` | float64 | Right ascension J2000 (degrees) |
-| `dec_deg` | float64 | Declination J2000 (degrees) |
-| `distance_pc` | float64 | Distance (parsecs) |
-| `parallax_mas` | float64 | Parallax (milliarcseconds) |
-| `log_age` | float64 | Logarithmic age (log10 years) |
-| `extinction_av` | float64 | Visual extinction A_V (mag) |
-| `n_members` | float64 | Number of identified members |
-| `radial_velocity_kms` | float64 | Radial velocity (km/s) |
+| `ra_deg` | float64 | ICRS J2000.0 right ascension of the cluster center in degrees (0–360); used for sky pointing and cross-matching with Gaia and other star catalogs |
+| `dec_deg` | float64 | ICRS J2000.0 declination of the cluster center in degrees (-90 to +90); combined with `ra_deg` gives the full equatorial position |
+| `distance_pc` | float64 | Heliocentric distance in parsecs (1 pc = 3.26 ly); typical open cluster range 100–3000 pc; derived from Gaia DR3 parallaxes or main-sequence fitting; null if distance is poorly constrained |
+| `parallax_mas` | float64 | Mean cluster parallax in milliarcseconds from Gaia DR3; inverse approximately gives distance (1/parallax_mas × 1000 = distance in pc); null if not measured |
+| `log_age` | float64 | Cluster age as log10(age in years); e.g. 7.0 = 10 Myr, 8.5 = 316 Myr, 9.0 = 1 Gyr; derived from Bayesian isochrone fitting using PARSEC stellar models; null if age is not well constrained |
+| `extinction_av` | float64 | Line-of-sight visual extinction A_V in magnitudes; amount by which dust dims the cluster in the V-band; young embedded clusters can exceed A_V = 5; null if not measured |
+| `n_members` | float64 | Number of confirmed or probable cluster members identified from Gaia proper motion and parallax criteria; null if membership study was not performed |
+| `radial_velocity_kms` | float64 | Mean radial velocity of the cluster in km/s (positive = receding); measured from spectra of member stars; enables full 3D kinematics and Galactic orbit calculation; null for clusters without spectroscopic observations |
 
 ## Quick stats
 

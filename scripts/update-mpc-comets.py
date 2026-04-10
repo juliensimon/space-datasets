@@ -229,26 +229,26 @@ The absolute magnitude H and slope parameter G characterize a comet's intrinsic 
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `periodic_comet_number` | Int64 | IAU periodic comet number (null for non-periodic) |
-| `orbit_type` | string | MPC orbit type code: C (long-period), P (periodic), D (defunct), X (uncertain), I (interstellar), A (minor-planet-like) |
-| `orbit_type_name` | string | Human-readable orbit type |
-| `packed_designation` | string | MPC packed provisional designation |
-| `perihelion_year` | int | Year of perihelion passage |
-| `perihelion_month` | int | Month of perihelion passage |
-| `perihelion_day` | float | Day of perihelion passage (TT) |
-| `perihelion_date` | datetime | Perihelion passage date (truncated to day) |
-| `perihelion_distance_au` | float64 | Perihelion distance (AU) |
-| `eccentricity` | float64 | Orbital eccentricity |
-| `arg_perihelion_deg` | float64 | Argument of perihelion, J2000.0 (degrees) |
-| `lon_asc_node_deg` | float64 | Longitude of the ascending node, J2000.0 (degrees) |
-| `inclination_deg` | float64 | Inclination to ecliptic, J2000.0 (degrees) |
-| `epoch_date` | datetime | Epoch of osculating elements (perturbed solutions) |
-| `absolute_magnitude_h` | float64 | Absolute (total) magnitude parameter H |
-| `slope_parameter_g` | float64 | Photometric slope parameter G |
-| `orbital_period_years` | float64 | Orbital period in years (Kepler's 3rd law, null for hyperbolic) |
-| `is_hyperbolic` | bool | True if eccentricity >= 1.0 |
-| `name` | string | Comet name / designation |
-| `reference` | string | MPC reference for the orbit solution |
+| `periodic_comet_number` | Int64 | IAU sequential number for periodic comets (e.g., 1 = Halley, 2 = Encke); null for non-periodic, defunct, uncertain, and interstellar comets |
+| `orbit_type` | string | MPC single-letter orbit type: C = long-period (Oort Cloud origin), P = short-period (<200 yr), D = defunct (no longer observable), X = lost/uncertain, I = interstellar, A = asteroid-like orbit |
+| `orbit_type_name` | string | Human-readable expansion of orbit_type (long-period, periodic, defunct, uncertain, interstellar, minor-planet-like) |
+| `packed_designation` | string | MPC packed provisional designation encoding discovery survey, year, and sequence; null for well-known periodic comets identified only by number |
+| `perihelion_year` | int | Calendar year (CE) of the most recent perihelion passage used in the orbital solution |
+| `perihelion_month` | int | Month (1–12) of the most recent perihelion passage |
+| `perihelion_day` | float | Fractional day of perihelion passage in Terrestrial Time (TT); includes sub-day precision (e.g., 14.567) |
+| `perihelion_date` | datetime | Perihelion passage date truncated to the nearest whole day (UTC); null for a small number of unparseable entries |
+| `perihelion_distance_au` | float64 | Distance from the Sun at perihelion in AU; sungrazers have q < 0.01 AU; values near or above 5 AU indicate distant long-period comets |
+| `eccentricity` | float64 | Orbital eccentricity; e < 1 = bound elliptical, e ≈ 1 = parabolic, e > 1 = hyperbolic (interstellar or strongly perturbed) |
+| `arg_perihelion_deg` | float64 | Argument of perihelion ω in degrees (0–360°), J2000.0 ecliptic; angle from ascending node to perihelion direction |
+| `lon_asc_node_deg` | float64 | Longitude of the ascending node Ω in degrees (0–360°), J2000.0 ecliptic; angle from vernal equinox to orbit–ecliptic intersection |
+| `inclination_deg` | float64 | Inclination to the J2000.0 ecliptic in degrees (0–180°); i > 90° = retrograde orbit, typical of dynamically new Oort Cloud comets |
+| `epoch_date` | datetime | Reference epoch for perturbed (non-gravitational) osculating element solutions; null for unperturbed or two-body solutions |
+| `absolute_magnitude_h` | float64 | Total absolute magnitude parameter H used in the standard cometary brightness law m = H + 5 log Δ + 10 log r; null for comets lacking photometric data |
+| `slope_parameter_g` | float64 | Photometric slope parameter G (default 4.0 for comets when not fitted); governs how brightness scales with heliocentric distance |
+| `orbital_period_years` | float64 | Orbital period in years computed from Kepler's 3rd law (P = a^1.5); null for hyperbolic or parabolic orbits (e ≥ 1) |
+| `is_hyperbolic` | bool | True when eccentricity ≥ 1.0, indicating an unbound or interstellar trajectory |
+| `name` | string | Official comet name or designation (e.g., "1P/Halley", "C/2020 F3 (NEOWISE)"); null for a small number of provisional entries |
+| `reference` | string | MPC short reference code for the published orbital solution (e.g., "MPC 12345"); null if not recorded |
 
 ## Quick stats
 

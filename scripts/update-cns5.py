@@ -235,34 +235,34 @@ activity-age relations, and planetary system evolution.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `cns5_id` | int | CNS5 designation number |
-| `gj_name` | string | Gliese-Jahreiss identifier |
-| `component` | string | Component suffix for binary/multiple systems |
-| `n_components` | float64 | Number of components in the system |
-| `problematic_flag` | float64 | Problematic entry flag |
-| `gj_primary` | string | GJ number of the primary component |
-| `gaia_dr3_id` | int64 | Gaia EDR3 source identifier |
-| `hip_id` | float64 | Hipparcos identifier |
-| `ra_deg` | float64 | Right ascension J2000 (degrees) |
-| `dec_deg` | float64 | Declination J2000 (degrees) |
-| `epoch` | float64 | Reference epoch for coordinates |
-| `parallax_mas` | float64 | Trigonometric parallax (mas) |
-| `parallax_error_mas` | float64 | Parallax uncertainty (mas) |
-| `pm_ra_mas_yr` | float64 | Proper motion in RA (mas/yr) |
-| `pm_dec_mas_yr` | float64 | Proper motion in Dec (mas/yr) |
-| `radial_velocity_km_s` | float64 | Radial velocity (km/s) |
-| `g_mag` | float64 | Gaia G magnitude |
-| `bp_mag` | float64 | Gaia BP magnitude |
-| `rp_mag` | float64 | Gaia RP magnitude |
-| `j_mag` | float64 | 2MASS J magnitude |
-| `h_mag` | float64 | 2MASS H magnitude |
-| `ks_mag` | float64 | 2MASS Ks magnitude |
-| `w1_mag` | float64 | WISE W1 magnitude |
-| `w2_mag` | float64 | WISE W2 magnitude |
-| `w3_mag` | float64 | WISE W3 magnitude |
-| `w4_mag` | float64 | WISE W4 magnitude |
-| `distance_pc` | float64 | Distance in parsecs (derived from parallax) |
-| `simbad_name` | string | SIMBAD object name |
+| `cns5_id` | int | Sequential designation number in the CNS5 catalog |
+| `gj_name` | string | Standard Gliese-Jahreiss catalog identifier (e.g., "GJ 832"); the canonical identifier for nearby stars; null for stars added after the original GJ catalog that lack an assigned GJ number |
+| `component` | string | Component suffix (e.g., "A", "B", "C") distinguishing individual members of binary or multiple star systems; null for single stars |
+| `n_components` | float64 | Total number of gravitationally bound components in the stellar system; null if multiplicity is unknown |
+| `problematic_flag` | float64 | Flag indicating a questionable entry (e.g., uncertain parallax, possible non-stellar object, or duplicate); non-zero values warrant caution; null means no issue flagged |
+| `gj_primary` | string | GJ identifier of the primary (brightest) component for systems where this entry is a secondary; null for primaries and single stars |
+| `gaia_dr3_id` | int64 | Gaia Data Release 3 source identifier; use to cross-match with the full Gaia catalog; null if no Gaia counterpart was matched |
+| `hip_id` | float64 | ESA Hipparcos mission catalog number (HIP NNNNN); the astrometric mission (launched 1989) that provided sub-milliarcsecond parallaxes for ~118,000 stars; null for stars too faint or not observed by Hipparcos |
+| `ra_deg` | float64 | ICRS J2000.0 right ascension in decimal degrees; high-precision position (arcsecond-level accuracy from Hipparcos/Gaia) |
+| `dec_deg` | float64 | ICRS J2000.0 declination in decimal degrees; high-precision position (arcsecond-level accuracy from Hipparcos/Gaia) |
+| `epoch` | float64 | Reference epoch (Julian year, e.g., 2016.0) at which the coordinates and proper motion are valid; needed to propagate positions to other epochs |
+| `parallax_mas` | float64 | Trigonometric parallax in milliarcseconds — the apparent angular shift of the star due to Earth's orbit; distance_pc = 1000 / parallax_mas; typical range for CNS5: 40–768 mas (2.5–25 pc) |
+| `parallax_error_mas` | float64 | 1-sigma uncertainty on the parallax in milliarcseconds; used to propagate distance uncertainty; larger values indicate less reliable distances |
+| `pm_ra_mas_yr` | float64 | Proper motion in right ascension (includes cos(dec) factor) in mas/yr; the apparent angular motion of the star on the sky; high proper motion (>100 mas/yr) is a hallmark of nearby stars |
+| `pm_dec_mas_yr` | float64 | Proper motion in declination in mas/yr; combined with pm_ra_mas_yr, used to trace stellar trajectories and confirm physical proximity |
+| `radial_velocity_km_s` | float64 | Line-of-sight velocity in km/s; positive = receding, negative = approaching; combined with proper motion to compute the full 3D space velocity; null if not measured |
+| `g_mag` | float64 | Gaia broad-band G magnitude (~330–1050 nm); the primary Gaia brightness measurement; null if no Gaia match |
+| `bp_mag` | float64 | Gaia blue photometer (BP, ~330–680 nm) magnitude; used with rp_mag to compute BP-RP color index; null if no Gaia match |
+| `rp_mag` | float64 | Gaia red photometer (RP, ~630–1050 nm) magnitude; used with bp_mag to compute BP-RP color index; null if no Gaia match |
+| `j_mag` | float64 | 2MASS J-band (~1.25 µm) magnitude; useful for characterizing cool and dust-obscured stars; null if not in 2MASS |
+| `h_mag` | float64 | 2MASS H-band (~1.65 µm) magnitude; null if not in 2MASS |
+| `ks_mag` | float64 | 2MASS Ks-band (~2.17 µm) magnitude; null if not in 2MASS |
+| `w1_mag` | float64 | WISE W1-band (~3.4 µm) magnitude; sensitive to stellar photospheres of cool stars and circumstellar dust; null if not in WISE |
+| `w2_mag` | float64 | WISE W2-band (~4.6 µm) magnitude; null if not in WISE |
+| `w3_mag` | float64 | WISE W3-band (~12 µm) magnitude; excess emission can indicate a debris disk; null if not in WISE |
+| `w4_mag` | float64 | WISE W4-band (~22 µm) magnitude; null if not in WISE |
+| `distance_pc` | float64 | Distance from the Sun in parsecs, derived as 1000 / parallax_mas; all entries are within 25 pc by catalog definition |
+| `simbad_name` | string | Primary SIMBAD database identifier for the object; useful for cross-matching with the broader astronomical literature; null if not resolved in SIMBAD |
 
 *Plus error columns and reference columns — {len(df.columns)} columns total.*
 

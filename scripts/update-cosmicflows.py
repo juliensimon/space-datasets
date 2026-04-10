@@ -183,36 +183,36 @@ The eight independent distance methods consolidated in CF4 each have different s
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `pgc` | int | PGC galaxy number |
-| `pgc_primary` | int | Primary PGC number (for grouped galaxies) |
-| `morphological_type` | float | Morphological type code (de Vaucouleurs T) |
-| `velocity_cmb` | float | Velocity in CMB frame (km/s) |
-| `distance_modulus` | float | Best-estimate distance modulus (mag) |
-| `distance_modulus_err` | float | Uncertainty on distance modulus (mag) |
-| `distance_mpc` | float | Distance in Mpc (derived from distance modulus) |
-| `dm_sn_ia` | float | Distance modulus from Type Ia supernovae |
-| `dm_sn_ia_err` | float | Uncertainty on SNe Ia distance modulus |
-| `dm_tully_fisher` | float | Distance modulus from Tully-Fisher relation |
-| `dm_tully_fisher_err` | float | Uncertainty on Tully-Fisher distance modulus |
-| `dm_fundamental_plane` | float | Distance modulus from fundamental plane |
-| `dm_fundamental_plane_err` | float | Uncertainty on fundamental plane DM |
-| `dm_surface_brightness` | float | Distance modulus from surface brightness fluctuations |
-| `dm_surface_brightness_err` | float | Uncertainty on SBF distance modulus |
-| `dm_sn_ii` | float | Distance modulus from Type II supernovae |
-| `dm_sn_ii_err` | float | Uncertainty on SNe II distance modulus |
-| `dm_trgb` | float | Distance modulus from tip of red giant branch |
-| `dm_trgb_err` | float | Uncertainty on TRGB distance modulus |
-| `dm_cepheid` | float | Distance modulus from Cepheid variables |
-| `dm_cepheid_err` | float | Uncertainty on Cepheid distance modulus |
-| `dm_maser` | float | Distance modulus from maser observations |
-| `dm_maser_err` | float | Uncertainty on maser distance modulus |
-| `ra_deg` | float | Right ascension J2000 (degrees) |
-| `dec_deg` | float | Declination J2000 (degrees) |
-| `glon_deg` | float | Galactic longitude (degrees) |
-| `glat_deg` | float | Galactic latitude (degrees) |
-| `sgl_deg` | float | Supergalactic longitude (degrees) |
-| `sgb_deg` | float | Supergalactic latitude (degrees) |
-| `in_cf3` | bool | Present in Cosmicflows-3 catalog |
+| `pgc` | int | Principal Galaxies Catalog number; the primary cross-catalog galaxy identifier used by HyperLEDA and most modern galaxy databases |
+| `pgc_primary` | int | PGC number of the group primary (for galaxies associated with a brighter host); equals pgc for isolated galaxies |
+| `morphological_type` | float | de Vaucouleurs numerical type T: -5 = elliptical (E), 0 = lenticular (S0), 1–9 = spiral (Sa=1 to Sd=7), 10 = irregular; null if unclassified |
+| `velocity_cmb` | float | Recession velocity in the CMB rest frame in km/s (cz corrected for Local Group and CMB dipole); range ~0 to ~60,000 km/s |
+| `distance_modulus` | float | Best-estimate distance modulus mu = 5*log10(d/10 pc) in mag; range ~25 (nearby) to ~38 (500 Mpc); null if no distance indicator available |
+| `distance_modulus_err` | float | 1-sigma uncertainty on the best-estimate distance modulus in mag; ~0.05–0.10 for Cepheids/TRGB, ~0.40 for Tully-Fisher/FP |
+| `distance_mpc` | float | Physical distance in Mpc derived from distance_modulus via d = 10^((mu-25)/5); null if distance_modulus is null |
+| `dm_sn_ia` | float | Distance modulus from Type Ia supernovae standardizable candles in mag; null if no SNe Ia observation for this galaxy |
+| `dm_sn_ia_err` | float | 1-sigma uncertainty on the SNe Ia distance modulus in mag; null if dm_sn_ia is null |
+| `dm_tully_fisher` | float | Distance modulus from the Tully-Fisher relation (spiral rotation width vs. luminosity) in mag; ~20% precision; null if not applicable |
+| `dm_tully_fisher_err` | float | 1-sigma uncertainty on the Tully-Fisher distance modulus in mag; null if dm_tully_fisher is null |
+| `dm_fundamental_plane` | float | Distance modulus from the fundamental plane of elliptical galaxies (sigma, Re, SB) in mag; ~20% precision; null if not applicable |
+| `dm_fundamental_plane_err` | float | 1-sigma uncertainty on the fundamental plane distance modulus in mag; null if dm_fundamental_plane is null |
+| `dm_surface_brightness` | float | Distance modulus from surface brightness fluctuations (SBF) of elliptical/S0 galaxies in mag; null if not applicable |
+| `dm_surface_brightness_err` | float | 1-sigma uncertainty on the SBF distance modulus in mag; null if dm_surface_brightness is null |
+| `dm_sn_ii` | float | Distance modulus from Type II supernovae (expanding photosphere method) in mag; null if no SNe II observation |
+| `dm_sn_ii_err` | float | 1-sigma uncertainty on the SNe II distance modulus in mag; null if dm_sn_ii is null |
+| `dm_trgb` | float | Distance modulus from the tip of the red giant branch (TRGB) method in mag; ~5% precision; limited to d < ~30 Mpc; null if not measured |
+| `dm_trgb_err` | float | 1-sigma uncertainty on the TRGB distance modulus in mag; null if dm_trgb is null |
+| `dm_cepheid` | float | Distance modulus from Cepheid period-luminosity relation in mag; most precise method (~5%); limited to d < ~30 Mpc; null if not measured |
+| `dm_cepheid_err` | float | 1-sigma uncertainty on the Cepheid distance modulus in mag; null if dm_cepheid is null |
+| `dm_maser` | float | Distance modulus from megamaser geometric distance (water masers in Keplerian orbits) in mag; highest-precision method; null for most galaxies |
+| `dm_maser_err` | float | 1-sigma uncertainty on the maser distance modulus in mag; null if dm_maser is null |
+| `ra_deg` | float | ICRS J2000.0 right ascension in degrees (0–360) |
+| `dec_deg` | float | ICRS J2000.0 declination in degrees (-90–+90) |
+| `glon_deg` | float | Galactic longitude in degrees (0–360) |
+| `glat_deg` | float | Galactic latitude in degrees (-90–+90) |
+| `sgl_deg` | float | Supergalactic longitude in degrees (0–360); coordinate system aligned with the local supercluster plane |
+| `sgb_deg` | float | Supergalactic latitude in degrees (-90–+90); positive toward the north supergalactic pole |
+| `in_cf3` | bool | True if this galaxy also appeared in the earlier Cosmicflows-3 catalog; False for galaxies newly added in CF4 |
 
 ## Quick stats
 

@@ -241,27 +241,27 @@ The spectroscopic classification of TDEs into hydrogen-rich (TDE-H), helium-rich
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `name` | string | Primary name (e.g., "ASASSN-14li", "Swift J1644+57") |
-| `aliases` | string | Alternative designations (comma-separated) |
-| `ra_hms` | string | Right ascension in HH:MM:SS.ss format |
-| `dec_dms` | string | Declination in +DD:MM:SS.ss format |
-| `ra` | float64 | Right ascension in decimal degrees |
-| `dec` | float64 | Declination in decimal degrees |
-| `redshift` | float64 | Spectroscopic redshift |
-| `claimed_type` | string | Classification (TDE, TDE?, TDE-H, TDE-He, etc.) |
-| `host_galaxy` | string | Host galaxy name |
-| `host_ra` | float64 | Host galaxy RA in decimal degrees |
-| `host_dec` | float64 | Host galaxy Dec in decimal degrees |
-| `host_offset_arcsec` | float64 | Angular offset from host nucleus (arcsec) |
-| `peak_mag` | float64 | Peak apparent magnitude |
-| `peak_abs_mag` | float64 | Peak absolute magnitude |
-| `peak_date` | datetime | Date of peak brightness |
-| `discovery_date` | datetime | Date of discovery |
-| `discovery_year` | int64 | Year of discovery |
-| `luminosity_distance_mpc` | float64 | Luminosity distance in Mpc |
-| `velocity_km_s` | float64 | Recession velocity in km/s |
-| `ebv` | float64 | Milky Way E(B-V) extinction |
-| `instruments` | string | Instruments used for observations |
+| `name` | string | Primary TDE designation (e.g., "ASASSN-14li", "AT2019qiz", "Swift J1644+57"); modern transients use AT prefix until spectroscopically confirmed |
+| `aliases` | string | Comma-separated list of alternative designations from different surveys or reporting telegrams; null if no aliases recorded |
+| `ra_hms` | string | Right ascension of the TDE / host nucleus in sexagesimal format (HH:MM:SS.ss) |
+| `dec_dms` | string | Declination of the TDE / host nucleus in sexagesimal format (+DD:MM:SS.ss) |
+| `ra` | float64 | Right ascension in decimal degrees (J2000.0 ICRS); range 0–360; null for ~10% of entries lacking coordinates |
+| `dec` | float64 | Declination in decimal degrees (J2000.0 ICRS); range −90 to +90; null when `ra` is null |
+| `redshift` | float64 | Host galaxy spectroscopic redshift; TDE surveys typically probe 0.01 < z < 1; null for ~40% of entries; range ~0.001 (very nearby) to ~1 |
+| `claimed_type` | string | Spectroscopic classification: "TDE" (confirmed), "TDE?" (candidate), "TDE-H" (hydrogen-dominated spectrum), "TDE-He" (helium-dominated), "TDE-H+He" (mixed), "TDE-featureless"; null for unclassified candidates |
+| `host_galaxy` | string | Name of the host galaxy where the TDE occurred; TDEs preferentially occur in post-starburst ("E+A") galaxies; null for ~30% of entries |
+| `host_ra` | float64 | Host galaxy nucleus right ascension in decimal degrees; may differ slightly from TDE position for well-resolved hosts |
+| `host_dec` | float64 | Host galaxy nucleus declination in decimal degrees |
+| `host_offset_arcsec` | float64 | Angular offset between the TDE position and the host nucleus in arcseconds; genuine TDEs should be coincident with the nucleus (offset < 1″ for high-z events); null for most entries |
+| `peak_mag` | float64 | Peak apparent magnitude (filter unspecified, typically optical/UV); null for ~60% of entries |
+| `peak_abs_mag` | float64 | Peak absolute magnitude; typical TDE: −17 to −21 mag; null for entries lacking redshift or peak apparent magnitude |
+| `peak_date` | datetime | UTC date of peak brightness; null for events where the light curve peak was not well-constrained |
+| `discovery_date` | datetime | UTC date the transient was first reported; format YYYY-MM-DD |
+| `discovery_year` | int64 | Year of discovery; derived from `discovery_date`; null when discovery_date is unavailable |
+| `luminosity_distance_mpc` | float64 | Luminosity distance in megaparsecs, computed from redshift; null when redshift is unavailable |
+| `velocity_km_s` | float64 | Host galaxy recession velocity in km/s (v = cz); null when redshift is unavailable |
+| `ebv` | float64 | Milky Way line-of-sight dust reddening E(B-V) in magnitudes from the Schlegel/Schlafly dust maps; used to correct observed magnitudes for extinction |
+| `instruments` | string | Instruments or facilities used for observations (e.g., "ZTF", "Swift-XRT", "SDSS"); null for many entries |
 
 ## Quick stats
 

@@ -229,26 +229,26 @@ Despite its relatively modest size compared to modern survey catalogs containing
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `hr_number` | int64 | Harvard Revised (HR) photometry number (primary key) |
-| `name` | string | Common star name (if any) |
-| `hd_number` | int64 | Henry Draper catalog number |
-| `ra_deg` | float64 | Right ascension (degrees, J2000) |
-| `dec_deg` | float64 | Declination (degrees, J2000) |
-| `v_mag` | float64 | Visual (V) magnitude |
-| `b_v_color` | float64 | B-V color index |
-| `u_b_color` | float64 | U-B color index |
-| `r_i_color` | float64 | R-I color index |
-| `spectral_type` | string | MK spectral classification |
-| `spectral_class` | string | Spectral class letter (O, B, A, F, G, K, M) |
-| `pm_ra_arcsec_yr` | float64 | Proper motion in RA (arcsec/yr) |
-| `pm_dec_arcsec_yr` | float64 | Proper motion in Dec (arcsec/yr) |
-| `radial_velocity_kms` | float64 | Radial velocity (km/s) |
-| `rotational_velocity_kms` | float64 | Rotational velocity v sin i (km/s) |
-| `parallax_mas` | float64 | Trigonometric parallax (milliarcseconds) |
-| `variable_name` | string | Variable star designation |
-| `is_variable` | bool | True if star is a known variable |
-| `multiplicity_flag` | string | Multiplicity catalog codes |
-| `is_multiple` | bool | True if star is in a multiple system |
+| `hr_number` | int64 | Harvard Revised (Yale BSC) catalog number — the primary identifier for this catalog, stable since 1908; range 1–9110 |
+| `name` | string | Traditional common name (e.g. "Sirius", "Vega", "Rigel"); null for the ~90% of entries without an established proper name |
+| `hd_number` | int64 | Henry Draper Catalogue number; enables cross-matching with spectroscopic and photometric surveys that use HD identifiers; null if not assigned |
+| `ra_deg` | float64 | Right ascension in the ICRS J2000.0 frame, decimal degrees (0–360) |
+| `dec_deg` | float64 | Declination in the ICRS J2000.0 frame, decimal degrees (−90 to +90) |
+| `v_mag` | float64 | Johnson V-band visual magnitude; brightest entries: Sirius −1.46, Canopus −0.72; catalog is complete to V ≈ 6.5 (naked-eye limit) |
+| `b_v_color` | float64 | Johnson B−V color index; proxy for surface temperature: −0.3 = hot blue O/B star, 0.0 = white A-star (Vega), 0.65 = solar-type G2V, 1.6 = cool red M-giant; null if B photometry unavailable |
+| `u_b_color` | float64 | Johnson U−B color index; sensitive to UV excess from hot stars and emission features; null if U photometry unavailable |
+| `r_i_color` | float64 | Cousins R−I color index; useful for cool-star classification and interstellar reddening estimates; null if R/I photometry unavailable |
+| `spectral_type` | string | Full MK spectral classification (e.g. "A1V" = Sirius, "M2Ib" = Betelgeuse); letter codes temperature class (O–M, hottest to coolest), Roman numeral codes luminosity class (I = supergiant, III = giant, V = main-sequence dwarf) |
+| `spectral_class` | string | Single temperature-class letter extracted from `spectral_type` (O, B, A, F, G, K, M); useful for population statistics and color grouping |
+| `pm_ra_arcsec_yr` | float64 | Proper motion in right ascension (arcsec/yr, includes cos δ factor); null for very distant stars where motion is below measurement threshold |
+| `pm_dec_arcsec_yr` | float64 | Proper motion in declination (arcsec/yr); null if not measured |
+| `radial_velocity_kms` | float64 | Line-of-sight velocity relative to the Solar System barycenter (km/s); positive = receding; null if no spectroscopic measurement available |
+| `rotational_velocity_kms` | float64 | Projected equatorial rotation speed v sin i (km/s); reflects true spin speed modulated by unknown inclination angle i; null for most cool stars and giants |
+| `parallax_mas` | float64 | Trigonometric parallax in milliarcseconds (pre-Hipparcos ground-based values); distance_pc ≈ 1000 / parallax_mas; null for distant supergiants where ground-based parallax is unreliable |
+| `variable_name` | string | Variable star designation (e.g. "alpha Ori" for Betelgeuse); non-null only for confirmed or suspected variables |
+| `is_variable` | bool | True if the star is listed as a known or suspected variable in BSC5; derived from `variable_name` being present |
+| `multiplicity_flag` | string | One or more single-letter codes from the BSC multiplicity catalog (e.g. "D" = double, "V" = visual binary, "S" = spectroscopic binary); null if no multiplicity noted |
+| `is_multiple` | bool | True if `multiplicity_flag` is non-null, indicating the star is in a binary or higher-order multiple system |
 
 ## Quick stats
 

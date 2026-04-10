@@ -259,20 +259,20 @@ This dataset enables researchers to study fragmentation event rates over time, a
 | `parent_norad_id` | int32 | NORAD catalog number of the parent object |
 | `parent_name` | string | Name of the parent spacecraft or rocket body |
 | `parent_object_type` | string | `PAY` (payload), `R/B` (rocket body), `DEB` (debris) |
-| `country_code` | string | Owner/operator country or organization code |
-| `launch_date` | datetime | Date of the original launch (UTC) |
-| `launch_year` | int32 | Year of launch (for grouping/filtering) |
-| `launch_site` | string | Launch site code |
-| `debris_cataloged` | int32 | Total number of cataloged debris pieces from this event |
-| `debris_on_orbit` | int32 | Number of debris pieces still in orbit |
-| `debris_decayed` | int32 | Number of debris pieces that have reentered |
-| `decay_pct` | float | Percentage of debris that has decayed |
-| `apogee_km` | float | Apogee altitude of parent object orbit (km) |
-| `perigee_km` | float | Perigee altitude of parent object orbit (km) |
-| `altitude_km` | float | Mean orbital altitude (km) |
-| `inclination_deg` | float | Orbital inclination (degrees) |
-| `period_min` | float | Orbital period (minutes) |
-| `orbit_type` | string | LEO, MEO, GEO, or HEO |
+| `country_code` | string | Two- or three-letter country or organization code of the owner/operator (e.g. "US", "RU", "CN", "ESA") |
+| `launch_date` | datetime | Date of the original launch of the parent object (UTC); null if not cataloged |
+| `launch_year` | int32 | Year of launch extracted from launch_date; useful for grouping and temporal analysis |
+| `launch_site` | string | COSPAR launch site code (e.g. "TYMSC" = Baikonur, "AFETR" = Cape Canaveral); null if unknown |
+| `debris_cataloged` | int32 | Total number of trackable debris pieces (>~10 cm) cataloged from this event; Fengyun-1C: 3,000+, Cosmos/Iridium: 2,000+ |
+| `debris_on_orbit` | int32 | Number of cataloged debris pieces still in orbit at last update |
+| `debris_decayed` | int32 | Number of cataloged debris pieces that have reentered the atmosphere |
+| `decay_pct` | float | Percentage of total cataloged debris that has decayed (0–100); higher values indicate better long-term cleanup by atmospheric drag |
+| `apogee_km` | float | Apogee altitude of the parent object's orbit above Earth's surface (km); null if orbital elements unavailable |
+| `perigee_km` | float | Perigee altitude of the parent object's orbit above Earth's surface (km); low perigee increases atmospheric drag and debris decay rate |
+| `altitude_km` | float | Mean orbital altitude (km), approximately (apogee + perigee) / 2; used to classify orbit regime |
+| `inclination_deg` | float | Orbital inclination of parent object (degrees, 0–180); determines which latitudes debris can reach |
+| `period_min` | float | Orbital period of parent object (minutes); ~88 min at 200 km LEO, ~1436 min at GEO |
+| `orbit_type` | string | Orbital regime: "LEO" (<2,000 km), "MEO" (2,000–35,786 km), "GEO" (~35,786 km), or "HEO" (highly elliptical) |
 
 ## Quick stats
 

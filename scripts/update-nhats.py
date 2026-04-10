@@ -153,15 +153,15 @@ These asteroids are also prime candidates for in-situ resource utilization (ISRU
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `designation` | string | Primary asteroid designation |
-| `full_name` | string | Full formatted name/designation |
-| `n_viable_trajectories` | int64 | Number of viable round-trip trajectories |
-| `observation_magnitude` | float64 | Observed visual magnitude |
-| `orbit_condition_code` | int64 | Orbit condition code (0=well-determined to 9=poorly) |
-| `max_diameter_m` | float64 | Estimated maximum diameter (meters) |
-| `min_diameter_m` | float64 | Estimated minimum diameter (meters) |
-| `min_delta_v_kms` | float64 | Minimum total delta-v for round trip (km/s) |
-| `min_mission_duration_days` | float64 | Minimum total mission duration (days) |
+| `designation` | string | Primary MPC asteroid designation (e.g., "2021 PH27", "1999 AO10") |
+| `full_name` | string | Full formatted name/designation including any IAU proper name |
+| `n_viable_trajectories` | int64 | Total number of viable round-trip trajectory opportunities found by NHATS, counting all launch dates and mission profiles; higher = more scheduling flexibility |
+| `observation_magnitude` | float64 | Observed visual magnitude at the time of discovery or most recent apparition; null when not available; fainter (larger) values indicate smaller or more distant objects |
+| `orbit_condition_code` | int64 | MPC orbit uncertainty metric (0–9); 0 = well-determined multi-opposition orbit, 9 = very poorly constrained single-opposition arc; affects reliability of accessibility predictions |
+| `max_diameter_m` | float64 | Estimated upper bound on effective diameter in meters, derived from absolute magnitude H and assumed minimum albedo; null when H magnitude is unavailable |
+| `min_diameter_m` | float64 | Estimated lower bound on effective diameter in meters, derived from absolute magnitude H and assumed maximum albedo; null when H magnitude is unavailable |
+| `min_delta_v_kms` | float64 | Minimum total delta-v (Earth departure + outbound transfer + return) for any viable round-trip trajectory in km/s; <6 km/s = energetically comparable to reaching the lunar surface; NHATS search limit is 12 km/s |
+| `min_mission_duration_days` | float64 | Minimum total round-trip mission duration in days across all viable trajectories; NHATS search limit is 450 days; shorter durations preferred for crewed missions due to life support and radiation constraints |
 
 ## Quick stats
 

@@ -295,22 +295,22 @@ observations and global imaging from apoapsis.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `granule_uid` | string | Unique observation identifier |
-| `granule_gid` | string | Group identifier |
-| `obs_id` | string | Observation ID |
-| `dataproduct_type` | string | Data product type (e.g. spectrum, image, profile) |
-| `target_name` | string | Target body (Venus, etc.) |
-| `target_class` | string | Target class (planet, etc.) |
-| `instrument_name` | string | Instrument name (ASPERA-4, MAG, SPICAV, VIRTIS, VeRa, VMC) |
-| `time_min` | float64 | Observation start time (JD) |
-| `time_max` | float64 | Observation end time (JD) |
-| `c1min`/`c1max` | float64 | Spatial coordinate 1 range |
-| `c2min`/`c2max` | float64 | Spatial coordinate 2 range |
-| `spectral_range_min`/`max` | float64 | Spectral range bounds |
-| `processing_level` | string | Data processing level |
-| `creation_date` | string | Data product creation date |
-| `access_url` | string | URL to access the data product |
-| `access_format` | string | Data format (e.g. application/x-pds) |
+| `granule_uid` | string | Unique observation/granule identifier in the PSA archive |
+| `granule_gid` | string | Group identifier linking related granules from the same instrument or sequence |
+| `obs_id` | string | Observation ID assigned by the instrument team |
+| `dataproduct_type` | string | EPN-TAP data product type (e.g. "sp" for spectrum, "im" for image, "pr" for profile, "vo" for occultation) |
+| `target_name` | string | Target body name (primarily "Venus"; also "EARTH", "MOON" for cruise/calibration observations) |
+| `target_class` | string | EPN-TAP target class (e.g. "planet", "satellite") |
+| `instrument_name` | string | Instrument name — one of: ASPERA-4 (plasma/ion analyzer, ion escape rates), MAG (fluxgate magnetometer, induced magnetosphere), SPICAV (UV/IR spectrometer, atmospheric composition/ozone), VIRTIS (visible/IR thermal imaging spectrometer, cloud-top temperatures), VeRa (radio occultation, atmospheric T/P profiles), VMC (visual monitoring camera, cloud motions at UV) |
+| `time_min` | float64 | Observation start time (Julian Date); Venus Express arrived JD 2453480 (Apr 2006) and operated until JD 2456973 (Nov 2014) |
+| `time_max` | float64 | Observation end time (Julian Date) |
+| `c1min`/`c1max` | float64 | Spatial coordinate 1 bounds (longitude in degrees, 0–360 E for Venus surface/atmosphere observations) |
+| `c2min`/`c2max` | float64 | Spatial coordinate 2 bounds (latitude in degrees, -90 to +90; polar orbit with ~250 km periapsis over north pole) |
+| `spectral_range_min`/`max` | float64 | Spectral range bounds in nm (UV: SPICAV/VMC 115–320 nm) or µm (infrared: VIRTIS 0.25–5 µm); null for non-spectral instruments |
+| `processing_level` | string | Data processing level per PDS4 standard (e.g. "2" = calibrated, "3" = derived) |
+| `creation_date` | string | ISO 8601 date when this data product was created or archived in PSA |
+| `access_url` | string | Direct URL to retrieve the data product from the ESA PSA |
+| `access_format` | string | MIME type of the data product (e.g. "application/x-pds4" for PDS4 format) |
 
 The full schema contains up to ~50 columns following the EPN-TAP standard.
 

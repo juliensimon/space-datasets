@@ -221,15 +221,15 @@ spanning {date_range_start} to {date_range_end}.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `date` | datetime | Snapshot date (UTC) |
-| `shell_id` | int | Shell identifier (0-4) |
-| `shell_name` | string | Human-readable shell name, e.g. "Shell 3 (53deg / 550km)" |
-| `total_count` | int | Total satellites in this shell |
-| `operational_count` | int | Satellites at operational altitude |
-| `raising_count` | int | Satellites actively raising orbit |
-| `deorbiting_count` | int | Satellites deorbiting |
-| `isl_operational_count` | int | ISL-capable satellites in this shell |
-| `new_launches` | int | New launches detected this day (reserved) |
+| `date` | datetime | UTC date of the daily snapshot; one set of rows per date per shell |
+| `shell_id` | int | Integer shell identifier (0–4); maps to inclination bands: 0=33°, 1=43°, 2=53°, 3=70°, 4=97.6° |
+| `shell_name` | string | Human-readable shell label encoding inclination and target altitude, e.g. "Shell 3 (53deg / 550km)" |
+| `total_count` | int | Total number of Starlink objects tracked in this shell on this date, including all statuses |
+| `operational_count` | int | Satellites with perigee altitude within the shell's operational band (typically 460–570 km depending on shell) |
+| `raising_count` | int | Satellites currently maneuvering toward their target shell altitude via Hall-effect ion thrusters |
+| `deorbiting_count` | int | Satellites in active controlled deorbit below their shell band with strong positive mean_motion_dot, or below 300 km |
+| `isl_operational_count` | int | Operational satellites equipped with inter-satellite laser links (ISL); ISL-capable units were deployed from 2022 onward depending on shell |
+| `new_launches` | int | Reserved for future use; currently always 0 |
 
 ### Usage
 

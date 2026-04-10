@@ -194,15 +194,15 @@ The radio spectral index is a key diagnostic: shell-type SNRs typically show spe
 |--------|------|-------------|
 | `name` | string | SNR designation (Galactic coordinates, e.g. "G001.0-00.1") |
 | `alt_names` | string | Alternative/common names (e.g. "Cas A", "Crab Nebula") |
-| `ra` | float | Right ascension (degrees) |
-| `dec` | float | Declination (degrees) |
-| `lii` | float | Galactic longitude (degrees) |
-| `bii` | float | Galactic latitude (degrees) |
-| `major_diameter` | float | Angular size major axis (arcmin) |
-| `minor_diameter` | float | Angular size minor axis (arcmin) |
-| `type` | string | Morphological type code (S, F, C, ?) |
-| `flux_1_ghz` | float | Radio flux density at 1 GHz (Jy) |
-| `spectral_index` | float | Radio spectral index |
+| `ra` | float | Right ascension, ICRS J2000.0 (degrees, 0–360) |
+| `dec` | float | Declination, ICRS J2000.0 (degrees, −90 to +90) |
+| `lii` | float | Galactic longitude (degrees, 0–360) |
+| `bii` | float | Galactic latitude (degrees, −90 to +90); most SNRs lie within ±5° of the Galactic plane |
+| `major_diameter` | float | Angular size of the major axis (arcmin); ranges from <1' for young compact remnants to >300' for old evolved SNRs like Vela |
+| `minor_diameter` | float | Angular size of the minor axis (arcmin); null if the remnant is approximately circular or the minor axis is unmeasured |
+| `type` | string | Morphological type code: S (shell — forward shock dominates), F (filled-centre/plerion — pulsar wind nebula), C (composite — both features), ? (uncertain) |
+| `flux_1_ghz` | float | Integrated radio flux density at 1 GHz (Jansky; 1 Jy = 10⁻²⁶ W/m²/Hz); null for remnants too faint or confused for measurement |
+| `spectral_index` | float | Radio spectral index α (S_ν ∝ ν^α); shell-type SNRs typically α ≈ −0.5, plerions (filled-centre) α ≈ 0 to −0.3; null if spectrum is unmeasured |
 | `snr_type_name` | string | Full type name: shell, filled-centre, composite, uncertain |
 
 ## Quick stats

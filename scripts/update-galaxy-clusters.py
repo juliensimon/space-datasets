@@ -182,20 +182,20 @@ The PSZ2 catalog has served as the definitive SZ-selected cluster sample for nea
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `name` | string | Planck cluster name (e.g. "PSZ2 G000.13+78.04") |
-| `ra` | float | Right ascension (degrees) |
-| `dec` | float | Declination (degrees) |
-| `lii` | float | Galactic longitude (degrees) |
-| `bii` | float | Galactic latitude (degrees) |
-| `redshift` | float | Cluster redshift |
-| `redshift_source_name` | string | Source of redshift measurement |
-| `mass_sz` | float | SZ mass proxy M_SZ (10^14 solar masses) |
-| `mass_sz_pos_err` | float | Mass proxy positive uncertainty |
-| `mass_sz_neg_err` | float | Mass proxy negative uncertainty |
-| `y5r500` | float | Integrated SZ signal Y_5R500 (arcmin^2) |
-| `y5r500_error` | float | SZ signal uncertainty |
-| `snr` | float | Detection signal-to-noise ratio |
-| `det_pipeline_codes` | string | Detection pipeline code(s) used |
+| `name` | string | Planck cluster designation in the format "PSZ2 GXXX.X±XX.X" (Galactic longitude and latitude encoded in the name) |
+| `ra` | float | ICRS J2000.0 right ascension of the cluster center in degrees (0–360) |
+| `dec` | float | ICRS J2000.0 declination of the cluster center in degrees (-90–+90) |
+| `lii` | float | Galactic longitude of the cluster center in degrees (0–360) |
+| `bii` | float | Galactic latitude of the cluster center in degrees (-90–+90) |
+| `redshift` | float | Cluster spectroscopic or photometric redshift; null for ~30% of Planck clusters lacking optical confirmation |
+| `redshift_source_name` | string | Survey or reference providing the redshift (e.g., "SDSS", "ACT", "SPT"); null if redshift is null |
+| `mass_sz` | float | SZ-derived cluster mass M_SZ in units of 10^14 solar masses (i.e., multiply by 1e14 for M_sun); Planck clusters range ~1–15; null if Y_5R500 is unavailable |
+| `mass_sz_pos_err` | float | Upper (positive) 1-sigma uncertainty on mass_sz in units of 10^14 solar masses; null if mass_sz is null |
+| `mass_sz_neg_err` | float | Lower (negative) 1-sigma uncertainty on mass_sz in units of 10^14 solar masses; null if mass_sz is null |
+| `y5r500` | float | Integrated Compton y-parameter measured within 5*R_500 in arcmin^2; dimensionless measure of total ICM thermal energy; low-scatter mass proxy; typical range 1e-4 to 1e-2 arcmin^2 |
+| `y5r500_error` | float | 1-sigma uncertainty on Y_5R500 in arcmin^2; null if y5r500 is null |
+| `snr` | float | Planck detection signal-to-noise ratio; catalog threshold SNR > 4.5; most massive clusters can reach SNR > 50 |
+| `det_pipeline_codes` | string | Bitmask or code string indicating which of the three detection pipelines confirmed this cluster: MMF1 (matched multi-frequency filter 1), MMF3 (matched multi-frequency filter 3), PwS (PowellSnakes Bayesian algorithm) |
 
 ## Quick stats
 

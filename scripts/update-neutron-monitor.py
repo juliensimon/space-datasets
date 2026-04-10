@@ -331,12 +331,12 @@ Each station's sensitivity to cosmic rays depends on its geomagnetic cutoff rigi
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `datetime` | datetime | Observation time (UTC, hourly) |
-| `station` | string | Station code (e.g. OULU, JUNG) |
-| `count_rate` | float | Corrected count rate (pressure-corrected, efficiency-corrected) |
-| `station_name` | string | Station name and location |
-| `daily_mean_count_rate` | float | Daily mean count rate for this station |
-| `pct_deviation` | float | Hourly deviation from daily mean (%) |
+| `datetime` | datetime | Observation timestamp (UTC, hourly averages from 1-minute raw counts) |
+| `station` | string | NMDB station code (e.g. "OULU" for Oulu Finland, "JUNG" for Jungfraujoch Switzerland); location determines geomagnetic cutoff rigidity and therefore the cosmic ray energy threshold the station is sensitive to |
+| `count_rate` | float | Pressure-corrected and efficiency-corrected cosmic ray neutron count rate in counts per second; decreases during Forbush decreases (CME-driven CR depressions of 1–30%) and spikes during Ground Level Enhancements (GLEs, solar energetic particle events); null when station data are unavailable |
+| `station_name` | string | Human-readable station name and country (e.g. "Oulu, Finland"); polar stations detect lower-energy cosmic rays (~0.2 GV cutoff) while equatorial stations have higher cutoffs (~15 GV) |
+| `daily_mean_count_rate` | float | 24-hour mean count rate for this station on the same calendar day, in counts per second; used as the baseline for pct_deviation calculation; null for days with fewer than 12 valid hourly readings |
+| `pct_deviation` | float | Hourly count rate deviation from the daily mean in percent, i.e. (count_rate − daily_mean) / daily_mean × 100; negative values indicate suppressed cosmic ray flux (Forbush decrease); large positive values (>1%) may indicate GLE onset |
 
 ## Quick stats
 

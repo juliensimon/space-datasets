@@ -468,23 +468,23 @@ Jezero Crater was selected as the Perseverance landing site because it preserves
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `sclk` | int64 | Spacecraft clock count (unique timestamp) |
-| `lmst` | string | Local Mean Solar Time |
-| `ltst` | string | Local True Solar Time |
-| `sol` | int64 | Martian sol (day) number since landing |
-| `pressure_pa` | float64 | Atmospheric pressure (Pa) |
-| `pressure_uncertainty_pa` | float64 | Pressure measurement uncertainty (Pa) |
-| `transducer` | int64 | Pressure transducer ID (1 or 2) |
-| `relative_humidity_pct` | float64 | Local relative humidity (%) |
-| `relative_humidity_uncertainty_pct` | float64 | Humidity uncertainty (%) |
-| `humidity_sensor_temp_k` | float64 | Humidity sensor temperature (K) |
-| `humidity_sensor_temp_uncertainty_k` | float64 | Humidity sensor temperature uncertainty (K) |
-| `volume_mixing_ratio` | float64 | Water vapor volume mixing ratio |
-| `volume_mixing_ratio_uncertainty` | float64 | Volume mixing ratio uncertainty |
-| `downward_lw_irradiance_wm2` | float64 | Downward longwave irradiance (W/m2) |
-| `downward_lw_irradiance_uncertainty_wm2` | float64 | Downward LW irradiance uncertainty (W/m2) |
-| `upward_lw_irradiance_wm2` | float64 | Upward longwave irradiance (W/m2) — proxy for ground temperature |
-| `upward_lw_irradiance_uncertainty_wm2` | float64 | Upward LW irradiance uncertainty (W/m2) |
+| `sclk` | int64 | Spacecraft clock tick count (continuous integer, ~1 Hz rate); serves as the primary unique timestamp for merging sensor data |
+| `lmst` | string | Local Mean Solar Time at Jezero Crater (format "sol HH:MM:SS"); based on a fixed Mars rotation period |
+| `ltst` | string | Local True Solar Time at Jezero Crater (format "sol HH:MM:SS"); corrected for Mars orbital eccentricity — differs from LMST by up to ~50 minutes |
+| `sol` | int64 | Perseverance sol number since landing; sol 0 = Feb 18 2021; each sol ~1.0275 Earth days |
+| `pressure_pa` | float64 | Atmospheric pressure in Pa at Jezero Crater floor; mean ~750 Pa (0.75% of Earth sea level); seasonal range ~600–900 Pa due to CO2 polar cap condensation/sublimation |
+| `pressure_uncertainty_pa` | float64 | Pressure sensor measurement uncertainty in Pa (typically <1 Pa) |
+| `transducer` | int64 | Pressure transducer redundancy identifier (1 or 2); MEDA PS has two sensors for cross-validation |
+| `relative_humidity_pct` | float64 | Local relative humidity in percent (0–100); peaks near nighttime when temperatures approach frost point; sparse — null for most daytime readings |
+| `relative_humidity_uncertainty_pct` | float64 | Humidity measurement uncertainty in percent |
+| `humidity_sensor_temp_k` | float64 | Temperature of the humidity sensor element in Kelvin; required for humidity calibration |
+| `humidity_sensor_temp_uncertainty_k` | float64 | Humidity sensor temperature uncertainty in Kelvin |
+| `volume_mixing_ratio` | float64 | Water vapor volume mixing ratio (mol/mol, dimensionless); Mars typical values 10–300 ppmv depending on season and latitude; null when humidity sensor not active |
+| `volume_mixing_ratio_uncertainty` | float64 | Water vapor volume mixing ratio uncertainty (mol/mol) |
+| `downward_lw_irradiance_wm2` | float64 | Downward longwave (thermal IR, 8–50 µm) irradiance in W/m²; measures atmospheric thermal emission — sensitive to dust loading and cloud cover |
+| `downward_lw_irradiance_uncertainty_wm2` | float64 | Downward LW irradiance measurement uncertainty in W/m² |
+| `upward_lw_irradiance_wm2` | float64 | Upward longwave irradiance from the surface in W/m²; proxy for ground skin temperature via Stefan-Boltzmann: T_surface ≈ (upward_lw / 5.67e-8)^0.25 K |
+| `upward_lw_irradiance_uncertainty_wm2` | float64 | Upward LW irradiance measurement uncertainty in W/m² |
 
 Additional TIRS quality flag columns: `rsm_head_outside_tirs_up_fov`, `wheel_outside_tirs_down_fov`,
 `sun_outside_tirs_fov`, `rover_low_tilt`, `tirs_ground_not_in_shadow`, `rover_hga_off`, `skycam_off`, `rover_still`.

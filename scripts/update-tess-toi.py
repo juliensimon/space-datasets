@@ -158,17 +158,17 @@ The TOI catalog is essential for exoplanet demographics, enabling occurrence rat
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `toi_id` | float64 | TESS Input Catalog (TIC) ID |
-| `toi_prefix` | float64 | TOI number (e.g. 175.01) |
-| `planet_name` | string | Confirmed planet name (if any) |
-| `ra_deg` | float64 | Right ascension (degrees) |
-| `dec_deg` | float64 | Declination (degrees) |
-| `period_days` | float64 | Orbital period (days) |
-| `radius_earth` | float64 | Planet radius (Earth radii) |
-| `equilibrium_temp_k` | float64 | Equilibrium temperature (K) |
-| `transit_depth_ppm` | float64 | Transit depth (ppm) |
-| `tmag` | float64 | TESS magnitude of host star |
-| `disposition` | string | TFOPWG disposition (CP/FP/KP/PC) |
+| `toi_id` | float64 | TESS Input Catalog (TIC) integer identifier of the host star; the primary stellar ID in TIC v8; multiple planet candidates from the same star share the same `toi_id` |
+| `toi_prefix` | float64 | TOI designation number (e.g. 175.01); format is TIC_ID.candidate_number; additional candidates from the same star increment the decimal (.01, .02, …) |
+| `planet_name` | string | Confirmed planet designation (e.g. "TOI-175 b"); null for unconfirmed candidates that have not yet received an official planet name |
+| `ra_deg` | float64 | ICRS J2000.0 right ascension of the host star in degrees (0–360) |
+| `dec_deg` | float64 | ICRS J2000.0 declination of the host star in degrees (-90 to +90) |
+| `period_days` | float64 | Orbital period in days from the transit fit; null for single-transit events where period cannot be determined; typical range 0.5–100 days for TESS detections |
+| `radius_earth` | float64 | Planet radius in Earth radii derived from the transit depth and stellar radius; null until stellar parameters are available; sub-Neptunes: 1.5–4 R⊕, Neptunes: 4–7, giant planets: >7 |
+| `equilibrium_temp_k` | float64 | Estimated equilibrium temperature of the planet in Kelvin assuming zero albedo; derived from stellar luminosity and orbital distance; null if stellar parameters unavailable |
+| `transit_depth_ppm` | float64 | Transit depth in parts per million (fractional flux dip × 10⁶); typical range 100–50000 ppm; an Earth-sized planet transiting a Sun-like star produces ~84 ppm; giant planets can exceed 10000 ppm |
+| `tmag` | float64 | Host star brightness in the TESS T-band (~600–1000 nm); similar to but not identical to Cousins I-band; typical range 6–15 for TOI hosts; brighter stars yield better photometric precision |
+| `disposition` | string | TESS Follow-Up Observing Program Working Group (TFOPWG) disposition after ground-based vetting: "CP" = Confirmed Planet, "PC" = Planet Candidate (active), "APC" = Ambiguous Planet Candidate, "FP" = False Positive (ruled out), "KP" = Known Planet |
 
 ## Quick stats
 

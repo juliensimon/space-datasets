@@ -361,21 +361,21 @@ Asteroid families are essential for understanding the collisional and dynamical 
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `asteroid_number` | Int64 | MPC asteroid number (nullable for unnumbered objects) |
-| `proper_a_au` | float64 | Proper semimajor axis (AU) |
-| `proper_e` | float64 | Proper eccentricity |
-| `sin_i` | float64 | Sine of proper inclination |
-| `abs_mag` | float64 | Absolute magnitude H (mag) |
-| `c_param` | float64 | Interloper identification parameter (2015 families only) |
-| `freq_g_arcsec_yr` | float64 | Proper frequency of pericenter longitude (arcsec/yr, 2024 only) |
-| `freq_s_arcsec_yr` | float64 | Proper frequency of nodal longitude (arcsec/yr, 2024 only) |
-| `n_oppositions` | Int64 | Number of observed oppositions from MPC (2024 only) |
-| `packed_name` | string | MPC packed designation (2024 only) |
-| `unpacked_name` | string | MPC unpacked name/designation (2024 only) |
-| `family_number` | Int64 | Family ID from Nesvorny catalog |
-| `family_name` | string | Family name (named after largest member) |
-| `region` | string | Belt region (inner, middle, outer, hilda_hungaria, highinclination, phocaea) |
-| `source` | string | Catalog version: "2015" or "2024" |
+| `asteroid_number` | Int64 | MPC catalog number (positive integer); null for unnumbered objects identified only by provisional designation |
+| `proper_a_au` | float64 | Proper semimajor axis in AU; time-averaged, perturbation-free equivalent of osculating semi-major axis; range ~1.7–5.3 AU across the full catalog |
+| `proper_e` | float64 | Proper eccentricity (dimensionless, 0–1); time-averaged, perturbation-free; used as one of the three clustering axes |
+| `sin_i` | float64 | Sine of proper inclination (dimensionless, 0–1); used instead of inclination itself to linearise the HCM distance metric |
+| `abs_mag` | float64 | Absolute magnitude H in magnitudes; used as a proxy for asteroid size (smaller H = larger object); null for a small fraction of entries |
+| `c_param` | float64 | Interloper identification parameter from Nesvorny (2015); positive values indicate likely true family members, negative suggest interlopers; null for 2024-catalog entries and a small number of 2015 entries (sentinel −99.9999 replaced with null) |
+| `freq_g_arcsec_yr` | float64 | Proper precession frequency of the pericenter longitude g in arcsec/yr; provides an additional dynamical discriminant beyond (a, e, sin i); null for all 2015-catalog entries |
+| `freq_s_arcsec_yr` | float64 | Proper precession frequency of the nodal longitude s in arcsec/yr; used together with freq_g to resolve family overlaps in the inner belt; null for all 2015-catalog entries |
+| `n_oppositions` | Int64 | Number of observed oppositions recorded in the MPC database; proxy for orbit quality; null for all 2015-catalog entries |
+| `packed_name` | string | MPC packed-format designation (e.g., "K04A00A"); null for 2015-catalog entries and unnumbered 2024 objects without a packed form |
+| `unpacked_name` | string | MPC human-readable name or provisional designation (e.g., "2004 AA"); null for 2015-catalog entries |
+| `family_number` | Int64 | Nesvorny catalog family identifier (integer); e.g., 4 = Vesta family, 10 = Hygiea family; stable across catalog versions for 2015 families |
+| `family_name` | string | Name of the family, typically the name of its largest member (e.g., "Vesta", "Flora", "Themis"); format "NUMBER Name" for 2024-only families |
+| `region` | string | Main-belt region: inner (~2.0–2.5 AU), middle (~2.5–2.82 AU), outer (~2.82–3.28 AU), hilda_hungaria, highinclination, phocaea, or other |
+| `source` | string | Catalog epoch: "2015" (original Nesvorny et al. 2015 families) or "2024" (newly identified families from 2024 update) |
 
 ## Quick stats
 

@@ -562,20 +562,20 @@ The orbital elements in this dataset encode fundamental information about satell
 | `discovery_year` | int64 | Year of discovery |
 | `discoverer` | string | Discoverer(s) or spacecraft mission |
 | `group` | string | Dynamical group/family (e.g. Galilean, Himalia, Norse) |
-| `semi_major_axis_km` | float64 | Mean semi-major axis (km) |
-| `eccentricity` | float64 | Mean orbital eccentricity |
-| `inclination_deg` | float64 | Mean orbital inclination (degrees) |
-| `orbital_period_days` | float64 | Sidereal orbital period (days) |
-| `arg_periapsis_deg` | float64 | Argument of periapsis (degrees) |
-| `mean_anomaly_deg` | float64 | Mean anomaly at epoch (degrees) |
-| `long_ascending_node_deg` | float64 | Longitude of ascending node (degrees) |
-| `epoch` | string | Epoch of orbital elements (TDB) |
-| `mean_radius_km` | float64 | Mean radius (km), major moons only |
-| `diameter_km` | float64 | Mean diameter (km), derived from radius |
-| `gm_km3s2` | float64 | Gravitational parameter GM (km\u00b3/s\u00b2) |
-| `mean_density_gcm3` | float64 | Mean bulk density (g/cm\u00b3) |
-| `is_retrograde` | bool | True if inclination > 90\u00b0 |
-| `jpl_code` | string | JPL numeric satellite identifier |
+| `semi_major_axis_km` | float64 | Mean orbital semi-major axis (km); ranges from ~128,000 km (Amalthea/Jupiter) to ~23.5 million km (Neso/Neptune) |
+| `eccentricity` | float64 | Mean orbital eccentricity; regular (prograde) moons: <0.1; irregular (captured) moons: often 0.1â0.7 |
+| `inclination_deg` | float64 | Mean orbital inclination to the planet's equatorial plane (degrees, 0â180); regular moons: <5°; irregular moons: can exceed 90° (retrograde); see also is_retrograde |
+| `orbital_period_days` | float64 | Sidereal orbital period (days); range ~0.29 days (Metis/Jupiter) to ~9,000 days (distant irregular moons); negative values indicate retrograde direction in some source conventions |
+| `arg_periapsis_deg` | float64 | Argument of periapsis of the moon's orbit (degrees, 0â360) at the reference epoch |
+| `mean_anomaly_deg` | float64 | Mean anomaly at the reference epoch (degrees, 0â360); used together with other elements to compute position |
+| `long_ascending_node_deg` | float64 | Longitude of the ascending node (degrees, 0â360) at the reference epoch |
+| `epoch` | string | Reference epoch for the orbital elements in Barycentric Dynamical Time (TDB) format |
+| `mean_radius_km` | float64 | Mean radius (km); available for major/well-characterised moons only; range <1 km (small inner moons) to 2,634 km (Ganymede); null for most irregular moons |
+| `diameter_km` | float64 | Mean diameter (km) = 2 × mean_radius_km; derived column; null when radius is null |
+| `gm_km3s2` | float64 | Gravitational parameter GM = G × mass (km\u00b3/s\u00b2); null for moons without a reliable mass determination |
+| `mean_density_gcm3` | float64 | Mean bulk density (g/cm\u00b3); icy moons: ~1.0â2.0 g/cm\u00b3; rocky moons: ~2.5â3.5 g/cm\u00b3; null when mass and radius are not both known |
+| `is_retrograde` | bool | True if orbital inclination > 90\u00b0 (retrograde orbit); most retrograde moons are captured irregular bodies |
+| `jpl_code` | string | JPL Horizons numeric satellite identifier used to query ephemerides |
 
 ## Usage
 

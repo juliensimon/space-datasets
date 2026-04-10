@@ -239,19 +239,19 @@ The spectral classifications in this dataset (GALAXY, STAR, QSO) are determined 
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `targetid` | int64 | Unique DESI target identifier |
-| `ra` | float64 | Right ascension — fiber position (degrees) |
-| `dec` | float64 | Declination — fiber position (degrees) |
-| `redshift` | float64 | Best-fit spectroscopic redshift |
-| `redshift_err` | float64 | Redshift uncertainty |
-| `spectype` | string | Spectral classification: GALAXY, STAR, or QSO |
-| `subtype` | string | Spectral subtype (e.g., stellar type K, G, F) |
-| `deltachi2` | float64 | Chi-squared difference between best and second-best fit |
-| `chi2` | float64 | Best-fit chi-squared |
-| `coadd_numexp` | int16 | Number of coadded exposures |
-| `coadd_numnight` | int16 | Number of observation nights |
-| `coadd_numtile` | int16 | Number of observed tiles |
-| `coadd_exptime` | float32 | Total coadded exposure time (seconds) |
+| `targetid` | int64 | DESI unique 64-bit integer target identifier; encodes sky location and targeting program |
+| `ra` | float64 | Right ascension of the fiber center, ICRS J2000.0 (degrees, 0–360) |
+| `dec` | float64 | Declination of the fiber center, ICRS J2000.0 (degrees, -90 to +90) |
+| `redshift` | float64 | Best-fit spectroscopic redshift; galaxies/QSOs: 0.05–3.5; stars near 0; null if fit failed |
+| `redshift_err` | float64 | 1σ uncertainty on the spectroscopic redshift; large values or zwarn > 0 indicate unreliable fits |
+| `spectype` | string | Primary spectral classification: "GALAXY", "STAR", or "QSO" (quasar) |
+| `subtype` | string | Detailed sub-classification: for galaxies "ELG" (emission-line), "LRG" (luminous red), "BGS" (bright galaxy survey); for stars the MK spectral type (e.g. "K", "G"); null if not classified |
+| `deltachi2` | float64 | Δχ² between best and second-best spectral template fit; higher values indicate more reliable redshift (deltachi2 > 25 recommended) |
+| `chi2` | float64 | Best-fit χ² of the redshift solution; used together with deltachi2 to assess fit quality |
+| `coadd_numexp` | int16 | Number of individual exposures co-added to produce the spectrum |
+| `coadd_numnight` | int16 | Number of distinct observation nights contributing to the coadd |
+| `coadd_numtile` | int16 | Number of DESI focal-plane tiles contributing to the coadd |
+| `coadd_exptime` | float32 | Total effective exposure time of the co-added spectrum (seconds) |
 
 ## Quick stats
 

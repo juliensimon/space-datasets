@@ -265,48 +265,48 @@ Dynamical family membership, included for objects with computed proper orbital e
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `sso_id` | string | SsODNet unique identifier |
-| `sso_number` | Int64 | IAU asteroid catalog number (null for unnumbered) |
-| `sso_name` | string | IAU name (null if unnamed) |
-| `sso_type` | string | Object type (Asteroid, Dwarf Planet, etc.) |
-| `sso_class` | string | Dynamical class (MB, NEA, Trojan, Centaur, KBO, etc.) |
-| `semi_major_axis_au` | float64 | Orbital semi-major axis (AU) |
-| `eccentricity` | float64 | Orbital eccentricity |
-| `inclination_deg` | float64 | Orbital inclination (degrees) |
-| `orbital_period_yr` | float64 | Orbital period (years) |
-| `periapsis_distance_au` | float64 | Perihelion distance (AU) |
-| `apoapsis_distance_au` | float64 | Aphelion distance (AU) |
-| `tisserand_jupiter` | float64 | Tisserand parameter w.r.t. Jupiter |
-| `family_number` | Int64 | Dynamical family number |
-| `family_name` | string | Dynamical family name |
-| `family_status` | string | Family membership status |
-| `absolute_magnitude` | float64 | Absolute magnitude H (best estimate) |
-| `absolute_magnitude_err_min` | float64 | H magnitude lower error bound |
-| `absolute_magnitude_err_max` | float64 | H magnitude upper error bound |
-| `diameter_km` | float64 | Effective diameter (km, best estimate) |
-| `diameter_err_min_km` | float64 | Diameter lower error bound (km) |
-| `diameter_err_max_km` | float64 | Diameter upper error bound (km) |
-| `albedo` | float64 | Geometric albedo (best estimate) |
-| `albedo_err_min` | float64 | Albedo lower error bound |
-| `albedo_err_max` | float64 | Albedo upper error bound |
-| `mass_kg` | float64 | Mass (kg, best estimate) |
-| `mass_err_min_kg` | float64 | Mass lower error bound (kg) |
-| `mass_err_max_kg` | float64 | Mass upper error bound (kg) |
-| `density_g_cm3` | float64 | Bulk density (g/cm3, best estimate) |
-| `density_err_min_g_cm3` | float64 | Density lower error bound (g/cm3) |
-| `density_err_max_g_cm3` | float64 | Density upper error bound (g/cm3) |
-| `taxonomy_class` | string | Taxonomic class (e.g., S, C, X, V) |
-| `taxonomy_complex` | string | Taxonomic complex (e.g., S-complex, C-complex) |
-| `taxonomy_scheme` | string | Classification scheme (Bus-DeMeo, Tholen, etc.) |
-| `taxonomy_waverange` | string | Wavelength range used for classification |
-| `taxonomy_technique` | string | Technique used for classification |
-| `thermal_inertia` | float64 | Thermal inertia (J m-2 s-0.5 K-1) |
-| `thermal_inertia_err_min` | float64 | Thermal inertia lower error bound |
-| `thermal_inertia_err_max` | float64 | Thermal inertia upper error bound |
-| `rotation_period_h` | float64 | Rotation period (hours, best estimate) |
-| `rotation_period_err_min_h` | float64 | Rotation period lower error bound (hours) |
-| `rotation_period_err_max_h` | float64 | Rotation period upper error bound (hours) |
-| `moid_earth_au` | float64 | Minimum orbit intersection distance with Earth (AU) |
+| `sso_id` | string | SsODNet internal stable identifier (e.g., "1" for Ceres); permanent across catalog updates and used as the primary key for cross-referencing within SsODNet services |
+| `sso_number` | Int64 | IAU Minor Planet Center catalog number assigned after orbit determination; null for unnumbered objects whose orbits are not yet sufficiently constrained |
+| `sso_name` | string | IAU-approved proper name (e.g., "Ceres", "Vesta"); null for the majority of objects that have a number but no name |
+| `sso_type` | string | Broad object type: Asteroid, Dwarf Planet, etc. |
+| `sso_class` | string | Dynamical orbital class: MB=Main Belt, NEA=Near-Earth Asteroid, Trojan=Jupiter Trojan, Centaur=Centaur object, KBO=Kuiper Belt Object, etc. |
+| `semi_major_axis_au` | float64 | Orbital semi-major axis in AU (1 AU = 149.6 million km = Earth-Sun distance); defines the orbit size and mean distance from the Sun; main-belt asteroids typically 2.0–3.3 AU, NEAs <1.3 AU, KBOs >30 AU |
+| `eccentricity` | float64 | Orbital eccentricity (0 = perfectly circular, <1 = elliptical); main-belt asteroids: 0.0–0.3; near-Earth objects can reach 0.9+; values at or above 1.0 indicate hyperbolic (unbound) orbits |
+| `inclination_deg` | float64 | Orbital inclination relative to the ecliptic plane in degrees (0–180°); main-belt asteroids: typically 0–30°; high inclination (>30°) suggests a scattered disk, Kuiper belt, or dynamically excited origin |
+| `orbital_period_yr` | float64 | Time to complete one full orbit around the Sun, in years; main-belt: ~3–6 years; derived from semi-major axis via Kepler's third law |
+| `periapsis_distance_au` | float64 | Closest approach distance to the Sun (perihelion) in AU; equals a(1-e); NEAs with perihelion <1.3 AU can cross Earth's orbit |
+| `apoapsis_distance_au` | float64 | Farthest distance from the Sun (aphelion) in AU; equals a(1+e) |
+| `tisserand_jupiter` | float64 | Tisserand parameter with respect to Jupiter — a near-conserved quantity used to distinguish asteroid (>3.0) from Jupiter-family comet (<3.0) orbits; also useful for classifying Trojans and Hildas |
+| `family_number` | Int64 | Numeric identifier of the Hirayama dynamical family; null for objects not assigned to any family |
+| `family_name` | string | Name of the Hirayama dynamical family (e.g., "Vesta", "Koronis", "Flora"); families are remnants of ancient collisional disruptions sharing similar proper orbital elements; null for non-family members |
+| `family_status` | string | Membership confidence or role within the family (e.g., "core", "halo"); null for non-family members |
+| `absolute_magnitude` | float64 | Absolute magnitude H — brightness the asteroid would have at 1 AU from both Sun and observer at zero phase angle; proxy for size when albedo is unknown; brighter (lower H) = larger object |
+| `absolute_magnitude_err_min` | float64 | Lower (negative) uncertainty bound on H magnitude |
+| `absolute_magnitude_err_max` | float64 | Upper (positive) uncertainty bound on H magnitude |
+| `diameter_km` | float64 | Effective sphere-equivalent diameter in km (best estimate from IMCCE's ranking of published measurements); null if not yet measured; derived from thermal emission (WISE/NEATM) or stellar occultation; ranges from sub-km NEAs to ~940 km (Ceres) |
+| `diameter_err_min_km` | float64 | Lower uncertainty bound on diameter (km) |
+| `diameter_err_max_km` | float64 | Upper uncertainty bound on diameter (km) |
+| `albedo` | float64 | Geometric albedo (0–1); fraction of incident sunlight reflected; dark primitive C-type asteroids ~0.03–0.09, stony S-type ~0.15–0.30, bright E-type/icy bodies up to 1.0; null for most objects where thermal data are unavailable |
+| `albedo_err_min` | float64 | Lower uncertainty bound on geometric albedo |
+| `albedo_err_max` | float64 | Upper uncertainty bound on geometric albedo |
+| `mass_kg` | float64 | Total mass in kg (best estimate); null for most objects — only measurable via spacecraft flyby, mutual orbit of binary pairs, or gravitational deflection; ranges from ~10^12 kg (small NEAs) to ~9.4×10^20 kg (Ceres) |
+| `mass_err_min_kg` | float64 | Lower uncertainty bound on mass (kg) |
+| `mass_err_max_kg` | float64 | Upper uncertainty bound on mass (kg) |
+| `density_g_cm3` | float64 | Bulk density in g/cm3 (best estimate); derived from mass and volume; metallic M-types ~4–7 g/cm3, stony S-types ~2.5–3.5 g/cm3, porous rubble-pile C-types often <1.5 g/cm3; null for all but a few hundred well-characterized bodies |
+| `density_err_min_g_cm3` | float64 | Lower uncertainty bound on bulk density (g/cm3) |
+| `density_err_max_g_cm3` | float64 | Upper uncertainty bound on bulk density (g/cm3) |
+| `taxonomy_class` | string | Spectral taxonomic class letter(s) (e.g., S, C, X, V, B, D); in Bus-DeMeo: C=carbonaceous, S=silicaceous/stony, X=metallic or enstatite, V=basaltic (Vesta-like); null for unclassified objects |
+| `taxonomy_complex` | string | Broader taxonomic grouping (e.g., "C-complex", "S-complex", "X-complex"); aggregates related classes that share spectral characteristics |
+| `taxonomy_scheme` | string | Classification scheme used (e.g., Bus-DeMeo=visible+NIR, Tholen=visible only, SMASS); different schemes use different letter systems and wavelength ranges |
+| `taxonomy_waverange` | string | Wavelength range of the spectrum used for classification (e.g., "Vis", "NIR", "Vis+NIR") |
+| `taxonomy_technique` | string | Observational technique used (e.g., spectroscopy, photometry/color indices) |
+| `thermal_inertia` | float64 | Thermal inertia in SI units (J m-2 s-0.5 K-1); resistance of the surface to temperature change; low values (~10–50) indicate fine regolith, high values (~500+) indicate bare rock or exposed metal; null for most objects |
+| `thermal_inertia_err_min` | float64 | Lower uncertainty bound on thermal inertia |
+| `thermal_inertia_err_max` | float64 | Upper uncertainty bound on thermal inertia |
+| `rotation_period_h` | float64 | Sidereal rotation period in hours (best estimate); null if not measured; range: ~0.1 h (fast rotators at the spin barrier for strengthless rubble piles) to thousands of hours for slow/tumbling objects; most main-belt asteroids: 4–20 h |
+| `rotation_period_err_min_h` | float64 | Lower uncertainty bound on rotation period (hours) |
+| `rotation_period_err_max_h` | float64 | Upper uncertainty bound on rotation period (hours) |
+| `moid_earth_au` | float64 | Minimum Orbit Intersection Distance with Earth in AU; the closest the two orbits pass regardless of where the bodies are; objects with MOID <0.05 AU and H <22 are classified as Potentially Hazardous Asteroids (PHAs) by the MPC |
 
 ## Quick stats
 

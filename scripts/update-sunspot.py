@@ -152,12 +152,12 @@ The SILSO Version 2.0 series, released in 2015, recalibrated the entire historic
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `date` | date | Observation date |
-| `decimal_date` | float64 | Fractional year (e.g. 2024.5) |
-| `sunspot_number` | Int64 | Daily total sunspot number (null if missing) |
-| `std_dev` | float64 | Standard deviation from multiple stations |
-| `n_observations` | Int64 | Number of observing stations |
-| `is_provisional` | bool | True if value is provisional (not yet definitive) |
+| `date` | date | Observation date (UTC); SILSO daily records begin 1818-01-01 |
+| `decimal_date` | float64 | Fractional year representation of the date (e.g., 2024.5 ≈ July 2 2024); useful for continuous time-series computations |
+| `sunspot_number` | Int64 | International Sunspot Number (ISN v2.0) — daily count of sunspots on the solar disk using the Wolf formula (R = k(10g + s)); solar minimum: ~0–10; solar maximum: 150–300+; approximately 11-year cycle; null for days with no observation; v2.0 values are ~1.6× the previous v1.0 series |
+| `std_dev` | float64 | Standard deviation of individual station observations around the network mean for that day; larger values indicate disagreement between observers or complex sunspot groups |
+| `n_observations` | Int64 | Number of SILSO network observing stations that contributed valid measurements that day; typical range 10–50; lower values (early historical records) reflect fewer contributing observers |
+| `is_provisional` | bool | True if the value has not yet been finalized by SILSO (recent ~30 days); provisional values may be revised when additional observer data arrives; False for definitive historical values |
 
 ## Quick stats
 

@@ -135,25 +135,25 @@ This data underpins a wide range of astrophysical research, from occurrence rate
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `pl_name` | string | Planet name (e.g. "Kepler-22 b", "TRAPPIST-1 e") |
-| `hostname` | string | Host star name |
-| `discoverymethod` | string | Discovery method (Transit, Radial Velocity, etc.) |
-| `disc_year` | Int64 | Year of discovery |
-| `disc_facility` | string | Discovery facility name |
-| `pl_orbper` | float | Orbital period in days |
-| `pl_rade` | float | Planet radius in Earth radii |
-| `pl_bmasse` | float | Planet mass in Earth masses |
-| `pl_eqt` | float | Equilibrium temperature in K |
-| `pl_orbsmax` | float | Semi-major axis in AU |
-| `pl_orbeccen` | float | Orbital eccentricity |
-| `st_teff` | float | Stellar effective temperature in K |
-| `st_rad` | float | Stellar radius in solar radii |
-| `st_mass` | float | Stellar mass in solar masses |
-| `sy_dist` | float | Distance in parsecs |
-| `sy_vmag` | float | V-band magnitude |
-| `ra` | float | Right ascension in degrees |
-| `dec` | float | Declination in degrees |
-| `rowupdate` | string | Date of last row update |
+| `pl_name` | string | Planet designation in the form "Host b/c/d..." (e.g. "Kepler-452 b"); alphabetical suffixes distinguish planets within the same system |
+| `hostname` | string | Host star identifier; multiple rows share the same hostname in multi-planet systems |
+| `discoverymethod` | string | Detection technique: "Transit" (brightness dip), "Radial Velocity" (Doppler shift), "Direct Imaging", "Microlensing", "Astrometry", or "Timing"; determines which physical parameters are measurable |
+| `disc_year` | Int64 | Calendar year of confirmed discovery; ranges from 1992 (pulsar planets) to present |
+| `disc_facility` | string | Observatory or mission that made the discovery (e.g. "Kepler", "TESS", "La Silla Observatory") |
+| `pl_orbper` | float | Orbital period in days; hot Jupiters: 1–5 days, Earth analogs: ~365 days, outer giants: years; null for directly imaged planets without an orbit solution |
+| `pl_rade` | float | Planet radius in Earth radii (R⊕); sub-Earths: <1, super-Earths: 1–1.5, mini-Neptunes: 1.5–4, Neptunes: 4–7, Jupiters: >7; null if no transit or imaging measurement available |
+| `pl_bmasse` | float | Best-available planet mass in Earth masses (M⊕); actual mass if inclination is known, otherwise M sin(i) from radial velocity; rocky: <10, Neptune-class: 10–50, Jupiter: ~318; null for transit-only detections without RV follow-up |
+| `pl_eqt` | float | Planet equilibrium temperature in Kelvin assuming zero albedo, T_eq = T★ × √(R★/2a); Earth's T_eq ≈ 255 K; habitable zone range ≈ 200–300 K; null if stellar temperature or semi-major axis is unavailable |
+| `pl_orbsmax` | float | Orbital semi-major axis in AU; sets stellar irradiation flux and equilibrium temperature; null for planets with only transit period and no stellar mass estimate |
+| `pl_orbeccen` | float | Orbital eccentricity (0 = circular, <1 = elliptical); most short-period planets are tidally circularized (e ≈ 0); null for planets discovered by transit alone without RV characterization |
+| `st_teff` | float | Host star effective temperature in Kelvin; M dwarfs: 2500–4000 K, K dwarfs: 4000–5200 K, G dwarfs (Sun-like): 5200–6000 K, F dwarfs: 6000–7500 K; used to compute equilibrium temperature and transit-to-radius conversion |
+| `st_rad` | float | Host star radius in solar radii (R☉); required to convert observed transit depth (ΔF/F = (Rp/R★)²) into absolute planet radius |
+| `st_mass` | float | Host star mass in solar masses (M☉); used with orbital period to compute semi-major axis via Kepler's third law |
+| `sy_dist` | float | System distance in parsecs from Earth; derived from Gaia parallax when available; needed to assess planet detectability and calculate absolute stellar luminosity |
+| `sy_vmag` | float | Host star apparent V-band (optical) magnitude; brighter stars (lower values) are better targets for atmospheric characterization and RV follow-up |
+| `ra` | float | Right ascension in decimal degrees (ICRS J2000.0); range 0–360 |
+| `dec` | float | Declination in decimal degrees (ICRS J2000.0); range −90 to +90 |
+| `rowupdate` | string | ISO date of the most recent parameter update in the NASA Exoplanet Archive for this row |
 
 ## Quick stats
 

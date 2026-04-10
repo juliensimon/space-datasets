@@ -181,16 +181,16 @@ Records span from **{earliest}** to **{latest}**, with **{n_with_date:,}** space
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `wikidata_id` | string | Wikidata entity ID (e.g. Q48371) |
-| `name` | string | Spacecraft name |
-| `launch_date` | string | Launch date (YYYY-MM-DD) |
-| `decommissioned_date` | string | Decommissioning date (YYYY-MM-DD) |
-| `operator` | string | Operating agency or organization |
-| `manufacturer` | string | Manufacturer name |
-| `orbit_type` | string | Orbital regime (e.g. LEO, GEO, heliocentric) |
-| `mass_kg` | float | Spacecraft mass in kilograms |
-| `mission` | string | Associated mission name |
-| `launch_year` | int | Launch year (derived from launch_date) |
+| `wikidata_id` | string | Wikidata entity ID (e.g. "Q48371"); stable URI used for cross-referencing enrichment sources |
+| `name` | string | Spacecraft name as recorded in Wikidata (e.g. "Hubble Space Telescope", "Sputnik 1", "Starlink-1234") |
+| `launch_date` | string | ISO 8601 UTC launch date in YYYY-MM-DD format; null if the spacecraft has not yet launched or date is unknown |
+| `decommissioned_date` | string | ISO 8601 UTC date the spacecraft was decommissioned or declared lost (YYYY-MM-DD); null if still operational or decommission date not recorded |
+| `operator` | string | Agency or organization operating the spacecraft (e.g. "NASA", "ESA", "SpaceX", "Roscosmos"); null if not recorded in Wikidata |
+| `manufacturer` | string | Organization that built the spacecraft bus (e.g. "Boeing", "Lockheed Martin", "Airbus"); null if not recorded |
+| `orbit_type` | string | Orbital regime (e.g. "LEO", "GEO", "heliocentric", "lunar orbit", "deep space"); null if orbital data not available in Wikidata |
+| `mass_kg` | float | Total spacecraft mass in kilograms at launch; null for ~90% of entries where Wikidata has no mass recorded |
+| `mission` | string | Associated mission name linked in Wikidata (e.g. "Apollo program", "Mars Science Laboratory"); null if no mission link recorded |
+| `launch_year` | int | Year of launch derived from launch_date; null if launch_date is null; useful for time-series aggregation |
 
 ## Quick stats
 

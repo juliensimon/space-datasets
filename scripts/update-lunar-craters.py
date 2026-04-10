@@ -177,14 +177,14 @@ This database is directly relevant to NASA's Artemis program and international l
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `crater_id` | int64 | Unique crater identifier |
-| `latitude_deg` | float64 | Crater center latitude (degrees, planetocentric) |
-| `longitude_deg` | float64 | Crater center longitude (degrees, 0-360 E) |
-| `diameter_km` | float64 | Crater rim-to-rim diameter (km) |
-| `depth_km` | float64 | Rim-to-floor depth (km) |
-| `floor_elevation_km` | float64 | Floor elevation (km) |
-| `depth_rim_sd_km` | float64 | Rim depth standard deviation (km) |
-| `size_class` | string | Derived: small (<5 km), medium (5-20), large (20-100), giant (>100) |
+| `crater_id` | int64 | Unique integer crater identifier assigned by Robbins (2019); stable across catalog versions |
+| `latitude_deg` | float64 | Selenocentric latitude of crater center in degrees (−90° to +90°; positive = north) |
+| `longitude_deg` | float64 | Selenocentric longitude of crater center in degrees (0–360°, positive East; prime meridian at sub-Earth point) |
+| `diameter_km` | float64 | Rim-to-rim crater diameter in km; ranges from ~1 km (catalog floor) to ~2,500 km for the largest basins |
+| `depth_km` | float64 | Rim-to-floor depth derived from LOLA topography in km; null for heavily eroded craters where the rim is indistinct |
+| `floor_elevation_km` | float64 | Absolute floor elevation in km relative to the lunar reference ellipsoid; null when floor topography is not measured |
+| `depth_rim_sd_km` | float64 | Standard deviation of rim elevation measurements in km; larger values indicate irregular or degraded rims; null when fewer than 3 rim points were measured |
+| `size_class` | string | Derived size category: small (<5 km), medium (5–20 km), large (20–100 km), giant (>100 km); null only if diameter is missing |
 
 ## Quick stats
 

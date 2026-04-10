@@ -150,26 +150,26 @@ The OpenNGC project has corrected many historical errors in position and classif
 | Column | Type | Description |
 |--------|------|-------------|
 | `name` | string | Object designation (e.g. "NGC0001", "IC1234") |
-| `type` | string | Morphological type code (G, OCl, PN, EmN, etc.) |
-| `object_category` | string | Broad category: Galaxy, Nebula, Star Cluster, Other |
-| `ra` | string | Right ascension (J2000) |
-| `dec` | string | Declination (J2000) |
-| `const` | string | Constellation abbreviation |
-| `majax` | float | Major axis (arcmin) |
-| `minax` | float | Minor axis (arcmin) |
-| `posang` | float | Position angle (degrees) |
-| `b_mag` | float | B-band magnitude |
-| `v_mag` | float | V-band (visual) magnitude |
-| `j_mag` | float | J-band magnitude |
-| `h_mag` | float | H-band magnitude |
-| `k_mag` | float | K-band magnitude |
-| `surfbr` | float | Surface brightness |
-| `hubble` | string | Hubble morphological type (galaxies) |
-| `m` | string | Messier number, if applicable |
-| `ngc` | string | Cross-referenced NGC number |
-| `ic` | string | Cross-referenced IC number |
-| `common_names` | string | Common names (e.g. "Andromeda Galaxy") |
-| `identifiers` | string | Other catalog identifiers |
+| `type` | string | Morphological type code from OpenNGC classification: G=galaxy, OCl=open cluster, GCl=globular cluster, PN=planetary nebula, EmN=emission nebula, RfN=reflection nebula, SNR=supernova remnant, Dup=duplicate entry, Other=miscellaneous |
+| `object_category` | string | Broad category derived from type code: Galaxy, Nebula, Star Cluster, Other |
+| `ra` | string | ICRS J2000.0 right ascension of the object center in sexagesimal (HH:MM:SS.s); suitable for telescope pointing |
+| `dec` | string | ICRS J2000.0 declination of the object center in sexagesimal (±DD:MM:SS); suitable for telescope pointing |
+| `const` | string | Standard 3-letter IAU constellation abbreviation (e.g., "And" for Andromeda, "Ori" for Orion); 88 possible values |
+| `majax` | float | Angular size of the major axis in arcminutes; null for unresolved objects or those without reliable extent measurements |
+| `minax` | float | Angular size of the minor axis in arcminutes; null for unresolved or circular objects, or those without reliable measurements |
+| `posang` | float | Position angle of the major axis in degrees, measured east from north (0–180°); null for circular or unresolved objects |
+| `b_mag` | float | Integrated blue-band (B, ~440 nm) magnitude; brighter objects have lower (or negative) values; typical NGC range 6–16; null for objects too extended for reliable integrated photometry |
+| `v_mag` | float | Integrated visual-band (V, ~550 nm) magnitude; the standard optical brightness measure; brighter = lower number; typical NGC range 6–16; null for objects too extended for reliable integrated photometry |
+| `j_mag` | float | Integrated near-infrared J-band (~1.25 µm) magnitude from 2MASS; null if not measured |
+| `h_mag` | float | Integrated near-infrared H-band (~1.65 µm) magnitude from 2MASS; null if not measured |
+| `k_mag` | float | Integrated near-infrared K-band (~2.17 µm) magnitude from 2MASS; null if not measured |
+| `surfbr` | float | Mean surface brightness in mag/arcmin²; measures how spread out the object's light is; useful for observability under light-polluted skies; null if not available |
+| `hubble` | string | Hubble/de Vaucouleurs morphological classification for galaxies (e.g., "E2" for elliptical, "SBbc" for barred spiral); null for non-galaxies |
+| `m` | string | Messier catalog number (e.g., "M31"); null for objects not in the Messier catalog |
+| `ngc` | string | Cross-referenced NGC (New General Catalogue) number; null for IC-only objects |
+| `ic` | string | Cross-referenced IC (Index Catalogue) number; null for NGC-only objects |
+| `common_names` | string | Well-known popular names (e.g., "Andromeda Galaxy", "Orion Nebula"); null for objects without widely-used common names |
+| `identifiers` | string | Additional catalog cross-references (e.g., UGC, MCG, Arp numbers); null if no additional identifiers available |
 
 ## Usage
 

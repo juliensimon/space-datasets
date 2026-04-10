@@ -180,20 +180,27 @@ The Holczer et al. (2016) catalog represents the most comprehensive uniform TTV 
 
 This dataset is widely used for dynamical mass measurements via N-body fitting, studies of orbital resonance and migration history, and statistical analyses of multi-planet system architectures. It also serves as a benchmark for testing TTV extraction algorithms and for training machine learning models to detect weak dynamical signals in photometric time series.
 
-## Key columns
+## Schema
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `koi` | float64 | Kepler Object of Interest number |
-| `transit_number` | Int32 | Sequential transit number for this KOI |
-| `t_obs_bjd` | float64 | Observed mid-transit time (BJD - 2454833) |
-| `t_obs_err` | float64 | Uncertainty on mid-transit time (days) |
-| `o_c` | float64 | Observed minus computed residual (days) |
-| `o_c_err` | float64 | Uncertainty on O-C residual (days) |
-| `duration_hr` | float64 | Transit duration (hours) |
-| `duration_err` | float64 | Uncertainty on transit duration (hours) |
-| `depth_ppm` | float64 | Transit depth (ppm) |
-| `depth_err` | float64 | Uncertainty on transit depth (ppm) |
+| `koi` | float64 | Kepler Object of Interest number (e.g. 137.01); the integer part identifies the host star in the KIC, the decimal suffix distinguishes multiple candidates around the same star |
+| `transit_number` | Int32 | Sequential index of this individual transit event for the given KOI, starting from 0 at the reference epoch; enables reconstruction of the full timing series |
+| `t_obs_bjd` | float64 | Observed mid-transit time in Barycentric Julian Date offset: BJD_TDB − 2454833.0; the reference epoch (0.0) corresponds to 2009 January 1, the start of Kepler science operations |
+| `t_obs_err` | float64 | 1-sigma uncertainty on the observed mid-transit time in days; typical values 0.001–0.01 days (~1–15 min); larger for shallow or noisy transits |
+| `o_c` | float64 | Observed minus computed (O-C) transit timing residual in days relative to the best-fit linear ephemeris; nonzero values indicate transit timing variations (TTVs) caused by gravitational perturbations from other bodies; null if transit was not cleanly isolated |
+| `o_c_err` | float64 | 1-sigma uncertainty on the O-C residual in days; propagated from the mid-time fit uncertainty |
+| `o_c_flag` | string | Quality flag for the O-C measurement; non-null values indicate problematic transits (e.g. gaps, stellar activity, overlapping transits) |
+| `duration_hr` | float64 | Transit duration in hours from first to last contact; sensitive to orbital inclination and impact parameter; typical Kepler transit durations 1–15 hours |
+| `duration_err` | float64 | 1-sigma uncertainty on transit duration in hours |
+| `depth_ppm` | float64 | Transit depth in parts per million (flux decrease); equals (Rp/R★)² × 10⁶ for a central transit; Earth-Sun: ~84 ppm, Jupiter-Sun: ~10,000 ppm |
+| `depth_err` | float64 | 1-sigma uncertainty on transit depth in ppm |
+| `tdv` | float64 | Transit duration variation — deviation of this transit's duration from the mean duration in hours; nonzero TDV can indicate orbital precession or a changing impact parameter |
+| `tdv_err` | float64 | 1-sigma uncertainty on the transit duration variation in hours |
+| `tpv` | float64 | Transit profile variation — deviation of the transit shape parameter from its mean value; sensitive to changing impact parameter or stellar limb-darkening variations |
+| `tpv_err` | float64 | 1-sigma uncertainty on the transit profile variation |
+| `outlier` | string | Flag marking this transit as a photometric outlier (e.g. stellar flare, cosmic ray, data gap); flagged transits are excluded from TTV analyses |
+| `overlap` | string | Flag indicating this transit overlaps temporally with another transit of a different KOI around the same star; can bias timing measurements in compact multi-planet systems |
 
 ## Quick stats
 

@@ -184,27 +184,27 @@ The two detector sub-systems provide complementary energy coverage: WCDA (Water 
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `source_name` | string | 1LHAASO source designation |
-| `detector` | string | Detector: KM2A or WCDA |
-| `ra_deg` | float64 | Right ascension J2000 (degrees) |
-| `dec_deg` | float64 | Declination J2000 (degrees) |
-| `glon_deg` | float64 | Galactic longitude (degrees) |
-| `glat_deg` | float64 | Galactic latitude (degrees) |
-| `pos_error_deg` | float64 | Position uncertainty (degrees) |
-| `extension_deg` | float64 | Source extension (degrees, 0 = point-like) |
-| `significance` | float64 | Detection significance (sigma) |
-| `spectral_index` | float64 | Power-law spectral index |
-| `spectral_index_error` | float64 | Spectral index uncertainty |
-| `pivot_energy_tev` | float64 | Pivot energy (TeV) |
-| `diff_flux` | float64 | Differential flux at pivot energy |
-| `diff_flux_error` | float64 | Differential flux uncertainty |
-| `energy_min_tev` | float64 | Minimum energy of fit range (TeV) |
-| `energy_max_tev` | float64 | Maximum energy of fit range (TeV) |
-| `ts_value` | float64 | Test statistic value |
-| `association` | string | Associated known source |
-| `source_class` | string | Source classification |
-| `is_extended` | bool | True if source has non-zero extension |
-| `has_association` | bool | True if associated with a known source |
+| `source_name` | string | 1LHAASO catalog designation in format "1LHAASO JHHMMSS.s±DDMMSS" |
+| `detector` | string | Sub-detector used: "KM2A" (sensitive above ~25 TeV, up to PeV) or "WCDA" (sensitive 1–25 TeV); a source may have separate entries for each |
+| `ra_deg` | float64 | Right ascension, ICRS J2000.0 (degrees, 0–360); LHAASO sources are primarily Galactic (sky coverage up to ~80°N) |
+| `dec_deg` | float64 | Declination, ICRS J2000.0 (degrees) |
+| `glon_deg` | float64 | Galactic longitude (degrees, 0–360) |
+| `glat_deg` | float64 | Galactic latitude (degrees, −90 to +90) |
+| `pos_error_deg` | float64 | 1-sigma statistical positional uncertainty (degrees); typically 0.05–0.3° depending on significance and extension |
+| `extension_deg` | float64 | Gaussian extension radius of the source (degrees); null or 0 for point-like sources; LHAASO detects extensions of 0.1–2° |
+| `significance` | float64 | Detection significance in Gaussian sigma; catalog inclusion threshold >7σ for both KM2A and WCDA sub-catalogs |
+| `spectral_index` | float64 | Power-law photon spectral index Γ (dN/dE ∝ E^−Γ); LHAASO UHE sources typically Γ ~ 2.0–3.5 |
+| `spectral_index_error` | float64 | 1-sigma statistical uncertainty on spectral_index |
+| `pivot_energy_tev` | float64 | Decorrelation energy in TeV at which flux normalization uncertainty is minimized |
+| `diff_flux` | float64 | Differential photon flux at pivot_energy_tev in units of 10⁻¹⁷ cm⁻² s⁻¹ TeV⁻¹ (normalized at 100 TeV for KM2A entries) |
+| `diff_flux_error` | float64 | 1-sigma statistical uncertainty on diff_flux (same units) |
+| `energy_min_tev` | float64 | Lower bound of the spectral fit energy range (TeV) |
+| `energy_max_tev` | float64 | Upper bound of the spectral fit energy range (TeV); up to ~1000 TeV for bright KM2A sources |
+| `ts_value` | float64 | Test statistic TS = 2 × (ln L_src − ln L_null); related to significance by TS ≈ σ² for a 1 d.o.f. fit |
+| `association` | string | Name of the best multi-wavelength counterpart (SNR, PWN, molecular cloud, stellar cluster, etc.); null if no confident association |
+| `source_class` | string | Physical classification of the associated counterpart (e.g., "PWN", "SNR", "Binary", "Unidentified"); null if unassociated |
+| `is_extended` | bool | True if extension_deg is non-null and >0; derived column |
+| `has_association` | bool | True if association is non-null; derived column |
 
 ## Usage
 

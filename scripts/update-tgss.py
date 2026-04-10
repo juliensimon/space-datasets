@@ -145,17 +145,17 @@ At 150 MHz, the ionosphere introduces direction-dependent phase errors that must
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `source_name` | string | TGSS source designation |
-| `ra_deg` | float64 | Right ascension J2000 (degrees) |
-| `dec_deg` | float64 | Declination J2000 (degrees) |
-| `peak_flux_mjy` | float64 | Peak flux density (mJy/beam) |
-| `integrated_flux_mjy` | float64 | Integrated flux density (mJy) |
-| `e_peak_flux_mjy` | float64 | Error on peak flux (mJy/beam) |
-| `e_integrated_flux_mjy` | float64 | Error on integrated flux (mJy) |
-| `rms_mjy` | float64 | Local rms noise (mJy/beam) |
-| `major_axis_arcsec` | float64 | Fitted major axis FWHM (arcsec) |
-| `minor_axis_arcsec` | float64 | Fitted minor axis FWHM (arcsec) |
-| `position_angle_deg` | float64 | Position angle (degrees) |
+| `source_name` | string | TGSS catalog designation in the format "TGSSADR JHHMMSS.s+DDMMSS"; the J2000 sexagesimal position is encoded directly in the name, making the sky coordinates recoverable from the ID alone |
+| `ra_deg` | float64 | ICRS J2000.0 right ascension in degrees (0–360); derived from the Gaussian fit to the 150 MHz radio emission; typical astrometric accuracy ~2 arcsec |
+| `dec_deg` | float64 | ICRS J2000.0 declination in degrees (−90 to +90); survey covers declination > −53°; derived from the Gaussian fit to the 150 MHz radio emission |
+| `peak_flux_mjy` | float64 | Peak surface brightness at 150 MHz in mJy/beam, measured at the beam center using a 25 arcsec FWHM synthesized beam; best flux estimator for unresolved point sources |
+| `integrated_flux_mjy` | float64 | Total integrated flux density in mJy at 150 MHz; for extended sources this exceeds the peak flux; for point sources it equals the peak flux within noise |
+| `e_peak_flux_mjy` | float64 | 1-sigma uncertainty on peak flux density in mJy/beam; includes thermal noise and calibration errors |
+| `e_integrated_flux_mjy` | float64 | 1-sigma uncertainty on integrated flux density in mJy; typically larger than the peak flux error for resolved sources |
+| `rms_mjy` | float64 | Local background rms noise in mJy/beam measured in an annulus around the source; indicates detection sensitivity at that sky position; sources detected at ≥7 sigma |
+| `major_axis_arcsec` | float64 | Deconvolved major axis FWHM in arcseconds after removing the 25 arcsec beam; null or ~0 for unresolved point sources where only an upper limit on size is available |
+| `minor_axis_arcsec` | float64 | Deconvolved minor axis FWHM in arcseconds; null or ~0 for unresolved point sources; a nonzero value indicates the source is spatially resolved |
+| `position_angle_deg` | float64 | Position angle of the major axis in degrees east from north (0–180); null for circular or unresolved sources where the angle is unconstrained |
 
 ## Quick stats
 

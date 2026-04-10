@@ -255,20 +255,20 @@ def main():
 
         # Build schema from actual columns
         col_descriptions = {
-            "name": ("string", "Trigger name / identifier"),
-            "trigger_time": ("datetime", "Trigger time (UTC, converted from MJD)"),
-            "ra": ("float", "Right ascension (degrees)"),
-            "dec": ("float", "Declination (degrees)"),
-            "error_radius": ("float", "Localization error radius (degrees)"),
-            "trigger_type": ("string", "Trigger classification type"),
-            "reliability": ("float", "Trigger reliability flag"),
-            "trigger_significance": ("float", "Trigger significance (sigma)"),
-            "trigger_timescale": ("float", "Trigger timescale (ms)"),
-            "localization_source": ("string", "Source of localization (e.g. ground, flight)"),
-            "classification": ("string", "Event classification"),
-            "galactic_lat": ("float", "Galactic latitude (degrees)"),
-            "galactic_lon": ("float", "Galactic longitude (degrees)"),
-            "is_grb": ("bool", "True if trigger is classified as a GRB"),
+            "name": ("string", "Trigger identifier in the format 'bnYYMMDDFFF' (bn + UTC date + fraction of day, e.g. bn170817529)"),
+            "trigger_time": ("datetime", "Trigger UTC timestamp, converted from MJD; spans 2008-July to present"),
+            "ra": ("float", "Right ascension of best-fit localization, ICRS J2000.0 (degrees, 0–360); null if localization failed"),
+            "dec": ("float", "Declination of best-fit localization, ICRS J2000.0 (degrees, −90 to +90); null if localization failed"),
+            "error_radius": ("float", "1-sigma statistical localization error radius (degrees); GBM typical ~1–10°"),
+            "trigger_type": ("string", "On-board trigger algorithm type (e.g. 'long', 'short', 'soft'); reflects the detector timescale and energy range that fired"),
+            "reliability": ("float", "Ground-based reliability score (0–1) from automated classification; higher = more likely astrophysical"),
+            "trigger_significance": ("float", "Trigger detection significance in sigma above background; threshold for catalog inclusion typically >4.5σ"),
+            "trigger_timescale": ("float", "Trigger accumulation timescale in milliseconds (e.g. 16, 64, 256, 1024, 4096 ms); shorter scales identify short GRBs and TGFs"),
+            "localization_source": ("string", "Origin of the reported sky position: 'flight' (on-board), 'ground' (refined post-downlink), or 'IPN' (triangulation)"),
+            "classification": ("string", "Event classification: GRB, SGR (soft gamma repeater), TGF (terrestrial gamma-ray flash), Galactic transient, Solar flare, Particle event, Local particles, Below-horizon, Other"),
+            "galactic_lat": ("float", "Galactic latitude of trigger localization (degrees, −90 to +90)"),
+            "galactic_lon": ("float", "Galactic longitude of trigger localization (degrees, 0–360)"),
+            "is_grb": ("bool", "True if classification or trigger_type contains 'GRB'; derived column"),
         }
         schema_rows = ""
         for col in df.columns:

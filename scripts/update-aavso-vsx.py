@@ -193,21 +193,21 @@ The diversity of variability types in VSX makes it a foundational resource for t
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `aavso_uid` | Int64 | AAVSO unique object identifier |
-| `name` | string | Primary designation |
-| `ra_deg` | float64 | Right ascension J2000 (degrees) |
-| `dec_deg` | float64 | Declination J2000 (degrees) |
-| `variable_type` | string | Variability type (e.g., EW, SR, RRAB, DSCT) |
-| `var_flag` | Int64 | Variability flag (0=confirmed, 1=suspected) |
-| `mag_max` | float64 | Maximum brightness (magnitude at max light) |
-| `mag_max_passband` | string | Passband for max magnitude |
-| `mag_min` | float64 | Minimum brightness / amplitude |
-| `mag_min_passband` | string | Passband for min magnitude |
-| `min_is_amplitude` | string | Y if mag_min is amplitude, not absolute magnitude |
-| `period_days` | float64 | Period in days |
-| `epoch_jd` | float64 | Epoch of maximum/minimum (Julian Date) |
-| `spectral_type` | string | Spectral classification |
-| `mag_range` | float64 | Derived magnitude range (mag_min - mag_max) |
+| `aavso_uid` | Int64 | VSX internal object ID; stable across catalog updates and cross-survey merges — use this as the primary join key |
+| `name` | string | Primary star designation (common name or catalog ID such as V* R Lyr or OGLE-BLG-RRLYR-00001) |
+| `ra_deg` | float64 | Right ascension in the ICRS J2000.0 frame, decimal degrees (0–360) |
+| `dec_deg` | float64 | Declination in the ICRS J2000.0 frame, decimal degrees (−90 to +90) |
+| `variable_type` | string | VSX variability type code; over 100 types defined — e.g. "DCEP" (classical Cepheid pulsator used as distance standard candle), "MIRA" (long-period AGB pulsator, periods 100–1000 d), "EA" (Algol-type eclipsing binary with well-separated components), "EB" (Beta Lyrae eclipsing binary with continuous light variation), "EW" (W UMa contact binary), "RRAB"/"RRC" (RR Lyrae subtypes tracing old stellar populations), "SR" (semiregular pulsator), "L" (slow irregular), "N" (nova), "CV" (cataclysmic variable — white dwarf accreting from companion); null if unclassified |
+| `var_flag` | Int64 | Variability confirmation status: 0 = confirmed variable, 1 = suspected variable only |
+| `mag_max` | float64 | Brightness at maximum light (brightest state) in the band given by `mag_max_passband`; lower number = brighter; null if maximum not measured |
+| `mag_max_passband` | string | Photometric band for `mag_max` (e.g. "V", "B", "R", "I", "g", "r"); defines the wavelength at which the magnitude was measured |
+| `mag_min` | float64 | Brightness at minimum light or, when `min_is_amplitude` = "Y", the peak-to-peak amplitude (mag_min − mag_max); null if minimum not measured |
+| `mag_min_passband` | string | Photometric band for `mag_min`; usually matches `mag_max_passband` but may differ for some catalog entries |
+| `min_is_amplitude` | string | "Y" if `mag_min` stores the variability amplitude (Δmag) rather than the absolute faint-state magnitude; check this flag before computing amplitude |
+| `period_days` | float64 | Pulsation, rotation, or orbital period in days; null for irregular variables (types L, N) or objects without a well-determined period; range: ~0.0001 d (ultrashort Delta Sct) to thousands of days (Mira variables) |
+| `epoch_jd` | float64 | Reference epoch of maximum or minimum brightness in Julian Date (JD); used together with `period_days` to predict phase at any time; null when period is unknown |
+| `spectral_type` | string | MK spectral classification where available (e.g. "M6e" for a Mira, "A7V" for a Delta Scuti star); null for most entries not covered by spectroscopic surveys |
+| `mag_range` | float64 | Derived variability amplitude in magnitudes (mag_min − mag_max when `min_is_amplitude` = "N"); positive value; larger values indicate more strongly varying stars |
 
 Full schema includes {len(df.columns)} columns with uncertainty flags and limit flags.
 

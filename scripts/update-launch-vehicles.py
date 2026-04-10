@@ -224,12 +224,12 @@ maintained by the WikiProject Spaceflight community.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `wikidata_id` | string | Wikidata entity ID (e.g. Q697175) |
-| `name` | string | Vehicle name |
-| `manufacturer` | string | Manufacturer organisation |
-| `country` | string | Country of origin |
-| `height_m` | float | Total height (metres) |
-| `payload_leo_kg` | float | Payload capacity to LEO (kg) |
+| `wikidata_id` | string | Wikidata entity ID (e.g. "Q697175"); resolves to https://www.wikidata.org/wiki/Q697175 — use for enrichment joins with other Wikidata-sourced datasets |
+| `name` | string | Primary name of the launch vehicle (e.g. "Saturn V", "Falcon 9"); canonical form as used in Wikipedia/Wikidata |
+| `manufacturer` | string | Organization that designed and built the vehicle (e.g. "Boeing", "SpaceX"); null if manufacturer information is absent from Wikidata |
+| `country` | string | Country of origin using full English name (e.g. "United States", "Russia"); reflects the operating nation at time of primary use |
+| `height_m` | float | Total vehicle height from base to payload fairing tip, in metres; null when not recorded in Wikidata |
+| `payload_leo_kg` | float | Maximum payload mass deliverable to low Earth orbit (≈200–2000 km altitude) in kilograms; null for vehicles whose LEO capacity is unrecorded or not applicable |
 
 Additional columns (diameter, mass, first_flight, etc.) appear when Wikidata coverage exceeds 5%.
 

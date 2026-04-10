@@ -226,26 +226,26 @@ The approval dates in this dataset trace the history of planetary exploration it
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `name` | string | Official IAU feature name |
-| `clean_name` | string | Cleaned/normalized feature name |
-| `body` | string | Planetary body (MOON, MARS, VENUS, MERCURY) |
-| `approvaldt` | datetime | IAU approval date |
-| `origin` | string | Name origin/meaning |
-| `diameter` | float64 | Feature diameter in km |
-| `center_lon` | float64 | Center longitude (decimal degrees) |
-| `center_lat` | float64 | Center latitude (decimal degrees) |
-| `type` | string | Feature type (Crater, Mons, Mare, Planitia, etc.) |
-| `code` | string | Feature type code |
-| `approval` | string | Approval status |
-| `min_lon` | float64 | Minimum bounding longitude |
-| `max_lon` | float64 | Maximum bounding longitude |
-| `min_lat` | float64 | Minimum bounding latitude |
-| `max_lat` | float64 | Maximum bounding latitude |
-| `ethnicity` | string | Cultural/ethnic origin of name |
-| `continent` | string | Continent associated with name origin |
-| `quad_name` | string | USGS quadrangle name |
-| `quad_code` | string | USGS quadrangle code |
-| `link` | string | Link to USGS nomenclature page |
+| `name` | string | Official IAU-approved surface feature name; unique within a body+feature_type combination but the same name may appear on different bodies; all names are approved by the IAU Working Group for Planetary System Nomenclature |
+| `clean_name` | string | Name with diacritics and special characters removed or normalized for indexing and search |
+| `body` | string | Planetary body the feature resides on: MOON, MARS, VENUS, or MERCURY |
+| `approvaldt` | datetime | Date the IAU officially approved the feature name; null for very old features with uncertain approval records |
+| `origin` | string | Cultural, mythological, or historical source of the name (e.g., "Norse goddess of the sea", "village in Nigeria"); key for understanding the naming theme applied to each body and feature type |
+| `diameter` | float64 | Feature diameter or longest dimension in km; null for linear features (rima, rupes, linea) and broad regions (regio, terra) where a single diameter is not meaningful |
+| `center_lon` | float64 | Center longitude in decimal degrees using IAU-standard planetocentric coordinates; longitude system varies by body — east-positive for most bodies, but historically west-positive for Moon and Mars in some references |
+| `center_lat` | float64 | Center latitude in decimal degrees (planetocentric); positive north, negative south; ranges from -90 to +90 |
+| `type` | string | Full English name of the feature type (e.g., Crater, Mons, Planitia, Vallis, Rupes, Fossa, Patera) |
+| `code` | string | Two-letter IAU feature type code: AA=Albedo feature, CA=Catena (chain of craters), CR=Corona, DO=Dorsum (ridge), ER=Eruptive center, FL=Fluctus (flow terrain), FO=Fossa (long narrow depression), LI=Linea (elongated marking), ME=Mensa (flat-topped hill), MO=Mons (mountain), OC=Oceanus, PA=Patera (irregular crater/volcanic depression), PL=Planitia (low plain), PM=Planum (plateau/high plain), RE=Regio (large region), RI=Rima (fissure), RU=Rupes (scarp/cliff), TA=Terra (extensive land), TH=Tholus (small dome-shaped hill), UN=Undae (dune field), VA=Vallis (valley), VS=Vastitas (extensive plain) |
+| `approval` | string | IAU approval status: "Approved" (in official gazetteer), "Dropped" (formerly approved, now retired), or "Provisional" (pending full approval) |
+| `min_lon` | float64 | Minimum (western) longitude of the feature bounding box in decimal degrees |
+| `max_lon` | float64 | Maximum (eastern) longitude of the feature bounding box in decimal degrees |
+| `min_lat` | float64 | Minimum (southern) latitude of the feature bounding box in decimal degrees |
+| `max_lat` | float64 | Maximum (northern) latitude of the feature bounding box in decimal degrees |
+| `ethnicity` | string | Cultural/ethnic group associated with the name origin (e.g., "Norse", "African", "Greek"); useful for diversity analysis of naming conventions across bodies |
+| `continent` | string | Continent of origin for the cultural source of the name (e.g., Europe, Africa, Asia); null when origin is mythological or not geographically tied |
+| `quad_name` | string | USGS planetary quadrangle name covering the feature location; used for cartographic referencing |
+| `quad_code` | string | USGS quadrangle alphanumeric code (e.g., "MC-01" for Mercury); null if quadrangle mapping is not available for the body |
+| `link` | string | Direct URL to the feature's entry in the USGS Planetary Nomenclature online gazetteer |
 
 ## Quick stats
 

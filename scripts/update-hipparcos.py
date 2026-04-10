@@ -146,17 +146,17 @@ The scientific legacy of Hipparcos extends far beyond simple distance measuremen
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `hip_id` | int64 | Hipparcos catalog number |
-| `ra_deg` | float64 | Right ascension J2000 (degrees) |
-| `dec_deg` | float64 | Declination J2000 (degrees) |
-| `v_magnitude` | float64 | Visual magnitude |
-| `parallax_mas` | float64 | Trigonometric parallax (milliarcseconds) |
-| `parallax_error_mas` | float64 | Parallax standard error (milliarcseconds) |
-| `proper_motion_ra_mas_yr` | float64 | Proper motion in RA (mas/yr) |
-| `proper_motion_dec_mas_yr` | float64 | Proper motion in Dec (mas/yr) |
-| `color_bv` | float64 | B-V color index |
-| `spectral_type` | string | MK spectral type |
-| `distance_pc` | float64 | Distance in parsecs (derived: 1000/parallax) |
+| `hip_id` | int64 | Hipparcos Input Catalog identifier; integer in range 1–120404; the standard cross-reference identifier for stars brighter than ~12 mag observed by the Hipparcos satellite (1989–1993); still widely used to cross-match with Gaia and Tycho-2 |
+| `ra_deg` | float64 | Right ascension in degrees, ICRS at reference epoch J1991.25 (the astrometric midpoint of the Hipparcos mission, not J2000.0); range 0–360; differs from J2000.0 by a small proper-motion correction that grows with stellar velocity |
+| `dec_deg` | float64 | Declination in degrees, ICRS at reference epoch J1991.25; range −90 to +90; positive north of the celestial equator |
+| `v_magnitude` | float64 | Johnson V-band apparent magnitude; higher values are fainter; catalog covers roughly V = 2–12.4 mag; null for stars with only Hp-band photometry |
+| `parallax_mas` | float64 | Trigonometric parallax in milliarcseconds; convert to distance via distance_pc = 1000 / parallax_mas; Hipparcos precision ~1 mas (cf. Gaia ~0.02 mas); negative values are physically meaningful measurement noise for distant stars where the true parallax is near zero |
+| `parallax_error_mas` | float64 | 1-sigma formal uncertainty on the parallax in milliarcseconds; stars where parallax_error_mas > 0.5 × parallax_mas have uncertain distances (signal-to-noise < 2); use with caution for distance-dependent analyses |
+| `proper_motion_ra_mas_yr` | float64 | Proper motion in right ascension in milliarcseconds per year, with the cos(dec) factor already applied so this is the true angular rate on the sky (not the coordinate rate); positive = eastward motion |
+| `proper_motion_dec_mas_yr` | float64 | Proper motion in declination in milliarcseconds per year; positive = northward motion; combined with proper_motion_ra_mas_yr gives the full tangential velocity vector on the sky |
+| `color_bv` | float64 | Johnson B−V color index in magnitudes; more positive values indicate redder, cooler stars (e.g. B−V ≈ −0.3 for hot O/B stars, +1.5 for cool M giants); null for stars lacking B-band photometry |
+| `spectral_type` | string | MK (Morgan–Keenan) spectral classification from catalog cross-references, e.g. "G2V" (Sun-like), "K0III" (red giant); encodes temperature class (O B A F G K M), luminosity class (I–V), and sometimes peculiarity flags; null for ~30% of stars, especially fainter objects |
+| `distance_pc` | float64 | Heliocentric distance in parsecs, derived as 1000 / parallax_mas; null when parallax_mas ≤ 0 (unphysical noise-dominated measurements); treat values with large parallax_error_mas as highly uncertain |
 
 ## Quick stats
 

@@ -146,20 +146,20 @@ Understanding this dataset requires appreciating that the presence of an object 
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `designation` | string | Primary designation (e.g. "29075", "2024 YR4") |
-| `full_name` | string | Full formatted name |
-| `impact_probability` | float64 | Cumulative impact probability |
-| `palermo_scale_cum` | float64 | Cumulative Palermo Scale value |
-| `palermo_scale_max` | float64 | Maximum Palermo Scale value (single event) |
-| `torino_scale` | float64 | Maximum Torino Scale value (0-10) |
-| `n_potential_impacts` | float64 | Number of potential impact scenarios |
-| `year_range_min` | Int64 | Earliest year of potential impact |
-| `year_range_max` | Int64 | Latest year of potential impact |
-| `last_observation` | datetime | Date of last astrometric observation |
-| `last_observation_jd` | float64 | Last observation (Julian Date) |
-| `diameter_km` | float64 | Estimated diameter (km) |
-| `absolute_magnitude` | float64 | Absolute magnitude H |
-| `v_infinity_kms` | float64 | V-infinity at impact (km/s) |
+| `designation` | string | Asteroid designation: either a permanent number (e.g. "29075") for numbered asteroids, or a provisional MPC designation (e.g. "2024 YR4") for unnumbered ones |
+| `full_name` | string | Full formatted name combining number (if assigned) and provisional designation or name (e.g. "29075 (1950 DA)", "2024 YR4") |
+| `impact_probability` | float64 | Total cumulative probability of at least one Earth impact across all monitored years, summed over all virtual impactor solutions; typically 10⁻⁷ to 10⁻¹; the vast majority of entries are below 1 in 10,000 |
+| `palermo_scale_cum` | float64 | Cumulative Palermo Scale: logarithm of the ratio of cumulative impact probability to the background impact frequency for objects of equivalent energy; PS=0 equals background risk; PS>-2 merits attention by planetary defense community; dataset is sorted by this column descending |
+| `palermo_scale_max` | float64 | Maximum Palermo Scale over any single impact solution in the monitored time window; less conservative than the cumulative value; useful for identifying the single most hazardous potential impact date |
+| `torino_scale` | float64 | Maximum Torino Scale integer (0–10) across all impact solutions; public communication metric combining probability and kinetic energy: 0 = no hazard, 1 = routine monitoring, 4–7 = threatening, 10 = certain global catastrophe; historically only a few objects have briefly exceeded 1 |
+| `n_potential_impacts` | float64 | Count of distinct impact geometries (virtual impactors) identified by Sentry's orbital sampling; a larger number reflects broader orbital uncertainty, not necessarily higher probability |
+| `year_range_min` | Int64 | Earliest calendar year in which an impact solution exists; the first year where the object's uncertain orbit intersects Earth's orbit |
+| `year_range_max` | Int64 | Latest calendar year in which an impact solution exists; Sentry monitors orbits forward up to ~100 years |
+| `last_observation` | datetime | UTC date of the most recent astrometric observation incorporated into the orbit solution; more recent observations typically reduce impact probability |
+| `last_observation_jd` | float64 | Same as `last_observation` expressed as a Julian Date (TDB timescale) |
+| `diameter_km` | float64 | Estimated diameter in km derived from absolute magnitude assuming a geometric albedo of 0.154; null if H is unavailable; range in this table is typically 0.01–10 km |
+| `absolute_magnitude` | float64 | Absolute magnitude H; proxy for size: H=18 ≈ 1 km, H=22 ≈ 140 m, H=25 ≈ 40 m; actual diameter depends on unknown albedo; null for some objects |
+| `v_infinity_kms` | float64 | Hyperbolic excess speed (v∞) at Earth encounter in km/s; combined with Earth's gravity well this yields the actual impact speed (typically 11–30 km/s); determines kinetic energy: higher v∞ means more destructive impact for the same mass |
 
 ## Quick stats
 

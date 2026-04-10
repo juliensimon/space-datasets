@@ -153,10 +153,10 @@ From an operational standpoint, these alerts drive real-world responses: satelli
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `product_id` | string | SWPC product identifier |
-| `issue_datetime` | datetime | Date and time the alert was issued (UTC) |
-| `message` | string | Full alert message text |
-| `alert_type` | string | Extracted type: ALERT, WARNING, WATCH, SUMMARY, or OTHER |
+| `product_id` | string | SWPC product code identifying the alert category and threshold (e.g., "ALTEF3" = electron flux alert level 3, "WATA20" = geomagnetic activity watch, "ALTK06" = Kp=6 alert, "SUMSUD" = summary); encodes both product type and severity level |
+| `issue_datetime` | datetime | UTC timestamp when the alert was officially issued by NOAA SWPC |
+| `message` | string | Full text of the alert as issued, including threshold values, affected systems, and analyst commentary; unstructured plain text suitable for NLP analysis |
+| `alert_type` | string | Derived alert category extracted from product_id and message text: "ALERT" (real-time threshold exceeded), "WARNING" (threshold expected to be exceeded within hours), "WATCH" (significant event possible within 1–3 days), "SUMMARY" (post-event synopsis), "OTHER" (miscellaneous products) |
 
 ## Quick stats
 

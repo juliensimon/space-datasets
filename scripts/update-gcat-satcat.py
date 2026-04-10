@@ -135,48 +135,48 @@ This dataset is valuable for studying the growth of the space object population 
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `jcat_id` | string | GCAT unique identifier (e.g. "S00001") |
-| `satcat_number` | float | NORAD/Space Force catalog number |
-| `launch_tag` | string | GCAT launch identifier |
-| `piece` | string | COSPAR international designator |
-| `type` | string | Object type code (P=payload, R=rocket body, D=debris, etc.) |
-| `name` | string | Object name |
-| `pl_name` | string | Payload name |
-| `launch_date` | string | Launch date |
-| `parent` | string | Parent object JCAT ID |
-| `separation_date` | string | Separation date/time from parent |
-| `primary` | string | Primary body (Earth, Moon, Sun, etc.) |
-| `decay_date` | string | Reentry/decay date (if applicable) |
-| `status` | string | Status: O=in orbit, R=reentered, AR=reentered after achieving orbit, etc. |
-| `dest` | string | Destination code |
-| `owner` | string | Owner/operator code |
-| `state_code` | string | Country/state code |
-| `manufacturer` | string | Manufacturer code |
-| `bus` | string | Spacecraft bus/platform |
-| `motor` | string | Propulsion motor |
-| `mass_kg` | float | Object mass in kg |
-| `mass_flag` | string | Mass qualifier flag |
-| `dry_mass_kg` | float | Dry mass in kg |
-| `dry_flag` | string | Dry mass qualifier flag |
-| `total_mass_kg` | float | Total mass in kg |
-| `total_flag` | string | Total mass qualifier flag |
-| `length_m` | float | Length in meters |
-| `length_flag` | string | Length qualifier flag |
-| `diameter_m` | float | Diameter in meters |
-| `diameter_flag` | string | Diameter qualifier flag |
-| `span_m` | float | Span (e.g. solar panel wingspan) in meters |
-| `span_flag` | string | Span qualifier flag |
-| `shape` | string | Shape description |
-| `orbit_date` | string | Orbital elements epoch date |
-| `perigee_km` | float | Perigee altitude in km |
-| `perigee_flag` | string | Perigee qualifier flag |
-| `apogee_km` | float | Apogee altitude in km |
-| `apogee_flag` | string | Apogee qualifier flag |
-| `inclination_deg` | float | Orbital inclination in degrees |
-| `inclination_flag` | string | Inclination qualifier flag |
-| `op_orbit` | string | Operational orbit classification (LEO, MEO, GEO, HEO, etc.) |
-| `orbit_qual` | string | Orbit quality indicator |
-| `alt_names` | string | Alternative names/designations |
+| `jcat_id` | string | McDowell's GCAT unique identifier (e.g. "S00001"); assigned sequentially across all artificial space objects regardless of country or tracking status |
+| `satcat_number` | float | NORAD/Space Force catalog number — 5-digit integer assigned sequentially by US Space Command as objects are tracked; null for objects not yet independently tracked by Space Force |
+| `launch_tag` | string | GCAT launch event identifier linking this object to its originating launch in the GCAT launch log |
+| `piece` | string | COSPAR international designator in YYYY-NNNX format: launch year + sequential launch number + piece letter (e.g. "1957-001A" for Sputnik 1, "1957-001B" for its rocket body) |
+| `type` | string | Object type: P=Payload (operational spacecraft), R=Rocket Body (upper stage or booster), D=Debris (fragmentation or mission-related), U=Unknown |
+| `name` | string | Primary tracking designation used by GCAT/Space Force; for debris and rocket bodies this is typically a generic label (e.g. "ATLAS CENTAUR R/B") rather than a proper name |
+| `pl_name` | string | Operational payload name assigned by the owner/operator (e.g. "STARLINK-1234"); null for rocket bodies and debris pieces that have no named payload identity |
+| `launch_date` | string | Date the object was launched (ISO format); for objects deployed from a parent craft this is the original launch date of the parent mission |
+| `parent` | string | JCAT identifier of the parent object this piece separated from (e.g. a rocket stage from its payload); null for primary payloads launched directly |
+| `separation_date` | string | Date and time this object separated from its parent (ISO format); null if the object was the primary payload or separation event is unknown |
+| `primary` | string | Central body the object orbits: Earth, Moon, Sun, Mars, etc.; most cataloged objects are "Earth" |
+| `decay_date` | string | Date the object reentered the atmosphere or was otherwise removed from orbit (ISO format); null if the object is still in orbit — a non-null value confirms deorbit |
+| `status` | string | Orbital status: O=currently in orbit, R=reentered/decayed, AR=reentered after achieving orbit, D=intentionally deorbited, L=landed, other codes for deep space dispositions |
+| `dest` | string | Destination or final disposition code for objects that left Earth orbit (e.g. lunar, planetary, escape trajectory) |
+| `owner` | string | GCAT code for the owning organization or operator (e.g. "NASA", "SPACEX", "ROSCOSMOS"); may differ from the launching state |
+| `state_code` | string | ISO 3166-1 alpha-2 country code of the responsible state (e.g. "US", "RU", "CN"); "ISS" for International Space Station components; reflects political responsibility, not necessarily physical launch location |
+| `manufacturer` | string | GCAT code for the organization that built the object; null when manufacturer is unknown or not cataloged |
+| `bus` | string | Spacecraft bus or platform model (e.g. "SSL-1300", "Boeing-702"); identifies the structural/avionics heritage; null when not publicly known |
+| `motor` | string | Propulsion system or motor designation for rocket bodies; null for payloads or when propulsion details are unknown |
+| `mass_kg` | float | Launch mass of the object in kilograms; for payloads this typically includes propellant; null when mass is not publicly known |
+| `mass_flag` | string | Qualifier on mass_kg: "~" approximate, "<" upper bound, ">" lower bound; null when mass value is a reported figure |
+| `dry_mass_kg` | float | Dry mass (no propellant) in kilograms; null for most objects where dry mass is not separately reported |
+| `dry_flag` | string | Qualifier on dry_mass_kg: "~" approximate, "<" upper bound, ">" lower bound |
+| `total_mass_kg` | float | Total mass including all stages or attached hardware in kilograms; null when not reported |
+| `total_flag` | string | Qualifier on total_mass_kg: "~" approximate, "<" upper bound, ">" lower bound |
+| `length_m` | float | Longest dimension of the object in meters; null for most objects where dimensions are not publicly cataloged |
+| `length_flag` | string | Qualifier on length_m: "~" approximate, "<" upper bound, ">" lower bound |
+| `diameter_m` | float | Maximum cross-sectional diameter in meters; null when not publicly known |
+| `diameter_flag` | string | Qualifier on diameter_m: "~" approximate, "<" upper bound, ">" lower bound |
+| `span_m` | float | Maximum span including deployable structures such as solar arrays or antennas in meters; null when not cataloged |
+| `span_flag` | string | Qualifier on span_m: "~" approximate, "<" upper bound, ">" lower bound |
+| `shape` | string | Geometric shape description (e.g. "box", "cyl", "sphere", "cone+cyl"); used for radar cross-section modeling |
+| `orbit_date` | string | Epoch date for the orbital elements in perigee_km, apogee_km, inclination_deg; null if no orbital solution exists |
+| `perigee_km` | float | Altitude of the closest orbital point above Earth's surface in kilometers (at epoch); null for objects without tracked orbits or with sub-orbital trajectories |
+| `perigee_flag` | string | Qualifier on perigee_km: "~" approximate, "<" upper bound, ">" lower bound |
+| `apogee_km` | float | Altitude of the farthest orbital point above Earth's surface in kilometers (at epoch); null for objects without tracked orbits; perigee=apogee indicates a circular orbit |
+| `apogee_flag` | string | Qualifier on apogee_km: "~" approximate, "<" upper bound, ">" lower bound |
+| `inclination_deg` | float | Orbital inclination from Earth's equatorial plane in degrees: 0°=equatorial prograde, 90°=polar, 97-98°=Sun-synchronous, 63.4°=Molniya critical inclination; null for objects without tracked orbits |
+| `inclination_flag` | string | Qualifier on inclination_deg: "~" approximate, "<" upper bound, ">" lower bound |
+| `op_orbit` | string | Operational orbit regime classification: LEO (Low Earth Orbit, <2000 km), MEO (Medium Earth Orbit, 2000–35786 km), GEO (Geostationary, ~35786 km), HEO (Highly Elliptical), Lunar, Heliocentric, etc.; may include inclination qualifiers (e.g. "SSO" for Sun-synchronous LEO) |
+| `orbit_qual` | string | Orbit determination quality indicator; reflects confidence in the orbital elements |
+| `alt_names` | string | Pipe-separated list of alternative names, previous designations, or synonyms for the object; null when no alternates are known |
 
 ## Quick stats
 

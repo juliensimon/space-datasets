@@ -268,22 +268,22 @@ This dataset contains **{n_total:,}** observations across {n_instruments} instru
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `granule_uid` | string | Unique observation identifier |
-| `granule_gid` | string | Group identifier |
-| `obs_id` | string | Observation ID |
-| `dataproduct_type` | string | Data product type (e.g. spectrum, image, profile) |
-| `target_name` | string | Target body (Titan) |
-| `target_class` | string | Target class (satellite) |
-| `instrument_name` | string | Instrument name (DISR, GCMS, HASI, SSP, etc.) |
-| `time_min` | float64 | Observation start time (JD) |
-| `time_max` | float64 | Observation end time (JD) |
-| `c1min`/`c1max` | float64 | Spatial coordinate 1 range |
-| `c2min`/`c2max` | float64 | Spatial coordinate 2 range |
-| `spectral_range_min`/`max` | float64 | Spectral range bounds |
-| `processing_level` | string | Data processing level |
-| `creation_date` | string | Data product creation date |
-| `access_url` | string | URL to access the data product |
-| `access_format` | string | Data format (e.g. application/x-pds) |
+| `granule_uid` | string | Unique observation/granule identifier in the PSA archive |
+| `granule_gid` | string | Group identifier linking related granules from the same instrument or sequence |
+| `obs_id` | string | Observation ID assigned by the instrument team |
+| `dataproduct_type` | string | EPN-TAP data product type (e.g. "sp" for spectrum, "im" for image, "pr" for profile, "cu" for cube) |
+| `target_name` | string | Target body name (primarily "Titan"; descent lasted ~2.5 hours on Jan 14 2005) |
+| `target_class` | string | EPN-TAP target class (e.g. "satellite") |
+| `instrument_name` | string | Instrument name — one of: DISR (descent imager/spectral radiometer), GCMS (gas chromatograph mass spectrometer), HASI (atmospheric structure instrument), SSP (surface science package), ACP (aerosol collector pyrolyser), DWE (Doppler wind experiment), DTWG (descent trajectory working group), HUYGENS_HK (housekeeping) |
+| `time_min` | float64 | Observation start time (Julian Date); Huygens descent spanned JD 2453384.88–2453385.00 |
+| `time_max` | float64 | Observation end time (Julian Date) |
+| `c1min`/`c1max` | float64 | Spatial coordinate 1 bounds (longitude in degrees, Titan surface 0–360 E where applicable) |
+| `c2min`/`c2max` | float64 | Spatial coordinate 2 bounds (latitude in degrees, Titan surface -90 to +90 where applicable; many entries null for in-situ measurements) |
+| `spectral_range_min`/`max` | float64 | Spectral range bounds in nm for DISR optical measurements; null for non-spectral instruments |
+| `processing_level` | string | Data processing level (e.g. "2" = calibrated, "3" = derived; HASI and GCMS primarily level 3) |
+| `creation_date` | string | ISO 8601 date when this data product was created or archived in PSA |
+| `access_url` | string | Direct URL to retrieve the data product from the ESA PSA |
+| `access_format` | string | MIME type of the data product (e.g. "application/x-pds4" for PDS4 format) |
 
 The full schema contains up to ~50 columns following the EPN-TAP standard.
 

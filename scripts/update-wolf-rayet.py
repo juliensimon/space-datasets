@@ -204,32 +204,32 @@ The WR population is a key diagnostic of massive star formation and evolution in
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `wr_number` | string | WR star designation (e.g. "WR1", "WR136") |
-| `wr_flag` | string | Flag on WR name |
-| `spectral_type` | string | Spectral type (e.g. "WN4b", "WC7+O5-8", "WO2") |
-| `wr_subtype` | string | WR subtype: WN (nitrogen), WC (carbon), WO (oxygen) |
-| `is_binary` | bool | Whether spectral type indicates a binary system |
-| `name` | string | Alternative name (e.g. HD number) |
-| `ra_deg` | float64 | Right ascension ICRS at Ep=2015.5 (degrees) |
-| `dec_deg` | float64 | Declination ICRS at Ep=2015.5 (degrees) |
-| `parallax_mas` | float64 | Zero-point corrected Gaia DR2 parallax (mas) |
-| `parallax_error_mas` | float64 | Error on parallax (mas) |
-| `distance_kpc` | float64 | Distance from the Sun (kpc) |
-| `distance_upper_error_kpc` | float64 | Upper error on distance (kpc) |
-| `distance_lower_error_kpc` | float64 | Lower error on distance (kpc) |
-| `galactic_height_pc` | float64 | Distance from Galactic mid-plane (pc) |
-| `galactic_height_upper_error_pc` | float64 | Upper error on Galactic height (pc) |
-| `galactic_height_lower_error_pc` | float64 | Lower error on Galactic height (pc) |
-| `gaia_g_mag` | float64 | Gaia DR2 G-band magnitude |
-| `gaia_bp_rp` | float64 | Gaia DR2 BP-RP colour index |
-| `astrometric_excess_noise` | float64 | Gaia DR2 astrometric excess noise |
-| `log_luminosity` | float64 | Log stellar luminosity (solar units) |
-| `error_flag` | string | Error flag |
-| `ks_mag` | float64 | 2MASS Ks-band apparent magnitude |
-| `j_ks_color` | float64 | J-Ks colour index |
-| `h_ks_color` | float64 | H-Ks colour index |
-| `ks_extinction` | float64 | Ks-band extinction (mag) |
-| `ks_abs_mag` | float64 | Absolute Ks-band magnitude of WR star |
+| `wr_number` | string | Standard WR catalog number (e.g. "WR 1", "WR 140") from the VIIth Catalog of Galactic Wolf-Rayet Stars; primary identifier used throughout the literature |
+| `wr_flag` | string | Flag qualifying the WR designation (e.g. "a" for additions/updates after the main catalog); null for most entries |
+| `spectral_type` | string | Full WR spectral classification (e.g. "WN4b", "WC7+O5-8", "WO2"); WN = nitrogen-sequence, WC = carbon-sequence, WO = oxygen-sequence; "+" indicates a spectroscopic binary companion |
+| `wr_subtype` | string | Broad WR sequence derived from spectral_type: WN (exposing CNO-cycle products, WN2–WN11), WC (exposing He-burning products, WC4–WC9), WO (most evolved, WO1–WO4); null if spectral type is ambiguous |
+| `is_binary` | bool | True if the spectral type contains "+", indicating a detected companion; WR+O binaries are important progenitors of compact object mergers |
+| `name` | string | Alternative designation (usually HD number or other catalog ID); null for stars without a common alternative name |
+| `ra_deg` | float64 | Right ascension, ICRS at Gaia DR2 reference epoch Ep=2015.5, in decimal degrees (0–360) |
+| `dec_deg` | float64 | Declination, ICRS at Ep=2015.5, in decimal degrees (−90 to +90) |
+| `parallax_mas` | float64 | Zero-point corrected Gaia DR2 parallax in milliarcseconds; many WR stars have negative or zero parallax due to faintness/crowding — distances are derived via a Bayesian method |
+| `parallax_error_mas` | float64 | 1σ uncertainty on Gaia DR2 parallax (mas) |
+| `distance_kpc` | float64 | Distance from the Sun in kpc, derived from Gaia DR2 parallax using a Bayesian prior; null for stars where Gaia astrometry is too poor; most Galactic WR stars lie within 10 kpc |
+| `distance_upper_error_kpc` | float64 | Asymmetric upper 1σ uncertainty on distance (kpc); distances are often asymmetrically uncertain because negative parallaxes give poorly constrained distances |
+| `distance_lower_error_kpc` | float64 | Asymmetric lower 1σ uncertainty on distance (kpc) |
+| `galactic_height_pc` | float64 | Perpendicular distance from the Galactic mid-plane in pc, calculated from distance and Galactic latitude; WR stars trace the thin disk, typically |z| < 200 pc |
+| `galactic_height_upper_error_pc` | float64 | Upper 1σ uncertainty on Galactic height (pc) |
+| `galactic_height_lower_error_pc` | float64 | Lower 1σ uncertainty on Galactic height (pc) |
+| `gaia_g_mag` | float64 | Gaia DR2 G-band (330–1050 nm) apparent magnitude; WR stars typically G = 8–18 mag; heavily reddened WR stars may be absent from Gaia |
+| `gaia_bp_rp` | float64 | Gaia DR2 BP−RP colour index; WR stars are hot (blue) but often appear red due to interstellar extinction and emission lines; null where BP/RP photometry is unavailable |
+| `astrometric_excess_noise` | float64 | Gaia DR2 astrometric excess noise in mas; elevated values indicate binarity, source confusion, or poor astrometric solution |
+| `log_luminosity` | float64 | Log bolometric luminosity in solar units log(L/L☉); WR stars: 10⁵–10⁶ L☉ (log L ≈ 5.0–6.0); null for stars without a reliable distance or spectroscopic analysis |
+| `error_flag` | string | Quality or error flag from Rate & Crowther (2020) indicating issues with the spectral classification, photometry, or distance; null for clean entries |
+| `ks_mag` | float64 | 2MASS Ks-band (2.17 µm) apparent magnitude; near-infrared photometry less affected by interstellar extinction than optical |
+| `j_ks_color` | float64 | 2MASS J−Ks colour index; traces near-infrared excess from free-free emission in WR winds; WC stars show strong IR excess |
+| `h_ks_color` | float64 | 2MASS H−Ks colour index; additional near-infrared wind emission diagnostic |
+| `ks_extinction` | float64 | Ks-band extinction A_Ks in magnitudes, derived from comparison of observed and intrinsic colours; used to compute absolute magnitudes |
+| `ks_abs_mag` | float64 | Absolute Ks-band magnitude of the WR star, corrected for extinction; useful for luminosity comparisons independent of optical reddening; null where distance or extinction is unknown |
 
 ## Quick stats
 

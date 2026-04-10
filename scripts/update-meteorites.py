@@ -198,14 +198,14 @@ databases with Wikidata's multilingual, cross-linked knowledge graph.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `wikidata_id` | string | Wikidata entity ID (e.g. Q1029) |
-| `name` | string | Meteorite name |
-| `fall_date` | string | Date of fall or recovery (YYYY-MM-DD) |
-| `mass_g` | float | Mass in grams |
-| `classification` | string | Mineralogical/petrological classification |
-| `country` | string | Country of recovery |
-| `latitude` | float | Recovery latitude (decimal degrees) |
-| `longitude` | float | Recovery longitude (decimal degrees) |
+| `wikidata_id` | string | Wikidata entity ID (e.g. Q1029); stable cross-reference key for linking to other Wikidata properties |
+| `name` | string | Official meteorite name assigned by the Meteoritical Society (e.g., "Allende", "NWA 7034", "Chelyabinsk"); typically location of find plus sequence number |
+| `fall_date` | string | Date of observed fall or discovery/recovery in ISO format (YYYY-MM-DD); null for historical finds without a recorded date; precision often year-only (day defaults to 01) |
+| `mass_g` | float | Total known mass in grams; null if unknown; range from <1 g (tiny fragments) to ~60,000,000 g (Hoba, the largest known meteorite) |
+| `classification` | string | Meteoritical Society mineralogical/petrological class (e.g., "L5", "CM2", "Iron IIIAB", "Achondrite-ungrouped"); letters = chemical group, numbers = petrologic grade; null if not recorded in Wikidata |
+| `country` | string | Country of recovery (English label from Wikidata); null for finds without a recorded country or in international territory (e.g., Antarctica) |
+| `latitude` | float | Recovery location latitude in decimal degrees (positive = N, negative = S); null for historical or poorly documented finds |
+| `longitude` | float | Recovery location longitude in decimal degrees (positive = E, negative = W); null for historical or poorly documented finds |
 
 ## Quick stats
 

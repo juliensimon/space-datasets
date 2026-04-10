@@ -270,30 +270,30 @@ The magnetar population bridges several areas of astrophysics. Their connection 
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `name` | string | Source name (e.g. "SGR 1806-20", "1E 2259+586") |
-| `type` | string | Classification: SGR or AXP |
-| `is_candidate` | bool | True if unconfirmed magnetar candidate |
-| `ra_hms` / `dec_dms` | string | Position in sexagesimal coordinates |
-| `ra_deg` / `dec_deg` | float64 | Position in decimal degrees (J2000) |
-| `ra_err_arcsec` / `dec_err_arcsec` | float64 | Position uncertainty (arcsec) |
-| `period_s` | float64 | Spin period (seconds) |
-| `period_err_s` | float64 | Period uncertainty |
-| `period_derivative` | float64 | Spin-down rate (s/s) |
-| `period_derivative_err` | float64 | Period derivative uncertainty |
-| `magnetic_field_g` | float64 | Dipolar magnetic field strength (Gauss) |
-| `spin_down_luminosity_erg_s` | float64 | Spin-down luminosity (erg/s) |
-| `characteristic_age_yr` | float64 | Characteristic age P/(2 P-dot) (years) |
-| `column_density_cm2` | float64 | Hydrogen column density N_H (cm\u207b\u00b2) |
-| `photon_index` | float64 | Power-law photon index |
-| `blackbody_kt_kev` | float64 | Blackbody temperature kT (keV) |
-| `xray_flux_erg_cm2_s` | float64 | Unabsorbed 2-10 keV X-ray flux (erg/cm\u00b2/s) |
-| `distance_kpc` | float64 | Distance (kpc) |
-| `xray_luminosity_erg_s` | float64 | X-ray luminosity (erg/s) |
-| `association` | string | Associated SNR or star cluster |
-| `optical_ir_counterpart` | string | Optical/IR counterpart detected? |
-| `observed_bands` | string | Bands with detections (H=hard X, X=soft X, O=optical, I=IR, R=radio, G=gamma) |
-| `activity_flags` | string | Activity type codes (B=bursts, G=giant flare, F=flare, T=transient, A=anti-glitch) |
-| `*_is_limit` | bool | True when corresponding value is an upper or lower limit |
+| `name` | string | Magnetar designation (e.g. "SGR 1806-20", "1E 2259+586"); SGR = Soft Gamma Repeater, AXP = Anomalous X-ray Pulsar; both classes are now understood to be magnetars |
+| `type` | string | Historical source class: "SGR" (detected via gamma-ray bursts) or "AXP" (detected as anomalous X-ray pulsar); distinction is observational, not physical |
+| `is_candidate` | bool | True for unconfirmed magnetar candidates (marked with # in the McGill catalog); candidate status may change as new observations are published |
+| `ra_hms` / `dec_dms` | string | Position in sexagesimal format (HH MM SS.s / ±DD MM SS.s), ICRS J2000 |
+| `ra_deg` / `dec_deg` | float64 | Position in decimal degrees (ICRS J2000.0); derived from ra_hms/dec_dms |
+| `ra_err_arcsec` / `dec_err_arcsec` | float64 | 1σ positional uncertainty in arcseconds; null for sources without a precise X-ray or radio position |
+| `period_s` | float64 | Spin period in seconds; magnetars: 2–12 s (far slower than recycled millisecond pulsars); null for sources where timing has not been achieved |
+| `period_err_s` | float64 | 1σ uncertainty on spin period (s) |
+| `period_derivative` | float64 | Spin-down rate dP/dt in s/s; magnetars: ~10⁻¹¹ s/s, among the fastest-spinning-down neutron stars; drives inferred magnetic field and characteristic age |
+| `period_derivative_err` | float64 | 1σ uncertainty on period derivative (s/s) |
+| `magnetic_field_g` | float64 | Dipole surface magnetic field strength in Gauss, inferred as B ≈ 3.2×10¹⁹ √(P·Ṗ); magnetars: 10¹⁴–10¹⁵ G, roughly 1000× stronger than normal pulsars; null if period or period derivative is unmeasured |
+| `spin_down_luminosity_erg_s` | float64 | Rotational energy loss rate Ė = −4π²IṖ/P³ in erg/s; for magnetars typically 10³²–10³⁴ erg/s, lower than their observed X-ray luminosity (evidence for magnetic field powering) |
+| `characteristic_age_yr` | float64 | Characteristic spin-down age τ = P/(2Ṗ) in years; magnetars: ~10³–10⁴ yr (very young neutron stars); this is an upper limit on true age for initially fast rotators |
+| `column_density_cm2` | float64 | Interstellar hydrogen column density N_H in cm⁻², fit from soft X-ray absorption; used to estimate visual extinction and constrain distance; null if no X-ray spectrum available |
+| `photon_index` | float64 | Photon index Γ of the hard X-ray power-law spectral component (flux ∝ E^−Γ); magnetars: Γ ~ 2–4 in quiescence; null if power-law component not required by the spectrum |
+| `blackbody_kt_kev` | float64 | Temperature kT in keV of the soft X-ray blackbody spectral component; magnetars: kT ~ 0.3–0.7 keV; null if spectrum not well-fitted by a blackbody |
+| `xray_flux_erg_cm2_s` | float64 | Unabsorbed 2–10 keV X-ray flux in erg/cm²/s from quiescent-state observations; magnetars: ~10⁻¹²–10⁻¹¹ erg/cm²/s; null for transient magnetars in quiescence below detection limits |
+| `distance_kpc` | float64 | Distance in kpc; null for the majority of magnetars (reliable distances are rare — methods include HI absorption, SNR associations, and maser parallaxes) |
+| `xray_luminosity_erg_s` | float64 | Quiescent X-ray luminosity in erg/s computed from flux and distance; magnetars: 10³³–10³⁶ erg/s; null where distance is unknown |
+| `association` | string | Name of associated supernova remnant or star cluster (e.g. "CTB 109", "Westerlund 1"); null for isolated magnetars without identified associations |
+| `optical_ir_counterpart` | string | Whether an optical or infrared counterpart has been detected; null if no counterpart search has been published |
+| `observed_bands` | string | Observational coverage codes: H=hard X-ray (>10 keV), X=soft X-ray, O=optical, I=infrared, R=radio, G=gamma-ray; null if not tabulated |
+| `activity_flags` | string | Burst/flare activity type codes: B=bursts, G=giant flare, F=flare, T=transient outburst, A=anti-glitch; null for sources with no recorded activity |
+| `*_is_limit` | bool | True when the corresponding measurement is an upper or lower limit rather than a detection; applies to magnetic_field_g, spin_down_luminosity_erg_s, characteristic_age_yr, xray_flux_erg_cm2_s, xray_luminosity_erg_s, distance_kpc |
 
 ## Quick stats
 

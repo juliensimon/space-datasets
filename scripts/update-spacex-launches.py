@@ -603,31 +603,31 @@ and **{total_reflights}** reflights as of the latest update.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `id` | string | SpaceX CMS identifier |
-| `document_id` | string | CMS document reference |
-| `title` | string | Mission name (e.g. "Starlink Mission") |
-| `slug` | string | URL slug — primary key, join field |
-| `mission_status` | string | `final`, `upcoming`, or `in-progress` |
-| `mission_type` | string | starlink, commercialSatellite, resupply, nssl, hsf, rideshare, science, starship |
-| `vehicle` | string | Falcon 9, Falcon Heavy, Starship, Falcon 1 |
-| `launch_site` | string | Launch location (e.g. "SLC-40, Florida") |
-| `launch_date` | date | Launch date |
-| `launch_time` | string | Launch time (HH:MM:SS UTC) |
-| `return_site` | string | Landing site (e.g. "Droneship") |
-| `return_date_time` | string | Return timestamp (if available) |
-| `end_date` | date | Mission end date (if available) |
-| `end_time` | string | Mission end time (if available) |
-| `direct_to_cell` | bool | Direct-to-cell mission flag |
-| `is_live` | bool | Currently live flag |
-| `description` | string | Full mission description (plain text from HTML) |
-| `astronauts` | string | JSON array of astronaut data (crewed missions) |
-| `webcast_id` | string | Webcast video ID |
-| `webcast_platform` | string | Streaming platform (e.g. "x.com") |
-| `follow_dragon_enabled` | bool | Dragon tracking available |
-| `launch_datetime` | datetime | Combined launch date + time |
-| `launch_year` | int | Year of launch (derived) |
-| `success` | bool | True if mission_status is "final" |
-| `has_landing` | bool | True if return_site is present |
+| `id` | string | Internal SpaceX CMS (Strapi) identifier; opaque string, stable within the CMS |
+| `document_id` | string | CMS document reference used for CMS versioning; opaque, not meaningful for analysis |
+| `title` | string | Human-readable mission name from spacex.com (e.g. "Starlink Mission", "CRS-25", "Intuitive Machines-1") |
+| `slug` | string | URL slug used as the primary key and join field across all three tables (e.g. "sl-10-22"); unique per mission |
+| `mission_status` | string | Mission lifecycle state: "final" = completed and results confirmed, "upcoming" = not yet launched, "in-progress" = currently executing |
+| `mission_type` | string | Mission category: "starlink" (Starlink constellation replenishment), "commercialSatellite" (third-party GEO/LEO satellite), "resupply" (ISS cargo), "nssl" (National Security Space Launch), "hsf" (human spaceflight), "rideshare" (SmallSat Rideshare), "science" (NASA/research payload), "starship" (Starship test flight) |
+| `vehicle` | string | Launch vehicle variant: "Falcon 9", "Falcon Heavy", "Starship", or "Falcon 1" (retired) |
+| `launch_site` | string | Launch complex and geographic location (e.g. "SLC-40, Florida", "LC-39A, Florida", "SLC-4E, California") |
+| `launch_date` | date | UTC calendar date of launch (YYYY-MM-DD); null for upcoming missions without a confirmed date |
+| `launch_time` | string | UTC launch time in HH:MM:SS format; null for unconfirmed upcoming launches |
+| `return_site` | string | First-stage landing site (e.g. "LZ-1", "LZ-2", "JRTI" droneship, "OCISLY" droneship); null if no landing attempted or vehicle expended |
+| `return_date_time` | string | Timestamp of first-stage return/landing (if available); null for expendable flights or when not recorded |
+| `end_date` | date | Mission completion date (e.g. Dragon splashdown, satellite handoff); null if ongoing or not recorded |
+| `end_time` | string | Mission completion time (UTC HH:MM:SS); null if not recorded |
+| `direct_to_cell` | bool | True for Starlink Direct-to-Cell missions (satellites with cellular connectivity capability) |
+| `is_live` | bool | True if the mission is currently streaming live; intended for real-time use; typically False in archived data |
+| `description` | string | Full plaintext mission description sourced from spacex.com (HTML stripped); null for missions without a published description |
+| `astronauts` | string | JSON array of crew member data (name, title, image) for crewed missions; null for uncrewed flights |
+| `webcast_id` | string | Video identifier for the official launch webcast; null if no webcast was published |
+| `webcast_platform` | string | Streaming platform hosting the webcast (e.g. "x.com", "youtube"); null if no webcast |
+| `follow_dragon_enabled` | bool | True if real-time Dragon capsule tracking was available for this mission; null for non-Dragon missions |
+| `launch_datetime` | datetime | Combined UTC launch datetime (date + time); null if launch_time is not available |
+| `launch_year` | int | Calendar year of launch derived from launch_date; useful for time-series grouping; null if launch_date is null |
+| `success` | bool | True if mission_status == "final" (mission completed); False for upcoming or in-progress; proxy for mission success |
+| `has_landing` | bool | True if return_site is non-null, indicating a first-stage landing was recorded; does not distinguish success from failure |
 
 ## Schema — timelines ({n_timeline_events:,} rows)
 

@@ -147,17 +147,17 @@ This catalog is valuable for studying the mass distribution of stellar-mass blac
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `name` | string | Primary SIMBAD identifier |
-| `ra_deg` | float | Right ascension (degrees) |
-| `dec_deg` | float | Declination (degrees) |
-| `object_type` | string | SIMBAD type code (BH, BH?, XB*, HXB, LXB) |
-| `bh_category` | string | Readable category |
-| `spectral_type` | string | Spectral classification |
-| `v_mag` | float | Visual magnitude |
-| `b_mag` | float | Blue magnitude |
-| `k_mag` | float | K-band (infrared) magnitude |
-| `distance_pc` | float | Distance in parsecs |
-| `angular_size_arcmin` | float | Angular size (arcmin) |
+| `name` | string | Primary SIMBAD identifier or common name (e.g. "Cyg X-1", "GRS 1915+105"); the canonical designation used in the astronomical literature for cross-matching |
+| `ra_deg` | float | ICRS J2000.0 right ascension in degrees (0–360); useful for positional cross-matching with X-ray, radio, and optical surveys |
+| `dec_deg` | float | ICRS J2000.0 declination in degrees (-90 to +90) |
+| `object_type` | string | SIMBAD classification code: "BH" = confirmed black hole, "BH?" = black hole candidate awaiting definitive mass measurement, "XB*" = generic X-ray binary, "HXB" = high-mass X-ray binary (massive companion, wind accretion), "LXB" = low-mass X-ray binary (Roche lobe overflow, often transient) |
+| `bh_category` | string | Human-readable expansion of `object_type`; one of "Confirmed Black Hole", "Black Hole Candidate", "X-ray Binary", "High-Mass X-ray Binary", "Low-Mass X-ray Binary", "Other" |
+| `spectral_type` | string | MK spectral classification of the companion or donor star (e.g. "O9.7Iab" for Cyg X-1); indicates companion mass and evolutionary state; null for systems without spectroscopic data or for isolated black holes |
+| `v_mag` | float | Apparent V-band (visual, ~550 nm) magnitude of the system; bright X-ray binaries can be V~6–14; null for highly absorbed or unobserved systems |
+| `b_mag` | float | Apparent B-band (~440 nm) magnitude; combined with `v_mag` gives the B-V color index, a reddening indicator; null if not measured |
+| `k_mag` | float | Apparent K-band (near-infrared, ~2.2 µm) magnitude; less affected by dust extinction than optical bands; critical for heavily absorbed Galactic plane sources; null if not measured |
+| `distance_pc` | float | Heliocentric distance in parsecs; most Galactic stellar-mass BHs lie within 10 kpc (10000 pc); null if distance is poorly constrained |
+| `angular_size_arcmin` | float | Angular extent of the associated nebula or jet structure in arcminutes; null for point-like or unresolved systems, which is the majority of entries |
 
 ## Usage
 

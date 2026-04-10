@@ -230,19 +230,19 @@ The principal component scores (PC1--PC5) in this dataset encode the full spectr
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `asteroid_number` | int | IAU asteroid catalog number |
-| `asteroid_name` | string | Asteroid name (e.g., "Ceres", "Vesta") |
-| `provisional_designation` | string | MPC provisional designation |
-| `taxonomic_class` | string | Bus-DeMeo class (e.g., S, C, Sq, Xk, V); 'w' suffix = slope >0.25; ':' = uncertain |
-| `taxonomic_complex` | string | Broad grouping: S, C, X, or end-member letter |
-| `obs_date` | date | Date of spectroscopic observation |
-| `ref_code` | string | Literature reference code (a--i) |
-| `spectral_slope` | float64 | Slope of the linear regression to the reflectance spectrum |
-| `pc1` | float64 | First principal component score |
-| `pc2` | float64 | Second principal component score |
-| `pc3` | float64 | Third principal component score |
-| `pc4` | float64 | Fourth principal component score |
-| `pc5` | float64 | Fifth principal component score |
+| `asteroid_number` | int | IAU catalog number (positive integer); null for unnumbered objects matched by provisional designation only |
+| `asteroid_name` | string | IAU proper name (e.g., "Ceres", "Vesta"); null for unnamed asteroids |
+| `provisional_designation` | string | MPC provisional designation (e.g., "2002 AT4"); null if only a catalog number is available |
+| `taxonomic_class` | string | Bus-DeMeo spectral class (e.g., S, C, Sq, Xk, V); 'w' suffix = spectral slope >0.25 µm⁻¹; ':' = uncertain assignment; ~24 classes total |
+| `taxonomic_complex` | string | Broad complex derived from class: S (silicate), C (carbonaceous), X (featureless/metallic), or end-member letter (A/B/D/K/L/O/Q/R/T/V); null if class unrecognised |
+| `obs_date` | date | UTC date of the spectroscopic observation used for classification; null for a small fraction of entries |
+| `ref_code` | string | One-letter literature reference code (a–i) mapping to the source publication; null if not recorded |
+| `spectral_slope` | float64 | Linear spectral slope fitted to the normalised reflectance spectrum (µm⁻¹); positive = red, negative = blue; used as input to PCA |
+| `pc1` | float64 | First principal component score from DeMeo et al. (2009) PCA; captures overall spectral slope and is the primary axis separating S- from C-types; null for asteroids lacking full NIR coverage |
+| `pc2` | float64 | Second principal component score; mainly encodes depth of the 1-µm olivine/pyroxene absorption band; null as above |
+| `pc3` | float64 | Third principal component score; captures subtler spectral curvature, e.g., the 2-µm pyroxene band; null as above |
+| `pc4` | float64 | Fourth principal component score; encodes fine-structure residuals after PC1–3; null as above |
+| `pc5` | float64 | Fifth principal component score; represents the smallest variance component; null as above |
 
 ## Quick stats
 

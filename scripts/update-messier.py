@@ -160,15 +160,15 @@ Despite its small size, the Messier catalog remains the standard introduction to
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `messier_id` | string | Messier designation (M 1, M 2, ...) |
-| `messier_number` | int | Messier number (1-110) |
-| `name` | string | Primary SIMBAD name (e.g. "NGC 224", "Crab Nebula") |
-| `ra_deg` | float | Right ascension (degrees) |
-| `dec_deg` | float | Declination (degrees) |
-| `object_type` | string | SIMBAD object type code |
-| `object_category` | string | Human-readable category (Galaxy, Globular Cluster, etc.) |
-| `major_axis_arcmin` | float | Major axis angular size (arcmin) |
-| `minor_axis_arcmin` | float | Minor axis angular size (arcmin) |
+| `messier_id` | string | Messier catalog designation with space separator (e.g. "M 1", "M 110"); used as primary label |
+| `messier_number` | int | Numeric Messier catalog index; range 1–110; all 110 canonical objects included |
+| `name` | string | Primary SIMBAD resolved name (e.g. "NGC 224" for M31, "Crab Nebula" for M1); may be an NGC/IC number or common name |
+| `ra_deg` | float | Right ascension in decimal degrees, ICRS J2000.0; range 0–360 |
+| `dec_deg` | float | Declination in decimal degrees, ICRS J2000.0; range −90 to +90 |
+| `object_type` | string | Raw SIMBAD object type code (e.g. "GlCl" = globular cluster, "Galaxy", "SNRem" = supernova remnant, "OpCl" = open cluster, "HII" = emission nebula, "PN" = planetary nebula) |
+| `object_category` | string | Human-readable category derived from SIMBAD type: "Galaxy", "Globular Cluster", "Open Cluster", "Nebula", "Supernova Remnant", "Double Star" |
+| `major_axis_arcmin` | float | Major axis apparent angular size in arcminutes; range 1 arcmin (M76) to ~95 arcmin (M31 Andromeda Galaxy); null for point-like or unresolved objects |
+| `minor_axis_arcmin` | float | Minor axis apparent angular size in arcminutes; null for circular or point-like objects |
 
 ## Quick stats
 

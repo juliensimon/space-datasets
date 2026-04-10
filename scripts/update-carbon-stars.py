@@ -209,21 +209,21 @@ As luminous infrared sources (M_bol typically -3 to -6), carbon stars are detect
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `gccs_number` | int | GCCS catalog sequence number |
-| `name` | string | Star identification / name |
-| `ra_deg` | float64 | Right ascension (degrees) |
-| `dec_deg` | float64 | Declination (degrees) |
-| `spectral_type` | string | MK spectral type |
-| `carbon_type` | string | Carbon star type classification |
-| `carbon_class` | string | Broad carbon class (C-N, C-R, C-J, C-H, C-Hd) |
-| `v_mag` | float64 | Visual (V-band) magnitude |
-| `i_mag` | float64 | I-band magnitude |
-| `j_mag` | float64 | J-band magnitude (2MASS) |
-| `h_mag` | float64 | H-band magnitude (2MASS) |
-| `k_mag` | float64 | K-band magnitude (2MASS) |
-| `pm_ra_mas_yr` | float64 | Proper motion in RA (mas/yr) |
-| `pm_dec_mas_yr` | float64 | Proper motion in Dec (mas/yr) |
-| `has_ir_photometry` | bool | True if J or K magnitude available |
+| `gccs_number` | int | Sequential catalog number in the GCCS 3rd Edition (Alksnis et al. 2001); primary sort key |
+| `name` | string | Primary star identifier — GCCS designation, variable star name, or cross-ID (e.g. "V Aql", "IRC+10216"); null if unnamed |
+| `ra_deg` | float64 | Right ascension, ICRS J2000.0, in decimal degrees (0–360) |
+| `dec_deg` | float64 | Declination, ICRS J2000.0, in decimal degrees (−90 to +90) |
+| `spectral_type` | string | Full MK spectral type string from the source catalog, may encode carbon subclass and luminosity class (e.g. "C-N5", "C6,2"); null for ~30% of entries |
+| `carbon_type` | string | Raw carbon classification field from VizieR; may differ from `spectral_type` for some entries; null where not catalogued |
+| `carbon_class` | string | Standardised broad carbon class derived from `carbon_type` or `spectral_type`: C-N (cool AGB giants, dominant type), C-R (warm, less luminous, possibly merger products), C-J (enhanced ¹³C isotope features), C-H (halo/thick-disk, metal-poor, often binary mass-transfer), C-Hd (hydrogen-deficient, R CrB type); null if unclassifiable |
+| `v_mag` | float64 | Johnson V-band apparent magnitude; carbon stars are very red, typical V = 6–14 mag; null for highly obscured AGB stars |
+| `i_mag` | float64 | Cousins I-band apparent magnitude; less affected by molecular absorption than V; null for many entries |
+| `j_mag` | float64 | 2MASS J-band (1.25 µm) near-infrared magnitude; traces warm dust envelopes around AGB stars; null where no 2MASS match |
+| `h_mag` | float64 | 2MASS H-band (1.65 µm) near-infrared magnitude; null where no 2MASS match |
+| `k_mag` | float64 | 2MASS Ks-band (2.17 µm) near-infrared magnitude; strongest tracer of AGB circumstellar dust shells; carbon stars typically have K = 3–10 mag; null where no 2MASS match |
+| `pm_ra_mas_yr` | float64 | Proper motion in right ascension (mas/yr, includes cos δ factor); null for most catalog entries lacking astrometric solutions |
+| `pm_dec_mas_yr` | float64 | Proper motion in declination (mas/yr); null for most catalog entries lacking astrometric solutions |
+| `has_ir_photometry` | bool | True if at least one of J or K magnitude is non-null; useful filter for studies requiring infrared data |
 
 ## Quick stats
 

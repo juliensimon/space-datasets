@@ -150,13 +150,13 @@ The number of known strong lenses has grown dramatically in recent years thanks 
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `name` | string | Lens system name / identifier |
-| `ra_deg` | float64 | Right ascension (J2000, degrees) |
-| `dec_deg` | float64 | Declination (J2000, degrees) |
-| `lens_redshift` | float64 | Spectroscopic redshift of the lens (null if unmeasured) |
-| `lens_type` | string | Morphological type: "galaxy" or "cluster" |
-| `grading` | string | Confidence level: "confident" or "probable" |
-| `reference` | string | Discovery / catalog reference (URL or bibcode) |
+| `name` | string | Lens system designation (e.g. "SL2SJ021411-040502", "SDSS J1148+1930") |
+| `ra_deg` | float64 | Right ascension of the lens center, ICRS J2000.0 (degrees, 0–360) |
+| `dec_deg` | float64 | Declination of the lens center, ICRS J2000.0 (degrees, -90 to +90) |
+| `lens_redshift` | float64 | Spectroscopic redshift of the lensing object (galaxy or cluster); null if not measured; typical range 0.1–1.0 |
+| `lens_type` | string | Morphological type of the lensing mass: "galaxy" (Einstein rings/arcs, image separation 0.5–3 arcsec) or "cluster" (multiple arcs, separation 10–60 arcsec) |
+| `grading` | string | Lens confidence level: "confident" = spectroscopically confirmed or unambiguous; "probable" = morphologically selected but not yet confirmed |
+| `reference` | string | Discovery or catalog reference as NASA ADS bibcode or URL |
 
 ## Quick stats
 

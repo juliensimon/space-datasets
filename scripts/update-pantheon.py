@@ -144,25 +144,25 @@ The Hubble diagram constructed from this dataset -- distance modulus versus reds
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `sn_name` | string | Supernova identifier (CID) |
-| `survey_id` | int64 | Survey identifier |
-| `redshift_hd` | float64 | Hubble-diagram redshift (peculiar velocity corrected) |
-| `redshift_hd_err` | float64 | Hubble-diagram redshift uncertainty |
-| `redshift_cmb` | float64 | CMB-frame redshift |
-| `redshift_cmb_err` | float64 | CMB-frame redshift uncertainty |
-| `redshift_helio` | float64 | Heliocentric redshift |
-| `redshift_helio_err` | float64 | Heliocentric redshift uncertainty |
-| `apparent_mag_b` | float64 | Apparent B-band magnitude (SALT2 mB) |
-| `apparent_mag_b_err` | float64 | Apparent magnitude uncertainty |
-| `stretch_x1` | float64 | SALT2 stretch parameter x1 |
-| `stretch_x1_err` | float64 | Stretch uncertainty |
-| `color_c` | float64 | SALT2 color parameter c |
-| `color_c_err` | float64 | Color uncertainty |
-| `host_log_mass` | float64 | Host galaxy log stellar mass (solar masses) |
-| `host_log_mass_err` | float64 | Host mass uncertainty |
-| `fit_probability` | float64 | SALT2 fit probability |
-| `distance_modulus` | float64 | Distance modulus from SH0ES analysis |
-| `distance_modulus_err` | float64 | Distance modulus diagonal uncertainty |
+| `sn_name` | string | Supernova identifier (CID field from Pantheon+); typically survey-specific designations such as "2001el" or "SN2011fe" |
+| `survey_id` | int64 | Integer code identifying the discovery survey; Pantheon+ combines 18 surveys including CfA (1--4), CSP, SDSS, SNLS, PS1, DES, and HST programs; links each SN to its photometric calibration system |
+| `redshift_hd` | float64 | Hubble-diagram redshift: the CMB-frame redshift further corrected for coherent large-scale peculiar velocity flows using a model; the most cosmologically clean redshift estimate for Hubble diagram fitting; range ~0.001--2.3 |
+| `redshift_hd_err` | float64 | 1-sigma uncertainty on the Hubble-diagram redshift, including peculiar velocity uncertainty (typically ~150 km/s = 0.0005 in z at low redshift) |
+| `redshift_cmb` | float64 | CMB-frame redshift: the observed redshift corrected for Earth's motion relative to the CMB dipole (~369 km/s); the cosmologically meaningful redshift used for Hubble constant measurements; differs from heliocentric z by ~0.001 at low redshift |
+| `redshift_cmb_err` | float64 | 1-sigma uncertainty on the CMB-frame redshift |
+| `redshift_helio` | float64 | Heliocentric redshift: the raw observed Doppler shift from Earth's rest frame, uncorrected for the Sun's motion relative to the CMB; used internally in the SALT2 light-curve fit for K-corrections |
+| `redshift_helio_err` | float64 | 1-sigma uncertainty on the heliocentric redshift |
+| `apparent_mag_b` | float64 | Apparent peak B-band magnitude m_B at maximum light from the SALT2 light-curve fit; the directly observed brightness before standardization corrections; brighter SNe have smaller (more negative) values; typical range 12--26 mag |
+| `apparent_mag_b_err` | float64 | 1-sigma uncertainty on the SALT2 peak B-band magnitude (mag); includes photon noise and calibration uncertainty |
+| `stretch_x1` | float64 | SALT2 light-curve stretch parameter: positive x1 means a broader, slower light curve, which is intrinsically brighter (Phillips relation); negative x1 means a narrower, faster light curve; standardized SNe Ia span roughly x1 \u2208 [-3, +3] |
+| `stretch_x1_err` | float64 | 1-sigma uncertainty on the SALT2 stretch parameter x1 |
+| `color_c` | float64 | SALT2 color parameter: the B-V color excess at peak relative to a fiducial SN Ia template; positive c means redder (more dust or intrinsically red); negative c means bluer; redder SNe are dimmer and must be corrected; typical range c \u2208 [-0.3, +0.5] |
+| `color_c_err` | float64 | 1-sigma uncertainty on the SALT2 color parameter c |
+| `host_log_mass` | float64 | Log\u2081\u2080 of the host galaxy stellar mass (M\u2609), derived from SED fitting to photometry; used to apply the "mass step" correction: SNe Ia in more massive hosts (log M > 10) are ~0.06 mag brighter after SALT2 standardization; null for SNe without host galaxy measurements |
+| `host_log_mass_err` | float64 | 1-sigma uncertainty on the host galaxy log stellar mass; null when host mass is unavailable |
+| `fit_probability` | float64 | Probability (0--1) that the SALT2 light-curve fit is acceptable given the photometric data; low values (<0.001) may indicate non-Ia contamination or poor photometric coverage; used as a quality cut in cosmological analyses |
+| `distance_modulus` | float64 | Distance modulus \u03bc (mag) from the SH0ES/Pantheon+ analysis: \u03bc = m_B - M_B + \u03b1 x1 - \u03b2 c - \u0394_bias, where \u03b1 and \u03b2 are population-level nuisance parameters; \u03bc = 5 log\u2081\u2080(d/10 pc); used to place each SN on the Hubble diagram; typical range 33--46 mag |
+| `distance_modulus_err` | float64 | Diagonal (statistical) 1-sigma uncertainty on the distance modulus (mag), propagated from the SALT2 fit parameter uncertainties; does not include the off-diagonal covariance terms needed for rigorous cosmological fits (see the full covariance matrix in the data release); typical ~0.15 mag |
 
 ## Quick stats
 

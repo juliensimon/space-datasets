@@ -281,22 +281,22 @@ The cruise phase data is scientifically valuable in its own right. MPO-MAG has m
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `granule_uid` | string | Unique observation identifier |
-| `granule_gid` | string | Group identifier |
-| `obs_id` | string | Observation ID |
-| `dataproduct_type` | string | Data product type (e.g. spectrum, image, profile) |
-| `target_name` | string | Target body (Mercury, Venus, etc.) |
-| `target_class` | string | Target class (planet, satellite, etc.) |
-| `instrument_name` | string | Instrument name (MORE, MPO-MAG, SIXS, etc.) |
-| `time_min` | float64 | Observation start time (JD) |
-| `time_max` | float64 | Observation end time (JD) |
-| `c1min`/`c1max` | float64 | Spatial coordinate 1 range |
-| `c2min`/`c2max` | float64 | Spatial coordinate 2 range |
-| `spectral_range_min`/`max` | float64 | Spectral range bounds |
-| `processing_level` | string | Data processing level |
-| `creation_date` | string | Data product creation date |
-| `access_url` | string | URL to access the data product |
-| `access_format` | string | Data format (e.g. application/x-pds) |
+| `granule_uid` | string | Globally unique identifier for this data granule within the EPN-TAP registry; format is instrument-dependent (e.g. "BELA_2023-01-15T12:00:00"); used as the pagination key |
+| `granule_gid` | string | Group identifier linking related granules (e.g. all observations from a single instrument session or sequence); less unique than `granule_uid` |
+| `obs_id` | string | Observation identifier as defined by the instrument team; may correspond to a commanding sequence or science block ID in the PSA archive |
+| `dataproduct_type` | string | EPN-TAP data product type vocabulary: `sp` = spectrum, `im` = image, `sc` = scan/profile, `ds` = dynamic spectrum, `vo` = spectral cube, `pr` = profile, `ma` = map; determines the spatial/spectral structure of the data |
+| `target_name` | string | Name of the primary observation target (e.g. "Mercury", "Venus", "Sun", "CALIBRATION"); BepiColombo cruise data includes Venus flyby and Mercury flyby targets |
+| `target_class` | string | EPN-TAP target class vocabulary: `planet`, `satellite`, `star`, `interplanetary_medium`, `calibration`; broad category of the observation target |
+| `instrument_name` | string | Instrument that acquired this granule: MORE (radio science/gravity), MPO-MAG (magnetometer), SIXS (solar X-ray/particle), BERM (radiation monitor), MIXS (X-ray spectrometer), SERENA (neutral/ion analyzer), PHEBUS (UV spectrometer), MCAM (monitoring cameras), MGNS (gamma/neutron spectrometer), MERTIS (thermal IR, 7–40 μm), BELA (laser altimeter) |
+| `time_min` | float64 | Observation start time in Julian Date (TDB timescale); JD 2458775.5 = 2019-Oct-20 (launch + ~1 yr); convert to datetime via `pd.to_datetime(time_min - 2440587.5, unit='d', origin='unix')` |
+| `time_max` | float64 | Observation end time in Julian Date (TDB timescale); difference `time_max - time_min` gives duration in days; single-shot observations may have identical start and end |
+| `c1min`/`c1max` | float64 | Minimum/maximum of spatial coordinate 1 in degrees; meaning is frame-dependent: longitude for body-fixed frames, right ascension for celestial frames, or spacecraft-centric longitude; null for instruments with no defined spatial pointing |
+| `c2min`/`c2max` | float64 | Minimum/maximum of spatial coordinate 2 in degrees; typically latitude (body-fixed) or declination (celestial); null for non-imaging or non-pointed instruments |
+| `spectral_range_min`/`max` | float64 | Minimum/maximum wavelength or frequency of the spectral coverage; units vary by instrument (nm for UV/optical, μm for IR, keV for X-ray); null for non-spectral instruments |
+| `processing_level` | string | PDS/PSA data processing level: `1` = raw telemetry, `2` = calibrated data in physical units, `3` = derived/higher-order products; higher levels have more caveats removed but fewer data products exist |
+| `creation_date` | string | ISO 8601 date when the data product was generated or ingested into the PSA archive; reflects pipeline processing date, not observation date |
+| `access_url` | string | Direct URL to download the data product from the ESA Planetary Science Archive; typically resolves to PDS4 bundle files or FITS products |
+| `access_format` | string | MIME type of the data product: `application/x-pds` = PDS4 format, `application/fits` = FITS, `text/plain` = ASCII table; determines how to read the file at `access_url` |
 
 The full schema contains up to ~50 columns following the EPN-TAP standard.
 

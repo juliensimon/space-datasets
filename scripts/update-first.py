@@ -137,19 +137,19 @@ The catalog also serves as a key input for spectral index studies when combined 
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `source_name` | string | FIRST source name (HHMMSS.s+DDMMSS format) |
-| `ra_deg` | float64 | Right ascension J2000 (degrees) |
-| `dec_deg` | float64 | Declination J2000 (degrees) |
-| `peak_flux_mjy` | float64 | Peak flux density (mJy/beam) |
-| `integrated_flux_mjy` | float64 | Integrated flux density (mJy) |
-| `rms_mjy` | float64 | Local rms noise (mJy/beam) |
-| `major_axis_arcsec` | float64 | Fitted major axis FWHM (arcsec) |
-| `minor_axis_arcsec` | float64 | Fitted minor axis FWHM (arcsec) |
-| `position_angle_deg` | float64 | Fitted position angle (degrees) |
-| `deconv_major_arcsec` | float64 | Deconvolved major axis (arcsec, 0 if unresolved) |
-| `deconv_minor_arcsec` | float64 | Deconvolved minor axis (arcsec) |
-| `deconv_pa_deg` | float64 | Deconvolved position angle (degrees) |
-| `is_resolved` | bool | True if deconvolved major axis > 0 |
+| `source_name` | string | FIRST source identifier in the format "JHHMMSS.s+DDMMSS" derived from J2000 position |
+| `ra_deg` | float64 | ICRS J2000.0 right ascension in degrees (0–360); positional accuracy ~0.5 arcsec for sources near the detection limit |
+| `dec_deg` | float64 | ICRS J2000.0 declination in degrees; survey covers northern sky and south Galactic cap (~-10 to +62 deg) |
+| `peak_flux_mjy` | float64 | Peak surface brightness at 1.4 GHz in mJy/beam; catalog detection threshold ~0.75 mJy/beam (5-sigma with typical rms ~0.15 mJy/beam); equals integrated_flux_mjy for unresolved point sources |
+| `integrated_flux_mjy` | float64 | Total integrated flux density from Gaussian fit in mJy; exceeds peak_flux_mjy for resolved or extended sources; use this for radio luminosity calculations |
+| `rms_mjy` | float64 | Local rms noise at the source position in mJy/beam; typically ~0.15 mJy/beam but elevated near bright sources or survey edges |
+| `major_axis_arcsec` | float64 | Fitted (convolved) major-axis FWHM of the Gaussian model in arcsec; includes the 5-arcsec beam; always >= 5 arcsec |
+| `minor_axis_arcsec` | float64 | Fitted (convolved) minor-axis FWHM in arcsec; always >= minor axis of the restoring beam (~5 arcsec) |
+| `position_angle_deg` | float64 | Fitted position angle of the major axis in degrees east from north (0–180); unreliable for unresolved sources |
+| `deconv_major_arcsec` | float64 | Deconvolved (beam-subtracted) major axis in arcsec; 0 for unresolved point sources after beam deconvolution; is_resolved == False when this is 0 |
+| `deconv_minor_arcsec` | float64 | Deconvolved minor axis in arcsec; 0 for unresolved sources; always <= deconv_major_arcsec |
+| `deconv_pa_deg` | float64 | Deconvolved position angle of the intrinsic source in degrees east from north; meaningful only when deconv_major_arcsec > 0 |
+| `is_resolved` | bool | Derived: True if deconv_major_arcsec > 0, indicating the source is spatially resolved above the 5-arcsec FIRST beam; False for unresolved point sources |
 
 ## Quick stats
 

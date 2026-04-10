@@ -190,21 +190,21 @@ The dataset has {len(df.columns)} columns. Key columns:
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `specobjid` | int64 | SDSS spectroscopic object ID |
-| `dr8objid` | int64 | SDSS DR8 photometric object ID |
-| `dr7objid` | int64 | SDSS DR7 photometric object ID |
-| `ra` | float64 | Right Ascension (J2000, degrees) |
-| `dec` | float64 | Declination (J2000, degrees) |
-| `rastring` | string | RA as sexagesimal string |
-| `decstring` | string | Dec as sexagesimal string |
-| `sample` | string | Sample membership flag |
-| `gz2class` | string | Summary morphological class |
-| `total_classifications` | int64 | Total number of classifications |
-| `total_votes` | int64 | Total number of votes |
-| `dominant_morphology` | string | Derived: highest debiased probability (smooth / features_or_disk / star_or_artifact) |
-| `is_barred` | bool | Derived: bar debiased probability > 0.5 |
-| `is_spiral` | bool | Derived: spiral debiased probability > 0.5 |
-| `is_edge_on` | bool | Derived: edge-on debiased probability > 0.5 |
+| `specobjid` | int64 | SDSS spectroscopic object ID (unique 64-bit integer identifying the specific fiber/plate/MJD observation) |
+| `dr8objid` | int64 | SDSS DR8 photometric object ID (18-digit integer from the SDSS imaging pipeline; primary cross-match key for photometric catalogs) |
+| `dr7objid` | int64 | SDSS DR7 photometric object ID; use dr8objid for cross-matching with DR8+ catalogs |
+| `ra` | float64 | ICRS J2000.0 right ascension of the galaxy center in degrees (0–360) |
+| `dec` | float64 | ICRS J2000.0 declination of the galaxy center in degrees (-90–+90) |
+| `rastring` | string | Right ascension in sexagesimal format "HH:MM:SS.ss" for display purposes |
+| `decstring` | string | Declination in sexagesimal format "±DD:MM:SS.s" for display purposes |
+| `sample` | string | GZ2 subsample membership; values include "original" (main spectroscopic sample) and subsets used for debiasing |
+| `gz2class` | string | Summary morphological class string from the GZ2 decision tree (e.g., "Sa", "SBb", "E", "Merger"); represents the plurality classification |
+| `total_classifications` | int64 | Number of distinct classification tasks completed for this galaxy (each volunteer may answer multiple tasks per object); higher values mean more reliable vote fractions |
+| `total_votes` | int64 | Total individual votes cast across all tasks for this galaxy; typically 10–70 votes for well-classified objects |
+| `dominant_morphology` | string | Derived: label with the highest t01 debiased probability; one of "smooth", "features_or_disk", or "star_or_artifact" |
+| `is_barred` | bool | Derived: True if t03 bar debiased probability > 0.5; applies only to disk galaxies (disk must also be present) |
+| `is_spiral` | bool | Derived: True if t04 spiral debiased probability > 0.5; indicates visible spiral arms after debiasing for redshift effects |
+| `is_edge_on` | bool | Derived: True if t02 edge-on debiased probability > 0.5; edge-on disks appear as a thin line with no visible spiral structure |
 
 For each of the 11 morphological tasks (t01-t11) and their answers (a01-a37), there are up to 6 columns:
 

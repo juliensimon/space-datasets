@@ -150,9 +150,9 @@ For applications that consume standard 3-line TLE format (e.g., SGP4 propagators
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `name` | string | Satellite name (e.g., "STARLINK-1234", "NAVSTAR 78") |
-| `line1` | string | TLE line 1 |
-| `line2` | string | TLE line 2 |
+| `name` | string | Satellite common name from the NORAD catalog (e.g., "STARLINK-1234", "NAVSTAR 78 (USA-326)") |
+| `line1` | string | First line of the NORAD TLE format: contains NORAD catalog number, international designator, epoch, first and second derivatives of mean motion, BSTAR drag term, and element set number; parse with the `sgp4` library |
+| `line2` | string | Second line of the NORAD TLE format: contains inclination, RAAN, eccentricity, argument of perigee, mean anomaly, mean motion (rev/day), and revolution number at epoch; together with `line1` fully defines the satellite's orbit for SGP4 propagation |
 
 ## Usage
 

@@ -195,16 +195,16 @@ The distinction between "Fell" and "Found" meteorites has important implications
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `name` | string | Official meteorite name |
-| `id` | int64 | Unique identifier |
-| `nametype` | string | Name type: "Valid" or "Relict" |
-| `recclass` | string | Meteorite classification (e.g. L5, H6, Iron-IVA) |
-| `mass` | float64 | Mass in grams |
-| `mass_kg` | float64 | Mass in kilograms |
-| `fall` | string | "Fell" (observed fall) or "Found" (discovered later) |
-| `year` | datetime | Year of fall or discovery |
-| `reclat` | float64 | Recovery latitude (decimal degrees) |
-| `reclong` | float64 | Recovery longitude (decimal degrees) |
+| `name` | string | Official meteorite name assigned by the Meteoritical Society (e.g., "Allende", "NWA 869"); typically reflects recovery location plus sequence number |
+| `id` | int64 | Unique integer identifier from the NASA/Meteoritical Society database |
+| `nametype` | string | Name validity: "Valid" (standard accepted name) or "Relict" (heavily weathered, likely terrestrial origin); almost all entries are "Valid" |
+| `recclass` | string | Meteoritical Society classification (e.g., "L5", "H6", "CM2", "Iron-IVA", "Achondrite-ungrouped"); letters = chemical group, numbers = petrologic grade; >400 distinct classes |
+| `mass` | float64 | Total known mass in grams; null for ~15% of entries; range from <1 g to ~60,000,000 g (Hoba meteorite) |
+| `mass_kg` | float64 | Total known mass in kilograms (mass / 1000); null when mass is null |
+| `fall` | string | Discovery context: "Fell" (witnessed falling, more pristine, ~1,100 records) or "Found" (discovered on ground, may be weathered, ~44,000 records) |
+| `year` | datetime | Year of fall or recovery as a datetime (day and month set to January 1 of the recorded year); null for entries without a year |
+| `reclat` | float64 | Recovery site latitude in decimal degrees (positive = N, negative = S); null for ~one-third of entries, especially older finds without GPS records |
+| `reclong` | float64 | Recovery site longitude in decimal degrees (positive = E, negative = W); null when reclat is null |
 
 ## Quick stats
 

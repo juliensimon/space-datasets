@@ -157,14 +157,14 @@ Typical quiet-time solar wind conditions show speeds of 300-450 km/s and densiti
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `time_tag` | datetime | Measurement time (UTC, ~1-minute cadence) |
-| `density` | float | Proton density (particles/cm³) |
-| `speed` | float | Bulk solar wind speed (km/s) |
-| `temperature` | float | Proton temperature (K) |
-| `bt` | float | Total magnetic field magnitude (nT) |
-| `bx_gsm` | float | Magnetic field Bx in GSM coordinates (nT) |
-| `by_gsm` | float | Magnetic field By in GSM coordinates (nT) |
-| `bz_gsm` | float | Magnetic field Bz in GSM coordinates (nT) — **key storm driver** |
+| `time_tag` | datetime | Measurement timestamp from DSCOVR/ACE at the L1 Lagrange point (UTC, ~1-minute cadence) |
+| `density` | float | Solar wind proton number density in protons/cm³; typical quiet-time range 3–10 p/cm³; high density combined with high speed increases dynamic pressure, compressing the magnetosphere |
+| `speed` | float | Solar wind bulk velocity in km/s; typical 350–800 km/s; coronal hole streams reach 600–800 km/s; CME-driven shocks can exceed 1500 km/s |
+| `temperature` | float | Solar wind proton temperature in Kelvin; typical ~10⁵ K; abnormally low values (~10⁴ K) suggest passage of a magnetic cloud |
+| `bt` | float | Total IMF magnitude in nT — sqrt(Bx² + By² + Bz²); typical 2–10 nT; elevated during CME passage |
+| `bx_gsm` | float | IMF Bx component in Geocentric Solar Magnetospheric (GSM) coordinates in nT; typical range ±20 nT; sun–Earth direction component |
+| `by_gsm` | float | IMF By component in GSM coordinates in nT; typical range ±20 nT; controls asymmetric magnetospheric convection and field-aligned currents |
+| `bz_gsm` | float | IMF Bz component in GSM coordinates in nT — the primary geomagnetic storm driver; sustained southward (negative) Bz enables dayside magnetic reconnection; < −10 nT drives moderate storms, < −30 nT drives severe storms; typical range ±20 nT |
 
 ## Quick stats
 

@@ -211,21 +211,21 @@ The spectroscopic classification, redshift, and peak magnitude data in this cata
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `name` | string | Primary name (e.g., "SN2011fe", "AT2024abc") |
-| `ra_hms` | string | Right ascension in HH:MM:SS.ss format |
-| `dec_dms` | string | Declination in +DD:MM:SS.ss format |
-| `ra` | float64 | Right ascension in decimal degrees |
-| `dec` | float64 | Declination in decimal degrees |
-| `redshift` | float64 | Spectroscopic or photometric redshift |
-| `claimed_type` | string | Classification (Ia, II, Ib, Ic, SLSN, etc.) |
-| `host_galaxy` | string | Host galaxy name |
-| `peak_mag` | float64 | Peak apparent magnitude |
-| `peak_abs_mag` | float64 | Peak absolute magnitude |
-| `discovery_date` | datetime | Date of discovery |
-| `discovery_year` | int64 | Year of discovery |
-| `luminosity_distance_mpc` | float64 | Luminosity distance in Mpc |
-| `ebv` | float64 | Milky Way E(B-V) extinction |
-| `discoverer` | string | Person or survey that discovered the SN |
+| `name` | string | Primary supernova designation (e.g., "SN 1987A", "SN2011fe", "AT2023bee"); historical SNe use "SN YYYY" format; modern transients use "AT" prefix until spectroscopically confirmed |
+| `ra_hms` | string | Right ascension of the supernova in sexagesimal format (HH:MM:SS.ss); for high-z events this is the host galaxy nucleus position |
+| `dec_dms` | string | Declination in sexagesimal format (+DD:MM:SS.ss) |
+| `ra` | float64 | Right ascension in decimal degrees (J2000.0 ICRS); range 0–360; null for historical events without precise coordinates |
+| `dec` | float64 | Declination in decimal degrees (J2000.0 ICRS); range −90 to +90; null when `ra` is null |
+| `redshift` | float64 | Spectroscopic or photometric redshift of the host galaxy; range ~0.0001 (SN 1987A) to ~2 (cosmological); null for ~50% of catalog entries lacking a measured redshift |
+| `claimed_type` | string | Spectroscopic classification: "Ia" (thermonuclear WD detonation, standardizable candle), "Ib" (stripped-envelope, no H, has He), "Ic" (stripped-envelope, no H or He), "II" (core collapse with H), "IIn" (core collapse with circumstellar interaction), "IIb" (transitional H+He), "SLSN-I/II" (superluminous, 10–100× normal brightness); null for unclassified candidates |
+| `host_galaxy` | string | Name of the host galaxy; null for ~20% of entries |
+| `peak_mag` | float64 | Peak apparent magnitude (filter unspecified); nearby bright SNe can reach magnitude ~8–10; typical survey-detected SNe: 18–22 mag; null for ~60% of entries |
+| `peak_abs_mag` | float64 | Peak absolute magnitude; Type Ia: ~−19.3 mag; core-collapse: −15 to −18 mag; SLSN: −20 to −23 mag; null when redshift or peak apparent magnitude is unavailable |
+| `discovery_date` | datetime | UTC date the transient was first reported to the community; format YYYY-MM-DD |
+| `discovery_year` | int64 | Year of discovery; derived from `discovery_date`; null when discovery_date is unavailable |
+| `luminosity_distance_mpc` | float64 | Luminosity distance in megaparsecs computed from redshift; null when redshift is unavailable |
+| `ebv` | float64 | Milky Way line-of-sight dust reddening E(B-V) in magnitudes from the Schlegel/Schlafly dust maps; used to correct observed magnitudes for Galactic extinction |
+| `discoverer` | string | Person, team, or survey that first reported the transient (e.g., "ZTF", "ASAS-SN", "Itagaki"); null for many historical entries |
 
 ## Quick stats
 

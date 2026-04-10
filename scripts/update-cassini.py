@@ -144,16 +144,16 @@ This observation master schedule documents every planned science activity across
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `start_time_utc` | datetime | Observation start time (UTC) |
-| `duration` | string | Planned duration of observation |
-| `date` | string | Date string from the original schedule |
-| `team` | string | Science team responsible (e.g. CIRS, ISS, UVIS, VIMS) |
-| `spass_type` | string | SPASS observation type |
-| `target` | string | Observation target (e.g. SATURN, TITAN, ENCELADUS, RINGS) |
-| `request_name` | string | Internal request identifier |
-| `library_definition` | string | Library definition reference |
-| `title` | string | Observation title |
-| `description` | string | Detailed description of the observation |
+| `start_time_utc` | datetime | Observation start time (UTC); covers 2004–2017 |
+| `duration` | string | Planned duration of observation in HH:MM:SS format |
+| `date` | string | Calendar date in YYYY-DOY format (day-of-year) from the master schedule |
+| `team` | string | Science team responsible (e.g. CIRS=thermal IR, ISS=imaging, UVIS=UV, VIMS=visual/IR mapping, MAG=magnetometer, RPWS=radio/plasma, RADAR, CAPS=plasma spectrometer) |
+| `spass_type` | string | SPASS (Science Planning and Sequencing System) observation type code classifying the kind of science activity |
+| `target` | string | Observation target body (e.g. SATURN, TITAN, ENCELADUS, RINGS, RHEA, DIONE, IAPETUS) |
+| `request_name` | string | Unique internal request name assigned by the sequencing system |
+| `library_definition` | string | Reference to the observation library template defining instrument parameters |
+| `title` | string | Short human-readable observation title |
+| `description` | string | Detailed description of the science goals and instrument configuration for this observation |
 
 ## Quick stats
 

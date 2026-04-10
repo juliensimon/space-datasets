@@ -244,12 +244,13 @@ Crater degradation states recorded in this catalog trace the geological evolutio
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `latitude_deg` | float64 | Crater center latitude (degrees, planetocentric) |
-| `longitude_deg` | float64 | Crater center longitude (degrees, 0-360 E) |
-| `diameter_km` | float64 | Crater rim-to-rim diameter (km) |
-| `depth_km` | float64 | Rim-to-floor depth (km) |
-| `depth_diameter_ratio` | float64 | Depth-to-diameter ratio |
-| `size_class` | string | Derived: small (<5 km), medium (5-20), large (20-100), giant (>100) |
+| `name` | string | IAU official name (named after agricultural deities from world mythologies); null for unnamed craters |
+| `latitude_deg` | float64 | Crater center planetocentric latitude (degrees, -90 to +90) |
+| `longitude_deg` | float64 | Crater center east longitude on Ceres (degrees, 0–360 E; Ceres uses east-positive convention) |
+| `diameter_km` | float64 | Crater rim-to-rim diameter (km); range 0.1–280 km (largest: Kerwan basin) |
+| `depth_km` | float64 | Rim-to-floor depth (km); shallower than expected for size suggests infill by mass wasting or cryovolcanism; null if not measured |
+| `depth_diameter_ratio` | float64 | Depth divided by diameter; fresh craters ~0.15–0.20; decreases with degradation; used to assess crater age and infill |
+| `size_class` | string | Derived size category: "small" (<5 km), "medium" (5–20 km), "large" (20–100 km), "giant" (>100 km) |
 
 *Additional columns from the source may be present (morphology, degradation state, confidence, etc.).*
 

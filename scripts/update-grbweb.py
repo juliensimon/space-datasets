@@ -189,23 +189,23 @@ This unified catalog is maintained by the IceCube Collaboration because GRBs are
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `grb_name` | string | Canonical GRB name (e.g. "GRB260326A") |
-| `grb_name_fermi` | string | Fermi GBM trigger name (null if not detected by Fermi) |
-| `t0_utc` | string | Trigger time (UTC, HH:MM:SS.sss) |
-| `ra` | float | Right ascension (degrees, J2000) |
-| `dec` | float | Declination (degrees, J2000) |
-| `pos_error` | float | Position uncertainty (degrees, 1-sigma) |
-| `t90` | float | T90 duration (s) — time containing 90% of fluence |
-| `t90_error` | float | T90 uncertainty (s) |
-| `t90_start` | string | T90 interval start time (UTC) |
-| `fluence` | float | Total fluence (erg/cm^2) |
-| `fluence_error` | float | Fluence uncertainty (erg/cm^2) |
-| `redshift` | float | Spectroscopic or photometric redshift |
-| `t100` | float | T100 duration (s) — total burst duration |
-| `gbm_located` | bool | Whether Fermi GBM provided the localization |
-| `mjd` | float | Modified Julian Date of trigger |
-| `trigger_time` | datetime | Trigger time as datetime (derived from MJD) |
-| `duration_class` | string | "short" (T90 < 2 s) or "long" (T90 >= 2 s) |
+| `grb_name` | string | Canonical GRB designation in YYMMDDFFF or YYMMDD format (e.g., "GRB260326A"); the letter suffix distinguishes multiple events on the same date |
+| `grb_name_fermi` | string | Fermi GBM internal trigger name (e.g., "GRB260326123"); null if the burst was not detected by Fermi GBM |
+| `t0_utc` | string | Trigger time of day in UTC (HH:MM:SS.sss); combined with `trigger_time` for the full timestamp |
+| `ra` | float | Best-fit right ascension in degrees (J2000.0 ICRS); localization accuracy varies widely by instrument: Swift XRT ~2″, Fermi GBM ~1–3°, IPN ~0.1°–10° |
+| `dec` | float | Best-fit declination in degrees (J2000.0 ICRS); range −90 to +90 |
+| `pos_error` | float | 1-sigma position uncertainty in degrees; Fermi GBM typical: 1–5°; Swift: arcseconds; null if only a non-parametric localization is available |
+| `t90` | float | Duration T90 in seconds — the time interval containing 5%–95% of the total burst fluence; bimodal distribution: short GRBs < 2 s (compact object mergers), long GRBs > 2 s (core-collapse supernovae); range ~0.01 s to ~1000 s; null for ~20% of catalog entries |
+| `t90_error` | float | Uncertainty on T90 in seconds (1-sigma); null if T90 was not formally measured with uncertainty |
+| `t90_start` | string | UTC time when the T90 interval begins (i.e., when 5% of total fluence has been accumulated); null for many catalog entries |
+| `fluence` | float | Time-integrated energy flux (fluence) over the burst duration in erg/cm²; instrument-dependent energy band; null for ~40% of catalog entries |
+| `fluence_error` | float | 1-sigma uncertainty on fluence in erg/cm²; null when fluence is null |
+| `redshift` | float | Spectroscopic or photometric redshift of the GRB host galaxy; available for only ~15–20% of GRBs (those with optical afterglow spectroscopy); range ~0.01 to >9 |
+| `t100` | float | Total burst duration T100 in seconds (full emission episode); always ≥ T90; null for many entries |
+| `gbm_located` | bool | True if Fermi GBM provided the best available localization for this event; False if the localization came from Swift, IPN, or another instrument |
+| `mjd` | float | Modified Julian Date of the trigger (MJD = JD − 2400000.5); MJD epoch: 1858-11-17T00:00:00 UTC |
+| `trigger_time` | datetime | Trigger time as a UTC datetime object, derived from the MJD column |
+| `duration_class` | string | Derived duration classification: "short" (T90 < 2 s, associated with neutron star mergers) or "long" (T90 ≥ 2 s, associated with core-collapse supernovae); null if T90 is missing |
 
 ## Quick stats
 

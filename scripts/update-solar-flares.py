@@ -384,14 +384,14 @@ This dataset supports research in flare prediction, solar cycle statistics, and 
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `start_time` | datetime | Flare start time (UTC) |
-| `peak_time` | datetime | Flare peak time (UTC) |
-| `end_time` | datetime | Flare end time (UTC) |
-| `goes_class` | string | GOES class (e.g. "B3.7", "C1.6", "M5.1", "X1.0") |
-| `goes_class_letter` | string | Class letter: B, C, M, or X |
-| `peak_flux_wm2` | float64 | Peak X-ray flux in 1-8A band (W/m²) |
-| `active_region` | int | NOAA active region number (when available) |
-| `satellite` | string | Source satellite (GOES-16, GOES-18) |
+| `start_time` | datetime | UTC time when GOES X-ray flux first rises above background threshold; marks onset of the impulsive phase |
+| `peak_time` | datetime | UTC time of maximum X-ray flux in the 1–8 Å band; the reference instant used to assign the flare class |
+| `end_time` | datetime | UTC time when X-ray flux returns to pre-flare background; duration from start to end is typically minutes for impulsive events, hours for long-duration events (LDEs) associated with CMEs |
+| `goes_class` | string | Full NOAA flare classification (e.g. "B3.7", "C1.6", "M5.1", "X1.0"); letter sets the decade, number is the multiplier (M5.2 = 5.2 × 10⁻⁵ W/m²) |
+| `goes_class_letter` | string | NOAA flare class letter: "A" (background, 10⁻⁸ W/m²), "B" (10⁻⁷), "C" (10⁻⁶, minor), "M" (10⁻⁵, moderate, may cause radio blackouts at HF), "X" (≥ 10⁻⁴, major, can cause HF blackouts, radiation storms, CMEs) |
+| `peak_flux_wm2` | float64 | Peak GOES X-ray flux in the 1–8 Å band in W/m²; ranges from ~10⁻⁸ (quiet sun) to ~10⁻³ (extreme X-class); the numeric value that defines the full goes_class |
+| `active_region` | int | NOAA Active Region number of the source sunspot group (e.g. 12673); null when no source region is identified (e.g. behind-the-limb or spotless events) |
+| `satellite` | string | GOES satellite that recorded the event: "GOES-16" (primary since 2017) or "GOES-18" (primary from 2022) |
 
 ## Quick stats
 

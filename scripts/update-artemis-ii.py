@@ -387,17 +387,17 @@ Geocentric J2000 ecliptic state vectors from [JPL Horizons](https://ssd.jpl.nasa
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `epoch_tdb` | datetime | Epoch in Barycentric Dynamical Time (TDB) |
-| `x_km` | float | Geocentric X position (km, J2000 ecliptic) |
-| `y_km` | float | Geocentric Y position (km) |
-| `z_km` | float | Geocentric Z position (km) |
-| `vx_km_s` | float | X velocity (km/s) |
-| `vy_km_s` | float | Y velocity (km/s) |
-| `vz_km_s` | float | Z velocity (km/s) |
-| `distance_earth_km` | float | Distance from Earth center (km) |
-| `speed_km_s` | float | Orbital speed (km/s) |
-| `distance_moon_km` | float | Distance from Moon center (km) |
-| `mission_phase` | string | Phase: earth_orbit, transit_outbound, lunar_approach, lunar_flyby, transit_return, entry |
+| `epoch_tdb` | datetime | Timestamp of the state vector in Barycentric Dynamical Time (TDB), sampled at 10-minute intervals throughout the mission; TDB differs from UTC by a slowly varying offset (≈69 s during 2026) |
+| `x_km` | float | Geocentric X position in km in the J2000 mean ecliptic and equinox frame; origin at Earth's center; X-axis points toward vernal equinox; typical range ±450,000 km (Earth–Moon distance ≈384,400 km) |
+| `y_km` | float | Geocentric Y position in km (J2000 ecliptic frame); orthogonal to X in the ecliptic plane |
+| `z_km` | float | Geocentric Z position in km (J2000 ecliptic frame); positive toward ecliptic north pole; small for near-ecliptic trajectories |
+| `vx_km_s` | float | X velocity component in km/s (J2000 geocentric frame); Orion reaches ~10.8 km/s at TLI and decelerates to ≈11 km/s at entry interface |
+| `vy_km_s` | float | Y velocity component in km/s (J2000 geocentric frame) |
+| `vz_km_s` | float | Z velocity component in km/s (J2000 geocentric frame) |
+| `distance_earth_km` | float | Distance from Earth's center in km, derived as √(x²+y²+z²); peaks near 450,000 km during the lunar flyby; Earth's surface is at 6,371 km, LEO at ~400 km |
+| `speed_km_s` | float | Scalar speed in km/s, derived as √(vx²+vy²+vz²); peaks at TLI burn (≈10.8 km/s), reaches minimum near maximum Earth distance, then increases again during return; entry interface speed ≈11 km/s |
+| `distance_moon_km` | float | Distance from the Moon's center in km from selenocentric Horizons query; minimum occurs at closest lunar approach (~8,900 km); null if Horizons returned a different number of rows than geocentric query |
+| `mission_phase` | string | Mission segment label assigned by event timestamps: `earth_orbit` (launch through ICPS separation burn), `transit_outbound` (TLI through lunar sphere-of-influence entry), `lunar_approach` (SOI entry through closest approach), `lunar_flyby` (closest approach through SOI exit), `transit_return` (SOI exit through entry interface), `entry` (entry interface through splashdown) |
 
 ## Quick stats
 

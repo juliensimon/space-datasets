@@ -146,18 +146,18 @@ The geographic distribution of detected fireballs reflects both the true impact 
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `datetime` | datetime | Date and time of peak brightness (UTC) |
-| `radiated_energy_j` | float64 | Total radiated energy (joules x10^10) |
-| `impact_energy_kt` | float64 | Estimated total impact energy (kilotons of TNT) |
-| `latitude` | float64 | Latitude (positive = N, negative = S) |
-| `lat_direction` | string | Original latitude direction (N/S) |
-| `longitude` | float64 | Longitude (positive = E, negative = W) |
-| `lon_direction` | string | Original longitude direction (E/W) |
-| `altitude_km` | float64 | Altitude at peak brightness (km) |
-| `velocity_kms` | float64 | Velocity at peak brightness (km/s) |
-| `vx_kms` | float64 | Velocity component Vx (km/s, ECEF) |
-| `vy_kms` | float64 | Velocity component Vy (km/s, ECEF) |
-| `vz_kms` | float64 | Velocity component Vz (km/s, ECEF) |
+| `datetime` | datetime | Date and time of peak brightness (UTC); derived from satellite and infrasound sensor data |
+| `radiated_energy_j` | float64 | Total optical energy radiated in joules (×10¹⁰); proportional to kinetic energy; Chelyabinsk 2013: ~5×10¹⁴ J; null for events without optical energy estimate |
+| `impact_energy_kt` | float64 | Estimated total impact energy in kilotons of TNT equivalent; Chelyabinsk ~500 kt; null for ~half of events where conversion is not available |
+| `latitude` | float64 | Geographic latitude of peak brightness in decimal degrees (positive = N, negative = S); null for events where coordinates are withheld or unavailable |
+| `lat_direction` | string | Original source latitude hemisphere indicator: "N" or "S"; retained for provenance; use signed `latitude` for analysis |
+| `longitude` | float64 | Geographic longitude of peak brightness in decimal degrees (positive = E, negative = W); null for events where coordinates are withheld or unavailable |
+| `lon_direction` | string | Original source longitude hemisphere indicator: "E" or "W"; retained for provenance; use signed `longitude` for analysis |
+| `altitude_km` | float64 | Altitude at peak brightness in km; typical fireball burn-up range 20–80 km; null for events without altitude measurement |
+| `velocity_kms` | float64 | Pre-entry velocity at peak brightness in km/s; range ~11 km/s (escape velocity minimum) to ~72 km/s (maximum relative to Earth's orbit); null for events without velocity measurement |
+| `vx_kms` | float64 | East–West velocity component in km/s, Earth-Centered Earth-Fixed (ECEF) frame; null when full velocity solution unavailable |
+| `vy_kms` | float64 | North–South velocity component in km/s, ECEF frame; null when full velocity solution unavailable |
+| `vz_kms` | float64 | Vertical (radial) velocity component in km/s, ECEF frame; null when full velocity solution unavailable |
 
 ## Quick stats
 

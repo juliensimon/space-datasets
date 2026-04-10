@@ -282,22 +282,22 @@ The longevity of the mission — over two decades in Mars orbit — makes this o
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `granule_uid` | string | Unique observation identifier |
-| `granule_gid` | string | Group identifier |
-| `obs_id` | string | Observation ID |
-| `dataproduct_type` | string | Data product type (e.g. spectrum, image, profile) |
-| `target_name` | string | Target body (Mars, Phobos, Deimos, etc.) |
-| `target_class` | string | Target class (planet, satellite, etc.) |
-| `instrument_name` | string | Instrument name (HRSC, MARSIS, OMEGA, etc.) |
-| `time_min` | float64 | Observation start time (JD) |
-| `time_max` | float64 | Observation end time (JD) |
-| `c1min`/`c1max` | float64 | Spatial coordinate 1 range |
-| `c2min`/`c2max` | float64 | Spatial coordinate 2 range |
-| `spectral_range_min`/`max` | float64 | Spectral range bounds |
-| `processing_level` | string | Data processing level |
-| `creation_date` | string | Data product creation date |
-| `access_url` | string | URL to access the data product |
-| `access_format` | string | Data format (e.g. application/x-pds) |
+| `granule_uid` | string | Unique observation/granule identifier in the PSA archive |
+| `granule_gid` | string | Group identifier linking related granules from the same instrument or sequence |
+| `obs_id` | string | Observation ID assigned by the instrument team |
+| `dataproduct_type` | string | EPN-TAP data product type (e.g. "sp" for spectrum, "im" for image, "pr" for profile, "cu" for cube, "vo" for visibility/occultation) |
+| `target_name` | string | Target body name (e.g. "Mars", "Phobos", "Deimos", "Solar Wind"); Mars Express arrived Dec 2003 and has observed Mars for 20+ years |
+| `target_class` | string | EPN-TAP target class (e.g. "planet", "satellite", "interplanetary_medium") |
+| `instrument_name` | string | Instrument name — one of: HRSC (high-res stereo camera, ~10 m/pixel), MARSIS (subsurface radar sounder), OMEGA (mineralogy spectrometer 0.4–5 µm), PFS (planetary Fourier spectrometer), SPICAM (UV/IR spectrometer), ASPERA-3 (plasma analyzer), MaRS (radio science), VMC (visual monitoring camera) |
+| `time_min` | float64 | Observation start time (Julian Date, days since Jan 1 4713 BC noon); Mars Express arrived JD 2452998 (Dec 2003) |
+| `time_max` | float64 | Observation end time (Julian Date) |
+| `c1min`/`c1max` | float64 | Spatial coordinate 1 bounds (longitude in degrees, 0–360 E for Mars surface observations) |
+| `c2min`/`c2max` | float64 | Spatial coordinate 2 bounds (latitude in degrees, -90 to +90 for Mars surface observations) |
+| `spectral_range_min`/`max` | float64 | Spectral range bounds in nm (UV) or µm (near/thermal IR) depending on instrument; null for non-spectral instruments |
+| `processing_level` | string | Data processing level per PDS4 standard (e.g. "2" = calibrated, "3" = derived, "5" = partially processed) |
+| `creation_date` | string | ISO 8601 date when this data product was created or archived in PSA |
+| `access_url` | string | Direct URL to retrieve the data product from the ESA PSA |
+| `access_format` | string | MIME type of the data product (e.g. "application/x-pds4" for PDS4, "application/fits" for FITS) |
 
 The full schema contains up to ~50 columns following the EPN-TAP standard.
 

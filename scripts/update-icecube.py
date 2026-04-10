@@ -132,13 +132,20 @@ def main():
         size_mb = out.stat().st_size / 1024 / 1024
         print(f"  {size_mb:.1f} MB parquet")
 
-        col_table = "\n".join(
-            f"| `{c}` | {str(df[c].dtype)} | |"
-            for c in df.columns
-        )
-
         banner_file = download_banner("icecube", tmp)
         banner_md = banner_markdown("icecube", banner_file)
+
+        # Build a dynamic column table for columns not covered by the fixed schema below
+        known_cols = {
+            "name", "ra", "dec", "lii", "bii",
+            "flux", "flux_err", "spectral_index", "spectral_index_err",
+            "n_s", "ts", "dec_deg", "ra_deg",
+        }
+        extra_cols = [c for c in df.columns if c not in known_cols]
+        extra_table = "\n".join(
+            f"| `{c}` | {str(df[c].dtype)} | |"
+            for c in extra_cols
+        )
 
         (tmp / "README.md").write_text(f"""---
 license: cc-by-4.0
@@ -189,7 +196,20 @@ Neutrino point source detection is inherently challenging because the atmospheri
 
 | Column | Type | Description |
 |--------|------|-------------|
-{col_table}
+| `name` | string | Source designation (e.g., "TXS 0506+056", "NGC 1068") — typically the name of the astrophysical counterpart |
+| `ra` | float64 | Best-fit right ascension in degrees (J2000.0 ICRS) |
+| `dec` | float64 | Best-fit declination in degrees (J2000.0 ICRS); IceCube's angular resolution ~0.4° at TeV energies for muon tracks |
+| `ra_deg` | float64 | Right ascension in degrees (alternate column from HEASARC, same value as `ra` when both present) |
+| `dec_deg` | float64 | Declination in degrees (alternate column from HEASARC, same value as `dec` when both present) |
+| `lii` | float64 | Galactic longitude in degrees (0–360°), derived from equatorial coordinates |
+| `bii` | float64 | Galactic latitude in degrees (−90° to +90°); sources near the Galactic plane (|b| < 10°) have higher atmospheric muon backgrounds |
+| `ts` | float64 | Test statistic from the unbinned maximum-likelihood point source analysis; −2Δln(L) between signal+background and background-only hypotheses; TS > 25 (~5σ) is the typical discovery threshold |
+| `n_s` | float64 | Best-fit number of signal neutrino events attributed to the source above the atmospheric background; even bright sources typically have fewer than 100 associated events |
+| `flux` | float64 | Best-fit neutrino flux normalization at 100 TeV in GeV/cm²/s |
+| `flux_err` | float64 | 1-sigma uncertainty on the flux normalization at 100 TeV in GeV/cm²/s |
+| `spectral_index` | float64 | Best-fit power-law spectral index Γ of the neutrino energy spectrum (dN/dE ∝ E^−Γ); typical astrophysical: Γ ≈ 2.0–2.5; softer spectra (Γ > 2.5) may indicate thermal contributions |
+| `spectral_index_err` | float64 | 1-sigma uncertainty on the spectral index |
+{extra_table}
 
 ## Quick stats
 

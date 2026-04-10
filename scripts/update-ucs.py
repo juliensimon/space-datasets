@@ -208,22 +208,22 @@ Because the UCS database is curated by analysts rather than generated automatica
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `satellite_name` | string | Name of the satellite |
-| `country_registry` | string | Country/organization of UN registry |
-| `operator` | string | Satellite operator/owner |
-| `users` | string | User category (civil, commercial, government, military) |
-| `purpose` | string | Primary purpose |
-| `detailed_purpose` | string | Detailed purpose description |
-| `orbit_class` | string | Orbit class (LEO, MEO, GEO, Elliptical) |
-| `orbit_type` | string | Orbit type |
-| `perigee_km` | float64 | Perigee altitude (km) |
-| `apogee_km` | float64 | Apogee altitude (km) |
-| `inclination_deg` | float64 | Orbital inclination (degrees) |
-| `period_minutes` | float64 | Orbital period (minutes) |
-| `launch_mass_kg` | float64 | Launch mass (kg) |
-| `launch_date` | string | Date of launch |
-| `norad_id` | float64 | NORAD catalog number |
-| `cospar_id` | string | COSPAR designation |
+| `satellite_name` | string | Official satellite name as registered with UNOOSA (e.g. "STARLINK-1234", "GPS IIF-10", "Sentinel-2A") |
+| `country_registry` | string | Country or organization that registered the satellite with the UN; may differ from operator's nationality |
+| `operator` | string | Organization operating or owning the satellite (e.g. "SpaceX", "NASA", "ESA", "Intelsat") |
+| `users` | string | Primary user category: "Civil", "Commercial", "Government", or "Military"; occasionally multi-value slash-separated |
+| `purpose` | string | Primary mission purpose (e.g. "Communications", "Earth Observation", "Navigation", "Technology Development", "Space Science") |
+| `detailed_purpose` | string | Expanded purpose description from the UCS spreadsheet (e.g. "Communications/Maritime tracking", "Earth Observation/SAR"); null for entries without a sub-classification |
+| `orbit_class` | string | Orbital regime: "LEO" (altitude <2,000 km), "MEO" (2,000–35,786 km), "GEO" (~35,786 km geostationary), "Elliptical" (highly elliptical/Molniya orbits) |
+| `orbit_type` | string | More specific orbit description (e.g. "Sun-synchronous", "Polar", "Inclined geosynchronous"); null if not classified |
+| `perigee_km` | float64 | Closest orbital altitude above Earth's surface in km; null for GEO satellites (listed as circular) or missing TLE data |
+| `apogee_km` | float64 | Farthest orbital altitude above Earth's surface in km; null for GEO satellites or missing TLE data; equals perigee for circular orbits |
+| `inclination_deg` | float64 | Orbital inclination in degrees relative to the equatorial plane; range 0° (equatorial) to 98° (sun-synchronous); null if not available |
+| `period_minutes` | float64 | Orbital period in minutes; ~90 min for LEO (400 km), ~1,436 min for GEO; null if not available |
+| `launch_mass_kg` | float64 | Satellite mass at launch in kilograms; null for most entries (UCS coverage is incomplete) |
+| `launch_date` | string | ISO 8601 UTC date of launch (YYYY-MM-DD); null for entries with missing registry dates |
+| `norad_id` | float64 | NORAD Space Surveillance Network catalog number; unique per object; float due to pandas NA handling; join key with TLE/SATCAT datasets |
+| `cospar_id` | string | COSPAR/NSSDC international designator (e.g. "2019-074A"); format YYYY-NNNL; null if not assigned |
 
 ## Quick stats
 

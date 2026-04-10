@@ -133,15 +133,15 @@ Extended sources in this catalog are predominantly galaxy clusters, where the X-
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `source_name` | string | eROSITA IAU source designation |
-| `ra_deg` | float64 | Right Ascension (degrees, ICRS) |
-| `dec_deg` | float64 | Declination (degrees, ICRS) |
-| `glon_deg` | float64 | Galactic longitude (degrees) |
-| `glat_deg` | float64 | Galactic latitude (degrees) |
-| `extent_arcsec` | float64 | Source extent (arcsec, 0 = point-like) |
-| `position_error_arcsec` | float64 | Positional uncertainty (arcsec) |
-| `mjd` | float64 | Modified Julian Date of observation |
-| `is_extended` | bool | Extended source flag (extent > 0) |
+| `source_name` | string | eROSITA IAU source designation in the format "1eRASS JHHMMSS.s±DDMMSS" |
+| `ra_deg` | float64 | Right ascension, ICRS J2000.0 (degrees, 0–360); typical positional accuracy a few arcsec |
+| `dec_deg` | float64 | Declination, ICRS J2000.0 (degrees, −90 to +90); eROSITA covers the Western Galactic hemisphere |
+| `glon_deg` | float64 | Galactic longitude (degrees, 0–360) |
+| `glat_deg` | float64 | Galactic latitude (degrees, −90 to +90) |
+| `extent_arcsec` | float64 | Source spatial extent in arcsec; 0 for point-like sources; >0 indicates extended emission (galaxy clusters have typical values 10–100 arcsec) |
+| `position_error_arcsec` | float64 | 1-sigma positional uncertainty in arcsec; typically 1–10 arcsec for well-detected sources |
+| `mjd` | float64 | Modified Julian Date of the eRASS1 observation epoch (MJD = JD − 2400000.5) |
+| `is_extended` | bool | True if extent_arcsec > 0; extended sources are predominantly galaxy clusters |
 
 ## Quick stats
 

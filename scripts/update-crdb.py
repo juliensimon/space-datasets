@@ -180,17 +180,17 @@ This dataset is essential for constraining cosmic ray propagation models (e.g., 
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `particle` | string | Particle/nucleus type (e.g. "H", "He", "e-") |
-| `experiment` | string | Experiment name (e.g. "AMS-02", "PAMELA") |
-| `sub_exp` | string | Sub-experiment or detector |
-| `energy_min_gev_n` | float | Energy bin lower edge (GeV/n) |
-| `energy_max_gev_n` | float | Energy bin upper edge (GeV/n) |
-| `flux` | float | Measured flux |
-| `error_low` | float | Lower error on flux |
-| `error_high` | float | Upper error on flux |
-| `reference` | string | Publication reference |
-| `ads_url` | string | ADS bibliographic URL |
-| `is_usable` | bool | Whether the data point is recommended for use |
+| `particle` | string | Measured particle or nucleus species: "H" (proton), "He", "C", "O", "Fe", "e-" (electron), "e+" (positron), "p-bar" (antiproton), "all-particle" |
+| `experiment` | string | Name of the cosmic ray experiment that produced the measurement (e.g. "AMS-02", "PAMELA", "CREAM", "CALET") |
+| `sub_exp` | string | Sub-experiment, detector configuration, or analysis variant within the experiment (null if not applicable) |
+| `energy_min_gev_n` | float | Lower edge of kinetic energy bin, in GeV per nucleon (GeV/n); cosmic ray spectrum spans ~1 GeV/n to 10^11 GeV/n |
+| `energy_max_gev_n` | float | Upper edge of kinetic energy bin, in GeV per nucleon (GeV/n) |
+| `flux` | float | Differential flux in m⁻²s⁻¹sr⁻¹(GeV/n)⁻¹ (or ratio/anisotropy for non-flux quantities); decreases roughly as E⁻³ power law |
+| `error_low` | float | Downward (1σ) uncertainty on the flux value, in the same units as `flux`; combines statistical and systematic errors |
+| `error_high` | float | Upward (1σ) uncertainty on the flux value, in the same units as `flux`; combines statistical and systematic errors |
+| `reference` | string | Short publication reference (author, year, journal) for the measurement |
+| `ads_url` | string | NASA ADS bibliographic URL linking to the full publication |
+| `is_usable` | bool | CRDB quality flag: True = data point is recommended for analysis; False = flagged as unreliable or superseded |
 
 ## Quick stats
 

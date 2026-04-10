@@ -256,41 +256,73 @@ def main():
 
     # --- Build schema table ---
     col_descriptions = {
-        "apogee_id": ("string", "APOGEE unique star identifier"),
-        "twomass_id": ("string", "2MASS identifier"),
-        "gaia_source_id": ("string", "Gaia DR3 source ID"),
-        "ra_deg": ("float64", "Right ascension ICRS (degrees)"),
-        "dec_deg": ("float64", "Declination ICRS (degrees)"),
-        "glon_deg": ("float64", "Galactic longitude (degrees)"),
-        "glat_deg": ("float64", "Galactic latitude (degrees)"),
-        "teff_k": ("float64", "Effective temperature (K)"),
-        "teff_error_k": ("float64", "Teff uncertainty (K)"),
-        "logg": ("float64", "Surface gravity log g (dex)"),
-        "logg_error": ("float64", "log g uncertainty (dex)"),
-        "fe_h": ("float64", "Metallicity [Fe/H] (dex)"),
-        "fe_h_error": ("float64", "[Fe/H] uncertainty (dex)"),
-        "alpha_m": ("float64", "Alpha enhancement [alpha/M] (dex)"),
-        "alpha_m_error": ("float64", "[alpha/M] uncertainty (dex)"),
-        "radial_velocity_kms": ("float64", "Heliocentric radial velocity (km/s)"),
-        "radial_velocity_error_kms": ("float64", "RV uncertainty (km/s)"),
-        "rv_scatter_kms": ("float64", "RV scatter across visits (km/s)"),
-        "j_mag": ("float64", "2MASS J magnitude"),
-        "h_mag": ("float64", "2MASS H magnitude"),
-        "k_mag": ("float64", "2MASS K magnitude"),
-        "snr": ("float64", "Combined signal-to-noise ratio"),
-        "n_visits": ("Int64", "Number of visits"),
-        "pmra_mas_yr": ("float64", "Proper motion in RA (mas/yr)"),
-        "pmdec_mas_yr": ("float64", "Proper motion in Dec (mas/yr)"),
-        "parallax_mas": ("float64", "Parallax (mas)"),
-        "parallax_error_mas": ("float64", "Parallax uncertainty (mas)"),
+        "apogee_id": ("string", "APOGEE target identifier in 2MASS format '2MHHMMSS.ss+DDMMSS.s'; uniquely identifies each star and matches its 2MASS catalog entry"),
+        "twomass_id": ("string", "2MASS Point Source Catalog identifier; cross-reference to near-infrared JHK photometry and astrometry"),
+        "gaia_source_id": ("string", "Gaia DR3 source identifier; enables cross-matching to parallaxes, proper motions, and optical photometry from Gaia"),
+        "ra_deg": ("float64", "Right ascension in decimal degrees (ICRS J2000.0); range 0–360"),
+        "dec_deg": ("float64", "Declination in decimal degrees (ICRS J2000.0); range −90 to +90"),
+        "glon_deg": ("float64", "Galactic longitude in degrees (0–360); used for mapping Milky Way disk structure and identifying bulge vs. disk membership"),
+        "glat_deg": ("float64", "Galactic latitude in degrees (−90 to +90); low values (|b| < 10°) indicate disk/bulge targets; high values indicate halo"),
+        "teff_k": ("float64", "Photospheric effective temperature in Kelvin from ASPCAP spectral fitting; APOGEE primarily targets red giants in the range 3500–5500 K; uncertainty ~80 K; null if the ASPCAP fit failed or SNR was insufficient"),
+        "teff_error_k": ("float64", "1-sigma uncertainty on effective temperature in Kelvin from the ASPCAP spectral fit"),
+        "logg": ("float64", "Log base-10 of surface gravity in cm/s² (cgs dex); main-sequence: 4–5, subgiant: 3–4, red giant branch: 1–3, red clump: ~2.5, supergiant: <1; fundamental for distinguishing giant from dwarf stars; null if fit failed"),
+        "logg_error": ("float64", "1-sigma uncertainty on log g in dex from the ASPCAP spectral fit"),
+        "fe_h": ("float64", "Iron abundance [Fe/H] in dex relative to solar (solar = 0.0); thin disk: −0.2 to +0.4, thick disk: −0.5 to −1.0, halo: < −1.0; the primary metallicity indicator; null if spectral SNR is below the reliable fitting threshold"),
+        "fe_h_error": ("float64", "1-sigma uncertainty on [Fe/H] in dex"),
+        "alpha_m": ("float64", "Overall alpha-element enhancement [α/M] in dex; alpha elements (O, Mg, Si, S, Ca, Ti) are overproduced by core-collapse supernovae relative to iron from Type Ia; high-alpha (> +0.1) stars belong to the old thick disk or halo; null if fit failed"),
+        "alpha_m_error": ("float64", "1-sigma uncertainty on [α/M] in dex"),
+        "radial_velocity_kms": ("float64", "Heliocentric radial velocity in km/s, averaged over all APOGEE visits using a cross-correlation template; precision ~100 m/s (0.1 km/s); negative = approaching; null for spectra with insufficient SNR or failed cross-correlation"),
+        "radial_velocity_error_kms": ("float64", "1-sigma uncertainty on the mean heliocentric radial velocity in km/s"),
+        "rv_scatter_kms": ("float64", "RMS scatter in radial velocity across multiple visits in km/s; large scatter (> 1 km/s) indicates a spectroscopic binary or intrinsic variability (pulsations in giants)"),
+        "j_mag": ("float64", "2MASS J-band (1.24 μm) apparent magnitude; APOGEE targets are primarily selected from 2MASS photometry; brighter in J for cool, dust-embedded red giants"),
+        "h_mag": ("float64", "2MASS H-band (1.66 μm) apparent magnitude; APOGEE observes in the overlapping H-band (1.51–1.70 μm); extinction at H is ~40% of optical V-band"),
+        "k_mag": ("float64", "2MASS Ks-band (2.16 μm) apparent magnitude; used for target selection and dereddening; extinction at K is ~10% of optical V-band, making it the least affected by dust"),
+        "snr": ("float64", "Combined signal-to-noise ratio per pixel of the co-added spectrum across all visits; APOGEE targets SNR > 100 for reliable abundances; values below 50 yield unreliable ASPCAP parameters"),
+        "n_visits": ("Int64", "Number of individual 1-hour APOGEE visits co-added to produce the combined spectrum; minimum 3 for most survey targets; repeated visits improve SNR and enable RV variability detection"),
+        "pmra_mas_yr": ("float64", "Proper motion in right ascension direction in mas/yr (includes cos δ factor), from Gaia; used for kinematic membership in stellar streams, clusters, and Galactic populations"),
+        "pmdec_mas_yr": ("float64", "Proper motion in declination in mas/yr from Gaia; combined with pmra and radial velocity gives the full 3D space velocity"),
+        "parallax_mas": ("float64", "Trigonometric parallax in milliarcseconds from Gaia; distance in pc ≈ 1000/parallax_mas; reliable to ~10–15 kpc for bright targets; null if Gaia cross-match failed"),
+        "parallax_error_mas": ("float64", "1-sigma uncertainty on the parallax in milliarcseconds from Gaia"),
     }
+    # Nucleosynthetic channel context for individual elements
+    ELEM_CONTEXT = {
+        "C": "light element altered by CN-cycle mixing on the red giant branch; ratio to N traces mixing depth",
+        "CI": "neutral atomic carbon line; complementary to the molecular C measurement",
+        "N": "light element enhanced by CN-cycle mixing; [C/N] ratio is a stellar age proxy for red giants",
+        "O": "alpha element; dominant oxygen producer is core-collapse SNe; [O/Fe] traces chemical evolution of thick vs. thin disk",
+        "NA": "odd-Z element; enhanced in intermediate-mass AGB stars and some globular cluster stars; sensitive to neutron excess",
+        "MG": "alpha element produced in hydrostatic carbon and neon burning in massive stars; [Mg/Fe] is the cleanest alpha/iron ratio",
+        "AL": "odd-Z element produced by hydrostatic carbon burning; anti-correlated with Mg in globular cluster stars (proton-capture nucleosynthesis)",
+        "SI": "alpha element; produced in both hydrostatic oxygen burning and explosive nucleosynthesis",
+        "S": "alpha element measured in APOGEE H-band via weak lines; traces similar evolution to Mg and O",
+        "K": "odd-Z element; produced via neutron capture on Ar during explosive nucleosynthesis; not well constrained theoretically",
+        "CA": "alpha element; measurable in both optical and infrared; often used to validate APOGEE pipeline via comparison with optical surveys",
+        "TI": "alpha element; two ionization states measured (Ti I and Ti II); discrepancies between them can indicate NLTE or model atmosphere issues",
+        "TIII": "Ti II (singly ionized titanium) abundance; ionization equilibrium between TI and TIII constrains surface gravity",
+        "V": "iron-peak element produced alongside chromium and manganese in incomplete Si-burning; poorly constrained by nucleosynthesis models",
+        "CR": "iron-peak element; tracks Fe in most environments; [Cr/Fe] ~ 0 across a wide metallicity range",
+        "MN": "iron-peak element; produced predominantly in Type Ia supernovae via incomplete Si-burning; [Mn/Fe] increases with [Fe/H] tracing SNe Ia enrichment",
+        "CO": "iron-peak element; traces neutron excess during Si-burning; weakly constrained by APOGEE H-band lines",
+        "NI": "iron-peak element; tightly correlated with Fe; [Ni/Fe] ~ 0 for most disk stars",
+        "CE": "neutron-capture element (s-process) produced in low-mass AGB stars; [Ce/Fe] traces s-process enrichment from AGB stars in the thin disk",
+        "ND": "neutron-capture element (mixed r+s-process origin); tracks heavy element enrichment from both AGB stars and neutron star mergers",
+    }
+
     # Add abundance columns dynamically
     for col in sorted(fe_abundance_cols):
         elem = col.replace("_fe", "").upper()
-        col_descriptions[col] = ("float64", f"[{elem}/Fe] abundance (dex)")
+        context = ELEM_CONTEXT.get(elem, "")
+        desc = f"[{elem}/Fe] abundance ratio in dex relative to solar; solar = 0.0; null if SNR too low for reliable measurement"
+        if context:
+            desc += f"; {context}"
+        col_descriptions[col] = ("float64", desc)
     for col in sorted(h_abundance_cols):
         elem = col.replace("_h", "").upper()
-        col_descriptions[col] = ("float64", f"[{elem}/H] abundance (dex)")
+        context = ELEM_CONTEXT.get(elem, "")
+        desc = f"[{elem}/H] absolute abundance in dex relative to solar; solar = 0.0; null if SNR too low for reliable measurement"
+        if context:
+            desc += f"; {context}"
+        col_descriptions[col] = ("float64", desc)
 
     # Deduplicate columns (keep first occurrence)
     df = df.loc[:, ~df.columns.duplicated()]

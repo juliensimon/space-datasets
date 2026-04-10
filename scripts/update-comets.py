@@ -202,17 +202,17 @@ rate trends over time, and the history of comet observation and naming conventio
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `wikidata_id` | string | Wikidata entity ID (e.g. Q1390) |
-| `name` | string | Comet name or designation |
-| `discovery_date` | string | Date of discovery (YYYY-MM-DD) |
-| `discoverer` | string | Name of discoverer(s) |
-| `orbital_period_yr` | float | Orbital period (years) |
-| `perihelion_au` | float | Perihelion distance (AU) |
-| `eccentricity` | float | Orbital eccentricity |
-| `inclination_deg` | float | Orbital inclination (degrees) |
-| `named_after` | string | Entity the comet is named after |
-| `epoch` | string | Orbital element epoch (YYYY-MM-DD) |
-| `discovery_year` | int | Year of discovery (derived) |
+| `wikidata_id` | string | Wikidata entity ID (e.g. "Q1390" for Halley's Comet); stable URI key for enrichment joins; links to full orbital history, discovery details, and apparition records in the knowledge graph |
+| `name` | string | Comet name or designation (e.g. "1P/Halley", "C/1995 O1 (Hale-Bopp)"); periodic comets use the NP/ prefix (N=number, P=periodic); non-periodic use C/; interstellar use I/ |
+| `discovery_date` | string | ISO 8601 date (YYYY-MM-DD) of the discovery observation; null for historically known comets (e.g. Halley, visible since antiquity) or where records are too uncertain to assign a precise date |
+| `discoverer` | string | Name(s) of the person(s) or survey program credited with discovery; null for historically anonymous comets; modern entries may list an observatory or automated survey (e.g. LINEAR, NEOWISE) |
+| `orbital_period_yr` | float | Orbital period in years; short-period (Jupiter-family) comets are typically <20 yr; Halley-type 20–200 yr; long-period >200 yr; null for hyperbolic or parabolic orbits where the comet makes a single unbound pass |
+| `perihelion_au` | float | Closest approach distance to the Sun in AU; determines peak cometary activity and tail development; <1 AU enters the inner solar system; <0.3 AU is the sungrazing regime |
+| `eccentricity` | float | Orbital eccentricity; 0 = circular, <1 = elliptical (bound), =1 = parabolic, >1 = hyperbolic (unbound, possibly of interstellar origin); null when orbital solution is unavailable |
+| `inclination_deg` | float | Orbital inclination relative to the ecliptic plane in degrees (0–180); <30° indicates prograde low-inclination orbit typical of Jupiter-family comets; >90° indicates retrograde orbit |
+| `named_after` | string | Entity (person, place, or concept) that the comet's name commemorates, distinct from the discoverer; null when the comet is named solely after its discoverer(s) |
+| `epoch` | string | Reference epoch for the orbital elements in ISO 8601 format (YYYY-MM-DD); elements are valid near this date and diverge for predictions far from the epoch; null when orbital solution is absent |
+| `discovery_year` | int | Year of discovery derived from `discovery_date`; retained as a standalone column for easy filtering and grouping; null when `discovery_date` is null |
 
 ## Quick stats
 

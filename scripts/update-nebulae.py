@@ -323,13 +323,13 @@ reflection (Q167278), dark (Q46587), and planetary (Q204194) nebulae.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `wikidata_id` | string | Wikidata entity ID (e.g. Q12345) |
-| `name` | string | Common or catalog name |
-| `nebula_type` | string | Nebula type (emission, reflection, dark, planetary) |
-| `constellation` | string | Host constellation |
-| `ra_deg` | float | Right ascension (degrees) |
-| `dec_deg` | float | Declination (degrees) |
-| `catalog_id` | string | Catalog identifiers (NGC, IC, Messier, etc.; semicolon-separated) |
+| `wikidata_id` | string | Wikidata entity ID (e.g. "Q12345"); stable URI for cross-referencing other catalogs |
+| `name` | string | Common or catalog name as recorded in Wikidata (e.g. "Orion Nebula", "NGC 1499", "Barnard 68"); null for objects with no recorded label |
+| `nebula_type` | string | Physical nebula class: "planetary nebula" (expanding shell from AGB star), "emission nebula" (ionized HII region), "reflection nebula" (dust scattering starlight), "dark nebula" (opaque dust blocking background), "supernova remnant" (ejecta from stellar explosion) |
+| `constellation` | string | IAU constellation in which the nebula is located (e.g. "Orion", "Cygnus"); null if not recorded in Wikidata |
+| `ra_deg` | float | Right ascension in decimal degrees, ICRS J2000.0; range 0–360; null if coordinates not in Wikidata |
+| `dec_deg` | float | Declination in decimal degrees, ICRS J2000.0; range −90 to +90; null if coordinates not in Wikidata |
+| `catalog_id` | string | Cross-reference identifiers from NGC, IC, Messier, and other catalogs, semicolon-separated (e.g. "NGC 1952; M 1"); null for objects catalogued only in Wikidata |
 
 ## Quick stats
 

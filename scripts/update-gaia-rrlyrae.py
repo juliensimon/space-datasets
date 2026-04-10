@@ -171,20 +171,20 @@ Milky Way system.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `source_id` | string | Gaia DR3 source identifier |
-| `ra_deg` | float64 | Right ascension J2016.0 (degrees) |
-| `dec_deg` | float64 | Declination J2016.0 (degrees) |
-| `period_days` | float64 | Pulsation period (days) |
-| `epoch_g_bjd` | float64 | Epoch of maximum in G band (Barycentric JD) |
-| `amplitude_g_mag` | float64 | Peak-to-peak amplitude in G band (mag) |
-| `mean_g_mag` | float64 | Mean G-band magnitude |
-| `mean_bp_mag` | float64 | Mean BP-band magnitude |
-| `mean_rp_mag` | float64 | Mean RP-band magnitude |
-| `metallicity_feh` | float64 | Photometric metallicity [Fe/H] (dex) |
-| `distance_pc` | float64 | Photometric distance (parsec) |
-| `subclassification` | string | RR Lyrae subtype (RRab, RRc, RRd) |
-| `best_classification` | string | Best classification label |
-| `n_transits` | float64 | Number of Gaia transits used |
+| `source_id` | string | Gaia DR3 source identifier (64-bit integer as string); unique and stable within the Gaia DR3 data release |
+| `ra_deg` | float64 | Right ascension, ICRS J2016.0 (Gaia reference epoch), in decimal degrees (0–360) |
+| `dec_deg` | float64 | Declination, ICRS J2016.0, in decimal degrees (−90 to +90) |
+| `period_days` | float64 | Dominant pulsation period in days; RRab (fundamental mode): 0.4–1.0 d; RRc (first overtone): 0.2–0.5 d; null for a small fraction with unreliable period solutions |
+| `epoch_g_bjd` | float64 | Barycentric Julian Date of maximum light in the G band; reference point for the light curve model |
+| `amplitude_g_mag` | float64 | Peak-to-peak light curve amplitude in Gaia G band (mag); RRab typically 0.3–1.2 mag; RRc typically 0.1–0.5 mag; encodes metallicity information via the Bailey diagram |
+| `mean_g_mag` | float64 | Intensity-averaged mean G-band magnitude; RR Lyrae have M_G ≈ +0.6 mag (useful standard candles); range ~10–20 mag depending on distance |
+| `mean_bp_mag` | float64 | Intensity-averaged mean Gaia BP-band (330–680 nm) magnitude; null for faint stars with poor BP photometry |
+| `mean_rp_mag` | float64 | Intensity-averaged mean Gaia RP-band (640–1050 nm) magnitude; null for faint stars with poor RP photometry |
+| `metallicity_feh` | float64 | Photometric [Fe/H] in dex, estimated from the period–phi31 Fourier decomposition relation; RR Lyrae are old metal-poor stars, typical range −3.0 to −0.5 dex; null where light curve quality is insufficient |
+| `distance_pc` | float64 | Photometric distance in parsecs, derived from mean magnitude and period-luminosity-metallicity relation; typical range 100–100,000 pc; null where metallicity or magnitude is unavailable |
+| `subclassification` | string | RR Lyrae pulsation subtype: RRab (fundamental mode, asymmetric light curve), RRc (first overtone, sinusoidal), RRd (double-mode); null for uncertain classifications |
+| `best_classification` | string | Best overall classification label assigned by the Gaia variability pipeline, may include confidence flags |
+| `n_transits` | float64 | Number of individual Gaia field-of-view transits contributing to the light curve; higher values indicate more reliable period and amplitude estimates |
 
 ## Quick stats
 

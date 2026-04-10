@@ -200,23 +200,23 @@ This dataset enables research into the mass distribution of stellar-mass black h
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `name` | string | Event name (e.g. GW150914, GW230529) |
-| `gps` | float | GPS time of the event |
-| `catalog` | string | Source catalog short name |
-| `run` | string | Observing run (O1/O2, O3a, O3b, O4a, ...) |
-| `mass_1` | float | Primary source mass (solar masses) |
-| `mass_1_lower/upper` | float | 90% credible interval bounds |
-| `mass_2` | float | Secondary source mass (solar masses) |
-| `mass_2_lower/upper` | float | 90% credible interval bounds |
-| `chirp_mass` | float | Chirp mass (solar masses) |
-| `luminosity_distance` | float | Luminosity distance (Mpc) |
-| `redshift` | float | Cosmological redshift |
-| `chi_eff` | float | Effective inspiral spin parameter |
-| `network_snr` | float | Network matched-filter SNR |
-| `p_astro` | float | Probability of astrophysical origin |
-| `far` | float | False alarm rate (Hz) |
-| `final_mass` | float | Remnant mass (solar masses) |
-| `final_spin` | float | Remnant dimensionless spin |
+| `name` | string | Event identifier encoding the detection date; "GW" prefix for confident detections (e.g. "GW150914" = Sep 14 2015, "GW230529" = May 29 2023); some sub-threshold candidates use an "S" prefix |
+| `gps` | float | Detection time in GPS seconds (seconds since GPS epoch Jan 6 1980 00:00:00 UTC); GPS time does not include leap seconds — GPS − UTC ≈ 18 s in 2024; use astropy.time for accurate UTC conversion |
+| `catalog` | string | Source catalog identifier (e.g. "GWTC-1", "GWTC-2", "GWTC-3"); later catalogs supersede earlier ones for the same event with improved parameter estimates from full reanalysis |
+| `run` | string | LIGO/Virgo/KAGRA observing run derived from catalog (e.g. "O1/O2", "O3a", "O3b", "O4a"); later runs use more sensitive detectors and improved noise mitigation |
+| `mass_1` | float | Source-frame mass of the heavier compact object in solar masses (M☉); mass_1 ≥ mass_2 by convention; BBH typical range 5–100 M☉, BNS range 1.1–2.5 M☉; inferred from the inspiral chirp signal phase evolution |
+| `mass_1_lower/upper` | float | Asymmetric 90% credible interval bounds on mass_1 (M☉); stored as signed offsets from the median — lower is negative, upper is positive |
+| `mass_2` | float | Source-frame mass of the lighter compact object in solar masses (M☉); always ≤ mass_1 by convention; distinguishes BBH, NSBH, and BNS merger types |
+| `mass_2_lower/upper` | float | Asymmetric 90% credible interval bounds on mass_2 (M☉); stored as signed offsets from the median |
+| `chirp_mass` | float | Chirp mass M_c = (m1·m2)^(3/5) / (m1+m2)^(1/5) in solar masses (M☉); the best-constrained mass combination from gravitational wave phase evolution; more precisely measured than either individual mass |
+| `luminosity_distance` | float | Luminosity distance to the source in Megaparsecs (1 Mpc = 3.26 million light-years); inferred from signal amplitude; typical range ~40 Mpc (GW150914) to several Gpc for high-redshift events; uncertain by ~50% due to sky-localization degeneracy with inclination angle |
+| `redshift` | float | Cosmological redshift z corresponding to the luminosity distance; GW150914: z ≈ 0.09; increases with distance; null when distance is not well-constrained |
+| `chi_eff` | float | Effective inspiral spin parameter χ_eff — mass-weighted projection of both component spins onto the orbital angular momentum axis; ranges from −1 (both spins anti-aligned) to +1 (both fully aligned); zero for non-spinning systems; constrains spin-orbit coupling and formation channel |
+| `network_snr` | float | Coherent network matched-filter signal-to-noise ratio across all active detectors; confident detections typically have SNR > 8; higher SNR events yield better-constrained parameter estimates |
+| `p_astro` | float | Posterior probability that the trigger is of astrophysical origin rather than a noise artifact; catalog inclusion requires p_astro > 0.5; flagship events have p_astro > 0.99 |
+| `far` | float | False alarm rate in Hz (equivalent to events per second of observation); quantifies how often random noise would produce a trigger of equal or greater significance; a FAR of 1/year ≈ 3.2×10⁻⁸ Hz indicates a highly significant detection |
+| `final_mass` | float | Source-frame mass of the post-merger remnant in solar masses (M☉); less than mass_1 + mass_2 because roughly 5% of total mass is radiated as gravitational wave energy; null for events where remnant mass is not estimated |
+| `final_spin` | float | Dimensionless spin magnitude of the post-merger remnant (Kerr parameter a = J/M²c); ranges 0 (non-spinning) to <1 (extremal Kerr limit); BBH remnants typically 0.6–0.8; null when not estimated |
 
 All parameters with uncertainties also have `_lower` and `_upper` columns.
 

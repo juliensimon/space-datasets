@@ -324,19 +324,19 @@ During the cruise phase, instruments are collecting calibration data and science
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `granule_uid` | string | Unique observation identifier |
-| `granule_gid` | string | Group identifier |
-| `obs_id` | string | Observation ID |
-| `dataproduct_type` | string | Data product type (e.g. spectrum, image) |
-| `target_name` | string | Target body (Solar Wind, Sun, Earth, Venus, etc.) |
-| `target_class` | string | Target class (interplanetary_medium, star, etc.) |
-| `instrument_name` | string | Instrument name (JMC, RADEM, HAA, NAVCAM) |
-| `time_min` | float64 | Observation start time (JD) |
-| `time_max` | float64 | Observation end time (JD) |
-| `processing_level` | string | Data processing level |
-| `creation_date` | string | Data product creation date |
-| `access_url` | string | URL to access the data product |
-| `access_format` | string | Data format |
+| `granule_uid` | string | Unique observation/granule identifier in the PSA archive |
+| `granule_gid` | string | Group identifier linking related granules from the same instrument or sequence |
+| `obs_id` | string | Observation ID assigned by the instrument team |
+| `dataproduct_type` | string | EPN-TAP data product type (e.g. "im" for image, "sp" for spectrum, "sc" for spectral cube) |
+| `target_name` | string | Target body name during cruise phase (e.g. "Solar Wind", "Sun", "Earth", "Venus", "Moon"); will include "Jupiter", "Ganymede", "Europa", "Callisto" after Jupiter arrival in 2031 |
+| `target_class` | string | EPN-TAP target class (e.g. "interplanetary_medium", "star", "planet", "satellite") |
+| `instrument_name` | string | Instrument name — one of: JMC (JUICE monitoring camera, context images), RADEM (radiation/particle detector), HAA (heliospheric particle analyzer), NAVCAM (navigation camera) |
+| `time_min` | float64 | Observation start time (Julian Date); JUICE launched JD 2460048 (Apr 14 2023); Jupiter arrival JD ~2462957 (Jul 2031) |
+| `time_max` | float64 | Observation end time (Julian Date) |
+| `processing_level` | string | Data processing level per PDS4 standard (e.g. "2" = calibrated, "3" = derived) |
+| `creation_date` | string | ISO 8601 date when this data product was created or archived in PSA |
+| `access_url` | string | Direct URL to retrieve the data product from the ESA PSA |
+| `access_format` | string | MIME type of the data product (e.g. "application/x-pds4" for PDS4 format) |
 
 ## Quick stats
 

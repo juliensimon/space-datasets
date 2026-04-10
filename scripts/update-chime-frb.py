@@ -146,17 +146,21 @@ Repeating sources are of particular scientific interest because they rule out ca
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `tns_name` | string | Transient Name Server designation (e.g. FRB 20181030A) |
-| `ra_deg` | float64 | Right ascension (degrees) |
-| `dec_deg` | float64 | Declination (degrees) |
-| `dm_pc_cm3` | float64 | Dispersion measure (pc/cm^3) |
-| `width_ms` | float64 | Burst width (milliseconds) |
-| `flux_jy` | float64 | Peak flux density (Jy) |
-| `fluence_jy_ms` | float64 | Fluence (Jy ms) |
-| `scattering_time_ms` | float64 | Scattering timescale (ms) |
-| `snr` | float64 | Signal-to-noise ratio |
-| `is_repeater` | bool | True if source is a known repeater |
-| `sub_burst_count` | float64 | Number of sub-bursts |
+| `tns_name` | string | Transient Name Server designation encoding the discovery date (e.g. "FRB 20181030A" = detected 2018 Oct 30, first event that day); the canonical identifier for cross-referencing with other catalogs |
+| `repeater_name` | string | Common name of the repeating source this burst belongs to (e.g. "FRB 20121102A"); null for apparent one-off events; non-null values rule out cataclysmic progenitor models for that source |
+| `ra_deg` | float64 | Right ascension of best-fit burst position (ICRS J2000.0, degrees, 0–360); CHIME localization precision is typically 10–30 arcmin due to the instrument's fixed north-south orientation |
+| `dec_deg` | float64 | Declination of best-fit burst position (ICRS J2000.0, degrees, −90 to +90); CHIME is sensitive to declinations above roughly −20° |
+| `glon_deg` | float64 | Galactic longitude (degrees, 0–360); used to assess line-of-sight Milky Way DM contribution and scattering screen effects |
+| `glat_deg` | float64 | Galactic latitude (degrees, −90 to +90); bursts at low |b| have higher Milky Way DM contributions and stronger scattering |
+| `dm_pc_cm3` | float64 | Dispersion Measure — integrated free-electron column density along the line of sight (pc/cm³); extragalactic FRBs typically 100–2500 pc/cm³; subtract Milky Way contribution (30–500 pc/cm³, from NE2001/YMW16 models) to obtain host+IGM DM, a crude redshift proxy |
+| `dm_fitb_pc_cm3` | float64 | DM measured by fitting the burst structure (pc/cm³); may differ from `dm_pc_cm3` when the burst has complex sub-structure; null if structure-based fitting was not performed |
+| `width_ms` | float64 | Burst width at 600 MHz after intra-channel dedispersion (ms); FRBs span ~0.1–100 ms; very narrow widths (<1 ms) constrain the emission region size and rule out extended source models |
+| `flux_jy` | float64 | Peak flux density at the fiducial reference frequency (Jy; 1 Jy = 10⁻²⁶ W/m²/Hz); null when only an upper or lower limit is available |
+| `fluence_jy_ms` | float64 | Burst fluence — flux density integrated over the burst duration (Jy·ms); proportional to detected energy; used to construct the FRB energy function; null when burst profile is incomplete |
+| `scattering_time_ms` | float64 | Temporal broadening of the burst due to multi-path scattering in turbulent plasma (ms at 600 MHz); scales steeply with DM (∝ DM²); null when the burst is unresolved or scattering is below detection threshold |
+| `snr` | float64 | Signal-to-noise ratio of the detection in the CHIME/FRB real-time pipeline; drives the detection completeness function; bursts near the threshold (SNR ~8–10) have less reliable morphology parameters |
+| `sub_burst_count` | float64 | Number of distinct sub-bursts identified within the event envelope; values ≥2 indicate temporal fine structure common in repeating sources; null when sub-burst decomposition was not attempted |
+| `is_repeater` | bool | True if this burst originates from a source with at least one other detected burst in the catalog or literature; False for apparent one-off events; repeaters have distinct morphological and spectral properties |
 
 ## Quick stats
 

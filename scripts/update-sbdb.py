@@ -201,37 +201,37 @@ The Minimum Orbit Intersection Distance (MOID) columns are critical for hazard a
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `spkid` | int64 | SPK-ID (unique JPL identifier) |
-| `full_name` | string | Full designation (e.g. "1 Ceres", "433 Eros") |
-| `body_type` | string | Body type code |
-| `neo` | bool | Near-Earth Object flag |
-| `pha` | bool | Potentially Hazardous Asteroid flag |
-| `orbit_class` | string | Orbit classification (e.g. MBA, APO, AMO, ATE, COM) |
-| `eccentricity` | float64 | Orbital eccentricity |
-| `semi_major_axis_au` | float64 | Semi-major axis (AU) |
-| `inclination_deg` | float64 | Orbital inclination (degrees) |
-| `ascending_node_deg` | float64 | Longitude of ascending node (degrees) |
-| `arg_perihelion_deg` | float64 | Argument of perihelion (degrees) |
-| `mean_anomaly_deg` | float64 | Mean anomaly (degrees) |
-| `epoch_jd` | float64 | Epoch of osculation (Julian Date, TDB) |
-| `period_yr` | float64 | Orbital period (years) |
-| `mean_motion_deg_day` | float64 | Mean motion (degrees/day) |
-| `perihelion_time_jd` | float64 | Time of perihelion passage (JD, TDB) |
-| `perihelion_au` | float64 | Perihelion distance (AU) |
-| `aphelion_au` | float64 | Aphelion distance (AU) |
-| `absolute_magnitude` | float64 | Absolute magnitude H |
-| `diameter_km` | float64 | Diameter (km, null if unmeasured) |
-| `geometric_albedo` | float64 | Geometric albedo (null if unmeasured) |
-| `spectral_type_bus` | string | Bus-DeMeo spectral taxonomy |
-| `spectral_type_tholen` | string | Tholen spectral taxonomy |
-| `orbit_rms` | float64 | Orbit fit RMS residual |
-| `data_arc_days` | int64 | Observation arc length (days) |
-| `n_observations` | int64 | Number of observations used in orbit solution |
-| `condition_code` | int64 | Orbit condition code (0=well-determined to 9=poorly) |
-| `moid_au` | float64 | Minimum Orbit Intersection Distance with Earth (AU) |
-| `moid_jupiter_au` | float64 | MOID with Jupiter (AU) |
-| `first_observation` | string | Date of first observation |
-| `last_observation` | string | Date of most recent observation |
+| `spkid` | int64 | JPL SPK kernel ID; primary unique identifier for this body in all JPL systems (e.g. 2000001 = Ceres) |
+| `full_name` | string | Full designation including permanent number and name where assigned (e.g. "1 Ceres", "433 Eros", "2024 YR4"); provisional designations follow MPC format |
+| `body_type` | string | Body type code: `an` = numbered asteroid, `au` = unnumbered asteroid, `cn` = numbered comet, `cu` = unnumbered comet |
+| `neo` | bool | True if orbit comes within 1.3 AU of the Sun (Near-Earth Object); False otherwise; null for some comets |
+| `pha` | bool | True if potentially hazardous: absolute magnitude H ≤ 22.0 (roughly ≥140 m diameter) AND Earth MOID ≤ 0.05 AU; False otherwise |
+| `orbit_class` | string | Dynamical orbit class: MBA (Main Belt), APO (Apollo, a≥1 AU, q<1.017 AU), AMO (Amor, 1.017<q<1.3 AU), ATE (Aten, a<1 AU), IEO (Atira, Q<0.983 AU), TNO (trans-Neptunian), COM (comet), and others |
+| `eccentricity` | float64 | Orbital eccentricity: 0 = circular, <1 = elliptical (all bound asteroids), ≈1 = parabolic, >1 = hyperbolic; main-belt asteroids typically 0.05–0.35 |
+| `semi_major_axis_au` | float64 | Semi-major axis in AU: main belt 2.0–3.3, NEAs <2.0, TNOs >30, Jupiter Trojans ≈5.2; null for some long-period comets with open orbits |
+| `inclination_deg` | float64 | Orbital inclination relative to the ecliptic plane in degrees (0–180°); main belt 0–30°, retrograde comets >90°; high inclination suggests scattered disk or Oort Cloud origin |
+| `ascending_node_deg` | float64 | Longitude of ascending node in degrees (0–360°); angle from vernal equinox to where orbit crosses the ecliptic northward; one of the six Keplerian elements |
+| `arg_perihelion_deg` | float64 | Argument of perihelion in degrees (0–360°); angle from ascending node to perihelion point; one of the six Keplerian elements |
+| `mean_anomaly_deg` | float64 | Mean anomaly in degrees (0–360°) at the reference epoch; angular position in the orbit assuming uniform angular speed; used with other elements to compute position at any time |
+| `epoch_jd` | float64 | Reference epoch of the osculating elements in Julian Date (TDB timescale); typically near the center of the observation arc |
+| `period_yr` | float64 | Orbital period in years, derived from semi-major axis via Kepler's third law; null for open (parabolic/hyperbolic) orbits; main belt: 3–6 yr, TNOs: decades |
+| `mean_motion_deg_day` | float64 | Mean motion in degrees per day, the average angular speed around the Sun; inversely related to orbital period; main belt: ~0.3–1.0 deg/day |
+| `perihelion_time_jd` | float64 | Time of most recent (or predicted next) perihelion passage in Julian Date (TDB); used for comet position predictions and close-approach timing |
+| `perihelion_au` | float64 | Perihelion distance in AU (closest approach to the Sun); NEAs have q < 1.3 AU; sungrazing comets q < 0.01 AU; main belt q ≈ 1.5–2.5 AU |
+| `aphelion_au` | float64 | Aphelion distance in AU (farthest point from the Sun); null for open orbits; main belt Q ≈ 2.5–4.5 AU; Jupiter-crossing objects Q ≈ 5 AU |
+| `absolute_magnitude` | float64 | Absolute magnitude H (brightness at 1 AU from Sun and observer, zero phase angle); size proxy: H=18 ≈ 1 km, H=22 ≈ 140 m, H=25 ≈ 40 m; actual size depends on unknown albedo |
+| `diameter_km` | float64 | Physical diameter in km measured from thermal IR (WISE/NEOWISE), radar, or occultation; null for >98% of objects; range from sub-km (most numbered) to 939 km (Ceres) |
+| `geometric_albedo` | float64 | Geometric albedo: fraction of sunlight reflected at zero phase angle (0–1); S-type (silicate): 0.15–0.35; C-type (carbonaceous): 0.03–0.10; null for most objects; used with H to estimate diameter |
+| `spectral_type_bus` | string | Taxonomic class in the Bus-DeMeo (2009) visible/near-IR reflectance system (e.g. S, C, X, B, D, V); null for objects without spectral observations; available for only ~10,000 objects |
+| `spectral_type_tholen` | string | Taxonomic class in the Tholen (1984) ECAS broadband photometry system (e.g. S, C, M, E, R, V, D); older classification; null for most objects |
+| `orbit_rms` | float64 | RMS residual of the orbit fit in arcseconds; measures scatter between predicted and observed astrometric positions; typically <0.5" for well-observed objects; higher values suggest a poor fit or unresolved systematic errors |
+| `data_arc_days` | int64 | Span of the observation arc in days from first to last used observation; longer arcs produce more reliable orbits; newly discovered objects may have arcs of days; well-studied ones have arcs of decades |
+| `n_observations` | int64 | Number of individual astrometric observations used in the orbit solution; more observations generally reduce orbital uncertainty |
+| `condition_code` | int64 | JPL orbit uncertainty code 0–9: 0 = well-determined orbit (decades of observations), 9 = very poorly constrained (short arc, few observations); codes ≥7 indicate orbits that may change significantly with new data |
+| `moid_au` | float64 | Minimum Orbit Intersection Distance with Earth in AU; the closest possible geometric approach between the two orbits regardless of current positions; <0.05 AU is the PHA threshold; <0.001 AU (~150,000 km) indicates potential close-approach risk |
+| `moid_jupiter_au` | float64 | Minimum Orbit Intersection Distance with Jupiter in AU; low values indicate dynamical interaction potential; close encounters with Jupiter are the primary mechanism for injecting main-belt objects into near-Earth space |
+| `first_observation` | string | Date of the oldest astrometric observation included in the orbit solution (YYYY-MM-DD) |
+| `last_observation` | string | Date of the most recent astrometric observation included in the orbit solution (YYYY-MM-DD) |
 
 ## Quick stats
 

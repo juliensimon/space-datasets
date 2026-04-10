@@ -287,9 +287,12 @@ For applications that consume standard 3-line TLE format (e.g., SGP4 propagators
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `name` | string | Satellite name (e.g., "ONEWEB-0012", "NAVSTAR 78", "GALILEO 27") |
-| `line1` | string | TLE line 1: epoch, drag term, BSTAR, element set number |
-| `line2` | string | TLE line 2: inclination, RAAN, eccentricity, arg of perigee, mean anomaly, mean motion |
+| `norad_cat_id` | int32 | NORAD catalog number — unique integer assigned by US Space Command to every tracked object |
+| `name` | string | Satellite name as listed in Space-Track (e.g., "STARLINK-1234", "ONEWEB-0012", "NAVSTAR 78") |
+| `constellation` | string | Constellation identifier (e.g., "starlink", "oneweb", "planet", "galileo"); one Parquet file per constellation |
+| `line1` | string | TLE line 1 (69 characters): satellite number, classification, epoch, first/second derivative of mean motion, BSTAR drag term, element set number |
+| `line2` | string | TLE line 2 (69 characters): inclination, RAAN, eccentricity, argument of perigee, mean anomaly, mean motion (rev/day); use with SGP4 propagator |
+| `epoch_utc` | datetime | TLE reference epoch in UTC; elements are most accurate within ±1–2 days of this time |
 
 ## Quick stats
 

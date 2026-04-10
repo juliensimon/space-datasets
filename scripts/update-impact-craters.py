@@ -196,14 +196,14 @@ maintained by the WikiProject Astronomy and WikiProject Solar System communities
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `wikidata_id` | string | Wikidata entity ID (e.g. Q12345) |
-| `name` | string | Crater name |
-| `diameter_km` | float | Crater diameter (kilometres) |
-| `age_mya` | float | Estimated age (millions of years ago) |
-| `location` | string | Administrative or geographic location label |
-| `body` | string | Planetary body (Earth, Moon, Mars, etc.) |
-| `latitude` | float | Latitude (degrees) |
-| `longitude` | float | Longitude (degrees) |
+| `wikidata_id` | string | Wikidata entity ID (e.g. Q55818-linked entity like Q12345); used for cross-referencing |
+| `name` | string | IAU or locally recognised crater name; unnamed craters appear as Wikidata entity IDs and are filtered out |
+| `diameter_km` | float | Crater rim-to-rim diameter in km; range 0.001 km (microcraters) to ~2,500 km (South Pole–Aitken Basin); null for craters without measured diameter in Wikidata |
+| `age_mya` | float | Estimated formation age in millions of years ago; null for the majority of craters where age is unconstrained; highly uncertain for many entries (Wikidata does not include error bars) |
+| `location` | string | Administrative or geographic region label from Wikidata (e.g., "Ontario", "Sahara"); null for bodies without administrative subdivisions or when not recorded |
+| `body` | string | Planetary body hosting the crater (e.g., "Earth", "Moon", "Mars", "Vesta"); null for a small number of entries with missing body data |
+| `latitude` | float | Crater center latitude in decimal degrees; coordinate system is body-centric for each object (e.g., selenocentric for Moon, areocentric for Mars); null for craters without coordinates in Wikidata |
+| `longitude` | float | Crater center longitude in decimal degrees; East-positive convention; null for craters without coordinates in Wikidata |
 
 ## Quick stats
 
