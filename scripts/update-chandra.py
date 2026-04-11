@@ -1,97 +1,59 @@
 #!/usr/bin/env python3
 """Fetch Chandra Source Catalog (CSC 2.1) from HEASARC and upload to HF."""
 
-import io
-import os
-import subprocess
-import sys
-import tempfile
-from pathlib import Path
-
 import pandas as pd
-import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
+from hf_dataset_utils.tap import heasarc_query
 
-
-TAP_URL = "https://heasarc.gsfc.nasa.gov/xamin/vo/tap/sync"
 HF_REPO = "juliensimon/chandra-x-ray-sources"
+ADQL = "SELECT * FROM chanmaster"
 
-ADQL = """\
-SELECT * FROM chanmaster\
-"""
+NUMERIC_COLS = [
+    "ra", "dec", "lii", "bii", "exposure",
+]
 
+COLUMN_DESCRIPTIONS = {
+    "name": "Chandra observation target name or source designation",
+    "ra": "ICRS right ascension in degrees; sub-arcsecond accuracy from Chandra's 0.5\" resolution",
+    "dec": "ICRS declination in degrees",
+    "lii": "Galactic longitude in degrees",
+    "bii": "Galactic latitude in degrees",
+    "obsid": "Chandra observation identifier (unique per pointing)",
+    "detector": "Instrument detector used: ACIS-I, ACIS-S, HRC-I, or HRC-S",
+    "grating": "Grating configuration: NONE, LETG, or HETG",
+    "exposure": "Exposure time in kiloseconds",
+    "cycle": "Chandra observing cycle number (proposal cycle)",
+    "type": "Observation type: GO (guest observer), GTO (guaranteed time), DDT (director's discretionary), CAL (calibration)",
+    "category": "Science category assigned to the observation (e.g., AGN, SNR, STARS)",
+    "pi": "Principal investigator last name",
+    "proposal": "Proposal title for the observation",
+    "sequence_number": "Chandra sequence number for the observation",
+    "data_mode": "Telemetry mode used (e.g., FAINT, VFAINT, CC33_FAINT)",
+    "status": "Observation status: archived, observed, or scheduled",
+    "public_date": "Date when the observation data became publicly available",
+    "time": "Observation start time",
+    "x_ra_dec": "Unit vector X component of the pointing direction",
+    "y_ra_dec": "Unit vector Y component of the pointing direction",
+    "z_ra_dec": "Unit vector Z component of the pointing direction",
+    "row": "HEASARC internal row identifier",
+}
 
-def fetch_catalog() -> pd.DataFrame:
-    """Try CSV first, fall back to JSON, then pipe-delimited text."""
-    # Attempt 1: CSV with MAXREC to avoid truncation
-    print("Fetching Chandra Source Catalog (CSV)...")
-    resp = requests.get(TAP_URL, params={
-        "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "csv", "QUERY": ADQL,
-        "MAXREC": 500000,
-    }, timeout=600)
-    resp.raise_for_status()
+DESCRIPTION = """\
+The Chandra Source Catalog (CSC 2.1) is the definitive catalog of X-ray sources detected by NASA's Chandra X-Ray Observatory, the most powerful X-ray telescope ever built.
 
-    if not resp.text.strip().startswith("<?xml"):
-        try:
-            df = pd.read_csv(io.StringIO(resp.text))
-            if len(df) > 100 and "ra" in df.columns:
-                print(f"  CSV parse OK: {len(df):,} rows")
-                return df
-        except Exception as e:
-            print(f"  CSV parse failed: {e}")
-    else:
-        print("  CSV not supported (got XML/VOTable response)")
+The Chandra X-Ray Observatory, launched in 1999, provides the sharpest X-ray images ever achieved, with sub-arcsecond angular resolution. The Chandra Source Catalog is a comprehensive catalog of all X-ray sources detected in Chandra observations, including positions, multi-band photometry (soft, medium, hard, broad, wide bands), hardness ratios for spectral characterization, variability flags, and source extent measurements.
 
-    # Attempt 2: JSON
-    print("Retrying with FORMAT=json...")
-    resp = requests.get(TAP_URL, params={
-        "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "json", "QUERY": ADQL,
-        "MAXREC": 500000,
-    }, timeout=600)
-    resp.raise_for_status()
+CSC 2.1 covers roughly 560 square degrees of sky and includes sources from over 15,000 individual Chandra observations. The catalog is essential for multi-wavelength studies of active galactic nuclei, X-ray binaries, supernova remnants, galaxy clusters, and stellar coronae.
 
-    try:
-        data = resp.json()
-        if "data" in data and "metadata" in data:
-            cols = [m["name"] for m in data["metadata"]]
-            df = pd.DataFrame(data["data"], columns=cols)
-        else:
-            df = pd.DataFrame(data)
-        if len(df) > 100:
-            print(f"  JSON parse OK: {len(df):,} rows")
-            return df
-    except Exception as e:
-        print(f"  JSON parse failed: {e}")
-
-    # Attempt 3: pipe-delimited text
-    print("Retrying with FORMAT=text...")
-    resp = requests.get(TAP_URL, params={
-        "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "text", "QUERY": ADQL,
-        "MAXREC": 500000,
-    }, timeout=600)
-    resp.raise_for_status()
-
-    lines = [l for l in resp.text.strip().splitlines() if l.strip() and not l.startswith("-")]
-    if len(lines) >= 2:
-        header = [c.strip() for c in lines[0].split("|")]
-        rows = []
-        for line in lines[1:]:
-            rows.append([c.strip() for c in line.split("|")])
-        df = pd.DataFrame(rows, columns=header)
-        df = df.loc[:, df.columns != ""]
-        print(f"  Text parse OK: {len(df):,} rows")
-        return df
-
-    print("::error::All fetch formats failed")
-    sys.exit(1)
+Chandra's angular resolution of approximately 0.5 arcseconds is achieved by its four nested pairs of grazing-incidence Wolter Type-I mirrors. This resolution makes the Chandra Source Catalog uniquely powerful: it resolves individual X-ray sources in crowded fields such as the Galactic center, globular clusters, and nearby galaxies where other X-ray telescopes would see only confused blends."""
 
 
 def main():
-    df = fetch_catalog()
+    print("Fetching Chandra Source Catalog from HEASARC...")
+    df = heasarc_query("chanmaster", ADQL)
 
-    # Normalize column names to snake_case (lowercase, spaces/dashes to underscores)
+    # Normalize column names to snake_case
     df.columns = (
         df.columns.str.strip()
         .str.lower()
@@ -100,199 +62,90 @@ def main():
         .str.strip("_")
     )
 
-    # Ensure numeric columns
-    numeric_cols = [
-        "ra", "dec", "gal_l", "gal_b",
-        "significance", "flux_aper_b", "flux_aper_s", "flux_aper_m",
-        "flux_aper_h", "flux_aper_w",
-        "hard_hm", "hard_hs", "hard_ms",
-        "var_flag", "extent_flag",
-        "err_ellipse_r0", "err_ellipse_r1", "err_ellipse_ang",
-        "src_cnts_aper_b",
-    ]
-    for col in numeric_cols:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
+    # Sort by exposure descending (longest observations first)
+    if "exposure" in df.columns:
+        df = df.sort_values("exposure", ascending=False, na_position="last").reset_index(drop=True)
 
-    # Clean empty strings to NaN for string columns
-    for col in df.select_dtypes(include=["object"]).columns:
-        df[col] = df[col].astype(str).str.strip().replace(
-            {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
-        )
-
-    # Sort by significance descending (most significant sources first)
-    if "significance" in df.columns:
-        df = df.sort_values("significance", ascending=False).reset_index(drop=True)
-    elif "flux_aper_b" in df.columns:
-        df = df.sort_values("flux_aper_b", ascending=False, na_position="last").reset_index(drop=True)
-
-    print(f"  {len(df):,} X-ray sources total")
-    print(f"  {len(df.columns)} columns")
-
-    # Validation — HEASARC TAP sync returns ~28K rows (server-side limit)
-    # Full CSC 2.1 has 407K master sources but sync endpoint truncates
-    check_dataset(
-        df, "chandra",
-        min_rows=20_000,
-        expected_columns=["ra", "dec"],
-        critical_columns=["ra", "dec"],
-    )
-
-    # Compute stats for README
+    # Domain stats
     n_total = len(df)
-    n_cols = len(df.columns)
-    median_sig = df["significance"].median() if "significance" in df.columns else None
-    n_with_flux = int(df["flux_aper_b"].notna().sum()) if "flux_aper_b" in df.columns else 0
+    n_detectors = df["detector"].nunique() if "detector" in df.columns else 0
+    median_exp = df["exposure"].median() if "exposure" in df.columns else None
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
+    exp_line = f"\n- Median exposure: **{median_exp:.1f}** ks" if median_exp is not None else ""
+    det_line = f"\n- Instruments: **{n_detectors}** detector configurations" if n_detectors else ""
 
-        out = data_dir / "chandra_x_ray_sources.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
+    quick_stats = f"- **{n_total:,}** Chandra observations in the master catalog{exp_line}{det_line}"
 
-        sig_line = f"\n- Median significance: **{median_sig:.1f}**" if median_sig is not None else ""
-        flux_line = f"\n- **{n_with_flux:,}** sources with broad-band flux" if n_with_flux else ""
-
-        banner_file = download_banner("chandra", tmp)
-        banner_md = banner_markdown("chandra", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Chandra X-Ray Source Catalog"
-language:
-  - en
-description: "Chandra Source Catalog (CSC 2.1) — {n_total:,} unique X-ray sources detected by the Chandra X-Ray Observatory, with positions, multi-band fluxes, hardness ratios, and variability flags."
-task_categories:
-  - tabular-classification
-  - tabular-regression
-tags:
-  - space
-  - x-ray
-  - chandra
-  - nasa
-  - astronomy
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 100K<n<1M
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/chandra_x_ray_sources.parquet
-    default: true
----
-
-# Chandra X-Ray Source Catalog
-{banner_md}
-*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
-
-The Chandra Source Catalog (CSC 2.1) is the definitive catalog of X-ray sources
-detected by NASA's [Chandra X-Ray Observatory](https://chandra.harvard.edu/),
-the most powerful X-ray telescope ever built. Currently **{n_total:,}** unique sources
-across {n_cols} columns.
-
-## Dataset description
-
-The Chandra X-Ray Observatory, launched in 1999, provides the sharpest X-ray images
-ever achieved, with sub-arcsecond angular resolution. The Chandra Source Catalog (CSC)
-is a comprehensive catalog of all X-ray sources detected in Chandra observations,
-including positions, multi-band photometry (soft, medium, hard, broad, wide bands),
-hardness ratios for spectral characterization, variability flags, and source extent
-measurements.
-
-CSC 2.1 covers roughly 560 square degrees of sky and includes sources from over
-15,000 individual Chandra observations. The catalog is essential for multi-wavelength
-studies of active galactic nuclei, X-ray binaries, supernova remnants, galaxy clusters,
-and stellar coronae.
-
-Chandra's angular resolution of approximately 0.5 arcseconds — comparable to optical ground-based telescopes and an order of magnitude sharper than any other X-ray observatory — is achieved by its four nested pairs of grazing-incidence Wolter Type-I mirrors (the High Resolution Mirror Assembly). This exquisite resolution is what makes the Chandra Source Catalog uniquely powerful: it resolves individual X-ray sources in crowded fields such as the Galactic center, globular clusters, and nearby galaxies where other X-ray telescopes would see only confused blends. The ACIS CCD detectors provide simultaneous imaging and moderate spectral resolution (E/dE ~ 10-50) across the 0.5-7 keV band, while the HRC microchannel plate detector extends timing and imaging capabilities.
-
-The multi-band photometry in the catalog — split into soft (0.5-1.2 keV), medium (1.2-2.0 keV), hard (2.0-7.0 keV), broad (0.5-7.0 keV), and ultrasoft (0.2-0.5 keV) bands — encodes critical physical information. Hardness ratios derived from these bands serve as low-resolution spectral diagnostics: soft sources are typically stellar coronae or supersoft sources (white dwarfs undergoing steady nuclear burning), while hard sources tend to be heavily absorbed AGN or magnetic cataclysmic variables. The variability flags identify transient and variable sources such as X-ray binaries undergoing outbursts, flaring stars, and tidal disruption events where a star is torn apart by a supermassive black hole.
-
-The catalog's value extends well beyond X-ray astronomy. Cross-matching CSC positions with optical surveys (SDSS, Gaia, LSST), infrared catalogs (WISE, 2MASS), and radio surveys (VLASS, FIRST) is a standard technique for identifying the nature of X-ray sources and building multi-wavelength spectral energy distributions. The sub-arcsecond positions minimize false matches, making CSC one of the cleanest catalogs for statistical cross-identification studies and machine learning classification of astronomical source types.
-
-## Quick stats
-
-- **{n_total:,}** unique X-ray sources{sig_line}{flux_line}
-
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
 ds = load_dataset("juliensimon/chandra-x-ray-sources", split="train")
 df = ds.to_pandas()
 
-# Brightest sources by broad-band flux
-if "flux_aper_b" in df.columns:
-    top = df.nlargest(10, "flux_aper_b")[["name", "ra", "dec", "flux_aper_b"]]
-    print(top)
+# Longest observations
+top = df.nlargest(10, "exposure")[["name", "ra", "dec", "exposure", "detector"]]
+print(top.to_string())
 
 # Sky coverage map
 import matplotlib.pyplot as plt
 fig, ax = plt.subplots(figsize=(12, 6))
-ax.scatter(df["ra"], df["dec"], s=0.01, alpha=0.1)
+ax.scatter(df["ra"], df["dec"], s=0.1, alpha=0.2)
 ax.set_xlabel("RA (deg)")
 ax.set_ylabel("Dec (deg)")
 ax.invert_xaxis()
-ax.set_title("Chandra Source Catalog Sky Coverage")
-```
+ax.set_title("Chandra Observation Pointings")
+plt.tight_layout()
+plt.show()
 
-## Data source
+# Detector usage breakdown
+df["detector"].value_counts().plot.bar()
+plt.title("Chandra Detector Usage")
+plt.show()
+```"""
 
-All data comes from the [Chandra Source Catalog 2.1](https://cxc.cfa.harvard.edu/csc/)
-(Evans et al. 2024), accessed via NASA HEASARC TAP service.
+    # Identify numeric columns present in df
+    numeric_present = [c for c in NUMERIC_COLS if c in df.columns]
 
-## Related datasets
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Chandra X-Ray Source Catalog",
+        description=DESCRIPTION,
+        tags=["space", "x-ray", "chandra", "nasa", "astronomy", "open-data", "tabular-data", "parquet"],
+        source_url="https://cxc.cfa.harvard.edu/csc/",
+        task_categories=["tabular-classification", "tabular-regression"],
+        collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/GSFC_20171208_Archive_e002215/GSFC_20171208_Archive_e002215~medium.jpg",
+            "alt": "The gamma-ray sky as seen by NASA's Fermi telescope",
+            "credit": "NASA/DOE/Fermi LAT Collaboration",
+        },
+        related_datasets=[
+            "juliensimon/erosita-erass1-xray",
+            "juliensimon/fermi-4fgl-dr4",
+            "juliensimon/pulsar-catalog",
+        ],
+    ) as p:
+        df = p.clean(df, numeric=numeric_present, drop_mostly_null_threshold=0.95)
+        # Also clean remaining string columns
+        str_cols = list(df.select_dtypes(include=["object"]).columns)
+        if str_cols:
+            df = p.clean(df, strings=str_cols)
 
-- [erosita-erass1-xray](https://huggingface.co/datasets/juliensimon/erosita-erass1-xray) -- eROSITA eRASS1 X-ray sources
-- [fermi-4fgl-dr4](https://huggingface.co/datasets/juliensimon/fermi-4fgl-dr4) -- Fermi gamma-ray sources
-- [pulsar-catalog](https://huggingface.co/datasets/juliensimon/pulsar-catalog) -- Pulsar catalog
+        # Keep only described columns (drop undescribed HEASARC metadata columns)
+        df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/chandra-x-ray-sources) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{chandra_x_ray_sources,
-  author = {{Simon, Julien}},
-  title = {{Chandra X-Ray Source Catalog}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/chandra-x-ray-sources}},
-  note = {{Based on Chandra Source Catalog 2.1 (Evans et al. 2024) via NASA HEASARC}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update Chandra X-ray sources: {n_total:,} sources"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+        p.publish(
+            df,
+            filename="chandra_x_ray_sources.parquet",
+            min_rows=20_000,
+            expected_columns=["ra", "dec"],
+            critical_columns=["ra", "dec"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update Chandra X-ray sources: {n_total:,} sources",
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={len(df)}\n")
     print("Done.")
 
 

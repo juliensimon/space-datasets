@@ -1,95 +1,80 @@
 #!/usr/bin/env python3
 """Fetch Swift-BAT 157-Month Hard X-Ray Survey from HEASARC and upload to HF."""
 
-import io
-import os
-import subprocess
-import sys
-import tempfile
-from pathlib import Path
-
 import pandas as pd
-import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
+from hf_dataset_utils.tap import heasarc_query
 
-
-TAP_URL = "https://heasarc.gsfc.nasa.gov/xamin/vo/tap/sync"
 HF_REPO = "juliensimon/swift-bat-hard-xray-survey"
 
-ADQL = """\
-SELECT * FROM swbat157m\
+# ── Source query ─────────────────────────────────────────────────────
+ADQL = "SELECT * FROM swbat157m"
+
+# ── Column descriptions for README schema table ──────────────────────
+COLUMN_DESCRIPTIONS = {
+    "source_number": "Sequential source number in the BAT 157-month catalog",
+    "name": "BAT source designation",
+    "ra": "Right ascension in decimal degrees (J2000)",
+    "dec": "Declination in decimal degrees (J2000)",
+    "lii": "Galactic longitude in degrees",
+    "bii": "Galactic latitude in degrees",
+    "snr": "Signal-to-noise ratio of the hard X-ray detection in the 14-195 keV band",
+    "ctrpart_name": "Name of the multi-wavelength counterpart identification",
+    "ctrpart_ra": "Right ascension of the counterpart (J2000, degrees)",
+    "ctrpart_dec": "Declination of the counterpart (J2000, degrees)",
+    "flux": "Time-averaged flux in the 14-195 keV band (erg/cm²/s)",
+    "flux_lower": "Lower 1-sigma uncertainty on the 14-195 keV flux (erg/cm²/s)",
+    "flux_upper": "Upper 1-sigma uncertainty on the 14-195 keV flux (erg/cm²/s)",
+    "spectral_index": "Photon spectral index Γ from power-law fit to the BAT spectrum",
+    "spectral_index_lower": "Lower 1-sigma uncertainty on the photon spectral index",
+    "spectral_index_upper": "Upper 1-sigma uncertainty on the photon spectral index",
+    "chi_squared": "Reduced chi-squared of the spectral fit",
+    "redshift": "Source redshift; null for Galactic sources and unidentified sources",
+    "log_lx": "Log10 of the hard X-ray luminosity (erg/s); null if no redshift",
+    "ctrpart_flag": "Counterpart identification flag (0=no counterpart, 1=associated)",
+    "ctrpart_class": "Counterpart classification code",
+    "source_type": "Source classification (e.g., AGN, Sy1, Sy2, XRB, CV, cluster)",
+    "root_filename": "Root name of the BAT source file used in the analysis",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Catalog of hard X-ray sources detected in the 14–195 keV band by the
+Swift Burst Alert Telescope (BAT) over 157 months of all-sky survey observations.
+The survey represents over 13 years of continuous monitoring of the hard X-ray sky,
+providing positions, fluxes, and spectral parameters for AGN, X-ray binaries,
+galaxy clusters, and other high-energy sources sourced from NASA HEASARC.
+
+The Swift-BAT hard X-ray survey is the most sensitive and uniform survey of the sky
+in the 14–195 keV energy band. BAT is a coded-aperture instrument aboard the
+Neil Gehrels Swift Observatory that continuously monitors the hard X-ray sky.
+The 157-month catalog reaches a sensitivity of approximately 8×10⁻¹² erg/cm²/s
+over most of the sky, probing the hard X-ray luminosity function down to
+Seyfert-level AGN in the local universe.
+
+Hard X-rays penetrate gas and dust that absorb softer X-rays, making BAT uniquely
+suited for finding obscured AGN and mapping the local hard X-ray universe. The source
+population is dominated by active galactic nuclei — both unobscured (Seyfert 1)
+and obscured (Seyfert 2) — because the 14–195 keV band penetrates Compton-thin
+absorption (column densities up to N_H ~ 10²⁴ cm⁻²). The BAT AGN sample has been
+foundational for measuring the intrinsic fraction of obscured AGN as a function of
+luminosity and redshift, directly constraining models of AGN unification and the
+cosmic X-ray background.
+
+The spectral parameters — photon indices and fluxes — derived from the time-averaged
+BAT spectra provide a clean, absorption-independent measure of intrinsic source
+luminosity. Combined with redshifts, these yield hard X-ray luminosities that anchor
+the X-ray luminosity function of AGN, a fundamental input to models of supermassive
+black hole growth and the synthesis of the cosmic X-ray background.
 """
 
 
-def fetch_catalog() -> pd.DataFrame:
-    """Try CSV first, fall back to JSON, then pipe-delimited text."""
-    # Attempt 1: CSV
-    print("Fetching Swift-BAT 157-Month catalog (CSV)...")
-    resp = requests.get(TAP_URL, params={
-        "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "csv", "QUERY": ADQL,
-    }, timeout=120)
-    resp.raise_for_status()
-
-    if not resp.text.strip().startswith("<?xml"):
-        try:
-            df = pd.read_csv(io.StringIO(resp.text))
-            if len(df) > 100 and "ra" in df.columns:
-                print(f"  CSV parse OK: {len(df):,} rows")
-                return df
-        except Exception as e:
-            print(f"  CSV parse failed: {e}")
-    else:
-        print("  CSV not supported (got XML/VOTable response)")
-
-    # Attempt 2: JSON
-    print("Retrying with FORMAT=json...")
-    resp = requests.get(TAP_URL, params={
-        "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "json", "QUERY": ADQL,
-    }, timeout=120)
-    resp.raise_for_status()
-
-    try:
-        data = resp.json()
-        if "data" in data and "metadata" in data:
-            cols = [m["name"] for m in data["metadata"]]
-            df = pd.DataFrame(data["data"], columns=cols)
-        else:
-            df = pd.DataFrame(data)
-        if len(df) > 100:
-            print(f"  JSON parse OK: {len(df):,} rows")
-            return df
-    except Exception as e:
-        print(f"  JSON parse failed: {e}")
-
-    # Attempt 3: pipe-delimited text
-    print("Retrying with FORMAT=text...")
-    resp = requests.get(TAP_URL, params={
-        "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "text", "QUERY": ADQL,
-    }, timeout=120)
-    resp.raise_for_status()
-
-    lines = [l for l in resp.text.strip().splitlines() if l.strip() and not l.startswith("-")]
-    if len(lines) >= 2:
-        header = [c.strip() for c in lines[0].split("|")]
-        rows = []
-        for line in lines[1:]:
-            rows.append([c.strip() for c in line.split("|")])
-        df = pd.DataFrame(rows, columns=header)
-        # Drop empty columns from leading/trailing pipes
-        df = df.loc[:, df.columns != ""]
-        print(f"  Text parse OK: {len(df):,} rows")
-        return df
-
-    print("::error::All fetch formats failed")
-    sys.exit(1)
-
-
 def main():
-    df = fetch_catalog()
+    print("Fetching Swift-BAT 157-Month catalog...")
+    df = heasarc_query("swbat157m", ADQL)
 
-    # Rename columns to snake_case
+    # Normalize column names to snake_case
     rename_map = {}
     for col in df.columns:
         new = col.strip().lower().replace(" ", "_").replace("-", "_")
@@ -98,36 +83,9 @@ def main():
     if rename_map:
         df = df.rename(columns=rename_map)
 
-    # Ensure numeric columns — coerce all likely numeric fields
-    numeric_cols = [
-        "ra", "dec", "lii", "bii",
-        "snr", "flux", "flux_error",
-        "bat_flux", "bat_flux_error",
-        "redshift", "nh",
-        "photon_index", "photon_index_error",
-        "luminosity",
-    ]
-    for col in numeric_cols:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    # Also coerce any remaining columns that look numeric
-    for col in df.columns:
-        if col not in numeric_cols and df[col].dtype == object:
-            # Try to detect numeric columns
-            sample = df[col].dropna().head(20)
-            if len(sample) > 0:
-                try:
-                    pd.to_numeric(sample)
-                    df[col] = pd.to_numeric(df[col], errors="coerce")
-                except (ValueError, TypeError):
-                    pass
-
-    # Clean empty strings to NaN for string columns
-    for col in df.select_dtypes(include=["object"]).columns:
-        df[col] = df[col].astype(str).str.strip().replace(
-            {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
-        )
+    # HEASARC text format returns literal "null" strings — replace with NaN
+    for col in df.select_dtypes(include="object").columns:
+        df[col] = df[col].replace("null", pd.NA)
 
     # Sort by SNR descending (brightest sources first)
     if "snr" in df.columns:
@@ -136,164 +94,105 @@ def main():
     n_total = len(df)
     print(f"  {n_total:,} hard X-ray sources")
 
-    check_dataset(df, "swift-bat", min_rows=1_500,
-        expected_columns=["ra", "dec"],
-        critical_columns=["ra", "dec"])
+    # ── Domain-specific stats for README ─────────────────────────────
+    n_with_redshift = int(df["redshift"].notna().sum()) if "redshift" in df.columns else 0
+    median_snr = df["snr"].median() if "snr" in df.columns else 0.0
+    n_agn = int(df["source_type"].str.contains("AGN|Sy|Seyfert", case=False, na=False).sum()) \
+        if "source_type" in df.columns else 0
+    n_with_ctrpart = int(df["ctrpart_name"].notna().sum()) if "ctrpart_name" in df.columns else 0
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "swift-bat.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        # Compute stats for README
-        n_with_redshift = int(df["redshift"].notna().sum()) if "redshift" in df.columns else 0
-        median_snr = df["snr"].median() if "snr" in df.columns else 0
-
-        banner_file = download_banner("swift-bat", tmp)
-        banner_md = banner_markdown("swift-bat", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Swift-BAT 157-Month Hard X-Ray Survey"
-language:
-  - en
-description: "Hard X-ray source catalog (14-195 keV) from 157 months of Swift BAT all-sky observations, including fluxes, spectral parameters, and counterpart identifications."
-task_categories:
-  - tabular-classification
-tags:
-  - space
-  - x-ray
-  - swift
-  - nasa
-  - hard-x-ray
-  - astronomy
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 1K<n<10K
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/swift-bat.parquet
-    default: true
----
-
-# Swift-BAT 157-Month Hard X-Ray Survey
-{banner_md}
-*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
-
-Catalog of **{n_total:,}** hard X-ray sources detected in the 14-195 keV band by the
-[Swift Burst Alert Telescope (BAT)](https://swift.gsfc.nasa.gov/about_swift/bat_desc.html)
-over 157 months of all-sky survey observations, sourced from NASA HEASARC.
-
-## Dataset description
-
-The Swift-BAT hard X-ray survey is the most sensitive and uniform survey of the sky
-in the 14-195 keV energy band. The Burst Alert Telescope (BAT) is a coded-aperture
-instrument aboard the Neil Gehrels Swift Observatory that continuously monitors the
-hard X-ray sky. This 157-month catalog represents over 13 years of observations,
-providing positions, fluxes, and spectral parameters for detected sources including
-active galactic nuclei (AGN), X-ray binaries, galaxy clusters, and other high-energy
-objects.
-
-Hard X-rays penetrate gas and dust that absorb softer X-rays, making BAT uniquely
-suited for finding obscured AGN and mapping the local hard X-ray universe.
-
-The BAT coded-aperture mask — a 2.7 m^2 array of 54,000 lead tiles in a random half-open, half-closed pattern — images the hard X-ray sky by casting modulated shadows onto a 5,200 cm^2 CdZnTe detector plane. This technique provides a wide field of view (approximately 60 x 100 degrees at partial coding) with arcminute-scale source localization, enabling the survey to accumulate deep exposure across the entire sky through the spacecraft's continuous repointing as it slews between GRB targets. The 157-month survey reaches a sensitivity of approximately 8 x 10^-12 erg/cm^2/s over most of the sky, probing the hard X-ray luminosity function down to Seyfert-level AGN in the local universe.
-
-The source population is dominated by active galactic nuclei — both unobscured (Seyfert 1) and obscured (Seyfert 2) — because the 14-195 keV band penetrates Compton-thin absorption (column densities up to N_H ~ 10^24 cm^-2) that renders these sources invisible to soft X-ray surveys. The BAT AGN sample has been foundational for measuring the intrinsic fraction of obscured AGN as a function of luminosity and redshift, directly constraining models of AGN unification and the cosmic X-ray background. The catalog also includes Galactic X-ray binaries (both high-mass and low-mass systems), cataclysmic variables, galaxy clusters detected via their inverse-Compton or thermal bremsstrahlung emission, and a handful of isolated pulsars.
-
-The spectral parameters — photon indices and fluxes — derived from the time-averaged BAT spectra provide a clean, absorption-independent measure of the intrinsic source luminosity. Combined with redshifts, these yield hard X-ray luminosities that anchor the X-ray luminosity function of AGN, a fundamental input to models of supermassive black hole growth and the synthesis of the cosmic X-ray background. The survey's uniform sky coverage also makes it the standard reference sample for volume-limited AGN demographic studies and for selecting targets for deeper pointed observations with NuSTAR, XMM-Newton, and Chandra.
-
-## Quick stats
-
-- **{n_total:,}** hard X-ray sources (14-195 keV)
-- **{n_with_redshift:,}** sources with measured redshifts
+    quick_stats = f"""\
+- **{n_total:,}** hard X-ray sources detected in the 14–195 keV band
+- **{n_with_redshift:,}** sources with measured redshifts ({n_with_redshift/n_total*100:.0f}% of total)
+- **{n_agn:,}** active galactic nuclei (AGN/Seyfert sources)
+- **{n_with_ctrpart:,}** sources with multi-wavelength counterpart identifications
 - Median detection SNR: **{median_snr:.1f}**
+- Survey coverage: 157 months (~13 years) of Swift BAT all-sky monitoring"""
 
-## Usage
-
+    # ── Custom usage example ─────────────────────────────────────────
+    usage = f"""\
 ```python
 from datasets import load_dataset
+import matplotlib.pyplot as plt
+import numpy as np
 
-ds = load_dataset("juliensimon/swift-bat-hard-xray-survey", split="train")
+ds = load_dataset("{HF_REPO}", split="train")
 df = ds.to_pandas()
 
-# Brightest sources by SNR
-top = df.nlargest(10, "snr")
-print(top[["name", "snr", "ra", "dec"]].to_string())
+# All-sky Mollweide map of hard X-ray sources
+fig = plt.figure(figsize=(12, 6))
+ax = fig.add_subplot(111, projection="mollweide")
+ra_rad = np.deg2rad(df["ra"] - 180)
+dec_rad = np.deg2rad(df["dec"])
+scatter = ax.scatter(ra_rad, dec_rad, c=np.log10(df["snr"].clip(lower=0.1)),
+                     s=3, alpha=0.6, cmap="plasma")
+plt.colorbar(scatter, ax=ax, label="log10(SNR)")
+ax.set_title("Swift-BAT Hard X-Ray Sources (14-195 keV)")
+ax.grid(True)
+plt.tight_layout()
+plt.savefig("swift_bat_skymap.png", dpi=150)
+plt.show()
 
-# Sources with redshifts
-with_z = df.dropna(subset=["redshift"])
-print(f"{{len(with_z):,}} sources with redshifts")
+# Top 10 brightest sources
+top10 = df.nlargest(10, "snr")[["name", "snr", "flux", "source_type", "redshift"]]
+print("\\nTop 10 brightest hard X-ray sources:")
+print(top10.to_string(index=False))
 
-# Sky map
-import matplotlib.pyplot as plt
-fig, ax = plt.subplots(subplot_kw={{"projection": "mollweide"}})
-import numpy as np
-ra = np.deg2rad(df["ra"] - 180)
-dec = np.deg2rad(df["dec"])
-ax.scatter(ra, dec, s=1, alpha=0.5)
-ax.set_title("Swift-BAT Hard X-Ray Sources")
-```
+# Photon index distribution for AGN
+agn = df[df["source_type"].str.contains("Sy|AGN", case=False, na=False)]
+plt.figure(figsize=(8, 4))
+agn["spectral_index"].dropna().hist(bins=40, edgecolor="k")
+plt.xlabel("Photon Index Γ")
+plt.ylabel("Count")
+plt.title(f"Photon Index Distribution for {{len(agn):,}} BAT AGN")
+plt.tight_layout()
+plt.show()
+```"""
 
-## Data source
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Swift-BAT 157-Month Hard X-Ray Survey",
+        description=DESCRIPTION,
+        tags=["space", "x-ray", "swift", "nasa", "hard-x-ray", "astronomy",
+              "open-data", "tabular-data", "parquet"],
+        source_url="https://heasarc.gsfc.nasa.gov/xamin/vo/tap/",
+        task_categories=["tabular-classification"],
+        collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA03519/PIA03519~small.jpg",
+            "alt": "Cassiopeia A supernova remnant in X-ray, optical, and infrared light",
+            "credit": "NASA/JPL-Caltech/STScI/CXC/SAO",
+        },
+        related_datasets=[
+            "juliensimon/gamma-ray-bursts",
+            "juliensimon/pulsar-catalog",
+            "juliensimon/erosita-erass1-xray",
+        ],
+    ) as p:
+        numeric_cols = [
+            "source_number",
+            "ra", "dec", "lii", "bii",
+            "snr", "flux", "flux_lower", "flux_upper",
+            "ctrpart_ra", "ctrpart_dec",
+            "spectral_index", "spectral_index_lower", "spectral_index_upper",
+            "chi_squared", "redshift", "log_lx", "ctrpart_flag",
+        ]
+        df = p.clean(df, numeric=numeric_cols, drop_mostly_null_threshold=0.95)
 
-All data comes from the [Swift-BAT 157-Month Hard X-Ray Survey](https://swift.gsfc.nasa.gov/results/bs157mon/)
-(Oh et al. 2018, ApJS, 235, 4), accessed via the
-[NASA HEASARC TAP service](https://heasarc.gsfc.nasa.gov/xamin/vo/tap/).
+        # Keep only described columns (drop undescribed HEASARC metadata columns)
+        df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Related datasets
-
-- [gamma-ray-bursts](https://huggingface.co/datasets/juliensimon/gamma-ray-bursts) — Fermi GBM Gamma-Ray Burst Catalog
-- [pulsar-catalog](https://huggingface.co/datasets/juliensimon/pulsar-catalog) — ATNF Pulsar Catalogue
-- [rosat-all-sky](https://huggingface.co/datasets/juliensimon/erosita-erass1-xray) — ROSAT All-Sky Survey
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/swift-bat-hard-xray-survey) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{swift_bat_hard_xray,
-  author = {{Simon, Julien}},
-  title = {{Swift-BAT 157-Month Hard X-Ray Survey}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/swift-bat-hard-xray-survey}},
-  note = {{Based on Oh et al. 2018 via NASA HEASARC}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Upload Swift-BAT 157-month catalog: {n_total:,} sources"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+        p.publish(
+            df,
+            filename="swift-bat.parquet",
+            min_rows=1_500,
+            expected_columns=["ra", "dec"],
+            critical_columns=["ra", "dec"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update swift-bat: {n_total:,} sources",
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={len(df)}\n")
     print("Done.")
 
 

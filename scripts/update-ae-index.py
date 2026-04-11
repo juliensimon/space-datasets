@@ -1,28 +1,24 @@
 #!/usr/bin/env python3
 """Fetch hourly AE/AU/AL/AO auroral electrojet indices from WDC Kyoto and upload to HF."""
 
-import os
 import re
-import subprocess
 import sys
-import tempfile
+import time
 from datetime import datetime, timezone
-from pathlib import Path
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
 
-
-# Data directory with WDC-format files (minute-resolution, hourly means)
-# Realtime data_dir has data from 2021 onward; older data is no longer served
+# Config
 AE_DATA_DIR = "https://wdc.kugi.kyoto-u.ac.jp/ae_realtime/data_dir"
 AE_INDICES = ["ae", "al", "ao", "au"]
-AE_START_YEAR = 2021  # Oldest year in data_dir
+AE_START_YEAR = 2021
 HF_REPO = "juliensimon/auroral-electrojet-index"
 
+
+# ── Custom WDC parsers (domain-specific, not library-replaceable) ────
 
 def parse_ae_data_file(text, index_name):
     """Parse a WDC minute-resolution AE data file.
@@ -125,287 +121,160 @@ def list_days(year, month):
         return []
 
 
-def load_existing_ae(tmp_dir):
-    """Download existing AE parquet from HF. Returns DataFrame or None."""
-    parquet_path = tmp_dir / "data" / "ae_index.parquet"
-    try:
-        subprocess.run(
-            ["hf", "download", HF_REPO, "data/ae_index.parquet",
-             "--repo-type", "dataset", "--local-dir", str(tmp_dir)],
-            check=True, capture_output=True, timeout=30,
-        )
-        if parquet_path.exists():
-            df = pd.read_parquet(parquet_path)
-            df["datetime"] = pd.to_datetime(df["datetime"])
-            print(f"  Loaded existing: {len(df):,} hourly records")
-            return df
-    except Exception as e:
-        print(f"  Could not load existing ({e}), doing full rebuild")
-    return None
+# ── Column descriptions ─────────────────────────────────────────────
+COLUMN_DESCRIPTIONS = {
+    "datetime": "Timestamp of 1-minute measurement averaged to hourly cadence (UTC); coverage starts 2021",
+    "ae_index": "Auroral Electrojet index in nT — range of H-component variation (AU - AL); quiet: <200, substorm: >300, active: >500 nT",
+    "au_index": "Auroral Upper index in nT — eastward electrojet intensity; typically 0-1000 nT",
+    "al_index": "Auroral Lower index in nT — westward electrojet intensity; typically 0 to -2000 nT; strongly negative = substorm",
+    "ao_index": "Auroral Overall index in nT — (AU + AL) / 2; substorm activity proxy",
+    "quality": "Data quality: 'provisional' (pending processing) or 'realtime' (near-real-time, subject to revision)",
+    "is_active": "True if AE >= 500 nT, indicating active auroral substorm conditions",
+    "activity_level": "Derived category: quiet (<100), moderate (100-300), active (300-500), minor_storm (500-1000), major_storm (>1000 nT)",
+}
 
+DESCRIPTION = """\
+Hourly Auroral Electrojet indices from WDC Kyoto — measures auroral zone magnetic activity driven by magnetospheric substorms.
 
-def main():
-    print("Fetching AE index from WDC Kyoto...")
-    now = datetime.now(timezone.utc)
-
-    # Try incremental
-    import tempfile as _tf
-    with _tf.TemporaryDirectory() as probe:
-        df_existing = load_existing_ae(Path(probe))
-
-    if df_existing is not None and len(df_existing) > 0:
-        # Incremental: fetch current month + previous month
-        print("  Incremental mode: fetching recent data only")
-        new_records = []
-
-        # Current month
-        for day in list_days(now.year, now.month):
-            new_records.extend(fetch_day(now.year, now.month, day))
-        print(f"  {now.year}/{now.month:02d}: {len(new_records)} records")
-
-        # Previous month (re-fetch for corrections)
-        prev_year, prev_month = (now.year, now.month - 1) if now.month > 1 else (now.year - 1, 12)
-        prev_count = len(new_records)
-        for day in list_days(prev_year, prev_month):
-            new_records.extend(fetch_day(prev_year, prev_month, day))
-        print(f"  {prev_year}/{prev_month:02d}: {len(new_records) - prev_count} records")
-
-        df_new = pd.DataFrame(new_records)
-        if not df_new.empty:
-            df_new["datetime"] = pd.to_datetime(df_new["datetime"])
-            cutoff = df_new["datetime"].min()
-            df_kept = df_existing[df_existing["datetime"] < cutoff]
-            df = pd.concat([df_kept, df_new], ignore_index=True)
-            print(f"  Merged: {len(df):,} records (kept {len(df_kept):,} + {len(df_new):,} new)")
-        else:
-            df = df_existing
-            print("  No new data")
-    else:
-        # Full rebuild from data_dir (2021 onward)
-        print(f"  Full rebuild from {AE_START_YEAR}...")
-        all_records = []
-        for year in range(AE_START_YEAR, now.year + 1):
-            end_month = now.month if year == now.year else 12
-            for month in range(1, end_month + 1):
-                days = list_days(year, month)
-                for day in days:
-                    all_records.extend(fetch_day(year, month, day))
-                import time
-                time.sleep(0.3)
-            print(f"  {year}: {len(all_records):,} records so far")
-        df = pd.DataFrame(all_records)
-
-    if df.empty:
-        print("::error::No AE data retrieved")
-        sys.exit(1)
-
-    df["datetime"] = pd.to_datetime(df["datetime"])
-    df = df.sort_values("datetime").reset_index(drop=True)
-
-    # Remove future/empty rows
-    df = df[df["datetime"] <= pd.Timestamp.now()]
-
-    # Ensure numeric columns
-    for col in ["ae_index", "au_index", "al_index", "ao_index"]:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    # Derived columns
-    if "ae_index" in df.columns:
-        df["is_active"] = df["ae_index"] >= 500
-        df["activity_level"] = pd.cut(
-            df["ae_index"],
-            bins=[-float("inf"), 100, 300, 500, 1000, float("inf")],
-            labels=["quiet", "moderate", "active", "minor_storm", "major_storm"],
-        )
-
-    n_total = len(df)
-    date_min = df["datetime"].min().strftime("%Y-%m-%d")
-    date_max = df["datetime"].max().strftime("%Y-%m-%d")
-    n_active = int(df["is_active"].sum()) if "is_active" in df.columns else 0
-    max_ae = df["ae_index"].max() if "ae_index" in df.columns else None
-    n_prov = int((df["quality"] == "provisional").sum()) if "quality" in df.columns else 0
-    n_rt = int((df["quality"] == "realtime").sum()) if "quality" in df.columns else 0
-
-    print(f"  {n_total:,} hourly records ({date_min} to {date_max})")
-
-    check_dataset(df, "ae-index", min_rows=30000,
-                  expected_columns=["datetime", "ae_index"],
-                  critical_columns=["datetime", "ae_index"],
-            incremental=True)
-
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "ae_index.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("ae-index", tmp)
-        banner_md = banner_markdown("ae-index", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Auroral Electrojet (AE) Index"
-language:
-  - en
-description: "Hourly Auroral Electrojet (AE/AU/AL/AO) indices from WDC Kyoto — measures auroral zone magnetic activity driven by magnetospheric substorms."
-task_categories:
-  - time-series-forecasting
-  - tabular-regression
-tags:
-  - space
-  - geomagnetic
-  - auroral-electrojet
-  - ae-index
-  - space-weather
-  - kyoto
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 100K<n<1M
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/ae_index.parquet
-    default: true
----
-
-# Auroral Electrojet (AE) Index
-{banner_md}
-*Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
-
-![Update AE Index](https://github.com/juliensimon/space-datasets/actions/workflows/update-ae-index.yml/badge.svg)
-![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['ae-index']&label=updated&color=brightgreen)
-
-Hourly Auroral Electrojet indices from [WDC Kyoto](https://wdc.kugi.kyoto-u.ac.jp/aeasy/).
-Covers **{date_min}** to **{date_max}** with **{n_total:,}** hourly readings.
-
-## Dataset description
-
-The AE index measures auroral zone magnetic activity caused by enhanced ionospheric
-currents flowing in the auroral oval. It is derived from geomagnetic variations at
-10-13 stations along the auroral zone. The AE family includes four indices:
+The AE index measures auroral zone magnetic activity caused by enhanced ionospheric currents flowing in the auroral oval. It is derived from geomagnetic variations at 10-13 stations along the auroral zone. The AE family includes four indices:
 
 - **AE** (Auroral Electrojet): overall auroral activity (AU - AL)
 - **AU** (Auroral Upper): measures eastward electrojet intensity
 - **AL** (Auroral Lower): measures westward electrojet intensity
 - **AO** (Auroral Origin): baseline level (AU + AL) / 2
 
-AE complements the Dst index (ring current) by specifically tracking substorm-driven
-auroral activity, which is critical for high-latitude communications and power grids.
+AE complements the Dst index (ring current) by specifically tracking substorm-driven auroral activity, which is critical for high-latitude communications and power grids."""
 
-Magnetospheric substorms are the fundamental energy release process in the coupled solar wind-magnetosphere system. When the interplanetary magnetic field turns southward, magnetic flux accumulates in the magnetotail lobes during the growth phase (30-60 minutes). At onset, explosive reconnection in the near-tail (15-25 Earth radii) diverts a cross-tail current wedge into the ionosphere via field-aligned currents, producing the substorm current wedge. The westward electrojet -- a sheet of Hall current flowing in the E-region ionosphere at ~110 km altitude -- intensifies dramatically, and AL plunges to -500 to -2,000 nT during strong substorms. Simultaneously, the eastward electrojet strengthens on the dusk side, driving AU positive. AE, defined as AU minus AL, thus captures the total electrojet intensity regardless of local time.
 
-The 10-13 magnetometer stations that contribute to AE are positioned along the auroral zone (typically 65-70 degrees geomagnetic latitude) at roughly uniform longitudinal spacing. This geometry ensures that the auroral electrojets are always sampled regardless of universal time. The AU envelope represents the maximum positive H-component deviation across all stations (capturing the eastward electrojet), while AL represents the maximum negative deviation (capturing the westward electrojet). During major storms, the auroral oval expands equatorward, and some contributing stations may fall inside the polar cap, potentially affecting the index quality -- an important consideration when using AE during extreme events.
+def main():
+    print("Fetching AE index from WDC Kyoto...")
+    now = datetime.now(timezone.utc)
 
-AE is widely used in magnetospheric physics to quantify substorm occurrence rates, energy dissipation in the ionosphere (Joule heating scales roughly as AE squared), and coupling efficiency between the solar wind and magnetosphere. In practical applications, elevated AE indicates enhanced ionospheric currents that can induce geomagnetically induced currents (GICs) in high-latitude power grids and pipelines. AE also serves as an input to empirical radiation belt models and high-latitude ionospheric conductance models used in space weather forecasting.
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Auroral Electrojet (AE) Index",
+        description=DESCRIPTION,
+        tags=["space", "geomagnetic", "auroral-electrojet", "ae-index", "space-weather",
+              "kyoto", "open-data", "tabular-data", "parquet"],
+        source_url="https://wdc.kugi.kyoto-u.ac.jp/aeasy/",
+        task_categories=["time-series-forecasting", "tabular-regression"],
+        collection_url="https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70",
+        banner={"url": "https://images-assets.nasa.gov/image/iss072e159172/iss072e159172~medium.jpg",
+                "alt": "Aurora borealis blankets the Earth, seen from the ISS",
+                "credit": "NASA"},
+        update_schedule="Daily at 19:00 UTC",
+        related_datasets=["juliensimon/dst-index", "juliensimon/space-weather-indices", "juliensimon/geomagnetic-kp-index"],
+    ) as p:
+        # Try incremental
+        df_existing = p.download_existing("ae_index.parquet")
 
-## Schema
+        if df_existing is not None and len(df_existing) > 0:
+            df_existing["datetime"] = pd.to_datetime(df_existing["datetime"])
+            print("  Incremental mode: fetching recent data only")
+            new_records = []
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `datetime` | datetime | Timestamp of the 1-minute measurement averaged to hourly cadence (UTC); coverage starts 2021 |
-| `ae_index` | int | Auroral Electrojet index in nT — range of H-component variation across auroral-zone stations (AU − AL); quiet: 50–200 nT, substorm onset: >300 nT, active: >500 nT |
-| `au_index` | int | Auroral Upper index in nT — most positive H-component deviation across the 12 contributing stations; measures the eastward electrojet current; typically 0–1000 nT |
-| `al_index` | int | Auroral Lower index in nT — most negative H-component deviation; measures the westward electrojet current; typically 0 to −2000 nT; strongly negative values indicate substorm activity |
-| `ao_index` | int | Auroral Overall index in nT — average of AU and AL, i.e. (AU + AL) / 2; general substorm activity proxy; typically −500 to +200 nT |
-| `quality` | string | Data quality flag: "provisional" (recent data pending full processing) or "realtime" (near-real-time, subject to revision) |
-| `is_active` | bool | True if AE >= 500 nT, indicating active auroral substorm conditions |
-| `activity_level` | string | Derived geomagnetic activity category based on AE: "quiet" (< 100 nT), "moderate" (100–300 nT), "active" (300–500 nT), "minor_storm" (500–1000 nT), "major_storm" (> 1000 nT) |
+            for day in list_days(now.year, now.month):
+                new_records.extend(fetch_day(now.year, now.month, day))
+            print(f"  {now.year}/{now.month:02d}: {len(new_records)} records")
 
-## Quick stats
+            prev_year, prev_month = (now.year, now.month - 1) if now.month > 1 else (now.year - 1, 12)
+            prev_count = len(new_records)
+            for day in list_days(prev_year, prev_month):
+                new_records.extend(fetch_day(prev_year, prev_month, day))
+            print(f"  {prev_year}/{prev_month:02d}: {len(new_records) - prev_count} records")
 
+            df_new = pd.DataFrame(new_records)
+            if not df_new.empty:
+                df_new["datetime"] = pd.to_datetime(df_new["datetime"])
+                cutoff = df_new["datetime"].min()
+                df_kept = df_existing[df_existing["datetime"] < cutoff]
+                df = pd.concat([df_kept, df_new], ignore_index=True)
+                print(f"  Merged: {len(df):,} records (kept {len(df_kept):,} + {len(df_new):,} new)")
+            else:
+                df = df_existing
+                print("  No new data")
+        else:
+            # Full rebuild
+            print(f"  Full rebuild from {AE_START_YEAR}...")
+            all_records = []
+            for year in range(AE_START_YEAR, now.year + 1):
+                end_month = now.month if year == now.year else 12
+                for month in range(1, end_month + 1):
+                    days = list_days(year, month)
+                    for day in days:
+                        all_records.extend(fetch_day(year, month, day))
+                    time.sleep(0.3)
+                print(f"  {year}: {len(all_records):,} records so far")
+            df = pd.DataFrame(all_records)
+
+        if df.empty:
+            print("::error::No AE data retrieved")
+            sys.exit(1)
+
+        df["datetime"] = pd.to_datetime(df["datetime"])
+        df = df.sort_values("datetime").reset_index(drop=True)
+        df = df[df["datetime"] <= pd.Timestamp.now()]
+
+        # Derived columns
+        df = p.clean(df, numeric=["ae_index", "au_index", "al_index", "ao_index"])
+        if "ae_index" in df.columns:
+            df["is_active"] = df["ae_index"] >= 500
+            df["activity_level"] = pd.cut(
+                df["ae_index"],
+                bins=[-float("inf"), 100, 300, 500, 1000, float("inf")],
+                labels=["quiet", "moderate", "active", "minor_storm", "major_storm"],
+            )
+
+        # Stats
+        n_total = len(df)
+        date_min = df["datetime"].min().strftime("%Y-%m-%d")
+        date_max = df["datetime"].max().strftime("%Y-%m-%d")
+        n_active = int(df["is_active"].sum()) if "is_active" in df.columns else 0
+        max_ae = df["ae_index"].max() if "ae_index" in df.columns else None
+
+        quick_stats = f"""\
 - **{n_total:,}** hourly readings ({date_min} to {date_max})
 - **{n_active:,}** active hours (AE >= 500 nT)
-- Peak AE: **{max_ae} nT**
-- Data quality: {n_prov:,} provisional, {n_rt:,} realtime
+- Peak AE: **{max_ae} nT**"""
 
-## Usage
-
+        usage = """\
 ```python
 from datasets import load_dataset
 
 ds = load_dataset("juliensimon/auroral-electrojet-index", split="train")
 df = ds.to_pandas()
 
-# Substorm activity
-active = df[df["ae_index"] >= 500].sort_values("ae_index", ascending=False)
-
-# AE time series
-df["year"] = df["datetime"].dt.year
-annual = df.groupby("year")["ae_index"].mean()
-
-# Compare AE with AL (westward electrojet drives substorms)
+# AE/AL time series during a geomagnetic storm
 import matplotlib.pyplot as plt
+
 storm = df[(df["datetime"] >= "2024-05-10") & (df["datetime"] <= "2024-05-15")]
-plt.plot(storm["datetime"], storm["ae_index"], label="AE")
-plt.plot(storm["datetime"], storm["al_index"], label="AL")
-plt.legend(); plt.ylabel("nT"); plt.title("AE/AL during May 2024 storm")
-```
+fig, ax = plt.subplots(figsize=(12, 4))
+ax.plot(storm["datetime"], storm["ae_index"], label="AE", color="red")
+ax.plot(storm["datetime"], storm["al_index"], label="AL", color="blue")
+ax.axhline(500, color="gray", linestyle="--", alpha=0.5, label="Active threshold")
+ax.legend()
+ax.set_ylabel("nT")
+ax.set_title("Auroral Electrojet during May 2024 Geomagnetic Storm")
+plt.tight_layout()
+plt.show()
 
-## Data source
+# Activity distribution
+df["activity_level"].value_counts().plot.bar()
+plt.title("AE Activity Level Distribution")
+plt.show()
+```"""
 
-[WDC for Geomagnetism, Kyoto](https://wdc.kugi.kyoto-u.ac.jp/aeasy/). Two quality tiers:
-- **Provisional**: Visually screened but not final
-- **Real-time**: Quicklook values, may be revised
-
-## Update schedule
-
-Daily at 19:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-datasets).
-
-## Related datasets
-
-- [dst-index](https://huggingface.co/datasets/juliensimon/dst-index) — Dst geomagnetic storm index (ring current)
-- [space-weather-indices](https://huggingface.co/datasets/juliensimon/space-weather-indices) — Daily Kp, Ap, F10.7 indices
-- [kp-index](https://huggingface.co/datasets/juliensimon/geomagnetic-kp-index) — Kp geomagnetic index
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/auroral-electrojet-index) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{auroral_electrojet_index,
-  author = {{Simon, Julien}},
-  title = {{Auroral Electrojet (AE) Index}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/auroral-electrojet-index}}
-}}
-```
-
-### Data source
-
-[WDC for Geomagnetism, Kyoto](https://wdc.kugi.kyoto-u.ac.jp/aeasy/)
-
-## License
-
-MIT (pipeline code). AE data: free for non-commercial use per WDC Kyoto terms.
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update AE index: {n_total:,} hourly readings"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+        p.publish(
+            df,
+            filename="ae_index.parquet",
+            min_rows=30_000,
+            expected_columns=["datetime", "ae_index"],
+            critical_columns=["datetime", "ae_index"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update AE index: {n_total:,} hourly readings",
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={len(df)}\n")
     print("Done.")
 
 

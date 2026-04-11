@@ -8,20 +8,127 @@ CSV:    https://www.physics.mcgill.ca/~pulsar/magnetar/TabO1.csv
 Cite:   Olausen & Kaspi (2014), ApJS 212, 6
 """
 
-import subprocess
-import tempfile
 from io import StringIO
-from pathlib import Path
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
 
 CSV_URL = "https://www.physics.mcgill.ca/~pulsar/magnetar/TabO1.csv"
 HF_REPO = "juliensimon/mcgill-magnetar-catalog"
-MIN_ROWS = 20
+
+# ── Column mapping ───────────────────────────────────────────────────
+RENAME = {
+    "Name": "name",
+    "Period": "period_s",
+    "Period_Err": "period_err_s",
+    "Pdot": "period_derivative",
+    "Pdot_Err": "period_derivative_err",
+    "B": "magnetic_field_g",
+    "Edot": "spin_down_luminosity_erg_s",
+    "Age": "characteristic_age_yr",
+    "NH": "column_density_cm2",
+    "NH_EUp": "column_density_err_up",
+    "NH_EDn": "column_density_err_down",
+    "Gamma": "photon_index",
+    "Gamma_EUp": "photon_index_err_up",
+    "Gamma_EDn": "photon_index_err_down",
+    "kT": "blackbody_kt_kev",
+    "kT_EUp": "blackbody_kt_err_up",
+    "kT_EDn": "blackbody_kt_err_down",
+    "kT2": "blackbody_kt2_kev",
+    "kT2_EUp": "blackbody_kt2_err_up",
+    "kT2_EDn": "blackbody_kt2_err_down",
+    "Flux": "xray_flux_erg_cm2_s",
+    "Flux_EUp": "xray_flux_err_up",
+    "Flux_EDn": "xray_flux_err_down",
+    "Dist": "distance_kpc",
+    "Dist_EUp": "distance_err_up_kpc",
+    "Dist_EDn": "distance_err_down_kpc",
+    "Lumin": "xray_luminosity_erg_s",
+    "Assoc": "association",
+    "RA": "ra_hms",
+    "Decl": "dec_dms",
+    "RA_Err": "ra_err_arcsec",
+    "Decl_Err": "dec_err_arcsec",
+    "OptIR": "optical_ir_counterpart",
+    "Bands": "observed_bands",
+    "Activity": "activity_flags",
+}
+
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "name": "Magnetar designation (e.g. 'SGR 1806-20', '1E 2259+586'); SGR = Soft Gamma Repeater, AXP = Anomalous X-ray Pulsar; both classes are now understood to be magnetars",
+    "type": "Historical source class: 'SGR' (detected via gamma-ray bursts) or 'AXP' (detected as anomalous X-ray pulsar); distinction is observational, not physical",
+    "is_candidate": "True for unconfirmed magnetar candidates (marked with # in the McGill catalog); candidate status may change as new observations are published",
+    "ra_hms": "Right ascension in sexagesimal format (HH MM SS.s), ICRS J2000",
+    "dec_dms": "Declination in sexagesimal format (+/-DD MM SS.s), ICRS J2000",
+    "ra_deg": "Right ascension in decimal degrees (ICRS J2000.0); derived from ra_hms",
+    "dec_deg": "Declination in decimal degrees (ICRS J2000.0); derived from dec_dms",
+    "ra_err_arcsec": "1-sigma positional uncertainty in RA in arcseconds; null for sources without a precise X-ray or radio position",
+    "dec_err_arcsec": "1-sigma positional uncertainty in Dec in arcseconds; null for sources without a precise X-ray or radio position",
+    "period_s": "Spin period in seconds; magnetars: 2-12 s (far slower than recycled millisecond pulsars); null for sources where timing has not been achieved",
+    "period_err_s": "1-sigma uncertainty on spin period (s)",
+    "period_derivative": "Spin-down rate dP/dt in s/s; magnetars: ~10^-11 s/s, among the fastest-spinning-down neutron stars; drives inferred magnetic field and characteristic age",
+    "period_derivative_err": "1-sigma uncertainty on period derivative (s/s)",
+    "magnetic_field_g": "Dipole surface magnetic field strength in Gauss, inferred as B ~ 3.2e19 * sqrt(P * Pdot); magnetars: 10^14-10^15 G, roughly 1000x stronger than normal pulsars; null if period or period derivative is unmeasured",
+    "magnetic_field_g_is_limit": "True when the magnetic field value is an upper or lower limit rather than a detection",
+    "spin_down_luminosity_erg_s": "Rotational energy loss rate Edot = -4*pi^2*I*Pdot/P^3 in erg/s; for magnetars typically 10^32-10^34 erg/s, lower than their observed X-ray luminosity (evidence for magnetic field powering)",
+    "spin_down_luminosity_erg_s_is_limit": "True when the spin-down luminosity value is an upper or lower limit",
+    "characteristic_age_yr": "Characteristic spin-down age tau = P/(2*Pdot) in years; magnetars: ~10^3-10^4 yr (very young neutron stars); this is an upper limit on true age for initially fast rotators",
+    "characteristic_age_yr_is_limit": "True when the characteristic age value is an upper or lower limit",
+    "column_density_cm2": "Interstellar hydrogen column density N_H in cm^-2, fit from soft X-ray absorption; used to estimate visual extinction and constrain distance; null if no X-ray spectrum available",
+    "column_density_err_up": "Upper 1-sigma uncertainty on column density (cm^-2)",
+    "column_density_err_down": "Lower 1-sigma uncertainty on column density (cm^-2)",
+    "photon_index": "Photon index Gamma of the hard X-ray power-law spectral component (flux proportional to E^-Gamma); magnetars: Gamma ~ 2-4 in quiescence; null if power-law component not required by the spectrum",
+    "photon_index_err_up": "Upper 1-sigma uncertainty on photon index",
+    "photon_index_err_down": "Lower 1-sigma uncertainty on photon index",
+    "blackbody_kt_kev": "Temperature kT in keV of the soft X-ray blackbody spectral component; magnetars: kT ~ 0.3-0.7 keV; null if spectrum not well-fitted by a blackbody",
+    "blackbody_kt_err_up": "Upper 1-sigma uncertainty on blackbody kT (keV)",
+    "blackbody_kt_err_down": "Lower 1-sigma uncertainty on blackbody kT (keV)",
+    "blackbody_kt2_kev": "Temperature kT in keV of a second blackbody component, if required by the spectral fit; null for most sources",
+    "blackbody_kt2_err_up": "Upper 1-sigma uncertainty on second blackbody kT (keV)",
+    "blackbody_kt2_err_down": "Lower 1-sigma uncertainty on second blackbody kT (keV)",
+    "xray_flux_erg_cm2_s": "Unabsorbed 2-10 keV X-ray flux in erg/cm^2/s from quiescent-state observations; magnetars: ~10^-12-10^-11 erg/cm^2/s; null for transient magnetars in quiescence below detection limits",
+    "xray_flux_err_up": "Upper 1-sigma uncertainty on X-ray flux (erg/cm^2/s)",
+    "xray_flux_err_down": "Lower 1-sigma uncertainty on X-ray flux (erg/cm^2/s)",
+    "xray_flux_erg_cm2_s_is_limit": "True when the X-ray flux value is an upper or lower limit",
+    "distance_kpc": "Distance in kpc; null for the majority of magnetars (reliable distances are rare — methods include HI absorption, SNR associations, and maser parallaxes)",
+    "distance_err_up_kpc": "Upper 1-sigma uncertainty on distance (kpc)",
+    "distance_err_down_kpc": "Lower 1-sigma uncertainty on distance (kpc)",
+    "distance_kpc_is_limit": "True when the distance value is an upper or lower limit",
+    "xray_luminosity_erg_s": "Quiescent X-ray luminosity in erg/s computed from flux and distance; magnetars: 10^33-10^36 erg/s; null where distance is unknown",
+    "xray_luminosity_erg_s_is_limit": "True when the X-ray luminosity value is an upper or lower limit",
+    "association": "Name of associated supernova remnant or star cluster (e.g. 'CTB 109', 'Westerlund 1'); null for isolated magnetars without identified associations",
+    "optical_ir_counterpart": "Whether an optical or infrared counterpart has been detected; null if no counterpart search has been published",
+    "observed_bands": "Observational coverage codes: H=hard X-ray (>10 keV), X=soft X-ray, O=optical, I=infrared, R=radio, G=gamma-ray; null if not tabulated",
+    "activity_flags": "Burst/flare activity type codes: B=bursts, G=giant flare, F=flare, T=transient outburst, A=anti-glitch; null for sources with no recorded activity",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+All known magnetars — neutron stars with extreme magnetic fields (10^13-10^15 G) — from \
+the McGill Online Magnetar Catalog. Includes spin parameters, magnetic field strengths, \
+X-ray properties, and associations.
+
+Magnetars are isolated neutron stars powered by the decay of their ultra-strong magnetic \
+fields, rather than by rotation (like normal pulsars) or accretion. They manifest as Soft \
+Gamma Repeaters (SGRs) and Anomalous X-ray Pulsars (AXPs), producing dramatic bursts and \
+flares in X-rays and gamma-rays.
+
+Magnetar magnetic fields — reaching 10^14 to 10^15 Gauss, a thousand times stronger than \
+ordinary pulsars — are the strongest known in the universe. These fields exceed the quantum \
+electrodynamic critical field at which the vacuum itself becomes birefringent. The decay of \
+these colossal fields powers persistent X-ray emission at luminosities of 10^33-36 erg/s, \
+far exceeding what rotational energy alone can supply. During outbursts, magnetars can \
+release up to 10^46 erg in giant flares, rivaling the luminosity of the entire Galaxy.
+
+The magnetar population bridges several areas of astrophysics. Their connection to fast \
+radio bursts (FRBs) was dramatically confirmed in 2020 when SGR 1935+2154 emitted a \
+millisecond radio burst bright enough to be detected at extragalactic distances. Magnetars \
+are also candidate central engines for some gamma-ray bursts and super-luminous supernovae.
+"""
 
 
 def parse_ra_to_deg(ra_str):
@@ -60,14 +167,11 @@ def main():
     resp = requests.get(CSV_URL, timeout=30)
     resp.raise_for_status()
 
-    # Parse CSV — some fields have commas inside quoted strings (Assoc column)
     df = pd.read_csv(StringIO(resp.text), quotechar='"')
     print(f"  {len(df)} magnetars in raw CSV")
 
     # Strip trailing ' #' from candidate names
     df["Name"] = df["Name"].str.strip()
-
-    # Mark candidates (names ending with #)
     df["is_candidate"] = df["Name"].str.endswith("#")
     df["Name"] = df["Name"].str.rstrip(" #").str.strip()
 
@@ -75,20 +179,7 @@ def main():
     def classify(name):
         if name.startswith("SGR"):
             return "SGR"
-        elif name.startswith("AXP") or name.startswith("1E") or name.startswith("4U"):
-            return "AXP"
-        elif name.startswith("CXOU") or name.startswith("XTE"):
-            return "AXP"
-        elif name.startswith("1RXS") or name.startswith("3XMM"):
-            return "AXP"
-        elif name.startswith("PSR"):
-            return "AXP"
-        elif name.startswith("Swift"):
-            return "AXP"  # Swift sources are mostly AXP-like
-        elif name.startswith("AX"):
-            return "AXP"
-        else:
-            return "unknown"
+        return "AXP"
 
     df["type"] = df["Name"].apply(classify)
 
@@ -111,70 +202,22 @@ def main():
         df[f"{base.lower()}_is_limit"] = df[lim_col].str.strip().isin(["<", ">"]) \
             if lim_col in df.columns else False
 
-    # Rename to snake_case descriptive names
-    df = df.rename(columns={
-        "Name": "name",
-        "Period": "period_s",
-        "Period_Err": "period_err_s",
-        "Pdot": "period_derivative",
-        "Pdot_Err": "period_derivative_err",
-        "B": "magnetic_field_g",
-        "Edot": "spin_down_luminosity_erg_s",
-        "Age": "characteristic_age_yr",
-        "NH": "column_density_cm2",
-        "NH_EUp": "column_density_err_up",
-        "NH_EDn": "column_density_err_down",
-        "Gamma": "photon_index",
-        "Gamma_EUp": "photon_index_err_up",
-        "Gamma_EDn": "photon_index_err_down",
-        "kT": "blackbody_kt_kev",
-        "kT_EUp": "blackbody_kt_err_up",
-        "kT_EDn": "blackbody_kt_err_down",
-        "kT2": "blackbody_kt2_kev",
-        "kT2_EUp": "blackbody_kt2_err_up",
-        "kT2_EDn": "blackbody_kt2_err_down",
-        "Flux": "xray_flux_erg_cm2_s",
-        "Flux_EUp": "xray_flux_err_up",
-        "Flux_EDn": "xray_flux_err_down",
-        "Dist": "distance_kpc",
-        "Dist_EUp": "distance_err_up_kpc",
-        "Dist_EDn": "distance_err_down_kpc",
-        "Lumin": "xray_luminosity_erg_s",
-        "Assoc": "association",
-        "RA": "ra_hms",
-        "Decl": "dec_dms",
-        "RA_Err": "ra_err_arcsec",
-        "Decl_Err": "dec_err_arcsec",
-        "OptIR": "optical_ir_counterpart",
-        "Bands": "observed_bands",
-        "Activity": "activity_flags",
-    })
+    # Rename to snake_case
+    df = df.rename(columns=RENAME)
 
-    # Select and order final columns
-    cols = [
-        "name", "type", "is_candidate",
-        "ra_hms", "dec_dms", "ra_deg", "dec_deg",
-        "ra_err_arcsec", "dec_err_arcsec",
-        "period_s", "period_err_s",
-        "period_derivative", "period_derivative_err",
-        "magnetic_field_g", "magnetic_field_g_is_limit",
-        "spin_down_luminosity_erg_s", "spin_down_luminosity_erg_s_is_limit",
-        "characteristic_age_yr", "characteristic_age_yr_is_limit",
-        "column_density_cm2", "column_density_err_up", "column_density_err_down",
-        "photon_index", "photon_index_err_up", "photon_index_err_down",
-        "blackbody_kt_kev", "blackbody_kt_err_up", "blackbody_kt_err_down",
-        "blackbody_kt2_kev", "blackbody_kt2_err_up", "blackbody_kt2_err_down",
-        "xray_flux_erg_cm2_s", "xray_flux_err_up", "xray_flux_err_down",
-        "xray_flux_erg_cm2_s_is_limit",
-        "distance_kpc", "distance_err_up_kpc", "distance_err_down_kpc",
-        "distance_kpc_is_limit",
-        "xray_luminosity_erg_s", "xray_luminosity_erg_s_is_limit",
-        "association",
-        "optical_ir_counterpart", "observed_bands", "activity_flags",
-    ]
-    # Only keep columns that exist
-    cols = [c for c in cols if c in df.columns]
-    df = df[cols]
+    # Map limit flag columns to final names
+    limit_renames = {
+        "b_is_limit": "magnetic_field_g_is_limit",
+        "edot_is_limit": "spin_down_luminosity_erg_s_is_limit",
+        "age_is_limit": "characteristic_age_yr_is_limit",
+        "flux_is_limit": "xray_flux_erg_cm2_s_is_limit",
+        "lumin_is_limit": "xray_luminosity_erg_s_is_limit",
+        "dist_is_limit": "distance_kpc_is_limit",
+    }
+    df = df.rename(columns={k: v for k, v in limit_renames.items() if k in df.columns})
+
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
     # Stats for README
     n_confirmed = int((~df["is_candidate"]).sum())
@@ -189,122 +232,14 @@ def main():
     bfield_min = df["magnetic_field_g"].min()
     bfield_max = df["magnetic_field_g"].max()
 
-    # Validate
-    check_dataset(
-        df,
-        "mcgill-magnetar-catalog",
-        min_rows=MIN_ROWS,
-        expected_columns=["name", "ra_deg", "dec_deg", "period_s",
-                          "period_derivative", "magnetic_field_g",
-                          "characteristic_age_yr", "xray_luminosity_erg_s",
-                          "distance_kpc", "association"],
-        critical_columns=["name", "ra_deg", "dec_deg"],
-        max_null_pct=0.30,  # candidates have many nulls
-    )
-
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "mcgill_magnetar_catalog.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_kb = out.stat().st_size / 1024
-        print(f"  {size_kb:.1f} KB parquet ({len(df)} rows, {len(df.columns)} columns)")
-
-        banner_file = download_banner("magnetars", tmp)
-        banner_md = banner_markdown("magnetars", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "McGill Online Magnetar Catalog"
-language:
-  - en
-description: "All known magnetars (neutron stars with extreme magnetic fields) from the McGill Online Magnetar Catalog. Includes spin parameters, magnetic field strengths, X-ray properties, and associations."
-task_categories:
-  - tabular-classification
-  - tabular-regression
-tags:
-  - space
-  - magnetars
-  - neutron-stars
-  - x-ray
-  - astronomy
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - n<1K
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/mcgill_magnetar_catalog.parquet
-    default: true
----
-
-# McGill Online Magnetar Catalog
-{banner_md}
-*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-67ac2ada12aceb39f8feca3b) collection on Hugging Face.*
-
-All **{len(df)}** known magnetars — neutron stars with extreme magnetic fields (10\u00b9\u00b3-10\u00b9\u2075 G) — from the
-[McGill Online Magnetar Catalog](http://www.physics.mcgill.ca/~pulsar/magnetar/main.html).
-Currently **{n_confirmed}** confirmed and **{n_candidate}** candidates ({n_sgr} SGRs, {n_axp} AXPs).
-
-## Dataset description
-
-Magnetars are isolated neutron stars powered by the decay of their ultra-strong magnetic fields,
-rather than by rotation (like normal pulsars) or accretion. They manifest as Soft Gamma Repeaters
-(SGRs) and Anomalous X-ray Pulsars (AXPs), producing dramatic bursts and flares in X-rays and
-gamma-rays.
-
-This dataset contains the persistent (quiescent) properties of every known magnetar, including
-spin period, period derivative, inferred dipolar magnetic field strength, characteristic age,
-X-ray flux and luminosity, spectral parameters, distance, and SNR/cluster associations.
-
-Magnetar magnetic fields — reaching 10^14 to 10^15 Gauss, a thousand times stronger than ordinary pulsars — are the strongest known in the universe. These fields exceed the quantum electrodynamic critical field (B_QED ~ 4.4e13 G) at which the vacuum itself becomes birefringent and photon splitting becomes possible. The decay of these colossal fields powers persistent X-ray emission at luminosities of 10^33-36 erg/s, far exceeding what rotational energy alone can supply. During outbursts, magnetars can release up to 10^46 erg in giant flares, rivaling the luminosity of the entire Galaxy for a fraction of a second. The 2004 December 27 giant flare from SGR 1806-20 was so energetic it measurably disturbed Earth's ionosphere from 50,000 light-years away.
-
-The magnetar population bridges several areas of astrophysics. Their connection to fast radio bursts (FRBs) was dramatically confirmed in 2020 when SGR 1935+2154 emitted a millisecond radio burst bright enough to be detected at extragalactic distances. Magnetars are also candidate central engines for some gamma-ray bursts and super-luminous supernovae. Their spin-down behavior — often complicated by timing noise, glitches, and anti-glitches — probes the internal structure of neutron stars and the coupling between the superfluid core and the solid crust. Associations with supernova remnants provide independent age constraints, revealing that magnetar fields decay on timescales of roughly 10,000 years, consistent with theoretical predictions for ambipolar diffusion and Hall drift in the neutron star crust.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `name` | string | Magnetar designation (e.g. "SGR 1806-20", "1E 2259+586"); SGR = Soft Gamma Repeater, AXP = Anomalous X-ray Pulsar; both classes are now understood to be magnetars |
-| `type` | string | Historical source class: "SGR" (detected via gamma-ray bursts) or "AXP" (detected as anomalous X-ray pulsar); distinction is observational, not physical |
-| `is_candidate` | bool | True for unconfirmed magnetar candidates (marked with # in the McGill catalog); candidate status may change as new observations are published |
-| `ra_hms` / `dec_dms` | string | Position in sexagesimal format (HH MM SS.s / ±DD MM SS.s), ICRS J2000 |
-| `ra_deg` / `dec_deg` | float64 | Position in decimal degrees (ICRS J2000.0); derived from ra_hms/dec_dms |
-| `ra_err_arcsec` / `dec_err_arcsec` | float64 | 1σ positional uncertainty in arcseconds; null for sources without a precise X-ray or radio position |
-| `period_s` | float64 | Spin period in seconds; magnetars: 2–12 s (far slower than recycled millisecond pulsars); null for sources where timing has not been achieved |
-| `period_err_s` | float64 | 1σ uncertainty on spin period (s) |
-| `period_derivative` | float64 | Spin-down rate dP/dt in s/s; magnetars: ~10⁻¹¹ s/s, among the fastest-spinning-down neutron stars; drives inferred magnetic field and characteristic age |
-| `period_derivative_err` | float64 | 1σ uncertainty on period derivative (s/s) |
-| `magnetic_field_g` | float64 | Dipole surface magnetic field strength in Gauss, inferred as B ≈ 3.2×10¹⁹ √(P·Ṗ); magnetars: 10¹⁴–10¹⁵ G, roughly 1000× stronger than normal pulsars; null if period or period derivative is unmeasured |
-| `spin_down_luminosity_erg_s` | float64 | Rotational energy loss rate Ė = −4π²IṖ/P³ in erg/s; for magnetars typically 10³²–10³⁴ erg/s, lower than their observed X-ray luminosity (evidence for magnetic field powering) |
-| `characteristic_age_yr` | float64 | Characteristic spin-down age τ = P/(2Ṗ) in years; magnetars: ~10³–10⁴ yr (very young neutron stars); this is an upper limit on true age for initially fast rotators |
-| `column_density_cm2` | float64 | Interstellar hydrogen column density N_H in cm⁻², fit from soft X-ray absorption; used to estimate visual extinction and constrain distance; null if no X-ray spectrum available |
-| `photon_index` | float64 | Photon index Γ of the hard X-ray power-law spectral component (flux ∝ E^−Γ); magnetars: Γ ~ 2–4 in quiescence; null if power-law component not required by the spectrum |
-| `blackbody_kt_kev` | float64 | Temperature kT in keV of the soft X-ray blackbody spectral component; magnetars: kT ~ 0.3–0.7 keV; null if spectrum not well-fitted by a blackbody |
-| `xray_flux_erg_cm2_s` | float64 | Unabsorbed 2–10 keV X-ray flux in erg/cm²/s from quiescent-state observations; magnetars: ~10⁻¹²–10⁻¹¹ erg/cm²/s; null for transient magnetars in quiescence below detection limits |
-| `distance_kpc` | float64 | Distance in kpc; null for the majority of magnetars (reliable distances are rare — methods include HI absorption, SNR associations, and maser parallaxes) |
-| `xray_luminosity_erg_s` | float64 | Quiescent X-ray luminosity in erg/s computed from flux and distance; magnetars: 10³³–10³⁶ erg/s; null where distance is unknown |
-| `association` | string | Name of associated supernova remnant or star cluster (e.g. "CTB 109", "Westerlund 1"); null for isolated magnetars without identified associations |
-| `optical_ir_counterpart` | string | Whether an optical or infrared counterpart has been detected; null if no counterpart search has been published |
-| `observed_bands` | string | Observational coverage codes: H=hard X-ray (>10 keV), X=soft X-ray, O=optical, I=infrared, R=radio, G=gamma-ray; null if not tabulated |
-| `activity_flags` | string | Burst/flare activity type codes: B=bursts, G=giant flare, F=flare, T=transient outburst, A=anti-glitch; null for sources with no recorded activity |
-| `*_is_limit` | bool | True when the corresponding measurement is an upper or lower limit rather than a detection; applies to magnetic_field_g, spin_down_luminosity_erg_s, characteristic_age_yr, xray_flux_erg_cm2_s, xray_luminosity_erg_s, distance_kpc |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{len(df)}** magnetars ({n_confirmed} confirmed, {n_candidate} candidates)
 - **{n_sgr}** Soft Gamma Repeaters, **{n_axp}** Anomalous X-ray Pulsars
 - **{n_with_period}** with measured spin periods ({period_min:.2f}--{period_max:.1f} s)
 - **{n_with_bfield}** with inferred magnetic fields ({bfield_min:.2e}--{bfield_max:.2e} G)
-- **{n_with_assoc}** associated with supernova remnants or star clusters
+- **{n_with_assoc}** associated with supernova remnants or star clusters"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -314,65 +249,61 @@ df = ds.to_pandas()
 # Confirmed magnetars only
 confirmed = df[~df["is_candidate"]]
 
+# P-Pdot diagram (period vs. period derivative)
+import matplotlib.pyplot as plt
+import numpy as np
+
+valid = confirmed.dropna(subset=["period_s", "period_derivative"])
+plt.figure(figsize=(8, 6))
+plt.scatter(valid["period_s"], valid["period_derivative"], s=50, c="crimson", edgecolors="k")
+plt.xscale("log")
+plt.yscale("log")
+plt.xlabel("Spin Period (s)")
+plt.ylabel("Period Derivative (s/s)")
+plt.title("Magnetar P-Pdot Diagram")
+plt.tight_layout()
+plt.show()
+
 # Strongest magnetic fields
 strongest = confirmed.sort_values("magnetic_field_g", ascending=False).head(5)
+print(strongest[["name", "type", "magnetic_field_g", "period_s"]])
+```"""
 
-# SGRs vs AXPs
-sgrs = df[df["type"] == "SGR"]
-axps = df[df["type"] == "AXP"]
-
-# Magnetars associated with supernova remnants
-with_snr = df[df["association"].notna() & (df["association"] != "")]
-```
-
-## Data source
-
-[McGill Online Magnetar Catalog](http://www.physics.mcgill.ca/~pulsar/magnetar/main.html),
-maintained by the McGill Pulsar Group. Please cite
-[Olausen & Kaspi (2014), ApJS 212, 6](http://adsabs.harvard.edu/abs/2014ApJS..212....6O)
-and refer to the catalog URL when using this data.
-
-## Related datasets
-
-- [pulsars](https://huggingface.co/datasets/juliensimon/pulsar-catalog) — ATNF Pulsar Catalogue (3,400+ pulsars)
-- [gamma-ray-bursts](https://huggingface.co/datasets/juliensimon/gamma-ray-bursts) — HEASARC GRB catalog
-- [fermi-4fgl](https://huggingface.co/datasets/juliensimon/fermi-4fgl-dr4) — Fermi LAT 4FGL source catalog
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/mcgill-magnetar-catalog) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{mcgill_magnetar_catalog,
-  author = {{Simon, Julien}},
-  title = {{McGill Online Magnetar Catalog}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/mcgill-magnetar-catalog}},
-  note = {{Based on the McGill Online Magnetar Catalog (Olausen \\& Kaspi 2014, ApJS 212, 6)}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", f"Update McGill magnetar catalog: {len(df)} magnetars"],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="McGill Online Magnetar Catalog",
+        description=DESCRIPTION,
+        tags=["space", "magnetars", "neutron-stars", "x-ray", "astronomy",
+              "open-data", "tabular-data", "parquet"],
+        source_url="http://www.physics.mcgill.ca/~pulsar/magnetar/main.html",
+        task_categories=["tabular-classification", "tabular-regression"],
+        collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-67ac2ada12aceb39f8feca3b",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA23863/PIA23863~small.jpg",
+            "alt": "Illustration of different types of neutron stars",
+            "credit": "NASA/JPL-Caltech",
+        },
+        related_datasets=[
+            "juliensimon/pulsar-catalog",
+            "juliensimon/gamma-ray-bursts",
+            "juliensimon/fermi-4fgl-dr4",
+        ],
+    ) as p:
+        df = p.clean(df, drop_mostly_null_threshold=0.95)
+        p.publish(
+            df,
+            filename="mcgill_magnetar_catalog.parquet",
+            min_rows=20,
+            expected_columns=["name", "ra_deg", "dec_deg", "period_s",
+                              "period_derivative", "magnetic_field_g",
+                              "characteristic_age_yr", "xray_luminosity_erg_s",
+                              "distance_kpc", "association"],
+            critical_columns=["name", "ra_deg", "dec_deg"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update McGill magnetar catalog: {len(df)} magnetars",
         )
-
-    print(f"rows={len(df)}")
     print("Done.")
 
 

@@ -8,17 +8,13 @@ Sources:
   - JPL SSD Physical Parameters:  https://ssd.jpl.nasa.gov/sats/phys_par/
 """
 
-import subprocess
-import tempfile
 import time
-from pathlib import Path
 
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
 
 HF_REPO = "juliensimon/solar-system-moons"
 MIN_ROWS = 200
@@ -28,6 +24,31 @@ ELEMENTS_URL = "https://ssd.jpl.nasa.gov/sats/elem/"
 PHYS_PAR_URL = "https://ssd.jpl.nasa.gov/sats/phys_par/"
 
 HEADERS = {"User-Agent": "SpaceDatasetsBot/1.0 (space-datasets HF pipeline)"}
+
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "name": "IAU name or provisional designation",
+    "parent_body": "Parent planet or dwarf planet",
+    "iau_number": "IAU Roman numeral designation",
+    "provisional_designation": "Survey designation (e.g. S/2003 J2)",
+    "discovery_year": "Year of discovery",
+    "discoverer": "Discoverer(s) or spacecraft mission",
+    "group": "Dynamical group/family (e.g. Galilean, Himalia, Norse)",
+    "semi_major_axis_km": "Mean orbital semi-major axis (km); ranges from ~128,000 km (Amalthea/Jupiter) to ~23.5 million km (Neso/Neptune)",
+    "eccentricity": "Mean orbital eccentricity; regular (prograde) moons: <0.1; irregular (captured) moons: often 0.1\u20130.7",
+    "inclination_deg": "Mean orbital inclination to the planet's equatorial plane (degrees, 0\u2013180); regular moons: <5\u00b0; irregular moons: can exceed 90\u00b0 (retrograde); see also is_retrograde",
+    "orbital_period_days": "Sidereal orbital period (days); range ~0.29 days (Metis/Jupiter) to ~9,000 days (distant irregular moons); negative values indicate retrograde direction in some source conventions",
+    "arg_periapsis_deg": "Argument of periapsis of the moon's orbit (degrees, 0\u2013360) at the reference epoch",
+    "mean_anomaly_deg": "Mean anomaly at the reference epoch (degrees, 0\u2013360); used together with other elements to compute position",
+    "long_ascending_node_deg": "Longitude of the ascending node (degrees, 0\u2013360) at the reference epoch",
+    "epoch": "Reference epoch for the orbital elements in Barycentric Dynamical Time (TDB) format",
+    "mean_radius_km": "Mean radius (km); available for major/well-characterised moons only; range <1 km (small inner moons) to 2,634 km (Ganymede); null for most irregular moons",
+    "diameter_km": "Mean diameter (km) = 2 \u00d7 mean_radius_km; derived column; null when radius is null",
+    "gm_km3s2": "Gravitational parameter GM = G \u00d7 mass (km\u00b3/s\u00b2); null for moons without a reliable mass determination",
+    "mean_density_gcm3": "Mean bulk density (g/cm\u00b3); icy moons: ~1.0\u20132.0 g/cm\u00b3; rocky moons: ~2.5\u20133.5 g/cm\u00b3; null when mass and radius are not both known",
+    "is_retrograde": "True if orbital inclination > 90\u00b0 (retrograde orbit); most retrograde moons are captured irregular bodies",
+    "jpl_code": "JPL Horizons numeric satellite identifier used to query ephemerides",
+}
 
 # Moon group/family classification based on orbital characteristics
 # Source: JPL + literature consensus
@@ -106,6 +127,59 @@ MOON_GROUPS = {
     "Charon": "Major", "Nix": "Minor", "Hydra": "Minor",
     "Kerberos": "Minor", "Styx": "Minor",
 }
+
+# Known spelling corrections in elements table -> discovery table
+ELEM_NAME_FIXES = {
+    "Magaclite": "Megaclite",
+    "Philophrosyn": "Philophrosyne",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Every known natural satellite of planets and dwarf planets in the Solar System \
+with orbital elements, physical parameters, and discovery data. Sourced from \
+NASA JPL Solar System Dynamics.
+
+This dataset catalogs all recognized natural satellites orbiting the major planets \
+(Earth through Neptune) and the dwarf planet Pluto, as maintained by NASA's Jet \
+Propulsion Laboratory (JPL) Solar System Dynamics group. Each record combines \
+discovery circumstances, mean orbital elements, and — where available — physical \
+parameters (radius, density, gravitational parameter).
+
+The dataset merges three authoritative JPL tables:
+- **Discovery circumstances** — name, parent body, year, discoverer
+- **Mean orbital elements** — semi-major axis, eccentricity, inclination, period
+- **Physical parameters** — mean radius, GM, density (for major moons)
+
+The natural satellites of the solar system span an extraordinary range of sizes, \
+compositions, and dynamical histories. At one extreme, Jupiter's Ganymede \
+(radius ~2,634 km) is larger than Mercury and possesses its own intrinsic \
+magnetic field. At the other, many recently discovered irregular satellites are \
+only a few kilometers across and occupy distant, highly inclined or retrograde \
+orbits that betray their origin as captured objects from the primordial small-body \
+population. The dynamical groupings recorded in this dataset — Galilean, Himalia, \
+Ananke, Carme, Pasiphae for Jupiter; Inuit, Gallic, Norse for Saturn — reflect \
+distinct capture and collisional fragmentation events that occurred during the \
+chaotic early evolution of the giant planet systems.
+
+Several moons in this catalog are among the most scientifically compelling worlds \
+in the solar system. Europa's subsurface ocean beneath its icy shell is a prime \
+target for astrobiology, while Enceladus actively vents water vapor and organic \
+molecules through its south polar tiger stripes. Titan maintains a dense \
+nitrogen-methane atmosphere with a complete hydrological cycle of methane rain, \
+rivers, and lakes. Io is the most volcanically active body known, driven by \
+intense tidal heating from its orbital resonance with Europa and Ganymede. \
+Triton, captured by Neptune from the Kuiper Belt, exhibits active nitrogen \
+geysers and a retrograde orbit that is gradually decaying.
+
+The orbital elements in this dataset encode fundamental information about \
+satellite dynamics: resonant relationships (such as the 1:2:4 Laplace resonance \
+of Io, Europa, and Ganymede), tidal evolution timescales, and the stability \
+boundaries that separate regular from irregular satellite populations. Combined \
+with physical parameters like density and radius, these data enable studies of \
+satellite formation, internal structure, and the delivery of volatiles to the \
+outer solar system.
+"""
 
 
 def fetch_soup(url: str) -> BeautifulSoup:
@@ -252,13 +326,6 @@ def _normalize_name(name: str) -> str:
     return s.lower().replace(" ", "").replace("/", "").replace("_", "")
 
 
-# Known spelling corrections in elements table -> discovery table
-ELEM_NAME_FIXES = {
-    "Magaclite": "Megaclite",
-    "Philophrosyn": "Philophrosyne",
-}
-
-
 def classify_irregular(row: pd.Series) -> str:
     """Classify unnamed/unclassified moons based on orbital elements."""
     planet = row.get("parent_body", "")
@@ -293,12 +360,12 @@ def classify_irregular(row: pd.Series) -> str:
 
 
 def main():
-    # ── Fetch all three JPL data sources ──────────────────────────────────
+    # ── Fetch all three JPL data sources ──────────────────────────────
     discovery_df = parse_discovery()
     elements_df = parse_elements()
     phys_params = parse_physical()
 
-    # ── Prepare orbital elements for merge ────────────────────────────────
+    # ── Prepare orbital elements for merge ────────────────────────────
     elem_rename = {
         "Planet": "parent_body",
         "Satellite": "name",
@@ -307,7 +374,7 @@ def main():
         "e": "eccentricity",
         "i(deg)": "inclination_deg",
         "P(days)": "orbital_period_days",
-        "ω(deg)": "arg_periapsis_deg",
+        "\u03c9(deg)": "arg_periapsis_deg",
         "M(deg)": "mean_anomaly_deg",
         "node(deg)": "long_ascending_node_deg",
         "Epoch(TDB)": "epoch",
@@ -334,7 +401,7 @@ def main():
                 elements_df[col].str.rstrip("."), errors="coerce"
             )
 
-    # ── Merge discovery + elements ────────────────────────────────────────
+    # ── Merge discovery + elements ────────────────────────────────────
     # The two JPL tables use different naming conventions for provisional
     # designations: discovery uses "S/2003 J10", elements uses "S2003_J_10".
     # We create a normalized join key for fuzzy matching.
@@ -369,7 +436,7 @@ def main():
     # Clean up temp columns
     df = df.drop(columns=["_join_key", "_elem_name"], errors="ignore")
 
-    # ── Add physical parameters ───────────────────────────────────────────
+    # ── Add physical parameters ───────────────────────────────────────
     df["gm_km3s2"] = df["name"].map(
         lambda n: phys_params.get(n, {}).get("gm_km3s2"))
     df["mean_radius_km"] = df["name"].map(
@@ -379,24 +446,24 @@ def main():
     df["diameter_km"] = df["mean_radius_km"].apply(
         lambda r: round(r * 2, 2) if pd.notna(r) else None)
 
-    # ── Discovery year ────────────────────────────────────────────────────
+    # ── Discovery year ────────────────────────────────────────────────
     df["discovery_year"] = pd.to_numeric(df["discovery_year"], errors="coerce")
     df["discovery_year"] = df["discovery_year"].astype("Int64")
 
-    # ── Moon group/family classification ──────────────────────────────────
+    # ── Moon group/family classification ──────────────────────────────
     df["group"] = df["name"].map(MOON_GROUPS)
     # For unclassified moons, attempt classification from orbital elements
     mask = df["group"].isna()
     df.loc[mask, "group"] = df.loc[mask].apply(classify_irregular, axis=1)
 
-    # ── Derived columns ───────────────────────────────────────────────────
+    # ── Derived columns ───────────────────────────────────────────────
     df["is_retrograde"] = df["inclination_deg"].apply(
         lambda i: i > 90 if pd.notna(i) else None
     )
     # Convert to boolean with nullable type
     df["is_retrograde"] = df["is_retrograde"].astype("boolean")
 
-    # ── Column ordering ───────────────────────────────────────────────────
+    # ── Column ordering ───────────────────────────────────────────────
     col_order = [
         "name", "parent_body", "iau_number", "provisional_designation",
         "discovery_year", "discoverer", "group",
@@ -409,7 +476,7 @@ def main():
     col_order = [c for c in col_order if c in df.columns]
     df = df[col_order]
 
-    # ── Sort ──────────────────────────────────────────────────────────────
+    # ── Sort ──────────────────────────────────────────────────────────
     planet_order = {
         "Earth": 0, "Mars": 1, "Jupiter": 2, "Saturn": 3,
         "Uranus": 4, "Neptune": 5, "Pluto": 6,
@@ -421,7 +488,7 @@ def main():
         na_position="last",
     ).drop(columns=["_sort"]).reset_index(drop=True)
 
-    # ── Round floats ──────────────────────────────────────────────────────
+    # ── Round floats ──────────────────────────────────────────────────
     for col in ["semi_major_axis_km", "eccentricity", "inclination_deg",
                 "orbital_period_days", "arg_periapsis_deg", "mean_anomaly_deg",
                 "long_ascending_node_deg", "gm_km3s2", "mean_density_gcm3"]:
@@ -430,7 +497,10 @@ def main():
     if "mean_radius_km" in df.columns:
         df["mean_radius_km"] = df["mean_radius_km"].round(2)
 
-    # ── Stats ─────────────────────────────────────────────────────────────
+    # ── Keep only columns with descriptions ───────────────────────────
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
+
+    # ── Stats ─────────────────────────────────────────────────────────
     n_total = len(df)
     by_planet = df["parent_body"].value_counts()
     n_with_radius = int(df["mean_radius_km"].notna().sum())
@@ -446,141 +516,29 @@ def main():
     print(f"  {n_with_radius} with radius, {n_with_orbit} with orbital elements")
     print(f"  {n_retrograde} retrograde, discovery years {year_min}-{year_max}")
 
-    # ── Validate ──────────────────────────────────────────────────────────
-    check_dataset(
-        df,
-        dataset_name="solar-system-moons",
-        min_rows=MIN_ROWS,
-        expected_columns=[
-            "name", "parent_body", "discovery_year", "discoverer",
-            "semi_major_axis_km", "eccentricity", "inclination_deg",
-            "orbital_period_days",
-        ],
-        critical_columns=["name", "parent_body", "semi_major_axis_km"],
-        max_null_pct=0.05,
+    planet_summary = "\n".join(
+        f"- **{planet}**: {count} moons"
+        for planet, count in by_planet.items()
     )
-
-    # ── Write parquet + README ────────────────────────────────────────────
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "solar_system_moons.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.2f} MB parquet")
-
-        planet_summary = "\n".join(
-            f"- **{planet}**: {count} moons"
-            for planet, count in by_planet.items()
+    largest_info = ""
+    if largest is not None:
+        largest_info = (
+            f"\n- Largest moon: **{largest['name']}** "
+            f"({largest['parent_body']}, "
+            f"radius {largest['mean_radius_km']:,.1f} km)"
         )
-        largest_info = ""
-        if largest is not None:
-            largest_info = (
-                f"- Largest moon: **{largest['name']}** "
-                f"({largest['parent_body']}, "
-                f"radius {largest['mean_radius_km']:,.1f} km)"
-            )
 
-        banner_file = download_banner("solar-system-moons", tmp)
-        banner_md = banner_markdown("solar-system-moons", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Solar System Moons"
-language:
-  - en
-description: "All {n_total} known natural satellites of planets and dwarf planets in the Solar System with orbital elements, physical parameters, and discovery data. Sourced from NASA JPL Solar System Dynamics."
-task_categories:
-  - tabular-classification
-  - tabular-regression
-tags:
-  - space
-  - moons
-  - planets
-  - solar-system
-  - planetary-science
-  - open-data
-  - natural-satellites
-  - orbital-mechanics
-  - jpl
-  - tabular-data
-  - parquet
-size_categories:
-  - n<1K
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/solar_system_moons.parquet
-    default: true
----
-
-# Solar System Moons
-{banner_md}
-*Part of the [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-68214dab0f1e965e6741fcd2) collection on Hugging Face.*
-
-Every known natural satellite of planets and dwarf planets in the Solar System \u2014
-currently **{n_total}** moons spanning discovery years **{year_min}** to **{year_max}**.
-
-## Dataset description
-
-This dataset catalogs all recognized natural satellites orbiting the major planets
-(Earth through Neptune) and the dwarf planet Pluto, as maintained by NASA's Jet
-Propulsion Laboratory (JPL) Solar System Dynamics group. Each record combines
-discovery circumstances, mean orbital elements, and \u2014 where available \u2014 physical
-parameters (radius, density, gravitational parameter).
-
-The dataset merges three authoritative JPL tables:
-- **Discovery circumstances** \u2014 name, parent body, year, discoverer
-- **Mean orbital elements** \u2014 semi-major axis, eccentricity, inclination, period
-- **Physical parameters** \u2014 mean radius, GM, density (for {n_with_radius} major moons)
-
-The natural satellites of the solar system span an extraordinary range of sizes, compositions, and dynamical histories. At one extreme, Jupiter's Ganymede (radius ~2,634 km) is larger than Mercury and possesses its own intrinsic magnetic field. At the other, many recently discovered irregular satellites are only a few kilometers across and occupy distant, highly inclined or retrograde orbits that betray their origin as captured objects from the primordial small-body population. The dynamical groupings recorded in this dataset — Galilean, Himalia, Ananke, Carme, Pasiphae for Jupiter; Inuit, Gallic, Norse for Saturn — reflect distinct capture and collisional fragmentation events that occurred during the chaotic early evolution of the giant planet systems.
-
-Several moons in this catalog are among the most scientifically compelling worlds in the solar system. Europa's subsurface ocean beneath its icy shell is a prime target for astrobiology, while Enceladus actively vents water vapor and organic molecules through its south polar tiger stripes. Titan maintains a dense nitrogen-methane atmosphere with a complete hydrological cycle of methane rain, rivers, and lakes. Io is the most volcanically active body known, driven by intense tidal heating from its orbital resonance with Europa and Ganymede. Triton, captured by Neptune from the Kuiper Belt, exhibits active nitrogen geysers and a retrograde orbit that is gradually decaying.
-
-The orbital elements in this dataset encode fundamental information about satellite dynamics: resonant relationships (such as the 1:2:4 Laplace resonance of Io, Europa, and Ganymede), tidal evolution timescales, and the stability boundaries that separate regular from irregular satellite populations. Combined with physical parameters like density and radius, these data enable studies of satellite formation, internal structure, and the delivery of volatiles to the outer solar system.
-
-## Quick stats
-
+    quick_stats = f"""\
+- **{n_total}** total moons
 {planet_summary}
 - **{n_with_orbit}** moons with orbital elements
 - **{n_with_radius}** moons with measured radius
-- **{n_retrograde}** retrograde moons (inclination > 90\u00b0)
-{largest_info}
+- **{n_retrograde}** retrograde moons (inclination > 90\u00b0){largest_info}"""
 
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `name` | string | IAU name or provisional designation |
-| `parent_body` | string | Parent planet or dwarf planet |
-| `iau_number` | string | IAU Roman numeral designation |
-| `provisional_designation` | string | Survey designation (e.g. S/2003 J2) |
-| `discovery_year` | int64 | Year of discovery |
-| `discoverer` | string | Discoverer(s) or spacecraft mission |
-| `group` | string | Dynamical group/family (e.g. Galilean, Himalia, Norse) |
-| `semi_major_axis_km` | float64 | Mean orbital semi-major axis (km); ranges from ~128,000 km (Amalthea/Jupiter) to ~23.5 million km (Neso/Neptune) |
-| `eccentricity` | float64 | Mean orbital eccentricity; regular (prograde) moons: <0.1; irregular (captured) moons: often 0.1â0.7 |
-| `inclination_deg` | float64 | Mean orbital inclination to the planet's equatorial plane (degrees, 0â180); regular moons: <5°; irregular moons: can exceed 90° (retrograde); see also is_retrograde |
-| `orbital_period_days` | float64 | Sidereal orbital period (days); range ~0.29 days (Metis/Jupiter) to ~9,000 days (distant irregular moons); negative values indicate retrograde direction in some source conventions |
-| `arg_periapsis_deg` | float64 | Argument of periapsis of the moon's orbit (degrees, 0â360) at the reference epoch |
-| `mean_anomaly_deg` | float64 | Mean anomaly at the reference epoch (degrees, 0â360); used together with other elements to compute position |
-| `long_ascending_node_deg` | float64 | Longitude of the ascending node (degrees, 0â360) at the reference epoch |
-| `epoch` | string | Reference epoch for the orbital elements in Barycentric Dynamical Time (TDB) format |
-| `mean_radius_km` | float64 | Mean radius (km); available for major/well-characterised moons only; range <1 km (small inner moons) to 2,634 km (Ganymede); null for most irregular moons |
-| `diameter_km` | float64 | Mean diameter (km) = 2 × mean_radius_km; derived column; null when radius is null |
-| `gm_km3s2` | float64 | Gravitational parameter GM = G × mass (km\u00b3/s\u00b2); null for moons without a reliable mass determination |
-| `mean_density_gcm3` | float64 | Mean bulk density (g/cm\u00b3); icy moons: ~1.0â2.0 g/cm\u00b3; rocky moons: ~2.5â3.5 g/cm\u00b3; null when mass and radius are not both known |
-| `is_retrograde` | bool | True if orbital inclination > 90\u00b0 (retrograde orbit); most retrograde moons are captured irregular bodies |
-| `jpl_code` | string | JPL Horizons numeric satellite identifier used to query ephemerides |
-
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
+import matplotlib.pyplot as plt
 
 ds = load_dataset("juliensimon/solar-system-moons", split="train")
 df = ds.to_pandas()
@@ -597,55 +555,62 @@ retro = df[df["is_retrograde"] == True].sort_values("orbital_period_days")
 # Largest moons by radius
 biggest = df.dropna(subset=["mean_radius_km"]).nlargest(10, "mean_radius_km")
 
+# Plot moon sizes by planet
+fig, ax = plt.subplots(figsize=(10, 6))
+for planet in ["Jupiter", "Saturn", "Uranus", "Neptune"]:
+    subset = df[(df["parent_body"] == planet) & df["mean_radius_km"].notna()]
+    ax.scatter(subset["semi_major_axis_km"] / 1e6, subset["mean_radius_km"],
+               label=planet, alpha=0.7, s=40)
+ax.set_xlabel("Semi-major axis (million km)")
+ax.set_ylabel("Mean radius (km)")
+ax.set_title("Moon size vs. orbital distance")
+ax.set_xscale("log")
+ax.set_yscale("log")
+ax.legend()
+plt.tight_layout()
+plt.show()
+
 # Recent discoveries (2020+)
 recent = df[df["discovery_year"] >= 2020]
-```
+```"""
 
-## Data sources
-
-- [JPL SSD Satellite Discovery](https://ssd.jpl.nasa.gov/sats/discovery.html) \u2014 names, parents, discovery circumstances
-- [JPL SSD Orbital Elements](https://ssd.jpl.nasa.gov/sats/elem/) \u2014 mean orbital elements
-- [JPL SSD Physical Parameters](https://ssd.jpl.nasa.gov/sats/phys_par/) \u2014 radius, density, GM
-
-## Related datasets
-
-- [neo-close-approaches](https://huggingface.co/datasets/juliensimon/neo-close-approaches) \u2014 NEO close approaches from JPL CNEOS
-- [exoplanets](https://huggingface.co/datasets/juliensimon/nasa-exoplanets) \u2014 NASA Exoplanet Archive
-- [asteroid-orbits](https://huggingface.co/datasets/juliensimon/jpl-small-body-database) \u2014 All asteroid orbital elements
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/solar-system-moons) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{solar_system_moons,
-  author = {{Simon, Julien}},
-  title = {{Solar System Moons}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/solar-system-moons}},
-  note = {{Based on NASA/JPL Solar System Dynamics satellite data}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Solar system moons: {n_total} natural satellites"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    # ── Publish via Pipeline ──────────────────────────────────────────
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Solar System Moons",
+        description=DESCRIPTION,
+        tags=["space", "moons", "planets", "solar-system", "planetary-science",
+              "open-data", "natural-satellites", "orbital-mechanics", "jpl",
+              "tabular-data", "parquet"],
+        source_url="https://ssd.jpl.nasa.gov/sats/discovery.html",
+        task_categories=["tabular-classification", "tabular-regression"],
+        collection_url="https://huggingface.co/collections/juliensimon/planetary-science-datasets-68214dab0f1e965e6741fcd2",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA00600/PIA00600~small.jpg",
+            "alt": "Jupiter's Great Red Spot and the Galilean satellites",
+            "credit": "NASA/JPL-Caltech",
+        },
+        related_datasets=[
+            "juliensimon/neo-close-approaches",
+            "juliensimon/nasa-exoplanets",
+            "juliensimon/jpl-small-body-database",
+        ],
+    ) as p:
+        p.publish(
+            df,
+            filename="solar_system_moons.parquet",
+            min_rows=MIN_ROWS,
+            expected_columns=[
+                "name", "parent_body", "discovery_year", "discoverer",
+                "semi_major_axis_km", "eccentricity", "inclination_deg",
+                "orbital_period_days",
+            ],
+            critical_columns=["name", "parent_body", "semi_major_axis_km"],
+            max_null_pct=0.05,
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Solar system moons: {n_total} natural satellites",
         )
 
     print(f"Done. {n_total} moons uploaded to {HF_REPO}")

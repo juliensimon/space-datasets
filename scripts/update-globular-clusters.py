@@ -14,23 +14,72 @@ Sources:
 """
 
 import re
-import subprocess
-import tempfile
 import time
-from io import StringIO
-from pathlib import Path
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
 
 BAUMGARDT_URL = "https://people.smp.uq.edu.au/HolgerBaumgardt/globular/combined_table.txt"
 HARRIS_URL = "https://physics.mcmaster.ca/~harris/mwgc.dat"
 
 HF_REPO = "juliensimon/globular-star-clusters"
 MIN_ROWS = 100
+
+
+# ── Column descriptions for README schema table ─────────────────────────────
+COLUMN_DESCRIPTIONS = {
+    "name": "Cluster name (e.g. 'NGC 104', 'Pal 5'); Baumgardt name where available, Harris name otherwise",
+    "ra_deg": "Right ascension of the cluster center in decimal degrees, J2000.0 epoch",
+    "dec_deg": "Declination of the cluster center in decimal degrees, J2000.0 epoch",
+    "distance_kpc": "Distance from the Sun (kpc; 1 kpc = 3260 light-years); derived from Baumgardt N-body fits to Gaia proper motions and HST data; typical range 2–100 kpc",
+    "distance_err_kpc": "1-sigma uncertainty on the heliocentric distance (kpc) from the Baumgardt N-body model fits; null for Harris-only clusters",
+    "distance_gc_kpc": "Distance from the Galactic center (kpc), assuming R☉ = 8.1 kpc; used to study spatial distribution and orbital properties",
+    "distance_gc_err_kpc": "1-sigma uncertainty on the Galactocentric distance (kpc); null for Harris-only clusters",
+    "metallicity_fe_h": "Iron abundance [Fe/H] in dex (log₁₀ of Fe/H relative to the Sun); dex = decimal exponent, so [Fe/H] = -1 means 1/10 solar iron; typical globular cluster range -2.5 to +0.5; lower values indicate older, more metal-poor clusters",
+    "reddening_e_bv": "Foreground dust reddening E(B−V) in magnitudes from the Harris catalog; measures differential extinction between B and V bands due to interstellar dust along the line of sight; must be corrected before comparing intrinsic colors",
+    "apparent_mag_v": "Apparent integrated V-band (550 nm) magnitude summing light from all cluster member stars; this is the total cluster flux, not a single star's brightness; typical range 5–16 mag; Baumgardt value where available, Harris otherwise",
+    "absolute_mag_v": "Absolute integrated V-band magnitude (apparent magnitude corrected for distance and reddening); proxy for total stellar luminosity; typical range -5 to -10 mag; null for Baumgardt-only clusters",
+    "distance_modulus_v": "V-band distance modulus μ = m_V − M_V (mag), where μ = 5 log₁₀(d/10 pc); includes reddening; null for Baumgardt-only clusters",
+    "color_u_b": "Integrated U−B color index (mag) from Harris catalog; measures the integrated stellar population color; redder values indicate more dust reddening or more metal-rich/older populations; null for Baumgardt-only clusters",
+    "color_b_v": "Integrated B−V color index (mag) from Harris catalog; measures the integrated stellar population color; redder values indicate more dust reddening or more metal-rich/older populations; null for Baumgardt-only clusters",
+    "color_v_r": "Integrated V−R color index (mag) from Harris catalog; measures the integrated stellar population color; redder values indicate more dust reddening or more metal-rich/older populations; null for Baumgardt-only clusters",
+    "color_v_i": "Integrated V−I color index (mag) from Harris catalog; measures the integrated stellar population color; redder values indicate more dust reddening or more metal-rich/older populations; null for Baumgardt-only clusters",
+    "spectral_type": "Integrated spectral type of the cluster from the Harris catalog (e.g. 'F5', 'G0'); reflects the luminosity-weighted mean stellar temperature; null for most clusters",
+    "ellipticity": "Projected ellipticity e = 1 − b/a where a and b are the major and minor axis lengths; 0 = perfectly circular, values up to ~0.3 for the most flattened clusters; from Harris catalog",
+    "mass_msun": "Total dynamical mass (M☉) from Baumgardt N-body fits to velocity dispersion profiles; typical range 10⁴–10⁶ M☉; null for Harris-only clusters",
+    "mass_err_msun": "1-sigma uncertainty on the total dynamical mass (M☉) from the N-body fit; null for Harris-only clusters",
+    "mass_to_light_v": "Present-day V-band mass-to-light ratio (M☉/L☉); higher values indicate more mass in faint or dark remnants (neutron stars, black holes, white dwarfs); typical range 1–4 M☉/L☉",
+    "mass_to_light_v_err": "1-sigma uncertainty on the V-band mass-to-light ratio (M☉/L☉)",
+    "log_initial_mass_msun": "Log₁₀ of the initial (birth) cluster mass (M☉) estimated from the present-day mass and the modeled mass lost to stellar evolution and tidal stripping",
+    "dissolution_time_gyr": "Predicted time until the cluster is fully disrupted by the Galactic tidal field (Gyr), based on current mass and orbit; null for Harris-only clusters",
+    "core_radius_pc": "Core radius r_c (pc): the projected radius at which the surface brightness falls to half its central value in a King model; small values (~0.1 pc) indicate a dense or core-collapsed cluster",
+    "half_light_radius_pc": "Projected (2D) half-light radius r_h (pc): the radius enclosing half the cluster's total V-band luminosity as seen on the sky; the most directly observable structural size parameter",
+    "half_mass_radius_pc": "Three-dimensional half-mass radius r_hm (pc) from N-body fits: the radius enclosing half the total cluster mass in 3D; slightly larger than the projected half-light radius",
+    "tidal_radius_pc": "Tidal (Jacobi) radius r_t (pc): the distance from the cluster center at which the Galactic tidal force equals the cluster's self-gravity; stars beyond this radius are unbound",
+    "log_central_density_msun_pc3": "Log₁₀ of the central mass density (M☉/pc³) from N-body fits; core-collapsed clusters can exceed 10⁶ M☉/pc³",
+    "log_half_mass_density_msun_pc3": "Log₁₀ of the mean mass density within the 3D half-mass radius (M☉/pc³); less sensitive to core-collapse than central density",
+    "log_central_surface_density_msun_pc2": "Log₁₀ of the projected central surface mass density (M☉/pc²); the column density at the cluster center",
+    "log_half_mass_surface_density_msun_pc2": "Log₁₀ of the mean projected surface mass density within the projected half-mass radius (M☉/pc²)",
+    "log_half_mass_relaxation_time_yr": "Log₁₀ of the half-mass relaxation time (yr): the timescale on which two-body gravitational encounters redistribute energy and erase memory of initial conditions; clusters with log T_rh < 10 are dynamically evolved",
+    "velocity_dispersion_km_s": "Central 1D line-of-sight velocity dispersion σ₀ (km/s) from N-body fits; related to cluster mass via the virial theorem; typical range 2–20 km/s; null for Harris-only clusters",
+    "escape_velocity_km_s": "Central escape velocity v_esc (km/s) from the cluster potential; stars moving faster than this are unbound; typical range 10–50 km/s",
+    "radial_velocity_km_s": "Heliocentric line-of-sight (systemic) radial velocity of the cluster (km/s) from Harris catalog; positive = receding; used to determine cluster orbits",
+    "radial_velocity_err_km_s": "1-sigma uncertainty on the systemic radial velocity (km/s)",
+    "anisotropy_central": "Velocity anisotropy parameter η at the center; η > 0 indicates radially biased orbits, η < 0 tangentially biased; isotropic = 0",
+    "anisotropy_half_mass": "Velocity anisotropy parameter η at the half-mass radius; η > 0 indicates radially biased orbits, η < 0 tangentially biased; isotropic = 0",
+    "rotation_amplitude_km_s": "Peak amplitude of internal cluster rotation (km/s) from Baumgardt fits; higher values indicate significant solid-body-like rotation",
+    "rotation_probability_pct": "Statistical probability (%) that the detected rotation signal is real rather than noise; values > 95% are considered significant detections",
+    "mass_function_slope": "Present-day stellar mass function slope α (where dN/dm ∝ m^α) over the fitted mass range; a steep negative slope (e.g. α ~ -2) means many low-mass stars; a flat or positive slope indicates preferential loss of low-mass stars through tidal stripping",
+    "mass_function_slope_err": "1-sigma uncertainty on the present-day mass function slope α",
+    "mass_function_low_msun": "Lower stellar mass limit (M☉) over which the mass function slope was fitted",
+    "mass_function_high_msun": "Upper stellar mass limit (M☉) over which the mass function slope was fitted",
+    "n_radial_velocity_stars": "Number of individual member stars with radial velocity measurements used in the Baumgardt N-body fit; larger samples yield more reliable dispersion profiles",
+    "n_proper_motion_stars": "Number of individual member stars with proper motion measurements (mostly from Gaia DR3) used in the N-body fit",
+    "core_collapsed": "True if the cluster has undergone core collapse (gravothermal catastrophe), as flagged in the Harris catalog; core-collapsed clusters show a cusp-like central brightness profile rather than a flat core",
+    "concentration_harris": "King-model concentration parameter c = log₁₀(r_t / r_c), the log ratio of tidal to core radius; higher c means a more centrally concentrated cluster; null for Baumgardt-only clusters; core-collapsed clusters are assigned c = 2.5 by convention",
+}
 
 
 # ── Name normalisation ──────────────────────────────────────────────────────
@@ -221,6 +270,54 @@ def fetch_harris() -> pd.DataFrame:
     return harris
 
 
+# ── Dataset description ──────────────────────────────────────────────────────
+DESCRIPTION = """\
+Comprehensive catalog of Milky Way globular clusters merging the Harris (2010) \
+and Baumgardt databases. Includes positions, distances, metallicities, masses, \
+velocity dispersions, structural parameters, and photometry.
+
+Globular clusters are ancient, gravitationally bound collections of stars orbiting the Milky Way. \
+They are among the oldest objects in the Galaxy (10--13 Gyr), with typical masses of \
+10⁴--10⁶ M☉ and half-light radii of a few parsecs. Their metallicities, dynamics, \
+and spatial distribution encode the formation and assembly history of the Milky Way.
+
+This dataset combines Harris (2010) photometric and chemical data with Baumgardt's dynamical \
+parameters derived from N-body fits to modern astrometric and spectroscopic data, providing \
+the most complete per-cluster view available.
+
+Globular clusters formed in the early universe, within the first few billion years after the \
+Big Bang, and their metallicity distribution preserves a fossil record of the chemical \
+enrichment conditions at that epoch. The bimodal metallicity distribution observed in many \
+galaxies -- with a metal-poor peak near [Fe/H] ~ -1.5 and a metal-rich peak near \
+[Fe/H] ~ -0.5 -- is widely interpreted as evidence for two distinct formation channels: \
+an in-situ population formed during the early collapse of the proto-Galaxy, and an accreted \
+population brought in by satellite galaxies that were subsequently tidally disrupted. The \
+combination of metallicity, age, and orbital parameters in this catalog enables assignment \
+of individual clusters to these formation channels, linking them to specific accretion \
+events identified in the Gaia era such as the Gaia-Enceladus/Sausage merger and the \
+Sequoia and Helmi streams.
+
+The dynamical parameters from the Baumgardt database are derived from sophisticated N-body \
+models fit simultaneously to Gaia proper motion profiles and HST/ground-based velocity \
+dispersion profiles. These fits yield not only total masses but also the internal mass \
+function slope, which encodes the degree to which a cluster has been stripped of its \
+low-mass stars by two-body relaxation and tidal interactions. Clusters with flat or \
+inverted mass functions have lost a large fraction of their initial low-mass population, \
+while those retaining steep mass functions are dynamically younger. The dissolution \
+timescale provided in this catalog predicts how long each cluster will survive before \
+being fully disrupted by the Galactic tidal field.
+
+Core-collapsed clusters -- flagged in this catalog from the Harris compilation -- represent \
+systems that have undergone gravothermal catastrophe, a runaway contraction of the core \
+driven by the negative heat capacity of self-gravitating systems. In these clusters, the \
+core has contracted to a cusp-like density profile sustained by binary star heating, and \
+the central density can exceed 10^6 solar masses per cubic parsec. The structural parameters \
+(core radius, half-light radius, tidal radius, concentration) together with the velocity \
+dispersion and anisotropy profiles provide a complete dynamical portrait of each cluster, \
+suitable for comparison with theoretical models and numerical simulations.
+"""
+
+
 def main():
     baumgardt = fetch_baumgardt()
     time.sleep(1)
@@ -329,6 +426,9 @@ def main():
     if "core_collapsed" in out.columns:
         out["core_collapsed"] = out["core_collapsed"].fillna(False).astype(bool)
 
+    # Keep only columns with descriptions
+    out = out[[c for c in out.columns if c in COLUMN_DESCRIPTIONS]]
+
     # Sort by name
     out = out.sort_values("name").reset_index(drop=True)
 
@@ -348,174 +448,17 @@ def main():
     print(f"  {n_with_mass} with mass, {n_with_feh} with [Fe/H], {n_with_vdisp} with velocity dispersion")
     print(f"  {n_cc} core-collapsed")
 
-    # ── Validate ─────────────────────────────────────────────────────────
-    check_dataset(
-        out,
-        "globular-star-clusters",
-        min_rows=MIN_ROWS,
-        expected_columns=[
-            "name", "ra_deg", "dec_deg", "distance_kpc",
-            "metallicity_fe_h", "mass_msun", "velocity_dispersion_km_s",
-            "half_light_radius_pc", "core_radius_pc",
-        ],
-        critical_columns=["name", "ra_deg", "dec_deg"],
-        max_null_pct=0.15,
-    )
-
-    # ── Write and upload ─────────────────────────────────────────────────
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        parquet_file = data_dir / "globular_star_clusters.parquet"
-        out.to_parquet(parquet_file, index=False, engine="pyarrow", compression="zstd")
-        size_kb = parquet_file.stat().st_size / 1024
-        print(f"  {size_kb:.1f} KB parquet ({len(out)} rows, {len(out.columns)} columns)")
-
-        banner_file = download_banner("globular-clusters", tmp)
-        banner_md = banner_markdown("globular-clusters", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Milky Way Globular Star Clusters"
-language:
-  - en
-description: "Comprehensive catalog of {n_total} Milky Way globular clusters merging the Harris (2010) and Baumgardt databases. Includes positions, distances, metallicities, masses, velocity dispersions, structural parameters, and photometry."
-task_categories:
-  - tabular-classification
-  - tabular-regression
-tags:
-  - space
-  - globular-clusters
-  - stars
-  - milky-way
-  - astronomy
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - n<1K
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/globular_star_clusters.parquet
-    default: true
----
-
-# Milky Way Globular Star Clusters
-{banner_md}
-*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-67ac2ada12aceb39f8feca3b) collection on Hugging Face.*
-
-A comprehensive catalog of **{n_total}** Milky Way globular clusters, merging two authoritative sources:
-the [Harris (2010 edition)](https://physics.mcmaster.ca/~harris/mwgc.dat) catalog for metallicities and
-photometry, and the [Baumgardt globular cluster database](https://people.smp.uq.edu.au/HolgerBaumgardt/globular/)
-for dynamical masses, velocity dispersions, and structural parameters from N-body model fits to
-Gaia DR3 proper motions and HST data.
-
-## Dataset description
-
-Globular clusters are ancient, gravitationally bound collections of stars orbiting the Milky Way.
-They are among the oldest objects in the Galaxy (10--13 Gyr), with typical masses of
-10\u2074--10\u2076 M\u2609 and half-light radii of a few parsecs. Their metallicities, dynamics,
-and spatial distribution encode the formation and assembly history of the Milky Way.
-
-This dataset combines Harris (2010) photometric and chemical data with Baumgardt's dynamical
-parameters derived from N-body fits to modern astrometric and spectroscopic data, providing
-the most complete per-cluster view available.
-
-Globular clusters formed in the early universe, within the first few billion years after the
-Big Bang, and their metallicity distribution preserves a fossil record of the chemical
-enrichment conditions at that epoch. The bimodal metallicity distribution observed in many
-galaxies -- with a metal-poor peak near [Fe/H] ~ -1.5 and a metal-rich peak near
-[Fe/H] ~ -0.5 -- is widely interpreted as evidence for two distinct formation channels:
-an in-situ population formed during the early collapse of the proto-Galaxy, and an accreted
-population brought in by satellite galaxies that were subsequently tidally disrupted. The
-combination of metallicity, age, and orbital parameters in this catalog enables assignment
-of individual clusters to these formation channels, linking them to specific accretion
-events identified in the Gaia era such as the Gaia-Enceladus/Sausage merger and the
-Sequoia and Helmi streams.
-
-The dynamical parameters from the Baumgardt database are derived from sophisticated N-body
-models fit simultaneously to Gaia proper motion profiles and HST/ground-based velocity
-dispersion profiles. These fits yield not only total masses but also the internal mass
-function slope, which encodes the degree to which a cluster has been stripped of its
-low-mass stars by two-body relaxation and tidal interactions. Clusters with flat or
-inverted mass functions have lost a large fraction of their initial low-mass population,
-while those retaining steep mass functions are dynamically younger. The dissolution
-timescale provided in this catalog predicts how long each cluster will survive before
-being fully disrupted by the Galactic tidal field.
-
-Core-collapsed clusters -- flagged in this catalog from the Harris compilation -- represent
-systems that have undergone gravothermal catastrophe, a runaway contraction of the core
-driven by the negative heat capacity of self-gravitating systems. In these clusters, the
-core has contracted to a cusp-like density profile sustained by binary star heating, and
-the central density can exceed 10^6 solar masses per cubic parsec. The structural parameters
-(core radius, half-light radius, tidal radius, concentration) together with the velocity
-dispersion and anisotropy profiles provide a complete dynamical portrait of each cluster,
-suitable for comparison with theoretical models and numerical simulations.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `name` | string | Cluster name (e.g. "NGC 104", "Pal 5"); Baumgardt name where available, Harris name otherwise |
-| `ra_deg` / `dec_deg` | float64 | Right ascension and declination of the cluster center in decimal degrees, J2000.0 epoch |
-| `distance_kpc` | float64 | Distance from the Sun (kpc; 1 kpc = 3260 light-years); derived from Baumgardt N-body fits to Gaia proper motions and HST data; typical range 2--100 kpc |
-| `distance_err_kpc` | float64 | 1-sigma uncertainty on the heliocentric distance (kpc) from the Baumgardt N-body model fits; null for Harris-only clusters |
-| `distance_gc_kpc` | float64 | Distance from the Galactic center (kpc), assuming R\u2609 = 8.1 kpc; used to study spatial distribution and orbital properties |
-| `distance_gc_err_kpc` | float64 | 1-sigma uncertainty on the Galactocentric distance (kpc); null for Harris-only clusters |
-| `metallicity_fe_h` | float64 | Iron abundance [Fe/H] in dex (log\u2081\u2080 of Fe/H relative to the Sun); dex = decimal exponent, so [Fe/H] = -1 means 1/10 solar iron; typical globular cluster range -2.5 to +0.5; lower values indicate older, more metal-poor clusters |
-| `reddening_e_bv` | float64 | Foreground dust reddening E(B\u2212V) in magnitudes from the Harris catalog; measures differential extinction between B and V bands due to interstellar dust along the line of sight; must be corrected before comparing intrinsic colors |
-| `apparent_mag_v` | float64 | Apparent integrated V-band (550 nm) magnitude summing light from all cluster member stars; this is the total cluster flux, not a single star's brightness; typical range 5--16 mag; Baumgardt value where available, Harris otherwise |
-| `absolute_mag_v` | float64 | Absolute integrated V-band magnitude (apparent magnitude corrected for distance and reddening); proxy for total stellar luminosity; typical range -5 to -10 mag; null for Baumgardt-only clusters |
-| `distance_modulus_v` | float64 | V-band distance modulus \u03bc = m_V \u2212 M_V (mag), where \u03bc = 5 log\u2081\u2080(d/10 pc); includes reddening; null for Baumgardt-only clusters |
-| `color_u_b` / `color_b_v` / `color_v_r` / `color_v_i` | float64 | Integrated broadband color indices (mag) from Harris catalog; measure the integrated stellar population color; redder values indicate more dust reddening or more metal-rich/older populations; null for Baumgardt-only clusters |
-| `spectral_type` | string | Integrated spectral type of the cluster from the Harris catalog (e.g. "F5", "G0"); reflects the luminosity-weighted mean stellar temperature; null for most clusters |
-| `ellipticity` | float64 | Projected ellipticity e = 1 \u2212 b/a where a and b are the major and minor axis lengths; 0 = perfectly circular, values up to ~0.3 for the most flattened clusters; from Harris catalog |
-| `mass_msun` | float64 | Total dynamical mass (M\u2609) from Baumgardt N-body fits to velocity dispersion profiles; typical range 10\u2074--10\u2076 M\u2609; null for Harris-only clusters |
-| `mass_err_msun` | float64 | 1-sigma uncertainty on the total dynamical mass (M\u2609) from the N-body fit; null for Harris-only clusters |
-| `mass_to_light_v` | float64 | Present-day V-band mass-to-light ratio (M\u2609/L\u2609); higher values indicate more mass in faint or dark remnants (neutron stars, black holes, white dwarfs); typical range 1--4 M\u2609/L\u2609 |
-| `mass_to_light_v_err` | float64 | 1-sigma uncertainty on the V-band mass-to-light ratio (M\u2609/L\u2609) |
-| `log_initial_mass_msun` | float64 | Log\u2081\u2080 of the initial (birth) cluster mass (M\u2609) estimated from the present-day mass and the modeled mass lost to stellar evolution and tidal stripping |
-| `dissolution_time_gyr` | float64 | Predicted time until the cluster is fully disrupted by the Galactic tidal field (Gyr), based on current mass and orbit; null for Harris-only clusters |
-| `core_radius_pc` | float64 | Core radius r_c (pc): the projected radius at which the surface brightness falls to half its central value in a King model; small values (~0.1 pc) indicate a dense or core-collapsed cluster |
-| `half_light_radius_pc` | float64 | Projected (2D) half-light radius r_h (pc): the radius enclosing half the cluster's total V-band luminosity as seen on the sky; the most directly observable structural size parameter |
-| `half_mass_radius_pc` | float64 | Three-dimensional half-mass radius r_hm (pc) from N-body fits: the radius enclosing half the total cluster mass in 3D; slightly larger than the projected half-light radius |
-| `tidal_radius_pc` | float64 | Tidal (Jacobi) radius r_t (pc): the distance from the cluster center at which the Galactic tidal force equals the cluster's self-gravity; stars beyond this radius are unbound |
-| `log_central_density_msun_pc3` | float64 | Log\u2081\u2080 of the central mass density (M\u2609/pc\u00b3) from N-body fits; core-collapsed clusters can exceed 10\u2076 M\u2609/pc\u00b3 |
-| `log_half_mass_density_msun_pc3` | float64 | Log\u2081\u2080 of the mean mass density within the 3D half-mass radius (M\u2609/pc\u00b3); less sensitive to core-collapse than central density |
-| `log_central_surface_density_msun_pc2` | float64 | Log\u2081\u2080 of the projected central surface mass density (M\u2609/pc\u00b2); the column density at the cluster center |
-| `log_half_mass_surface_density_msun_pc2` | float64 | Log\u2081\u2080 of the mean projected surface mass density within the projected half-mass radius (M\u2609/pc\u00b2) |
-| `log_half_mass_relaxation_time_yr` | float64 | Log\u2081\u2080 of the half-mass relaxation time (yr): the timescale on which two-body gravitational encounters redistribute energy and erase memory of initial conditions; clusters with log T_rh < 10 are dynamically evolved |
-| `velocity_dispersion_km_s` | float64 | Central 1D line-of-sight velocity dispersion \u03c3\u2080 (km/s) from N-body fits; related to cluster mass via the virial theorem; typical range 2--20 km/s; null for Harris-only clusters |
-| `escape_velocity_km_s` | float64 | Central escape velocity v_esc (km/s) from the cluster potential; stars moving faster than this are unbound; typical range 10--50 km/s |
-| `radial_velocity_km_s` | float64 | Heliocentric line-of-sight (systemic) radial velocity of the cluster (km/s) from Harris catalog; positive = receding; used to determine cluster orbits |
-| `radial_velocity_err_km_s` | float64 | 1-sigma uncertainty on the systemic radial velocity (km/s) |
-| `anisotropy_central` / `anisotropy_half_mass` | float64 | Velocity anisotropy parameter \u03b7 at the center and half-mass radius; \u03b7 > 0 indicates radially biased orbits, \u03b7 < 0 tangentially biased; isotropic = 0 |
-| `rotation_amplitude_km_s` | float64 | Peak amplitude of internal cluster rotation (km/s) from Baumgardt fits; higher values indicate significant solid-body-like rotation |
-| `rotation_probability_pct` | float64 | Statistical probability (%) that the detected rotation signal is real rather than noise; values > 95% are considered significant detections |
-| `mass_function_slope` | float64 | Present-day stellar mass function slope \u03b1 (where dN/dm \u221d m^\u03b1) over the fitted mass range; a steep negative slope (e.g. \u03b1 ~ -2) means many low-mass stars; a flat or positive slope indicates preferential loss of low-mass stars through tidal stripping |
-| `mass_function_slope_err` | float64 | 1-sigma uncertainty on the present-day mass function slope \u03b1 |
-| `mass_function_low_msun` / `mass_function_high_msun` | float64 | Lower and upper stellar mass limits (M\u2609) over which the mass function slope was fitted |
-| `n_radial_velocity_stars` | int | Number of individual member stars with radial velocity measurements used in the Baumgardt N-body fit; larger samples yield more reliable dispersion profiles |
-| `n_proper_motion_stars` | int | Number of individual member stars with proper motion measurements (mostly from Gaia DR3) used in the N-body fit |
-| `core_collapsed` | bool | True if the cluster has undergone core collapse (gravothermal catastrophe), as flagged in the Harris catalog; core-collapsed clusters show a cusp-like central brightness profile rather than a flat core |
-| `concentration_harris` | float64 | King-model concentration parameter c = log\u2081\u2080(r_t / r_c), the log ratio of tidal to core radius; higher c means a more centrally concentrated cluster; null for Baumgardt-only clusters; core-collapsed clusters are assigned c = 2.5 by convention |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n_total}** Milky Way globular clusters
-- **{n_with_mass}** with dynamical mass estimates ({mass_min:.2e}\u2013{mass_max:.2e} M\u2609)
+- **{n_with_mass}** with dynamical mass estimates ({mass_min:.2e}–{mass_max:.2e} M☉)
 - **{n_with_feh}** with metallicity measurements ({feh_min:.2f} to {feh_max:.2f} dex)
 - **{n_with_vdisp}** with central velocity dispersions
-- **{n_cc}** identified as core-collapsed
+- **{n_cc}** identified as core-collapsed"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
+import matplotlib.pyplot as plt
 
 ds = load_dataset("juliensimon/globular-star-clusters", split="train")
 df = ds.to_pandas()
@@ -531,57 +474,50 @@ metal_rich = df[df["metallicity_fe_h"] >= -1.5]
 cc = df[df["core_collapsed"]]
 
 # Mass-metallicity relation
-import matplotlib.pyplot as plt
 plt.scatter(df["metallicity_fe_h"], df["mass_msun"].apply(lambda x: x if x else None))
 plt.xlabel("[Fe/H]"); plt.ylabel("Mass (M☉)"); plt.yscale("log")
-```
+plt.title("Globular Cluster Mass vs Metallicity")
+plt.tight_layout()
+plt.show()
+```"""
 
-## Data sources
-
-1. **Harris (2010 edition)**: [McMaster Globular Cluster Catalog](https://physics.mcmaster.ca/~harris/mwgc.dat).
-   Please cite [Harris (1996), AJ 112, 1487](https://ui.adsabs.harvard.edu/abs/1996AJ....112.1487H) — 2010 edition.
-
-2. **Baumgardt Globular Cluster Database**: [https://people.smp.uq.edu.au/HolgerBaumgardt/globular/](https://people.smp.uq.edu.au/HolgerBaumgardt/globular/).
-   Please cite [Baumgardt & Hilker (2018), MNRAS 478, 1520](https://ui.adsabs.harvard.edu/abs/2018MNRAS.478.1520B).
-
-## Related datasets
-
-- [open-star-clusters](https://huggingface.co/datasets/juliensimon/open-star-clusters) — Milky Way open clusters
-- [stellar-streams](https://huggingface.co/datasets/juliensimon/globular-star-clusters) — Tidal stellar streams
-- [pulsars](https://huggingface.co/datasets/juliensimon/pulsar-catalog) — ATNF Pulsar Catalogue
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Citation
-
-```bibtex
-@dataset{{globular_star_clusters,
-  author = {{Simon, Julien}},
-  title = {{Milky Way Globular Star Clusters}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/globular-star-clusters}},
-  note = {{Merged from Harris (1996, 2010 edition) and Baumgardt et al. globular cluster databases}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message",
-             f"Update globular star clusters: {n_total} clusters"],
-            check=True,
+    # ── Publish via Pipeline ─────────────────────────────────────────────
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Milky Way Globular Star Clusters",
+        description=DESCRIPTION,
+        tags=["space", "globular-clusters", "stars", "milky-way", "astronomy",
+              "open-data", "tabular-data", "parquet"],
+        source_url="https://people.smp.uq.edu.au/HolgerBaumgardt/globular/",
+        task_categories=["tabular-classification", "tabular-regression"],
+        collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-67ac2ada12aceb39f8feca3b",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/GSFC_20171208_Archive_e000191/GSFC_20171208_Archive_e000191~medium.jpg",
+            "alt": "A youthful globular star cluster observed by Hubble",
+            "credit": "NASA/ESA/Hubble",
+        },
+        related_datasets=[
+            "juliensimon/open-star-clusters",
+            "juliensimon/stellar-streams",
+            "juliensimon/pulsar-catalog",
+        ],
+    ) as p:
+        p.publish(
+            out,
+            filename="globular_star_clusters.parquet",
+            min_rows=MIN_ROWS,
+            expected_columns=[
+                "name", "ra_deg", "dec_deg", "distance_kpc",
+                "metallicity_fe_h", "mass_msun", "velocity_dispersion_km_s",
+                "half_light_radius_pc", "core_radius_pc",
+            ],
+            critical_columns=["name", "ra_deg", "dec_deg"],
+            max_null_pct=0.15,
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update globular star clusters: {n_total} clusters",
         )
-
-    print(f"rows={n_total}")
     print("Done.")
 
 

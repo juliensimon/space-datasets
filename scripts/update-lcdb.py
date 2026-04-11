@@ -2,22 +2,18 @@
 """Fetch Asteroid Lightcurve Database (LCDB) and upload to HF."""
 
 import io
-import subprocess
-import tempfile
 import zipfile
-from pathlib import Path
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
+
+HF_REPO = "juliensimon/asteroid-lightcurves-lcdb"
 
 LCDB_URL = "https://minplanobs.org/MPInfo/datazips/LCLIST_PUB_CURRENT.zip"
-HF_REPO = "juliensimon/asteroid-lightcurves-lcdb"
-MIN_ROWS = 20_000
 
-# Fixed-width column specs for lc_summary_pub.txt
+# ── Fixed-width column specs for lc_summary_pub.txt ─────────────────────────
 COLSPECS = [
     (0, 10),    # NUMBER
     (10, 41),   # NAME
@@ -73,10 +69,60 @@ KEEP_COLS = [
     "binary_type",
 ]
 
-EXPECTED_COLS = [
-    "number", "name", "taxonomy", "diameter_km", "abs_magnitude_h",
-    "albedo", "period_h", "amplitude_min", "amplitude_max", "quality_code_u",
-]
+# ── Column descriptions ──────────────────────────────────────────────────────
+COLUMN_DESCRIPTIONS = {
+    "number": "IAU catalog number (positive integer); null for unnumbered asteroids with only a provisional designation",
+    "name": "IAU proper name (e.g., 'Ceres', 'Eros'); null for unnamed objects",
+    "designation": "MPC provisional designation (e.g., '2024 YR4'); null for numbered objects without a recorded provisional designation",
+    "family": "Dynamical family membership code from the LCDB family list; null if the asteroid is not assigned to a known collisional family",
+    "taxonomy": "Spectral taxonomic class (Tholen or Bus-DeMeo system, e.g., S, C, V, Sq); null for asteroids without a published classification",
+    "diameter_km": "Estimated effective diameter in km; null for asteroids without a published size estimate; sources vary (IRAS, WISE, radar, occultation)",
+    "abs_magnitude_h": "Absolute magnitude H (magnitude at 1 AU, zero phase angle); null for a small fraction of entries",
+    "g_param": "IAU HG photometric slope parameter G; typical range 0.0–0.5; null if not published",
+    "g1_param": "HG1G2 phase function parameter G1; alternative to G for non-standard phase curves; null if not published",
+    "g2_param": "HG1G2 phase function parameter G2; used together with G1; null if not published",
+    "albedo": "Geometric albedo (fraction of incident light reflected, 0–1); typical C-type 0.03–0.10, S-type 0.15–0.35; null if not published",
+    "period_h": "Best-estimate rotation period in hours; range ~0.0003 h (super-fast rotators) to >1000 h for slow rotators; null if no period has been determined",
+    "period_flag": "Qualifier for the period value: > = lower limit only, < = upper limit, S = synodic period, D = double-peaked, U = uncertain; null if no flag",
+    "period_description": "Free-text notes on the period determination (e.g., method, caveats); null if none",
+    "amplitude_min": "Minimum observed lightcurve amplitude in magnitudes; lower bound across all available apparitions; null if undetermined",
+    "amplitude_max": "Maximum observed lightcurve amplitude in magnitudes; >0.9 mag implies axis ratio ≥2.5:1; null if undetermined",
+    "quality_code_u": "Lightcurve quality rating U: 1 = tentative/very uncertain, 2 = fair (may be refined), 3 = reliable/unambiguous; suffixes + and - indicate borderline ratings",
+    "notes": "Miscellaneous flags and comments from the LCDB; null if none",
+    "binary_type": "Binary or multiple system designation: B = confirmed binary, M = confirmed multiple, ? = suspected; null if no binary evidence",
+}
+
+# ── Dataset description ──────────────────────────────────────────────────────
+DESCRIPTION = """\
+The Asteroid Lightcurve Database (LCDB) is the most comprehensive compilation of \
+asteroid rotation parameters, maintained by Brian Warner at MinorPlanet.info. \
+For each asteroid it provides the best-estimate rotation period (hours), lightcurve \
+amplitude range (magnitudes), a reliability quality code (U rating 1–3), taxonomic \
+classification, diameter, albedo, and photometric slope parameters.
+
+Asteroid rotation is a direct probe of internal structure, collisional history, and \
+non-gravitational physics. The distribution of spin rates reveals a sharp "spin barrier" \
+near 2.2 hours for objects larger than about 200 meters: virtually no large asteroids \
+rotate faster than this critical period, because centrifugal force would exceed the \
+gravitational self-binding force of a rubble-pile body. The handful of super-fast rotators \
+below this barrier are either monolithic rocks or very small objects where cohesive forces \
+provide sufficient strength. This spin barrier is one of the strongest pieces of evidence \
+that most asteroids larger than a few hundred meters are gravitationally bound rubble piles.
+
+Lightcurve amplitude encodes shape information. A spherical object shows no brightness \
+variation; an elongated body produces deep dips twice per rotation as its cross-section \
+varies. Amplitudes above 1.0 magnitude imply axis ratios of at least 2.5:1, suggesting \
+highly elongated or contact-binary morphologies. The binary_type column flags known binary \
+and multiple systems, which comprise roughly 15% of near-Earth asteroids and play a key \
+role in understanding the YORP spin-up mechanism.
+
+The taxonomic classifications and albedo values enable population-level studies linking \
+surface composition to rotational properties. Low-albedo C-complex asteroids tend to have \
+longer rotation periods on average than high-albedo S-complex asteroids of the same size, \
+reflecting differences in bulk density, internal structure, or collisional evolution \
+timescales. These correlations constrain models of how the asteroid belt was assembled \
+and dynamically processed over 4.6 billion years of solar system history.
+"""
 
 
 def main():
@@ -85,7 +131,6 @@ def main():
     resp.raise_for_status()
 
     with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
-        # Find the summary file
         summary = [n for n in zf.namelist() if "lc_summary_pub" in n.lower()]
         if not summary:
             raise RuntimeError(f"lc_summary_pub.txt not found in zip: {zf.namelist()}")
@@ -116,18 +161,16 @@ def main():
     # --- Clean family code to nullable int ---
     df["family"] = pd.to_numeric(df["family"], errors="coerce").astype("Int64")
 
-    # --- Clean string columns ---
-    for col in ["name", "designation", "taxonomy", "period_description",
-                "notes", "binary_type", "period_flag"]:
-        df[col] = df[col].astype(str).str.strip().replace({"nan": None, "": None})
-
     # Drop internal source/flag columns, keep useful ones
     df = df[KEEP_COLS].copy()
 
-    # --- Numeric cleanup ---
+    # --- Rounding (after numeric cleanup via p.clean) ---
+    # Applied after p.clean() processes numeric columns
+
+    # ── Stats for README ─────────────────────────────────────────────────────
+    # Compute on raw numeric values (before p.clean, to preserve identical stats)
     for col in ["diameter_km", "abs_magnitude_h", "g_param", "g1_param",
-                "g2_param", "albedo", "period_h", "amplitude_min",
-                "amplitude_max"]:
+                "g2_param", "albedo", "period_h", "amplitude_min", "amplitude_max"]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
     # Round floats
@@ -138,17 +181,7 @@ def main():
     df["amplitude_min"] = df["amplitude_min"].round(3)
     df["amplitude_max"] = df["amplitude_max"].round(3)
 
-    # --- Validate ---
-    check_dataset(
-        df,
-        dataset_name="lcdb",
-        min_rows=MIN_ROWS,
-        expected_columns=EXPECTED_COLS,
-        critical_columns=["period_h", "quality_code_u", "abs_magnitude_h"],
-        max_null_pct=0.10,
-    )
-
-    # --- Stats for README ---
+    n_total = len(df)
     n_with_period = int(df["period_h"].notna().sum())
     n_with_diameter = int(df["diameter_km"].notna().sum())
     n_with_albedo = int(df["albedo"].notna().sum())
@@ -158,118 +191,20 @@ def main():
     fastest = df.loc[df["period_h"].idxmin()] if n_with_period else None
     median_period = df["period_h"].median()
 
-    parquet_name = "asteroid_lightcurves_lcdb.parquet"
-
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / parquet_name
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet, {len(df):,} rows")
-
-        banner_file = download_banner("lcdb", tmp)
-        banner_md = banner_markdown("lcdb", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Asteroid Lightcurve Database (LCDB)"
-language:
-  - en
-description: "Rotation periods, lightcurve amplitudes, diameters, albedos, and taxonomies for ~{len(df) // 1000}K asteroids from the Asteroid Lightcurve Database (LCDB)."
-task_categories:
-  - tabular-classification
-  - tabular-regression
-tags:
-  - space
-  - asteroids
-  - lightcurves
-  - rotation
-  - orbital-mechanics
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 10K<n<100K
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/{parquet_name}
-    default: true
----
-
-# Asteroid Lightcurve Database (LCDB)
-{banner_md}
-*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
-
-Rotation periods, lightcurve amplitudes, and physical properties for **{len(df):,}** asteroids
-from the Asteroid Lightcurve Database (LCDB) maintained by Brian Warner at
-[MinorPlanet.info](https://minplanobs.org/mpinfo/php/lcdb.php).
-
-## Dataset description
-
-The LCDB is the most comprehensive compilation of asteroid rotation parameters. For each
-asteroid, the database provides the best-estimate rotation period (hours), lightcurve
-amplitude range (magnitudes), a quality code (U rating 1--3 indicating reliability),
-taxonomic classification, diameter, albedo, and slope parameters. The U rating system is:
-
-| U | Meaning |
-|---|---------|
-| 1 | Tentative, based on fragmentary data |
-| 2 | Reasonably secure, may be refined |
-| 3 | Unambiguous, well-established |
-
-Suffixes `+` and `-` indicate borderline ratings. A `period_flag` of `>` means
-the true period may be longer; `S` indicates a synodic period.
-
-Asteroid rotation is a direct probe of internal structure, collisional history, and non-gravitational physics. The distribution of spin rates reveals a sharp "spin barrier" near 2.2 hours for objects larger than about 200 meters: virtually no large asteroids rotate faster than this critical period, because centrifugal force at the equator would exceed the gravitational self-binding force of a rubble-pile body with no tensile strength. The handful of super-fast rotators below this barrier are either monolithic rocks (intact fragments from violent collisions) or very small objects where cohesive forces between grains provide sufficient strength. This spin barrier is one of the strongest pieces of evidence that most asteroids larger than a few hundred meters are gravitationally bound aggregates of rubble rather than solid bodies.
-
-Lightcurve amplitude -- the difference between maximum and minimum brightness as an asteroid rotates -- encodes shape information. A spherical object shows no brightness variation; an elongated body like (216) Kleopatra (shaped like a dog bone) produces deep lightcurve dips twice per rotation as its cross-section varies. Amplitudes above 1.0 magnitude imply axis ratios of at least 2.5:1, suggesting highly elongated or contact-binary morphologies. The binary_type column flags known binary and multiple asteroid systems, which comprise roughly 15% of near-Earth asteroids and play a key role in understanding the YORP (Yarkovsky-O'Keefe-Radzievskii-Paddack) spin-up mechanism -- asymmetric thermal radiation that gradually accelerates rotation until a body sheds material or fissions into a binary pair.
-
-The taxonomic classifications and albedo values in the LCDB enable population-level studies linking surface composition to rotational properties. For example, low-albedo C-complex asteroids tend to have longer rotation periods on average than high-albedo S-complex asteroids of the same size, possibly reflecting differences in bulk density, internal structure, or collisional evolution timescales. These correlations provide constraints on models of how the asteroid belt was assembled, disrupted, and dynamically processed over 4.6 billion years of solar system history.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `number` | Int64 | IAU catalog number (positive integer); null for unnumbered asteroids with only a provisional designation |
-| `name` | string | IAU proper name (e.g., "Ceres", "Eros"); null for unnamed objects |
-| `designation` | string | MPC provisional designation (e.g., "2024 YR4"); null for numbered objects without a recorded provisional designation |
-| `family` | Int64 | Dynamical family membership code from the LCDB family list; null if the asteroid is not assigned to a known collisional family |
-| `taxonomy` | string | Spectral taxonomic class (Tholen or Bus-DeMeo system, e.g., S, C, V, Sq); null for asteroids without a published classification |
-| `diameter_km` | float64 | Estimated effective diameter in km; null for asteroids without a published size estimate; sources vary (IRAS, WISE, radar, occultation) |
-| `abs_magnitude_h` | float64 | Absolute magnitude H (magnitude at 1 AU, zero phase angle); null for a small fraction of entries |
-| `g_param` | float64 | IAU HG photometric slope parameter G; typical range 0.0–0.5; null if not published |
-| `g1_param` | float64 | HG1G2 phase function parameter G1; alternative to G for non-standard phase curves; null if not published |
-| `g2_param` | float64 | HG1G2 phase function parameter G2; used together with G1; null if not published |
-| `albedo` | float64 | Geometric albedo (fraction of incident light reflected, 0–1); typical C-type 0.03–0.10, S-type 0.15–0.35; null if not published |
-| `period_h` | float64 | Best-estimate rotation period in hours; range ~0.0003 h (super-fast rotators) to >1000 h for slow rotators; null if no period has been determined |
-| `period_flag` | string | Qualifier for the period value: `>` = lower limit only, `<` = upper limit, `S` = synodic period, `D` = double-peaked, `U` = uncertain; null if no flag |
-| `period_description` | string | Free-text notes on the period determination (e.g., method, caveats); null if none |
-| `amplitude_min` | float64 | Minimum observed lightcurve amplitude in magnitudes; lower bound across all available apparitions; null if undetermined |
-| `amplitude_max` | float64 | Maximum observed lightcurve amplitude in magnitudes; >0.9 mag implies axis ratio ≥2.5:1; null if undetermined |
-| `quality_code_u` | string | Lightcurve quality rating U: 1 = tentative/very uncertain, 2 = fair (may be refined), 3 = reliable/unambiguous; suffixes `+`/`-` indicate borderline ratings |
-| `notes` | string | Miscellaneous flags and comments from the LCDB; null if none |
-| `binary_type` | string | Binary or multiple system designation: B = confirmed binary, M = confirmed multiple, ? = suspected; null if no binary evidence |
-
-## Quick stats
-
-- **{len(df):,}** asteroids
+    quick_stats = f"""\
+- **{n_total:,}** asteroids
 - **{n_with_period:,}** with measured rotation periods (median {median_period:.2f} h)
 - **{n_high_quality:,}** with high-quality periods (U = 3 or 3-)
 - **{n_with_diameter:,}** with known diameters
 - **{n_with_albedo:,}** with measured albedos
 - **{n_binary:,}** binary/multiple systems
 - **{n_taxonomies}** distinct taxonomic classes
-- Fastest rotator: **{fastest['name'] or fastest['designation']}** at **{fastest['period_h']:.5f}** hours
+- Fastest rotator: **{fastest['name'] or fastest['designation']}** at **{fastest['period_h']:.5f}** hours"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
+import matplotlib.pyplot as plt
 
 ds = load_dataset("juliensimon/asteroid-lightcurves-lcdb", split="train")
 df = ds.to_pandas()
@@ -287,65 +222,62 @@ s_type = df[
     & (df["period_h"].notna())
 ]
 
-# Period vs diameter scatter
-import matplotlib.pyplot as plt
+# Period vs diameter scatter — visualize the spin barrier
 sub = df[(df["period_h"].notna()) & (df["diameter_km"].notna()) & (df["diameter_km"] > 0)]
-plt.scatter(sub["diameter_km"], sub["period_h"], s=1, alpha=0.3)
-plt.xscale("log"); plt.yscale("log")
-plt.xlabel("Diameter (km)"); plt.ylabel("Period (hours)")
-plt.title("Asteroid Spin Rate vs Size")
+plt.figure(figsize=(10, 7))
+plt.scatter(sub["diameter_km"], sub["period_h"], s=1, alpha=0.3, color="steelblue")
+plt.axhline(2.2, color="red", linestyle="--", linewidth=1.2, label="Spin barrier (2.2 h)")
+plt.xscale("log")
+plt.yscale("log")
+plt.xlabel("Diameter (km)")
+plt.ylabel("Period (hours)")
+plt.title("Asteroid Spin Rate vs Size — LCDB")
+plt.legend()
+plt.tight_layout()
 plt.show()
-```
+```"""
 
-## Data source
-
-[Asteroid Lightcurve Database (LCDB)](https://minplanobs.org/mpinfo/php/lcdb.php)
-by Brian D. Warner, Alan W. Harris, and Josef Durech.
-
-> Warner, B.D., Harris, A.W., and Pravec, P. (2009). Icarus 202, 134-146.
-
-## Related datasets
-
-- [neo-close-approaches](https://huggingface.co/datasets/juliensimon/neo-close-approaches) -- NEO close approaches from NASA JPL
-- [sbdb-asteroids-comets](https://huggingface.co/datasets/juliensimon/jpl-small-body-database) -- JPL Small-Body Database
-- [nhats-accessible-asteroids](https://huggingface.co/datasets/juliensimon/nhats-accessible-asteroids) -- Human-accessible NEOs
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/asteroid-lightcurves-lcdb) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{asteroid_lightcurves_lcdb,
-  author = {{Simon, Julien}},
-  title = {{Asteroid Lightcurve Database (LCDB)}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/asteroid-lightcurves-lcdb}},
-  note = {{Based on the Asteroid Lightcurve Database (LCDB) by Warner, Harris, and Durech}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Upload LCDB: {len(df):,} asteroids"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Asteroid Lightcurve Database (LCDB)",
+        description=DESCRIPTION,
+        tags=["space", "asteroids", "lightcurves", "rotation", "orbital-mechanics",
+              "open-data", "tabular-data", "parquet"],
+        source_url="https://minplanobs.org/mpinfo/php/lcdb.php",
+        task_categories=["tabular-classification", "tabular-regression"],
+        collection_url="https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA17666/PIA17666~small.jpg",
+            "alt": "Rosetta spacecraft approaching Comet 67P/Churyumov-Gerasimenko",
+            "credit": "NASA/ESA",
+        },
+        related_datasets=[
+            "juliensimon/neo-close-approaches",
+            "juliensimon/jpl-small-body-database",
+            "juliensimon/nhats-accessible-asteroids",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            strings=["name", "designation", "taxonomy", "period_description",
+                      "notes", "binary_type", "period_flag"],
         )
-
-    print(f"Done. {len(df):,} rows uploaded.")
+        p.publish(
+            df,
+            filename="asteroid_lightcurves_lcdb.parquet",
+            min_rows=20_000,
+            expected_columns=[
+                "number", "name", "taxonomy", "diameter_km", "abs_magnitude_h",
+                "albedo", "period_h", "amplitude_min", "amplitude_max", "quality_code_u",
+            ],
+            critical_columns=["period_h", "quality_code_u", "abs_magnitude_h"],
+            max_null_pct=0.10,
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update LCDB: {n_total:,} asteroids",
+        )
+    print("Done.")
 
 
 if __name__ == "__main__":
