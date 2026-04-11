@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
-"""Fetch space agency database from Wikidata and upload to HF."""
+"""Fetch space agency database from Wikidata and upload to HF.
 
-import os
-import subprocess
-import tempfile
-from pathlib import Path
+Source: Wikidata SPARQL endpoint — Q31855 (space agency) class hierarchy
+plus a supplementary label-based filter for programs not yet formally classified.
+"""
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
-
+from hf_dataset_utils import Pipeline
 
 HF_REPO = "juliensimon/space-agency-database"
 
@@ -49,6 +46,40 @@ FALSE_POSITIVE_KEYWORDS = [
     "transport authority", "highway", "road", "water authority",
     "electricity", "power authority", "gas authority",
 ]
+
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "wikidata_id": "Wikidata entity ID (e.g. 'Q23548' for NASA); resolves to https://www.wikidata.org/wiki/Q23548 — links to the agency's full knowledge graph entry including founding date, budget history, and program list",
+    "name": "Official agency name in English (e.g. 'NASA', 'ESA', 'ISRO', 'Roscosmos'); canonical form as recorded in Wikidata",
+    "country": "Country or intergovernmental organization that operates the agency (e.g. 'United States', 'European Union'); uses full English name",
+    "founded": "Date the agency was formally established, ISO 8601 (YYYY-MM-DD); null if only a founding year is known (see founded_year)",
+    "headquarters": "City or region where the agency's primary administrative office is located (e.g. 'Washington, D.C.', 'Paris'); null if not recorded in Wikidata",
+    "head": "Name of the current or most-recently recorded director or administrator; null if leadership data is absent from Wikidata",
+    "budget_usd": "Most recently recorded annual operating budget converted to US dollars; null for agencies that do not publicly disclose budget figures; values are point-in-time and may lag by several years",
+    "employees": "Most recently recorded staff headcount (full-time equivalents); null if workforce data is absent from Wikidata",
+    "website": "Official agency website URL (e.g. 'https://www.nasa.gov'); null if not recorded in Wikidata",
+    "founded_year": "Integer year extracted from founded; enables numeric filtering when full date is unavailable; null only if founding date is entirely unknown",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Database of space agencies and related governmental space organizations worldwide, \
+sourced from Wikidata.
+
+From NASA and Roscosmos to emerging national programs in Asia, Africa, and Latin America, \
+this dataset catalogs every governmental space agency and related intergovernmental \
+organization known to Wikidata. It covers founding dates, headquarters locations, \
+leadership, annual budgets (where available), workforce sizes, and official websites.
+
+The dataset enables comparative analysis of national space programs, tracking the \
+globalization of space activity, and identifying investment patterns across the space \
+sector. It complements the spacecraft-database (what each agency has flown) and the \
+astronaut-database (who has flown for them).
+
+Sourced from Wikidata's structured knowledge base using the Q31855 (space agency) class \
+hierarchy plus a supplementary label-based filter for programs not yet formally classified. \
+Data is community-curated and updated continuously.
+"""
 
 
 def fetch_agencies() -> pd.DataFrame:
@@ -99,7 +130,6 @@ def fetch_agencies() -> pd.DataFrame:
     df = pd.DataFrame(rows)
 
     # Deduplicate: multiple optional fields can create duplicate rows per agency.
-    # Keep the row with the most non-null fields.
     df["_score"] = df.notna().sum(axis=1)
     df = df.sort_values("_score", ascending=False).drop_duplicates(
         subset=["wikidata_id"], keep="first"
@@ -124,27 +154,16 @@ def fetch_agencies() -> pd.DataFrame:
 def main():
     df = fetch_agencies()
 
-    # Clean string columns
-    for col in ["name", "country", "headquarters", "head", "website"]:
-        df[col] = df[col].astype(str).str.strip().replace(
-            {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
-        )
-
-    # Cast numerics with nullable types
-    df["budget_usd"] = pd.to_numeric(df["budget_usd"], errors="coerce").astype("Float64")
-    df["employees"] = pd.to_numeric(df["employees"], errors="coerce").astype("Int64")
-
     # Parse founded year
     df["founded_year"] = pd.to_datetime(df["founded"], errors="coerce").dt.year
+
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
     df = df.sort_values("name").reset_index(drop=True)
     print(f"  {len(df):,} unique space agencies")
 
-    check_dataset(df, "space-agencies", min_rows=50,
-                  expected_columns=["name", "country"],
-                  critical_columns=["name"])
-
-    # Stats for README
+    # ── Domain-specific stats for README ─────────────────────────────
     n = len(df)
     n_countries = int(df["country"].nunique())
     top_countries = df["country"].value_counts().head(5)
@@ -175,86 +194,14 @@ def main():
     else:
         max_budget_str = "N/A"
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "space-agencies.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_kb = out.stat().st_size / 1024
-        print(f"  {size_kb:.0f} KB parquet")
-
-        banner_file = download_banner("space-agencies", tmp)
-        banner_md = banner_markdown("space-agencies", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc0-1.0
-pretty_name: "Space Agency Database"
-language:
-  - en
-description: >-
-  Database of space agencies and related governmental space organizations
-  worldwide, sourced from Wikidata. {n:,} agencies from {n_countries} countries
-  with founding dates, headquarters, leadership, budgets, and websites.
-size_categories:
-  - n<1K
-task_categories:
-  - tabular-classification
-tags:
-  - space
-  - space-agencies
-  - wikidata
-  - open-data
-  - tabular-data
-  - parquet
-configs:
-  - config_name: default
-    default: true
-    data_files:
-      - split: train
-        path: data/space-agencies.parquet
----
-
-# Space Agency Database
-{banner_md}
-*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
-
-Complete database of space agencies and governmental space organizations worldwide — **{n:,}** agencies from **{n_countries}** countries, sourced from [Wikidata](https://www.wikidata.org/).
-
-## Dataset description
-
-From NASA and Roscosmos to emerging national programs in Asia, Africa, and Latin America, this dataset catalogs every governmental space agency and related intergovernmental organization known to Wikidata. It covers founding dates, headquarters locations, leadership, annual budgets (where available), workforce sizes, and official websites.
-
-The dataset enables comparative analysis of national space programs, tracking the globalization of space activity, and identifying investment patterns across the space sector. It complements the spacecraft-database (what each agency has flown) and the astronaut-database (who has flown for them).
-
-Sourced from Wikidata's structured knowledge base using the Q31855 (space agency) class hierarchy plus a supplementary label-based filter for programs not yet formally classified. Data is community-curated and updated continuously.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `wikidata_id` | string | Wikidata entity ID (e.g. "Q23548" for NASA); resolves to https://www.wikidata.org/wiki/Q23548 — links to the agency's full knowledge graph entry including founding date, budget history, and program list |
-| `name` | string | Official agency name in English (e.g. "NASA", "ESA", "ISRO", "Roscosmos"); canonical form as recorded in Wikidata |
-| `country` | string | Country or intergovernmental organization that operates the agency (e.g. "United States", "European Union"); uses full English name |
-| `founded` | string | Date the agency was formally established, ISO 8601 (YYYY-MM-DD); null if only a founding year is known (see `founded_year`) |
-| `headquarters` | string | City or region where the agency's primary administrative office is located (e.g. "Washington, D.C.", "Paris"); null if not recorded in Wikidata |
-| `head` | string | Name of the current or most-recently recorded director or administrator; null if leadership data is absent from Wikidata |
-| `budget_usd` | float | Most recently recorded annual operating budget converted to US dollars; null for agencies that do not publicly disclose budget figures; values are point-in-time and may lag by several years |
-| `employees` | int | Most recently recorded staff headcount (full-time equivalents); null if workforce data is absent from Wikidata |
-| `website` | string | Official agency website URL (e.g. "https://www.nasa.gov"); null if not recorded in Wikidata |
-| `founded_year` | int | Integer year extracted from `founded`; enables numeric filtering when full date is unavailable; null only if founding date is entirely unknown |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n:,}** space agencies from **{n_countries}** countries
 - Oldest agency: {oldest_str}
 - Largest budget: {max_budget_str}
 - **{n_with_budget:,}** agencies with budget data, **{n_with_employees:,}** with employee counts
-- Top countries: {top_countries_str}
+- Top countries: {top_countries_str}"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -272,63 +219,53 @@ print(budget_df[["name", "country", "budget_usd"]].head(10))
 new_era = df[df["founded_year"] >= 2000].sort_values("founded_year")
 print(new_era[["name", "country", "founded_year"]])
 
-# Agencies by country with budgets
-by_country = df.groupby("country")["budget_usd"].sum().sort_values(ascending=False)
-print(by_country.head(10))
-```
+# Founding timeline
+import matplotlib.pyplot as plt
+df.dropna(subset=["founded_year"]).hist("founded_year", bins=30)
+plt.xlabel("Year Founded")
+plt.ylabel("Count")
+plt.title("Space Agency Founding Timeline")
+plt.show()
+```"""
 
-## Data source
-
-[Wikidata](https://www.wikidata.org/) SPARQL endpoint. Agencies identified via the Q31855 (space agency) class hierarchy plus a supplementary label-based filter. Data is community-curated by the [WikiProject Spaceflight](https://www.wikidata.org/wiki/Wikidata:WikiProject_Spaceflight) community.
-
-## Update schedule
-
-Quarterly (January, April, July, October). Re-run manually at any time via `workflow_dispatch`.
-
-## Related datasets
-
-- [spacecraft-database](https://huggingface.co/datasets/juliensimon/spacecraft-database) — spacecraft operated by these agencies
-- [gcat-launch-vehicles](https://huggingface.co/datasets/juliensimon/gcat-launch-vehicles) — launch vehicles used by space agencies
-- [astronaut-database](https://huggingface.co/datasets/juliensimon/astronaut-database) — astronauts who flew for these agencies
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/space-agency-database) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{space_agency_database,
-  author = {{Simon, Julien}},
-  title = {{Space Agency Database}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/space-agency-database}},
-  note = {{Sourced from Wikidata (CC0)}}
-}}
-```
-
-## License
-
-[CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (Wikidata content is public domain)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update space agency database: {n:,} agencies"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Space Agency Database",
+        description=DESCRIPTION,
+        tags=["space", "space-agencies", "wikidata",
+              "open-data", "tabular-data", "parquet"],
+        source_url="https://www.wikidata.org/",
+        task_categories=["tabular-classification"],
+        collection_url="https://huggingface.co/collections/juliensimon/space-essentials-69cbafd7ea046a10eff11405",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/GSFC_20171208_Archive_e001386/GSFC_20171208_Archive_e001386~medium.jpg",
+            "alt": "Blue Marble — high-definition image of Earth from space",
+            "credit": "NASA/GSFC/Suomi NPP",
+        },
+        license="cc0-1.0",
+        related_datasets=[
+            "juliensimon/spacecraft-database",
+            "juliensimon/gcat-launch-vehicles",
+            "juliensimon/astronaut-database",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=["budget_usd"],
+            integer=["employees", "founded_year"],
+            strings=["name", "country", "headquarters", "head", "website"],
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={n}\n")
+        p.publish(
+            df,
+            filename="space-agencies.parquet",
+            min_rows=50,
+            expected_columns=["name", "country"],
+            critical_columns=["name"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update space agency database: {n:,} agencies",
+        )
     print("Done.")
 
 

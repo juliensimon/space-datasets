@@ -1,21 +1,20 @@
 #!/usr/bin/env python3
-"""Fetch cosmic ray spectra from CRDB and upload to HF."""
+"""Fetch cosmic ray spectra from CRDB and upload to HF.
 
-import os
-import subprocess
+Source: Cosmic Ray Database (CRDB), Maurin et al.
+https://lpsc.in2p3.fr/crdb/
+"""
+
 import sys
-import tempfile
-from pathlib import Path
 
 import crdb
 import pandas as pd
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
-
+from hf_dataset_utils import Pipeline
 
 HF_REPO = "juliensimon/crdb-cosmic-ray-spectra"
 
+# ── Column mapping ───────────────────────────────────────────────────
 RENAME_MAP = {
     "quantity": "particle",
     "exp": "experiment",
@@ -37,6 +36,54 @@ RENAME_MAP = {
     "datetime": "observation_period",
     "distance": "distance_au",
 }
+
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "particle": "Measured particle or nucleus species: 'H' (proton), 'He', 'C', 'O', 'Fe', 'e-' (electron), 'e+' (positron), 'p-bar' (antiproton), or secondary-to-primary ratios like 'B/C'",
+    "experiment": "Name of the cosmic ray experiment that produced the measurement (e.g. 'AMS-02', 'PAMELA', 'CREAM', 'CALET', 'DAMPE')",
+    "experiment_type": "Type of detection platform: 'ISS' (International Space Station), 'balloon', 'satellite', 'ground' (air shower array)",
+    "sub_experiment": "Sub-experiment, detector configuration, or analysis variant within the experiment; null if not applicable",
+    "energy_gev_n": "Kinetic energy per nucleon at the bin center in GeV/n; cosmic ray spectrum spans ~0.01 GeV/n to 10^11 GeV/n",
+    "energy_bin_lo_gev_n": "Lower edge of the kinetic energy bin in GeV/n",
+    "energy_bin_hi_gev_n": "Upper edge of the kinetic energy bin in GeV/n",
+    "flux": "Differential flux in m^-2 s^-1 sr^-1 (GeV/n)^-1, or dimensionless ratio for secondary-to-primary quantities; decreases roughly as E^-3 power law",
+    "stat_error_lo": "Downward 1-sigma statistical uncertainty on the flux, in the same units as flux",
+    "stat_error_hi": "Upward 1-sigma statistical uncertainty on the flux, in the same units as flux",
+    "sys_error_lo": "Downward systematic uncertainty on the flux, in the same units as flux",
+    "sys_error_hi": "Upward systematic uncertainty on the flux, in the same units as flux",
+    "energy_relative_error": "Relative uncertainty on the energy measurement (fractional); reflects the energy resolution of the detector",
+    "is_upper_limit": "True if the flux value represents an upper limit rather than a detection",
+    "solar_modulation_mv": "Solar modulation potential in MV (force-field approximation); accounts for the Sun's magnetic field effect on low-energy cosmic rays; higher values mean stronger suppression",
+    "ads_bibcode": "NASA ADS bibcode for the publication reporting this measurement",
+    "energy_type": "Energy variable used for the measurement: 'EKN' = kinetic energy per nucleon, 'EK' = total kinetic energy, 'R' = rigidity",
+    "observation_period": "Time period of the observation as reported by the experiment; format varies by experiment",
+    "distance_au": "Heliocentric distance of the measurement in AU; 1.0 for Earth-based, other values for interplanetary missions (Voyager, Pioneer)",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Complete cosmic ray spectral database from CRDB (Cosmic Ray DataBase) -- the \
+reference database for cosmic ray physics, maintained by D. Maurin et al. at \
+LPSC Grenoble.
+
+Cosmic rays are high-energy charged particles -- mostly protons and atomic nuclei, \
+but also electrons and positrons -- that bombard the Earth from all directions. Their \
+energies span an astonishing range, from sub-GeV particles modulated by the solar wind \
+to ultra-high-energy events exceeding 10^20 eV, far beyond what any terrestrial \
+accelerator can produce.
+
+CRDB aggregates measurements from an extraordinary variety of instruments: magnetic \
+spectrometers on the International Space Station (AMS-02), balloon-borne calorimeters \
+(CREAM, TRACER), satellite experiments (PAMELA, CALET, DAMPE), ground-based air shower \
+arrays (KASCADE, Tibet AS-gamma), and Cherenkov telescopes. The database also includes \
+secondary-to-primary ratios like boron-to-carbon (B/C), which are critical probes of \
+cosmic ray propagation models and the diffusion coefficient of the interstellar medium.
+
+This dataset is essential for constraining cosmic ray propagation models (e.g., GALPROP, \
+DRAGON, USINE), testing dark matter annihilation signatures in positron and antiproton \
+spectra, calibrating hadronic interaction models used in air shower simulations, and \
+studying solar modulation effects.
+"""
 
 
 def main():
@@ -80,126 +127,36 @@ def main():
     df = df.drop_duplicates()
     print(f"  Total: {len(df):,} unique rows, {len(df.columns)} columns")
 
-    # Rename columns to snake_case
+    # Rename columns
     rename = {k: v for k, v in RENAME_MAP.items() if k in df.columns}
     df = df.rename(columns=rename)
 
-    # Coerce numeric columns
-    for col in ["energy_min_gev_n", "energy_max_gev_n", "flux",
-                "error_low", "error_high"]:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
+    # Convert is_upper_limit to bool
+    if "is_upper_limit" in df.columns:
+        df["is_upper_limit"] = df["is_upper_limit"].astype(bool)
 
-    # Clean string columns
-    for col in ["particle", "experiment", "sub_exp", "reference", "ads_url"]:
-        if col in df.columns:
-            df[col] = df[col].astype(str).str.strip().replace(
-                {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
-            )
-
-    # Convert is_usable to bool
-    if "is_usable" in df.columns:
-        df["is_usable"] = df["is_usable"].astype(bool)
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
     df = df.reset_index(drop=True)
 
+    # ── Domain-specific stats for README ─────────────────────────────
     n_total = len(df)
     n_particles = df["particle"].nunique() if "particle" in df.columns else 0
     n_experiments = df["experiment"].nunique() if "experiment" in df.columns else 0
     print(f"  {n_total:,} measurements, {n_particles} particle types, {n_experiments} experiments")
 
-    check_dataset(df, "crdb", min_rows=5000,
-                  expected_columns=["particle", "experiment", "energy_gev_n", "flux"])
+    quick_stats = f"""\
+- **{n_total:,}** cosmic ray flux measurements
+- **{n_particles}** particle species
+- **{n_experiments}** experiments"""
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
+    if "energy_gev_n" in df.columns and df["energy_gev_n"].notna().any():
+        e_min = df["energy_gev_n"].min()
+        e_max = df["energy_gev_n"].max()
+        quick_stats += f"\n- Energy range: **{e_min:.2e}** to **{e_max:.2e}** GeV/n"
 
-        out = data_dir / "crdb_cosmic_ray_spectra.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("crdb", tmp)
-        banner_md = banner_markdown("crdb", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Cosmic Ray Database (CRDB)"
-language:
-  - en
-description: "Cosmic Ray Database — ALL cosmic ray measurements from 131 experiments and 504 papers. Energy spectra, flux measurements, and metadata for every published cosmic ray observation."
-task_categories:
-  - tabular-regression
-tags:
-  - space
-  - physics
-  - cosmic-ray
-  - crdb
-  - high-energy
-  - particle
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 100K<n<1M
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/crdb_cosmic_ray_spectra.parquet
-    default: true
----
-
-# Cosmic Ray Database (CRDB)
-{banner_md}
-*Part of the [Physics Datasets](https://huggingface.co/collections/juliensimon/physics-datasets-69c2d4682d37dfdb77447bd7) collection on Hugging Face.*
-
-![Update CRDB](https://github.com/juliensimon/space-datasets/actions/workflows/update-crdb.yml/badge.svg)
-![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.crdb&label=updated&color=brightgreen)
-
-Complete cosmic ray spectral database from [CRDB](https://lpsc.in2p3.fr/crdb/) —
-**{n_total:,}** measurements across **{n_particles}** particle types from
-**{n_experiments}** experiments.
-
-## Dataset description
-
-The Cosmic Ray Database (CRDB) compiles all published cosmic ray measurements,
-including energy spectra and flux data from ground-based detectors, balloon
-experiments, and space missions. It is the reference database for cosmic ray
-physics, maintained by D. Maurin et al. at LPSC Grenoble.
-
-Cosmic rays are high-energy charged particles -- mostly protons and atomic nuclei, but also electrons and positrons -- that bombard the Earth from all directions. Their energies span an astonishing range, from sub-GeV particles modulated by the solar wind to ultra-high-energy events exceeding 10^20 eV, far beyond what any terrestrial accelerator can produce. The cosmic ray energy spectrum follows a remarkably smooth power law over more than ten orders of magnitude, punctuated by subtle features like the "knee" at ~3x10^15 eV and the "ankle" at ~5x10^18 eV that signal transitions between different source populations and acceleration mechanisms. Understanding cosmic ray origins, acceleration, and propagation through the Galaxy is one of the central problems in astroparticle physics.
-
-CRDB aggregates measurements from an extraordinary variety of instruments: magnetic spectrometers on the International Space Station (AMS-02), balloon-borne calorimeters (CREAM, TRACER), satellite experiments (PAMELA, CALET, DAMPE), ground-based air shower arrays (KASCADE, Tibet AS-gamma), and Cherenkov telescopes. Each experiment covers a different energy range and particle species, and CRDB's uniform formatting makes it possible to compare results across decades of measurements and very different detection techniques. The database also includes secondary-to-primary ratios like boron-to-carbon (B/C), which are critical probes of cosmic ray propagation models and the diffusion coefficient of the interstellar medium.
-
-This dataset is essential for constraining cosmic ray propagation models (e.g., GALPROP, DRAGON, USINE), testing dark matter annihilation signatures in positron and antiproton spectra, calibrating hadronic interaction models used in air shower simulations, and studying solar modulation effects. It serves as the primary benchmarking resource for any theoretical or computational work in cosmic ray physics.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `particle` | string | Measured particle or nucleus species: "H" (proton), "He", "C", "O", "Fe", "e-" (electron), "e+" (positron), "p-bar" (antiproton), "all-particle" |
-| `experiment` | string | Name of the cosmic ray experiment that produced the measurement (e.g. "AMS-02", "PAMELA", "CREAM", "CALET") |
-| `sub_exp` | string | Sub-experiment, detector configuration, or analysis variant within the experiment (null if not applicable) |
-| `energy_min_gev_n` | float | Lower edge of kinetic energy bin, in GeV per nucleon (GeV/n); cosmic ray spectrum spans ~1 GeV/n to 10^11 GeV/n |
-| `energy_max_gev_n` | float | Upper edge of kinetic energy bin, in GeV per nucleon (GeV/n) |
-| `flux` | float | Differential flux in m⁻²s⁻¹sr⁻¹(GeV/n)⁻¹ (or ratio/anisotropy for non-flux quantities); decreases roughly as E⁻³ power law |
-| `error_low` | float | Downward (1σ) uncertainty on the flux value, in the same units as `flux`; combines statistical and systematic errors |
-| `error_high` | float | Upward (1σ) uncertainty on the flux value, in the same units as `flux`; combines statistical and systematic errors |
-| `reference` | string | Short publication reference (author, year, journal) for the measurement |
-| `ads_url` | string | NASA ADS bibliographic URL linking to the full publication |
-| `is_usable` | bool | CRDB quality flag: True = data point is recommended for analysis; False = flagged as unreliable or superseded |
-
-## Quick stats
-
-- **{n_total:,}** measurements
-- **{n_particles}** particle types
-- **{n_experiments}** experiments
-
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -208,71 +165,60 @@ df = ds.to_pandas()
 
 # Proton spectrum from AMS-02
 ams02_p = df[(df["particle"] == "H") & (df["experiment"] == "AMS-02")]
-print(f"{{len(ams02_p):,}} AMS-02 proton data points")
+print(f"{len(ams02_p):,} AMS-02 proton data points")
 
 # All experiments for a given particle
 import matplotlib.pyplot as plt
 protons = df[df["particle"] == "H"]
 for exp, grp in protons.groupby("experiment"):
-    e_mid = (grp["energy_min_gev_n"] + grp["energy_max_gev_n"]) / 2
-    plt.scatter(e_mid, grp["flux"], s=1, label=exp, alpha=0.5)
+    plt.scatter(grp["energy_gev_n"], grp["flux"], s=1, label=exp, alpha=0.5)
 plt.xscale("log"); plt.yscale("log")
 plt.xlabel("Energy (GeV/n)"); plt.ylabel("Flux")
 plt.title("Proton Cosmic Ray Spectrum")
-```
+plt.show()
+```"""
 
-## Data source
-
-[CRDB — Cosmic Ray DataBase](https://lpsc.in2p3.fr/crdb/) (Maurin et al.)
-
-All data retrieved via the `crdb` Python package.
-
-## Update schedule
-
-Quarterly (1st of Jan/Apr/Jul/Oct at 06:00 UTC) via [GitHub Actions](https://github.com/juliensimon/space-datasets).
-
-## Related datasets
-
-- [juliensimon/auger-cosmic-rays](https://huggingface.co/datasets/juliensimon/auger-cosmic-rays) — Pierre Auger Observatory events
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/crdb-cosmic-ray-spectra) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{crdb_cosmic_ray_spectra,
-  author = {{Simon, Julien}},
-  title = {{Cosmic Ray Database (CRDB)}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/crdb-cosmic-ray-spectra}},
-  note = {{Based on CRDB (Maurin et al.) via lpsc.in2p3.fr/crdb}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update CRDB cosmic ray spectra: {n_total:,} measurements"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Cosmic Ray Database (CRDB)",
+        description=DESCRIPTION,
+        tags=["space", "physics", "cosmic-ray", "crdb", "high-energy",
+              "particle", "open-data", "tabular-data", "parquet"],
+        source_url="https://lpsc.in2p3.fr/crdb/",
+        task_categories=["tabular-regression"],
+        collection_url="https://huggingface.co/collections/juliensimon/physics-datasets-69c2d4682d37dfdb77447bd7",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA03519/PIA03519~small.jpg",
+            "alt": "Cassiopeia A supernova remnant in X-ray, optical, and infrared light",
+            "credit": "NASA/JPL-Caltech/STScI/CXC/SAO",
+        },
+        related_datasets=[
+            "juliensimon/auger-cosmic-rays",
+        ],
+    ) as p:
+        numeric_cols = [c for c in [
+            "energy_gev_n", "energy_bin_lo_gev_n", "energy_bin_hi_gev_n",
+            "flux", "stat_error_lo", "stat_error_hi",
+            "sys_error_lo", "sys_error_hi", "energy_relative_error",
+            "solar_modulation_mv", "distance_au",
+        ] if c in df.columns]
+        df = p.clean(
+            df,
+            numeric=numeric_cols,
+            strings=[c for c in ["particle", "experiment", "sub_experiment",
+                                  "ads_bibcode"] if c in df.columns],
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={len(df)}\n")
+        p.publish(
+            df,
+            filename="crdb_cosmic_ray_spectra.parquet",
+            min_rows=5000,
+            expected_columns=["particle", "experiment", "energy_gev_n", "flux"],
+            critical_columns=["particle", "experiment"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update CRDB cosmic ray spectra: {n_total:,} measurements",
+        )
     print("Done.")
 
 

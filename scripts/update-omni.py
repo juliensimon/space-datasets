@@ -1,81 +1,46 @@
 #!/usr/bin/env python3
-"""Fetch OMNI hourly merged solar wind & geomagnetic index data from NASA GSFC and upload to HF."""
+"""Fetch OMNI hourly merged solar wind & geomagnetic index data from NASA GSFC and upload to HF.
 
-import os
-import subprocess
-import tempfile
+Source: NASA/GSFC Space Physics Data Facility (SPDF) -- OMNI 2 hourly dataset.
+Merged near-Earth solar wind magnetic field, plasma, energetic particles,
+and geomagnetic activity indices from multiple spacecraft.
+"""
+
 from io import StringIO
-from pathlib import Path
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
 
 HF_REPO = "juliensimon/omni-solar-wind-parameters"
 DATA_URL = "https://spdf.gsfc.nasa.gov/pub/data/omni/low_res_omni/omni2_all_years.dat"
 
-# ── Column definitions (55 columns, fixed-width whitespace-delimited) ────────
+# ── Column definitions (55 columns, fixed-width whitespace-delimited) ──
 COLUMNS = [
-    "year",                          # 1
-    "day_of_year",                   # 2
-    "hour",                          # 3
-    "bartels_rotation_number",       # 4
-    "imf_spacecraft_id",             # 5
-    "sw_plasma_spacecraft_id",       # 6
-    "n_imf_points",                  # 7
-    "n_plasma_points",               # 8
-    "b_magnitude_avg_nt",            # 9  |B| 1/N SUM |B|
-    "b_magnitude_vector_nt",         # 10 magnitude of avg field vector
-    "b_lat_angle_gse_deg",           # 11
-    "b_lon_angle_gse_deg",           # 12
-    "bx_gse_nt",                     # 13 Bx GSE (= Bx GSM)
-    "by_gse_nt",                     # 14
-    "bz_gse_nt",                     # 15
-    "by_gsm_nt",                     # 16
-    "bz_gsm_nt",                     # 17
-    "sigma_b_magnitude_nt",          # 18
-    "sigma_b_vector_nt",             # 19
-    "sigma_bx_nt",                   # 20
-    "sigma_by_nt",                   # 21
-    "sigma_bz_nt",                   # 22
-    "proton_temperature_k",          # 23
-    "proton_density_cm3",            # 24
-    "flow_speed_kms",                # 25
-    "flow_lon_angle_deg",            # 26
-    "flow_lat_angle_deg",            # 27
-    "alpha_proton_ratio",            # 28
-    "flow_pressure_npa",             # 29
-    "sigma_t_k",                     # 30
-    "sigma_n_cm3",                   # 31
-    "sigma_v_kms",                   # 32
-    "sigma_phi_v_deg",               # 33
-    "sigma_theta_v_deg",             # 34
-    "sigma_alpha_proton_ratio",      # 35
-    "electric_field_mvpm",           # 36
-    "plasma_beta",                   # 37
-    "alfven_mach_number",            # 38
-    "kp_index",                      # 39
-    "sunspot_number",                # 40
-    "dst_index_nt",                  # 41
-    "ae_index_nt",                   # 42
-    "proton_flux_gt1mev",            # 43
-    "proton_flux_gt2mev",            # 44
-    "proton_flux_gt4mev",            # 45
-    "proton_flux_gt10mev",           # 46
-    "proton_flux_gt30mev",           # 47
-    "proton_flux_gt60mev",           # 48
-    "flux_flag",                     # 49
-    "ap_index_nt",                   # 50
-    "f107_index_sfu",                # 51
-    "pc_n_index",                    # 52
-    "al_index_nt",                   # 53
-    "au_index_nt",                   # 54
-    "magnetosonic_mach_number",      # 55
+    "year", "day_of_year", "hour",
+    "bartels_rotation_number", "imf_spacecraft_id", "sw_plasma_spacecraft_id",
+    "n_imf_points", "n_plasma_points",
+    "b_magnitude_avg_nt", "b_magnitude_vector_nt",
+    "b_lat_angle_gse_deg", "b_lon_angle_gse_deg",
+    "bx_gse_nt", "by_gse_nt", "bz_gse_nt", "by_gsm_nt", "bz_gsm_nt",
+    "sigma_b_magnitude_nt", "sigma_b_vector_nt",
+    "sigma_bx_nt", "sigma_by_nt", "sigma_bz_nt",
+    "proton_temperature_k", "proton_density_cm3",
+    "flow_speed_kms", "flow_lon_angle_deg", "flow_lat_angle_deg",
+    "alpha_proton_ratio", "flow_pressure_npa",
+    "sigma_t_k", "sigma_n_cm3", "sigma_v_kms",
+    "sigma_phi_v_deg", "sigma_theta_v_deg", "sigma_alpha_proton_ratio",
+    "electric_field_mvpm", "plasma_beta", "alfven_mach_number",
+    "kp_index", "sunspot_number", "dst_index_nt", "ae_index_nt",
+    "proton_flux_gt1mev", "proton_flux_gt2mev", "proton_flux_gt4mev",
+    "proton_flux_gt10mev", "proton_flux_gt30mev", "proton_flux_gt60mev",
+    "flux_flag",
+    "ap_index_nt", "f107_index_sfu", "pc_n_index",
+    "al_index_nt", "au_index_nt", "magnetosonic_mach_number",
 ]
 
-# Fill values per column — values at or above these thresholds are NaN
+# Fill values per column -- values at or above these thresholds are NaN
 FILL_VALUES = {
     "bartels_rotation_number": 9999,
     "imf_spacecraft_id": 99,
@@ -130,14 +95,92 @@ FILL_VALUES = {
     "magnetosonic_mach_number": 99.9,
 }
 
-# Columns to drop from final output (metadata, not useful for analysis)
+# Columns to drop (metadata, not useful for analysis)
 DROP_COLUMNS = [
-    "imf_spacecraft_id",
-    "sw_plasma_spacecraft_id",
-    "n_imf_points",
-    "n_plasma_points",
-    "flux_flag",
+    "imf_spacecraft_id", "sw_plasma_spacecraft_id",
+    "n_imf_points", "n_plasma_points", "flux_flag",
 ]
+
+# ── Column descriptions ────────────────────────────────────────────────
+COLUMN_DESCRIPTIONS = {
+    "datetime": "Observation timestamp (UTC, hourly cadence). OMNI data begins 1963 and is updated daily.",
+    "bartels_rotation_number": "Bartels solar rotation number: sequential count of 27-day rotation periods; used to align data with the solar rotation cycle.",
+    "b_magnitude_avg_nt": "Average IMF magnitude 1/N SUM |B| (nT); scalar average of field magnitude over the hour.",
+    "b_magnitude_vector_nt": "Magnitude of the hourly-averaged field vector (nT); differs from b_magnitude_avg_nt when the field direction varies within the hour.",
+    "b_lat_angle_gse_deg": "Latitude angle of the average IMF vector in GSE coordinates (degrees); +90 = northward, -90 = southward.",
+    "b_lon_angle_gse_deg": "Longitude angle of the average IMF vector in GSE coordinates (degrees); 0 = sunward, 180 = anti-sunward.",
+    "bx_gse_nt": "IMF Bx component in GSE/GSM coordinates (nT); positive sunward along the Sun-Earth line. Bx is identical in GSE and GSM.",
+    "by_gse_nt": "IMF By component in GSE coordinates (nT); positive dawnward (opposite to Earth's orbital motion).",
+    "bz_gse_nt": "IMF Bz component in GSE coordinates (nT); positive northward (perpendicular to ecliptic).",
+    "by_gsm_nt": "IMF By component in GSM coordinates (nT); GSM rotates with Earth's dipole tilt, important for magnetospheric coupling.",
+    "bz_gsm_nt": "IMF Bz component in GSM coordinates (nT); negative (southward) Bz drives magnetic reconnection and geomagnetic storms.",
+    "sigma_b_magnitude_nt": "RMS standard deviation of |B| within the averaging hour (nT); measures IMF variability.",
+    "sigma_b_vector_nt": "RMS standard deviation of the field vector magnitude within the hour (nT).",
+    "sigma_bx_nt": "RMS standard deviation of Bx component, GSE (nT).",
+    "sigma_by_nt": "RMS standard deviation of By component, GSE (nT).",
+    "sigma_bz_nt": "RMS standard deviation of Bz component, GSE (nT).",
+    "proton_temperature_k": "Solar wind proton temperature (K); typical range 10^4-5x10^5 K; elevated in fast streams, depressed in ICMEs.",
+    "proton_density_cm3": "Solar wind proton number density (cm^-3); typical 5-10 cm^-3 at 1 AU; spikes during CME sheaths.",
+    "flow_speed_kms": "Solar wind bulk plasma speed (km/s); slow wind: 350-450 km/s, fast streams: 600-800 km/s.",
+    "flow_lon_angle_deg": "Flow longitude angle in quasi-GSE coordinates (degrees); small departures from 180 deg indicate non-radial flow.",
+    "flow_lat_angle_deg": "Flow latitude angle in GSE coordinates (degrees); small departures from 0 deg indicate north/south deflections.",
+    "alpha_proton_ratio": "He2+/H+ number density ratio (Na/Np); typical 0.02-0.08; elevated in fast streams and CMEs.",
+    "flow_pressure_npa": "Solar wind dynamic (ram) pressure 0.5*rho*v^2 (nPa); typical 1-10 nPa; high values compress the dayside magnetopause.",
+    "sigma_t_k": "Intra-hour standard deviation of proton temperature (K); reflects solar wind variability within the averaging window.",
+    "sigma_n_cm3": "Intra-hour standard deviation of proton density (cm^-3).",
+    "sigma_v_kms": "Intra-hour standard deviation of flow speed (km/s).",
+    "sigma_phi_v_deg": "Intra-hour standard deviation of flow longitude angle (degrees).",
+    "sigma_theta_v_deg": "Intra-hour standard deviation of flow latitude angle (degrees).",
+    "sigma_alpha_proton_ratio": "Intra-hour standard deviation of the He2+/H+ density ratio.",
+    "electric_field_mvpm": "Interplanetary electric field component -V x Bz (mV/m); negative (southward Bz) drives magnetospheric energy input; typical range -10 to +10 mV/m.",
+    "plasma_beta": "Ratio of thermal pressure to magnetic pressure (nkT / B^2/8pi); beta < 1 = magnetically dominated, beta > 1 = thermally dominated.",
+    "alfven_mach_number": "Solar wind speed divided by Alfven speed; typical ~8-10 at 1 AU; determines bow shock and magnetopause standoff.",
+    "kp_index": "Planetary geomagnetic 3-hourly Kp index stored as integer x 10 (e.g. 27 = Kp 2.7); scale 0-90; Kp >= 50 = geomagnetic storm.",
+    "sunspot_number": "International sunspot number (SILSO v2); tracks the 11-year solar cycle; range ~0-300.",
+    "dst_index_nt": "Disturbance Storm Time ring-current index (nT); 0 = quiet; -30 to -50 nT = minor storm; < -100 nT = intense storm.",
+    "ae_index_nt": "Auroral Electrojet AE index (nT) = AU - AL; measures substorm and auroral zone current intensity; 0-2000+ nT.",
+    "proton_flux_gt1mev": "Energetic proton flux for particles > 1 MeV (1/cm^2 s sr); elevated during solar proton events (SPEs).",
+    "proton_flux_gt2mev": "Energetic proton flux for particles > 2 MeV (1/cm^2 s sr).",
+    "proton_flux_gt4mev": "Energetic proton flux for particles > 4 MeV (1/cm^2 s sr).",
+    "proton_flux_gt10mev": "Energetic proton flux for particles > 10 MeV (1/cm^2 s sr); NOAA SPE threshold: 10 pfu at this energy.",
+    "proton_flux_gt30mev": "Energetic proton flux for particles > 30 MeV (1/cm^2 s sr).",
+    "proton_flux_gt60mev": "Energetic proton flux for particles > 60 MeV (1/cm^2 s sr).",
+    "ap_index_nt": "Linear equivalent of Kp index (nT); 3-hourly; range 0-400 nT; ap >= 100 = major geomagnetic storm.",
+    "f107_index_sfu": "Solar 10.7 cm radio flux index (SFU, 1 SFU = 10^-22 W/m^2/Hz); solar cycle range ~65-300 SFU; proxy for EUV output.",
+    "pc_n_index": "Polar Cap (North) magnetic activity index from Thule/Qaanaaq magnetometer; tracks cross-polar-cap potential and substorm precursors.",
+    "al_index_nt": "Auroral Electrojet lower (AL) index (nT); measures westward electrojet intensity; negative excursions indicate substorm onset.",
+    "au_index_nt": "Auroral Electrojet upper (AU) index (nT); measures eastward electrojet intensity; AE = AU - AL.",
+    "magnetosonic_mach_number": "Solar wind speed divided by the fast magnetosonic wave speed; determines bow shock geometry; typical ~6-8 at 1 AU.",
+}
+
+# ── Dataset description ─────────────────────────────────────────────────
+DESCRIPTION = """\
+Merged hourly near-Earth solar wind magnetic field, plasma, energetic particle parameters \
+combined with geomagnetic and solar activity indices from NASA's OMNI dataset. The master \
+bridge dataset for space weather analysis -- it time-aligns IMF, solar wind, and geomagnetic \
+response in a single file.
+
+The OMNI dataset from NASA's Goddard Space Flight Center merges solar wind observations from \
+multiple spacecraft (IMP 8, ACE, Wind, DSCOVR, and others) into a single consistent hourly \
+time series at Earth's bow shock nose. It combines interplanetary magnetic field (IMF) \
+components, solar wind plasma parameters, energetic particle fluxes, and geomagnetic activity \
+indices. Key parameter groups include IMF (field magnitude, Bx/By/Bz in GSE and GSM), solar \
+wind plasma (proton density, temperature, bulk flow speed), derived quantities (flow pressure, \
+plasma beta, electric field, Alfven and magnetosonic Mach numbers), geomagnetic indices (Kp, \
+Dst, AE, AL, AU, ap, PC(N)), solar indices (F10.7, sunspot number), and energetic particles \
+(proton fluxes at >1 to >60 MeV).
+
+A key feature of the OMNI processing is the time-shifting of upstream spacecraft data to \
+the Earth's bow shock nose. Observations from monitors at the L1 Lagrange point (ACE, Wind, \
+DSCOVR -- roughly 1.5 million km upstream) are propagated to the bow shock using the measured \
+solar wind speed, ensuring temporal alignment with the geomagnetic indices they drive.
+
+The derived quantities encode important plasma physics. Plasma beta distinguishes magnetically \
+dominated structures such as magnetic clouds (beta << 1) from the ambient solar wind (beta ~ 1). \
+The Alfven Mach number characterizes how supersonic the flow is relative to the Alfven wave \
+speed. The convective electric field (-V x B) quantifies magnetic flux transport toward the \
+magnetopause and is a key input to empirical geomagnetic activity models.
+"""
 
 
 def main():
@@ -180,177 +223,29 @@ def main():
     # Drop rows with no datetime
     df = df.dropna(subset=["datetime"])
 
-    # Ensure numeric types
-    for col in df.columns:
-        if col != "datetime":
-            df[col] = pd.to_numeric(df[col], errors="coerce")
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
     # Sort by datetime
     df = df.sort_values("datetime").reset_index(drop=True)
 
+    # ── Domain-specific stats ────────────────────────────────────────
     n_total = len(df)
     date_min = df["datetime"].min().strftime("%Y-%m-%d")
     date_max = df["datetime"].max().strftime("%Y-%m-%d")
-    print(f"  {n_total:,} rows after cleanup ({date_min} to {date_max})")
 
     # Coverage stats
-    for col in ["b_magnitude_avg_nt", "bz_gsm_nt", "flow_speed_kms", "proton_density_cm3",
-                 "dst_index_nt", "kp_index", "plasma_beta", "alfven_mach_number"]:
-        pct = (1 - df[col].isna().mean()) * 100
-        print(f"    {col}: {pct:.1f}% coverage")
+    bz_coverage = (1 - df["bz_gsm_nt"].isna().mean()) * 100
+    v_coverage = (1 - df["flow_speed_kms"].isna().mean()) * 100
+    dst_coverage = (1 - df["dst_index_nt"].isna().mean()) * 100
 
-    # Validation
-    check_dataset(
-        df, "omni",
-        min_rows=400_000,
-        expected_columns=[
-            "datetime", "b_magnitude_avg_nt", "bx_gse_nt", "by_gse_nt", "bz_gse_nt",
-            "by_gsm_nt", "bz_gsm_nt", "flow_speed_kms", "proton_density_cm3",
-            "proton_temperature_k", "flow_pressure_npa", "plasma_beta",
-            "alfven_mach_number", "magnetosonic_mach_number",
-            "kp_index", "dst_index_nt", "ae_index_nt", "ap_index_nt",
-            "f107_index_sfu", "sunspot_number",
-        ],
-        critical_columns=["datetime"],
-    )
-
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "omni_solar_wind_parameters.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("omni", tmp)
-        banner_md = banner_markdown("omni", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "OMNI Hourly Solar Wind Parameters"
-language:
-  - en
-description: "Merged hourly solar wind magnetic field, plasma parameters, and geomagnetic indices from NASA GSFC OMNI dataset. Near-Earth data from multiple spacecraft, 1963 to present."
-task_categories:
-  - tabular-regression
-  - time-series-forecasting
-tags:
-  - space
-  - solar-wind
-  - imf
-  - magnetic-field
-  - space-weather
-  - nasa
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 100K<n<1M
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/omni_solar_wind_parameters.parquet
-    default: true
----
-
-# OMNI Hourly Solar Wind Parameters
-{banner_md}
-*Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
-
-![Update OMNI](https://github.com/juliensimon/space-datasets/actions/workflows/update-omni.yml/badge.svg)
-![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.omni&label=updated&color=brightgreen)
-
-Merged hourly near-Earth solar wind magnetic field, plasma, and energetic particle parameters combined
-with geomagnetic and solar activity indices. Currently **{n_total:,}** hourly records spanning
-**{date_min}** to **{date_max}**. The master bridge dataset for space weather analysis — it
-time-aligns IMF, solar wind, and geomagnetic response in a single file.
-
-## Dataset description
-
-The OMNI dataset from NASA's Goddard Space Flight Center merges solar wind observations from
-multiple spacecraft (IMP 8, ACE, Wind, DSCOVR, and others) into a single consistent hourly time
-series at Earth's bow shock nose. It combines interplanetary magnetic field (IMF) components,
-solar wind plasma parameters, energetic particle fluxes, and geomagnetic activity indices —
-making it the standard reference dataset for space weather correlation studies.
-
-Key parameter groups:
-- **IMF**: field magnitude, Bx/By/Bz in GSE and GSM coordinates, field direction angles
-- **Solar wind plasma**: proton density, temperature, bulk flow speed and direction, alpha/proton ratio
-- **Derived quantities**: flow pressure, plasma beta, electric field, Alfven and magnetosonic Mach numbers
-- **Geomagnetic indices**: Kp, Dst, AE, AL, AU, ap, PC(N)
-- **Solar indices**: F10.7 radio flux, sunspot number
-- **Energetic particles**: proton fluxes at >1, >2, >4, >10, >30, >60 MeV
-
-The solar wind is a continuous supersonic outflow of magnetized plasma from the Sun's corona, carrying the interplanetary magnetic field (IMF) outward through the heliosphere at speeds typically between 300 and 800 km/s. Its interaction with Earth's magnetosphere is the primary driver of space weather: when the IMF turns southward (negative Bz in GSM coordinates), magnetic reconnection at the dayside magnetopause transfers solar wind energy into the magnetosphere, powering geomagnetic storms and substorms. The OMNI dataset captures this coupling in a single time series by co-locating solar wind inputs (IMF, plasma) with the magnetospheric response (Dst, Kp, AE indices).
-
-A key feature of the OMNI processing is the time-shifting of upstream spacecraft data to the Earth's bow shock nose. Observations from monitors at the L1 Lagrange point (ACE, Wind, DSCOVR -- roughly 1.5 million km upstream) are propagated to the bow shock using the measured solar wind speed, accounting for the roughly 30-60 minute transit time. This phase-front technique ensures that the IMF and plasma parameters are temporally aligned with the geomagnetic indices they drive, making OMNI the standard dataset for empirical studies of solar wind-magnetosphere coupling, storm forecasting model development, and magnetohydrodynamic simulation validation.
-
-The derived quantities in the dataset encode important plasma physics. Plasma beta (ratio of thermal to magnetic pressure) distinguishes magnetically dominated structures such as magnetic clouds (beta << 1) from the ambient solar wind (beta ~ 1). The Alfven Mach number characterizes how supersonic the flow is relative to the Alfven wave speed, which controls shock formation and energy dissipation. The convective electric field (-V x B) quantifies the rate of magnetic flux transport toward the magnetopause and is a key input to empirical geomagnetic activity models such as the Newell coupling function.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `datetime` | datetime | Observation timestamp (UTC, hourly cadence) |
-| `bartels_rotation_number` | float64 | Bartels solar rotation number |
-| `b_magnitude_avg_nt` | float64 | Average IMF magnitude 1/N SUM |B| (nT) |
-| `b_magnitude_vector_nt` | float64 | Magnitude of average field vector (nT) |
-| `b_lat_angle_gse_deg` | float64 | Latitude angle of average field vector, GSE (deg) |
-| `b_lon_angle_gse_deg` | float64 | Longitude angle of average field vector, GSE (deg) |
-| `bx_gse_nt` | float64 | IMF Bx component, GSE/GSM (nT) |
-| `by_gse_nt` | float64 | IMF By component, GSE (nT) |
-| `bz_gse_nt` | float64 | IMF Bz component, GSE (nT) |
-| `by_gsm_nt` | float64 | IMF By component, GSM (nT) |
-| `bz_gsm_nt` | float64 | IMF Bz component, GSM (nT) |
-| `sigma_b_magnitude_nt` | float64 | RMS std dev of |B| (nT) |
-| `sigma_b_vector_nt` | float64 | RMS std dev of field vector (nT) |
-| `sigma_bx_nt` | float64 | RMS std dev of Bx, GSE (nT) |
-| `sigma_by_nt` | float64 | RMS std dev of By, GSE (nT) |
-| `sigma_bz_nt` | float64 | RMS std dev of Bz, GSE (nT) |
-| `proton_temperature_k` | float64 | Solar wind proton temperature (K); typical range 1×10⁴–5×10⁵ K; elevated in fast streams, depressed in ICMEs |
-| `proton_density_cm3` | float64 | Solar wind proton number density (cm⁻³); typical 5–10 cm⁻³ at 1 AU; spikes during CME sheaths |
-| `flow_speed_kms` | float64 | Solar wind bulk plasma speed (km/s); slow wind: 350–450 km/s, fast streams: 600–800 km/s |
-| `flow_lon_angle_deg` | float64 | Flow longitude angle in quasi-GSE coordinates (degrees); small departures from 180° indicate non-radial flow |
-| `flow_lat_angle_deg` | float64 | Flow latitude angle in GSE coordinates (degrees); small departures from 0° indicate north/south deflections |
-| `alpha_proton_ratio` | float64 | He²⁺ to H⁺ number density ratio (Na/Np); typical 0.02–0.08; elevated in fast streams and CMEs |
-| `flow_pressure_npa` | float64 | Solar wind dynamic (ram) pressure ½ρv² (nPa); typical 1–10 nPa; high values compress the dayside magnetopause |
-| `sigma_t_k` | float64 | Intra-hour standard deviation of proton temperature (K); reflects solar wind variability within the averaging window |
-| `sigma_n_cm3` | float64 | Intra-hour standard deviation of proton density (cm⁻³) |
-| `sigma_v_kms` | float64 | Intra-hour standard deviation of flow speed (km/s) |
-| `sigma_phi_v_deg` | float64 | Intra-hour standard deviation of flow longitude angle (degrees) |
-| `sigma_theta_v_deg` | float64 | Intra-hour standard deviation of flow latitude angle (degrees) |
-| `sigma_alpha_proton_ratio` | float64 | Intra-hour standard deviation of the He²⁺/H⁺ density ratio |
-| `electric_field_mvpm` | float64 | Interplanetary electric field component −V×Bz (mV/m); negative (southward Bz) drives magnetospheric energy input; typical range −10 to +10 mV/m |
-| `plasma_beta` | float64 | Ratio of thermal pressure to magnetic pressure (nkT / B²/8π); β<1 = magnetically dominated, β>1 = thermally dominated |
-| `alfven_mach_number` | float64 | Solar wind speed divided by Alfvén speed; typical ~8–10 at 1 AU; determines bow shock and magnetopause standoff |
-| `kp_index` | float64 | Planetary geomagnetic 3-hourly Kp index stored as integer×10 (e.g. 27 = Kp 2.7); scale 0–90; Kp≥50 = geomagnetic storm |
-| `sunspot_number` | float64 | International sunspot number (SILSO v2); tracks the 11-year solar cycle; range ~0–300 |
-| `dst_index_nt` | float64 | Disturbance Storm Time ring-current index (nT); 0 = quiet; −30 to −50 nT = minor storm; <−100 nT = intense storm |
-| `ae_index_nt` | float64 | Auroral Electrojet AE index (nT) = AU − AL; measures substorm and auroral zone current intensity; 0–2000+ nT |
-| `proton_flux_gt1mev` | float64 | Energetic proton flux for particles >1 MeV (1/cm²·s·sr); elevated during solar proton events (SPEs) |
-| `proton_flux_gt2mev` | float64 | Energetic proton flux for particles >2 MeV (1/cm²·s·sr) |
-| `proton_flux_gt4mev` | float64 | Energetic proton flux for particles >4 MeV (1/cm²·s·sr) |
-| `proton_flux_gt10mev` | float64 | Energetic proton flux for particles >10 MeV (1/cm²·s·sr); NOAA SPE threshold: 10 pfu at this energy |
-| `proton_flux_gt30mev` | float64 | Energetic proton flux for particles >30 MeV (1/cm²·s·sr) |
-| `proton_flux_gt60mev` | float64 | Energetic proton flux for particles >60 MeV (1/cm²·s·sr) |
-| `ap_index_nt` | float64 | Linear equivalent of Kp index (nT); 3-hourly; range 0–400 nT; ap≥100 = major geomagnetic storm |
-| `f107_index_sfu` | float64 | Solar 10.7 cm radio flux index (Solar Flux Units, 1 SFU = 10⁻²² W/m²/Hz); solar cycle range ~65–300 SFU; proxy for EUV output driving ionospheric variability |
-| `pc_n_index` | float64 | Polar Cap (North) magnetic activity index derived from Thule/Qaanaaq magnetometer; tracks cross-polar-cap potential and substorm precursors |
-| `al_index_nt` | float64 | Auroral Electrojet lower (AL) index (nT); measures westward electrojet intensity; negative excursions indicate substorm onset |
-| `au_index_nt` | float64 | Auroral Electrojet upper (AU) index (nT); measures eastward electrojet intensity; AE = AU − AL |
-| `magnetosonic_mach_number` | float64 | Solar wind speed divided by the fast magnetosonic wave speed; determines bow shock geometry; typical ~6–8 at 1 AU |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n_total:,}** hourly records ({date_min} to {date_max})
-- **55 original parameters** spanning IMF, solar wind, geomagnetic indices, and energetic particles
-- Standard reference dataset for solar wind — magnetosphere coupling studies
+- **{len(COLUMN_DESCRIPTIONS)}** parameters spanning IMF, solar wind, geomagnetic indices, and energetic particles
+- Bz coverage: **{bz_coverage:.1f}%**, flow speed: **{v_coverage:.1f}%**, Dst: **{dst_coverage:.1f}%**
+- Standard reference dataset for solar wind-magnetosphere coupling studies"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -359,14 +254,10 @@ df = ds.to_pandas()
 
 # Southward IMF (Bz < 0) and geomagnetic storms (Dst < -50)
 storms = df[(df["bz_gsm_nt"] < -5) & (df["dst_index_nt"] < -50)]
-print(f"Storm hours with strong southward IMF: {{len(storms):,}}")
+print(f"Storm hours with strong southward IMF: {len(storms):,}")
 
 # Solar wind speed distribution
 print(df["flow_speed_kms"].describe())
-
-# Correlation between IMF Bz and Dst
-corr = df[["bz_gsm_nt", "dst_index_nt"]].dropna().corr()
-print(f"Bz-Dst correlation: {{corr.iloc[0, 1]:.3f}}")
 
 # Plasma beta vs Alfven Mach number
 import matplotlib.pyplot as plt
@@ -378,65 +269,56 @@ plt.xscale("log")
 plt.yscale("log")
 plt.title("OMNI: Plasma Beta vs Alfven Mach Number")
 plt.show()
-```
+```"""
 
-## Data source
+    # Identify numeric columns for clean()
+    numeric_cols = [c for c in df.columns if c != "datetime" and c in COLUMN_DESCRIPTIONS]
 
-[NASA/GSFC Space Physics Data Facility (SPDF)](https://omniweb.gsfc.nasa.gov/) — OMNI 2 hourly dataset.
-Source file: `spdf.gsfc.nasa.gov/pub/data/omni/low_res_omni/omni2_all_years.dat`
-Format docs: `spdf.gsfc.nasa.gov/pub/data/omni/low_res_omni/omni2.text`
-
-## Update schedule
-
-Daily at 16:30 UTC via [GitHub Actions](https://github.com/juliensimon/space-datasets).
-The full dataset is re-downloaded each run (~100 MB ASCII).
-
-## Related datasets
-
-- [solar-wind-plasma](https://huggingface.co/datasets/juliensimon/solar-wind) — Near-Earth solar wind from DSCOVR/ACE (1-minute resolution)
-- [dst-index](https://huggingface.co/datasets/juliensimon/dst-index) — Geomagnetic Dst index
-- [kp-index](https://huggingface.co/datasets/juliensimon/geomagnetic-kp-index) — Geomagnetic Kp index
-- [ae-index](https://huggingface.co/datasets/juliensimon/auroral-electrojet-index) — Auroral Electrojet AE index
-- [f107-index](https://huggingface.co/datasets/juliensimon/f107-solar-flux) — F10.7 solar radio flux
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/omni-solar-wind-parameters) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{omni_solar_wind,
-  author = {{Simon, Julien}},
-  title = {{OMNI Hourly Solar Wind Parameters}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/omni-solar-wind-parameters}},
-  note = {{Based on NASA/GSFC OMNI 2 hourly merged solar wind and geomagnetic index data}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update OMNI solar wind parameters: {n_total:,} records"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="OMNI Hourly Solar Wind Parameters",
+        description=DESCRIPTION,
+        tags=["space", "solar-wind", "imf", "magnetic-field", "space-weather",
+              "nasa", "open-data", "tabular-data", "parquet"],
+        source_url="https://omniweb.gsfc.nasa.gov/",
+        task_categories=["tabular-regression", "time-series-forecasting"],
+        collection_url="https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/iss072e159172/iss072e159172~medium.jpg",
+            "alt": "Aurora borealis blankets the Earth, seen from the ISS",
+            "credit": "NASA",
+        },
+        related_datasets=[
+            "juliensimon/solar-wind",
+            "juliensimon/dst-index",
+            "juliensimon/geomagnetic-kp-index",
+            "juliensimon/auroral-electrojet-index",
+            "juliensimon/f107-solar-flux",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=numeric_cols,
+            drop_mostly_null_threshold=0.95,
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={n_total}\n")
+        p.publish(
+            df,
+            filename="omni_solar_wind_parameters.parquet",
+            min_rows=400_000,
+            expected_columns=[
+                "datetime", "b_magnitude_avg_nt", "bx_gse_nt", "by_gse_nt",
+                "bz_gse_nt", "by_gsm_nt", "bz_gsm_nt", "flow_speed_kms",
+                "proton_density_cm3", "proton_temperature_k", "flow_pressure_npa",
+                "plasma_beta", "alfven_mach_number", "magnetosonic_mach_number",
+                "kp_index", "dst_index_nt", "ae_index_nt", "ap_index_nt",
+                "f107_index_sfu", "sunspot_number",
+            ],
+            critical_columns=["datetime"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update OMNI solar wind parameters: {n_total:,} records",
+        )
     print("Done.")
 
 

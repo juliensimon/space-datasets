@@ -1,21 +1,16 @@
 #!/usr/bin/env python3
 """Fetch Gaia DR3 RR Lyrae variable star catalog from VizieR and upload to HF."""
 
-import os
-import subprocess
-import tempfile
-from pathlib import Path
-
 import pandas as pd
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
-from vizier_tap import vizier_query
+from hf_dataset_utils import Pipeline
+from hf_dataset_utils.tap import vizier_query
 
 HF_REPO = "juliensimon/gaia-dr3-rrlyrae"
 
 ADQL = """SELECT * FROM "I/358/vrrlyr" """
 
+# ── Column mapping ───────────────────────────────────────────────────
 RENAME = {
     "RA_ICRS": "ra_deg",
     "RAJ2000": "ra_deg",
@@ -37,11 +32,53 @@ RENAME = {
     "NbTr": "n_transits",
 }
 
-NUMERIC_COLS = [
-    "ra_deg", "dec_deg", "period_days", "epoch_g_bjd",
-    "amplitude_g_mag", "mean_g_mag", "mean_bp_mag", "mean_rp_mag",
-    "metallicity_feh", "distance_pc", "n_transits",
-]
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "source_id": "Gaia DR3 source identifier (64-bit integer as string); unique and stable within the Gaia DR3 data release",
+    "ra_deg": "Right ascension, ICRS J2016.0 (Gaia reference epoch), in decimal degrees (0-360)",
+    "dec_deg": "Declination, ICRS J2016.0, in decimal degrees (-90 to +90)",
+    "period_days": "Dominant pulsation period in days; RRab (fundamental mode): 0.4-1.0 d; RRc (first overtone): 0.2-0.5 d; null for a small fraction with unreliable period solutions",
+    "epoch_g_bjd": "Barycentric Julian Date of maximum light in the G band; reference point for the light curve model",
+    "amplitude_g_mag": "Peak-to-peak light curve amplitude in Gaia G band (mag); RRab typically 0.3-1.2 mag; RRc typically 0.1-0.5 mag; encodes metallicity information via the Bailey diagram",
+    "mean_g_mag": "Intensity-averaged mean G-band magnitude; RR Lyrae have M_G ~ +0.6 mag (useful standard candles); range ~10-20 mag depending on distance",
+    "mean_bp_mag": "Intensity-averaged mean Gaia BP-band (330-680 nm) magnitude; null for faint stars with poor BP photometry",
+    "mean_rp_mag": "Intensity-averaged mean Gaia RP-band (640-1050 nm) magnitude; null for faint stars with poor RP photometry",
+    "metallicity_feh": "Photometric [Fe/H] in dex, estimated from the period-phi31 Fourier decomposition relation; RR Lyrae are old metal-poor stars, typical range -3.0 to -0.5 dex; null where light curve quality is insufficient",
+    "distance_pc": "Photometric distance in parsecs, derived from mean magnitude and period-luminosity-metallicity relation; typical range 100-100,000 pc; null where metallicity or magnitude is unavailable",
+    "subclassification": "RR Lyrae pulsation subtype: RRab (fundamental mode, asymmetric light curve), RRc (first overtone, sinusoidal), RRd (double-mode); null for uncertain classifications",
+    "best_classification": "Best overall classification label assigned by the Gaia variability pipeline, may include confidence flags",
+    "n_transits": "Number of individual Gaia field-of-view transits contributing to the light curve; higher values indicate more reliable period and amplitude estimates",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+The Gaia Data Release 3 catalog of RR Lyrae variable stars -- the largest homogeneous \
+catalog of pulsating horizontal-branch stars ever compiled. RR Lyrae stars are essential \
+standard candles for the cosmic distance ladder.
+
+RR Lyrae stars are old, low-metallicity pulsating variables found in the Milky Way halo, \
+bulge, globular clusters, and nearby galaxies. Their well-defined period-luminosity-metallicity \
+relation makes them fundamental distance indicators. Gaia DR3 provides the most comprehensive \
+all-sky census of RR Lyrae variables, with precise astrometry, multi-band photometry, light \
+curve parameters, metallicity estimates from the light curve shape, and photometric distances.
+
+RR Lyrae stars occupy the horizontal branch of the Hertzsprung-Russell diagram, burning \
+helium in their cores after ascending the red giant branch. They are exclusively old \
+(> 10 Gyr) and metal-poor to moderately metal-rich, with masses near 0.6-0.8 solar masses \
+and luminosities around 40-50 times that of the Sun. Their pulsation is driven by the \
+kappa mechanism operating in the partial ionization zone of helium, producing the \
+characteristic rapid brightness variations with periods typically between 0.2 and 1.0 days.
+
+The Bailey diagram -- plotting light-curve amplitude against period -- cleanly separates \
+the subclasses and encodes information about metallicity: at a given period, more \
+metal-poor RRab stars tend to have larger amplitudes. Gaia DR3 exploits this by deriving \
+photometric metallicities from the light-curve shape, providing [Fe/H] estimates for \
+hundreds of thousands of stars across the Galaxy without the need for spectroscopy.
+
+RR Lyrae stars are particularly powerful tracers of Galactic substructure because they are \
+luminous enough to be detected at distances of over 100 kpc, well into the outer halo where \
+the debris of accreted dwarf galaxies is found.
+"""
 
 
 def main():
@@ -52,11 +89,6 @@ def main():
     # Rename columns
     df = df.rename(columns=RENAME)
 
-    # Type conversions
-    for col in NUMERIC_COLS:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
     # Clean string columns
     for col in ["source_id", "subclassification", "best_classification"]:
         if col in df.columns:
@@ -64,135 +96,26 @@ def main():
                 {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
             )
 
-    # Stats
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
+
+    # ── Domain-specific stats for README ─────────────────────────────
     n_total = len(df)
     n_with_period = int(df["period_days"].notna().sum()) if "period_days" in df.columns else 0
     period_median = df["period_days"].median() if "period_days" in df.columns else 0
+    n_with_feh = int(df["metallicity_feh"].notna().sum()) if "metallicity_feh" in df.columns else 0
+    feh_median = df["metallicity_feh"].median() if "metallicity_feh" in df.columns else float("nan")
+    n_rrab = int((df["subclassification"] == "RRab").sum()) if "subclassification" in df.columns else 0
+    n_rrc = int((df["subclassification"] == "RRc").sum()) if "subclassification" in df.columns else 0
+    n_rrd = int((df["subclassification"] == "RRd").sum()) if "subclassification" in df.columns else 0
 
-    # Validate
-    check_dataset(
-        df,
-        "gaia-rrlyrae",
-        min_rows=250_000,
-        expected_columns=["ra_deg", "dec_deg"],
-        critical_columns=["ra_deg", "dec_deg"],
-    )
-
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "gaia_dr3_rrlyrae.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("gaia-rrlyrae", tmp)
-        banner_md = banner_markdown("gaia-rrlyrae", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Gaia DR3 RR Lyrae Variables"
-language:
-  - en
-description: "Gaia DR3 catalog of {n_total:,} RR Lyrae variable stars with periods, amplitudes, metallicities, and distances."
-task_categories:
-  - tabular-classification
-  - tabular-regression
-tags:
-  - space
-  - gaia
-  - rr-lyrae
-  - variable-star
-  - distance-ladder
-  - astronomy
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 100K<n<1M
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/gaia_dr3_rrlyrae.parquet
-    default: true
----
-
-# Gaia DR3 RR Lyrae Variables
-{banner_md}
-*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
-
-The Gaia Data Release 3 catalog of **{n_total:,}** RR Lyrae variable stars -- the largest
-homogeneous catalog of pulsating horizontal-branch stars ever compiled. RR Lyrae stars are
-essential standard candles for the cosmic distance ladder.
-
-## Dataset description
-
-RR Lyrae stars are old, low-metallicity pulsating variables found in the Milky Way halo,
-bulge, globular clusters, and nearby galaxies. Their well-defined period-luminosity-metallicity
-relation makes them fundamental distance indicators. Gaia DR3 provides the most comprehensive
-all-sky census of RR Lyrae variables, with precise astrometry, multi-band photometry, light
-curve parameters, metallicity estimates from the light curve shape, and photometric distances.
-
-This dataset is a cornerstone for Galactic archaeology, enabling studies of the Milky Way's
-stellar halo substructure, tidal streams, and satellite galaxies.
-
-RR Lyrae stars occupy the horizontal branch of the Hertzsprung-Russell diagram, burning
-helium in their cores after ascending the red giant branch. They are exclusively old
-(> 10 Gyr) and metal-poor to moderately metal-rich, with masses near 0.6--0.8 solar masses
-and luminosities around 40--50 times that of the Sun. Their pulsation is driven by the
-kappa mechanism operating in the partial ionization zone of helium, producing the
-characteristic rapid brightness variations with periods typically between 0.2 and 1.0 days.
-Three pulsation modes are recognized: RRab stars pulsate in the radial fundamental mode with
-large, asymmetric light curves and periods around 0.5--0.7 days; RRc stars pulsate in the
-first overtone with smaller amplitudes and more sinusoidal variations near 0.25--0.40 days;
-and RRd stars pulsate simultaneously in both modes, providing strong constraints on stellar
-structure models.
-
-The Bailey diagram -- plotting light-curve amplitude against period -- cleanly separates
-these subclasses and encodes information about metallicity: at a given period, more
-metal-poor RRab stars tend to have larger amplitudes. Gaia DR3 exploits this by deriving
-photometric metallicities from the light-curve shape, providing [Fe/H] estimates for
-hundreds of thousands of stars across the Galaxy without the need for spectroscopy. Combined
-with the photometric distances in this catalog, these metallicities enable three-dimensional
-chemical mapping of the Milky Way's oldest stellar populations.
-
-RR Lyrae stars are particularly powerful tracers of Galactic substructure because they are
-luminous enough to be detected at distances of over 100 kpc, well into the outer halo where
-the debris of accreted dwarf galaxies is found. They have been instrumental in the discovery
-of the Sagittarius stream, the Virgo overdensity, and numerous other halo substructures.
-The Gaia DR3 catalog, with its combination of all-sky coverage, uniform photometry, and
-precise astrometry, provides the definitive census of RR Lyrae populations throughout the
-Milky Way system.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `source_id` | string | Gaia DR3 source identifier (64-bit integer as string); unique and stable within the Gaia DR3 data release |
-| `ra_deg` | float64 | Right ascension, ICRS J2016.0 (Gaia reference epoch), in decimal degrees (0–360) |
-| `dec_deg` | float64 | Declination, ICRS J2016.0, in decimal degrees (−90 to +90) |
-| `period_days` | float64 | Dominant pulsation period in days; RRab (fundamental mode): 0.4–1.0 d; RRc (first overtone): 0.2–0.5 d; null for a small fraction with unreliable period solutions |
-| `epoch_g_bjd` | float64 | Barycentric Julian Date of maximum light in the G band; reference point for the light curve model |
-| `amplitude_g_mag` | float64 | Peak-to-peak light curve amplitude in Gaia G band (mag); RRab typically 0.3–1.2 mag; RRc typically 0.1–0.5 mag; encodes metallicity information via the Bailey diagram |
-| `mean_g_mag` | float64 | Intensity-averaged mean G-band magnitude; RR Lyrae have M_G ≈ +0.6 mag (useful standard candles); range ~10–20 mag depending on distance |
-| `mean_bp_mag` | float64 | Intensity-averaged mean Gaia BP-band (330–680 nm) magnitude; null for faint stars with poor BP photometry |
-| `mean_rp_mag` | float64 | Intensity-averaged mean Gaia RP-band (640–1050 nm) magnitude; null for faint stars with poor RP photometry |
-| `metallicity_feh` | float64 | Photometric [Fe/H] in dex, estimated from the period–phi31 Fourier decomposition relation; RR Lyrae are old metal-poor stars, typical range −3.0 to −0.5 dex; null where light curve quality is insufficient |
-| `distance_pc` | float64 | Photometric distance in parsecs, derived from mean magnitude and period-luminosity-metallicity relation; typical range 100–100,000 pc; null where metallicity or magnitude is unavailable |
-| `subclassification` | string | RR Lyrae pulsation subtype: RRab (fundamental mode, asymmetric light curve), RRc (first overtone, sinusoidal), RRd (double-mode); null for uncertain classifications |
-| `best_classification` | string | Best overall classification label assigned by the Gaia variability pipeline, may include confidence flags |
-| `n_transits` | float64 | Number of individual Gaia field-of-view transits contributing to the light curve; higher values indicate more reliable period and amplitude estimates |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n_total:,}** RR Lyrae variables
 - **{n_with_period:,}** with pulsation period (median {period_median:.4f} days)
+- **{n_rrab:,}** RRab, **{n_rrc:,}** RRc, **{n_rrd:,}** RRd
+- **{n_with_feh:,}** with photometric metallicity (median [Fe/H] = {feh_median:.2f} dex)"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -214,61 +137,48 @@ plt.xlabel("[Fe/H] (dex)")
 plt.ylabel("Count")
 plt.title("RR Lyrae Metallicity Distribution")
 plt.show()
+```"""
 
-# Sky distribution (Galactic coordinates would be ideal)
-plt.scatter(df["ra_deg"], df["dec_deg"], s=0.01, alpha=0.1,
-            c=df["distance_pc"].clip(upper=50000), cmap="viridis")
-plt.colorbar(label="Distance (pc)")
-plt.xlabel("RA (deg)")
-plt.ylabel("Dec (deg)")
-plt.title("Gaia DR3 RR Lyrae Sky Distribution")
-plt.show()
-```
-
-## Data source
-
-Clementini, G. et al. (2023), *Gaia Data Release 3: Specific processing and validation
-of all-sky RR Lyrae and Cepheid stars.* Astronomy & Astrophysics, 674, A18.
-Via [VizieR](https://vizier.cds.unistra.fr/) CDS Strasbourg (I/358).
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/gaia-dr3-rrlyrae) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{gaia_dr3_rrlyrae,
-  author = {{Simon, Julien}},
-  title = {{Gaia DR3 RR Lyrae Variables}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/gaia-dr3-rrlyrae}},
-  note = {{Based on Clementini et al. (2023), Gaia DR3, via VizieR CDS Strasbourg}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update Gaia DR3 RR Lyrae: {n_total:,} variables"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Gaia DR3 RR Lyrae Variables",
+        description=DESCRIPTION,
+        tags=["space", "gaia", "rr-lyrae", "variable-star", "distance-ladder",
+              "astronomy", "open-data", "tabular-data", "parquet"],
+        source_url="https://vizier.cds.unistra.fr/viz-bin/VizieR-3?-source=I/358/vrrlyr",
+        task_categories=["tabular-classification"],
+        collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA03606/PIA03606~small.jpg",
+            "alt": "The Crab Nebula, a supernova remnant",
+            "credit": "NASA/ESA/Hubble",
+        },
+        related_datasets=[
+            "juliensimon/gaia-dr3-cepheids",
+            "juliensimon/gcvs-variable-stars",
+            "juliensimon/gaia-dr3-eclipsing-binaries",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=[
+                "ra_deg", "dec_deg", "period_days", "epoch_g_bjd",
+                "amplitude_g_mag", "mean_g_mag", "mean_bp_mag", "mean_rp_mag",
+                "metallicity_feh", "distance_pc", "n_transits",
+            ],
+            drop_mostly_null_threshold=0.95,
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={len(df)}\n")
+        p.publish(
+            df,
+            filename="gaia_dr3_rrlyrae.parquet",
+            min_rows=250_000,
+            expected_columns=["source_id", "ra_deg", "dec_deg", "period_days"],
+            critical_columns=["source_id", "ra_deg", "dec_deg"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update Gaia DR3 RR Lyrae: {n_total:,} variables",
+        )
     print("Done.")
 
 

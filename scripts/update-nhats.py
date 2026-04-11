@@ -1,19 +1,62 @@
 #!/usr/bin/env python3
 """Fetch NASA NHATS human-accessible asteroids and upload to HF."""
 
-import os
-import subprocess
-import tempfile
-from pathlib import Path
-
 import pandas as pd
 
+from hf_dataset_utils import Pipeline
 from jpl_api import jpl_query
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
-
 
 HF_REPO = "juliensimon/nhats-accessible-asteroids"
+
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "designation": "Primary MPC asteroid designation (e.g., '2021 PH27', '1999 AO10')",
+    "full_name": "Full formatted name/designation including any IAU proper name",
+    "n_viable_trajectories": "Total number of viable round-trip trajectory opportunities found by NHATS, counting all launch dates and mission profiles; higher = more scheduling flexibility",
+    "observation_magnitude": "Observed visual magnitude at the time of discovery or most recent apparition; null when not available; fainter (larger) values indicate smaller or more distant objects",
+    "orbit_condition_code": "MPC orbit uncertainty metric (0-9); 0 = well-determined multi-opposition orbit, 9 = very poorly constrained single-opposition arc; affects reliability of accessibility predictions",
+    "max_diameter_m": "Estimated upper bound on effective diameter in meters, derived from absolute magnitude H and assumed minimum albedo; null when H magnitude is unavailable",
+    "min_diameter_m": "Estimated lower bound on effective diameter in meters, derived from absolute magnitude H and assumed maximum albedo; null when H magnitude is unavailable",
+    "min_delta_v_kms": "Minimum total delta-v (Earth departure + outbound transfer + return) for any viable round-trip trajectory in km/s; <6 km/s = energetically comparable to reaching the lunar surface; NHATS search limit is 12 km/s",
+    "min_mission_duration_days": "Minimum total round-trip mission duration in days across all viable trajectories; NHATS search limit is 450 days; shorter durations preferred for crewed missions due to life support and radiation constraints",
+    "obs_flag": "Observation flag from NHATS indicating whether the object is currently observable or has upcoming observing opportunities",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Near-Earth asteroids accessible for human space flight missions, from NASA JPL's \
+NHATS study. Includes delta-v requirements and trajectory counts.
+
+The NHATS study identifies near-Earth asteroids that could be reached by crewed \
+spacecraft with relatively low delta-v (velocity change) requirements. These are \
+potential targets for human exploration missions, sample return, and in-situ resource \
+utilisation (ISRU).
+
+Each asteroid in this dataset has at least one viable round-trip trajectory with \
+total delta-v under 12 km/s, total mission duration under 450 days, and stay time \
+of at least 8 days. The dataset is continuously updated as new asteroids are \
+discovered and orbits are refined.
+
+The delta-v requirement is the single most important metric for mission feasibility \
+in space exploration. Unlike terrestrial travel where distance dominates cost, \
+spaceflight cost scales with the velocity change needed to match orbits with a target. \
+A round-trip delta-v under 6 km/s -- comparable to what is needed to reach the lunar \
+surface and return -- makes an asteroid reachable with existing or near-term \
+propulsion technology. The most accessible targets in this dataset have delta-v \
+requirements below 5 km/s, making them energetically easier to reach than the Moon \
+despite being millions of kilometers away.
+
+Mission duration and the number of viable trajectories provide complementary \
+selection criteria. A target with thousands of viable trajectories offers scheduling \
+flexibility -- crucial for mission planning that must account for launch window \
+constraints, spacecraft readiness, and orbital mechanics.
+
+These asteroids are also prime candidates for in-situ resource utilization (ISRU) -- \
+extracting water, metals, and volatiles from asteroid material to support deep-space \
+operations. The combination of low delta-v accessibility and potential resource \
+richness makes NHATS targets central to long-term plans for a sustained human \
+presence beyond low Earth orbit.
+"""
 
 
 def main():
@@ -34,7 +77,7 @@ def main():
             lambda x: x.get("dur") if isinstance(x, dict) else None
         )
 
-    # Rename columns (guard all accesses)
+    # Rename columns
     rename_map = {}
     if "des" in df.columns:
         rename_map["des"] = "designation"
@@ -50,8 +93,6 @@ def main():
         rename_map["max_size"] = "max_diameter_m"
     if "min_size" in df.columns:
         rename_map["min_size"] = "min_diameter_m"
-    if "obs_flag" in df.columns:
-        rename_map["obs_flag"] = "obs_flag"
 
     df = df.rename(columns=rename_map)
 
@@ -60,118 +101,24 @@ def main():
         if col in df.columns:
             df = df.drop(columns=[col])
 
-    # Convert numeric columns
-    for col in ["n_viable_trajectories", "observation_magnitude", "orbit_condition_code",
-                "max_diameter_m", "min_diameter_m", "min_delta_v_kms",
-                "min_mission_duration_days"]:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
     df = df.reset_index(drop=True)
 
-    check_dataset(df, "nhats", min_rows=2000,
-                  expected_columns=["designation", "min_delta_v_kms", "n_viable_trajectories"],
-                  critical_columns=["designation", "min_delta_v_kms"])
-
-    # Stats for README
+    # ── Domain-specific stats for README ─────────────────────────────
     n = len(df)
     mean_dv = df["min_delta_v_kms"].mean() if "min_delta_v_kms" in df.columns else 0
     min_dv = df["min_delta_v_kms"].min() if "min_delta_v_kms" in df.columns else 0
     n_low_dv = int((df["min_delta_v_kms"] < 6).sum()) if "min_delta_v_kms" in df.columns else 0
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "nhats_accessible_asteroids.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_kb = out.stat().st_size / 1024
-        print(f"  {size_kb:.0f} KB parquet")
-
-        banner_file = download_banner("nhats", tmp)
-        banner_md = banner_markdown("nhats", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "NASA NHATS Near-Earth Accessible Asteroids"
-language:
-  - en
-description: >-
-  Near-Earth asteroids accessible for human space flight missions, from NASA JPL's
-  NHATS study. Includes delta-v requirements and trajectory counts. Updated daily.
-size_categories:
-  - 1K<n<10K
-task_categories:
-  - tabular-regression
-tags:
-  - space
-  - asteroid
-  - nhats
-  - nasa
-  - human-exploration
-  - delta-v
-  - open-data
-  - tabular-data
-  - parquet
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/nhats_accessible_asteroids.parquet
----
-
-# NASA NHATS Near-Earth Accessible Asteroids
-{banner_md}
-*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
-
-![Update NHATS](https://github.com/juliensimon/space-datasets/actions/workflows/update-nhats.yml/badge.svg)
-![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.nhats&label=updated&color=brightgreen)
-
-Near-Earth asteroids accessible for human missions, currently **{n:,}** objects from
-NASA JPL's Near-Earth Object Human Space Flight Accessible Targets Study (NHATS).
-
-## Dataset description
-
-The NHATS study identifies near-Earth asteroids that could be reached by crewed
-spacecraft with relatively low delta-v (velocity change) requirements. These are
-potential targets for human exploration missions, sample return, and in-situ resource
-utilisation (ISRU).
-
-Each asteroid in this dataset has at least one viable round-trip trajectory with
-total delta-v under 12 km/s, total mission duration under 450 days, and stay time
-of at least 8 days. The dataset is continuously updated as new asteroids are
-discovered and orbits are refined.
-
-The delta-v requirement is the single most important metric for mission feasibility in space exploration. Unlike terrestrial travel where distance dominates cost, spaceflight cost scales with the velocity change needed to match orbits with a target. A round-trip delta-v under 6 km/s -- comparable to what is needed to reach the lunar surface and return -- makes an asteroid reachable with existing or near-term propulsion technology. The most accessible targets in this dataset have delta-v requirements below 5 km/s, making them energetically easier to reach than the Moon despite being millions of kilometers away. This counterintuitive result arises because these asteroids occupy orbits similar to Earth's, requiring only modest trajectory corrections.
-
-Mission duration and the number of viable trajectories provide complementary selection criteria. A target with thousands of viable trajectories offers scheduling flexibility -- crucial for mission planning that must account for launch window constraints, spacecraft readiness, and orbital mechanics. The NHATS study evaluates trajectories with launch dates spanning decades into the future, identifying objects that remain accessible across multiple launch opportunities. Short minimum mission durations (under 200 days) are preferred for crewed missions where life support consumables and radiation exposure impose hard limits.
-
-These asteroids are also prime candidates for in-situ resource utilization (ISRU) -- extracting water, metals, and volatiles from asteroid material to support deep-space operations. Carbonaceous (C-type) asteroids may contain up to 20% water by mass, which can be electrolyzed into hydrogen and oxygen propellant. Metallic (M-type) asteroids contain iron, nickel, cobalt, and platinum-group elements. The combination of low delta-v accessibility and potential resource richness makes NHATS targets central to long-term plans for a sustained human presence beyond low Earth orbit.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `designation` | string | Primary MPC asteroid designation (e.g., "2021 PH27", "1999 AO10") |
-| `full_name` | string | Full formatted name/designation including any IAU proper name |
-| `n_viable_trajectories` | int64 | Total number of viable round-trip trajectory opportunities found by NHATS, counting all launch dates and mission profiles; higher = more scheduling flexibility |
-| `observation_magnitude` | float64 | Observed visual magnitude at the time of discovery or most recent apparition; null when not available; fainter (larger) values indicate smaller or more distant objects |
-| `orbit_condition_code` | int64 | MPC orbit uncertainty metric (0–9); 0 = well-determined multi-opposition orbit, 9 = very poorly constrained single-opposition arc; affects reliability of accessibility predictions |
-| `max_diameter_m` | float64 | Estimated upper bound on effective diameter in meters, derived from absolute magnitude H and assumed minimum albedo; null when H magnitude is unavailable |
-| `min_diameter_m` | float64 | Estimated lower bound on effective diameter in meters, derived from absolute magnitude H and assumed maximum albedo; null when H magnitude is unavailable |
-| `min_delta_v_kms` | float64 | Minimum total delta-v (Earth departure + outbound transfer + return) for any viable round-trip trajectory in km/s; <6 km/s = energetically comparable to reaching the lunar surface; NHATS search limit is 12 km/s |
-| `min_mission_duration_days` | float64 | Minimum total round-trip mission duration in days across all viable trajectories; NHATS search limit is 450 days; shorter durations preferred for crewed missions due to life support and radiation constraints |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n:,}** accessible asteroids
 - Mean minimum delta-v: **{mean_dv:.2f}** km/s
 - Lowest delta-v target: **{min_dv:.2f}** km/s
-- **{n_low_dv}** targets with delta-v < 6 km/s
+- **{n_low_dv}** targets with delta-v < 6 km/s"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -194,54 +141,42 @@ ax.set_xlabel("Min delta-v (km/s)")
 ax.set_ylabel("Count")
 ax.set_title("NHATS Asteroid Delta-v Distribution")
 plt.show()
-```
+```"""
 
-## Data source
-
-[NASA JPL Near-Earth Object Human Space Flight Accessible Targets Study (NHATS)](https://cneos.jpl.nasa.gov/nhats/).
-
-## Update schedule
-
-Daily at 16:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-datasets).
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/nhats-accessible-asteroids) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{nhats_accessible_asteroids,
-  author = {{Simon, Julien}},
-  title = {{NASA NHATS Near-Earth Accessible Asteroids}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/nhats-accessible-asteroids}},
-  note = {{Based on NASA/JPL NHATS (Near-Earth Object Human Space Flight Accessible Targets Study)}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update NHATS accessible asteroids: {n:,} records"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="NASA NHATS Near-Earth Accessible Asteroids",
+        description=DESCRIPTION,
+        tags=["space", "asteroid", "nhats", "nasa", "human-exploration",
+              "delta-v", "open-data", "tabular-data", "parquet"],
+        source_url="https://cneos.jpl.nasa.gov/nhats/",
+        task_categories=["tabular-regression"],
+        collection_url="https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA17666/PIA17666~small.jpg",
+            "alt": "Rosetta spacecraft approaching Comet 67P/Churyumov-Gerasimenko",
+            "credit": "NASA/ESA",
+        },
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=[
+                "n_viable_trajectories", "observation_magnitude", "orbit_condition_code",
+                "max_diameter_m", "min_diameter_m", "min_delta_v_kms",
+                "min_mission_duration_days",
+            ],
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={n}\n")
+        p.publish(
+            df,
+            filename="nhats_accessible_asteroids.parquet",
+            min_rows=2000,
+            expected_columns=["designation", "min_delta_v_kms", "n_viable_trajectories"],
+            critical_columns=["designation", "min_delta_v_kms"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update NHATS accessible asteroids: {n:,} records",
+        )
     print("Done.")
 
 

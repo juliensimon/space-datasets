@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
-"""Fetch space missions database from Wikidata and upload to HF."""
+"""Fetch space missions database from Wikidata and upload to HF.
 
-import os
-import subprocess
-import tempfile
-from pathlib import Path
+Source: Wikidata SPARQL endpoint — community-curated catalog of crewed
+and uncrewed space missions maintained by WikiProject Spaceflight.
+"""
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
-
+from hf_dataset_utils import Pipeline
 
 HF_REPO = "juliensimon/space-missions"
 
@@ -37,6 +34,37 @@ WHERE {
   OPTIONAL { ?mission wdt:P793 ?outcome. }
   SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul". }
 }
+"""
+
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "wikidata_id": "Wikidata entity ID (e.g. 'Q183294' for Apollo 11); stable persistent identifier that can be used to link back to the full Wikidata entry for enrichment",
+    "name": "Official mission name as recorded in Wikidata (e.g. 'Apollo 11', 'Voyager 1', 'Mars Odyssey'); the English-language label from the Wikidata entity",
+    "launch_date": "Date of launch in ISO 8601 format (YYYY-MM-DD); derived from Wikidata property P619; null for missions where launch date is unknown or not yet recorded",
+    "end_date": "Date the mission ended in ISO 8601 format (YYYY-MM-DD); derived from Wikidata property P582; null for ongoing missions or those without a recorded end date",
+    "operator": "Launching or operating space agency/organization (e.g. 'NASA', 'ESA', 'ISRO', 'Roscosmos', 'CNSA'); null for missions where Wikidata has no operator recorded",
+    "destination": "Primary mission destination or target body (e.g. 'Moon', 'Mars', 'Jupiter'); derived from Wikidata property P1444; null for LEO missions or where not recorded",
+    "launch_site": "Name of the launch facility (e.g. 'Kennedy Space Center', 'Baikonur Cosmodrome'); derived from Wikidata property P1427; null where not recorded",
+    "vehicle": "Launch vehicle used (e.g. 'Saturn V', 'Falcon 9', 'Soyuz-FG'); derived from Wikidata property P4394; null where not recorded",
+    "crew_count": "Number of crew members aboard; 0 or null for uncrewed missions; derived from Wikidata property P1132",
+    "duration_days": "Mission duration in days, converted from Wikidata's minutes (P2047); null for missions where duration is not recorded or still ongoing",
+    "outcome": "Mission outcome or significant event (e.g. 'successful orbital insertion', 'launch failure'); derived from Wikidata property P793; null where not recorded",
+    "launch_year": "Year extracted from launch_date for convenience in temporal analysis; null when launch_date is missing",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Comprehensive database of space missions -- both crewed and uncrewed -- sourced \
+from Wikidata's structured knowledge base. Covers the full history of spaceflight \
+from the dawn of the Space Age to the present.
+
+This dataset draws on Wikidata using three entity types: space missions (Q2133344), \
+crewed spaceflights (Q1248784), and uncrewed spaceflights (Q12795915). It is \
+maintained by the WikiProject Spaceflight community and updated as new missions \
+are flown and documented.
+
+**Note:** Wikidata coverage is uneven -- most entries have only a name and Wikidata ID. \
+Columns with <5% data coverage are automatically dropped during pipeline processing.
 """
 
 
@@ -101,9 +129,10 @@ def main():
 
     # Clean string columns
     for col in ["name", "operator", "destination", "launch_site", "vehicle", "outcome"]:
-        df[col] = df[col].astype(str).str.strip().replace(
-            {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
-        )
+        if col in df.columns:
+            df[col] = df[col].astype(str).str.strip().replace(
+                {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
+            )
 
     # Derive launch_year for stats
     df["launch_year"] = pd.to_datetime(df["launch_date"], errors="coerce").dt.year
@@ -111,20 +140,10 @@ def main():
     df = df.sort_values("launch_date", na_position="last").reset_index(drop=True)
     print(f"  {len(df):,} unique missions")
 
-    # Drop columns that are >95% null (Wikidata fields with no coverage)
-    before_cols = len(df.columns)
-    for col in list(df.columns):
-        if df[col].isna().mean() > 0.95:
-            df = df.drop(columns=[col])
-    dropped = before_cols - len(df.columns)
-    if dropped:
-        print(f"  Dropped {dropped} columns (>95% null)")
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
-    check_dataset(df, "space-missions", min_rows=5000,
-                  expected_columns=["name"],
-                  critical_columns=["name"])
-
-    # Stats for README
+    # ── Domain-specific stats for README ─────────────────────────────
     n = len(df)
     n_with_date = int(df["launch_date"].notna().sum()) if "launch_date" in df.columns else 0
     n_crewed = int((df["crew_count"].fillna(0) > 0).sum()) if "crew_count" in df.columns else 0
@@ -134,81 +153,15 @@ def main():
         top_operators_str = ", ".join(f"{op} ({cnt:,})" for op, cnt in top_operators.items())
     else:
         top_operators_str = "N/A"
-    earliest = df["launch_date"].dropna().min() if "launch_date" in df.columns else "N/A"
-    latest = df["launch_date"].dropna().max() if "launch_date" in df.columns else "N/A"
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "space-missions.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_kb = out.stat().st_size / 1024
-        print(f"  {size_kb:.0f} KB parquet")
-
-        banner_file = download_banner("space-missions", tmp)
-        banner_md = banner_markdown("space-missions", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc0-1.0
-pretty_name: "Space Missions Database"
-language:
-  - en
-description: >-
-  Comprehensive database of space missions sourced from Wikidata.
-  {n:,} missions covering crewed and uncrewed spaceflight from the dawn
-  of the Space Age to the present.
-size_categories:
-  - 10K<n<100K
-task_categories:
-  - tabular-classification
-tags:
-  - space
-  - missions
-  - spaceflight
-  - wikidata
-  - open-data
-  - tabular-data
-  - parquet
-configs:
-  - config_name: default
-    default: true
-    data_files:
-      - split: train
-        path: data/space-missions.parquet
----
-
-# Space Missions Database
-{banner_md}
-*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
-
-Comprehensive database of **{n:,}** space missions — both crewed and uncrewed — sourced from [Wikidata](https://www.wikidata.org/).
-
-## Dataset description
-
-This dataset draws on Wikidata's structured knowledge base using three entity types: space missions (Q2133344), crewed spaceflights (Q1248784), and uncrewed spaceflights (Q12795915). It is maintained by the WikiProject Spaceflight community and updated as new missions are flown and documented.
-
-> **Note:** Wikidata coverage is uneven — most entries have only a name and Wikidata ID.
-> Columns with <5% data coverage are automatically dropped during pipeline processing.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `wikidata_id` | string | Wikidata entity ID (e.g. "Q183294"); stable URI for enrichment; present for all rows |
-| `name` | string | Official mission name as recorded in Wikidata (e.g. "Apollo 11", "Voyager 1", "Mars Odyssey"); null for missions with no label |
-| `operator` | string | Launching or operating space agency/organization (e.g. "NASA", "ESA", "ISRO", "Roscosmos", "CNSA"); null for ~87% of entries where Wikidata has no operator recorded |
-
-Additional columns (launch_date, destination, status, mission_type, etc.) appear dynamically when Wikidata coverage for that property exceeds 5% of missions. Coverage varies by property and dataset refresh date.
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n:,}** total missions in the database
-- Top operators: {top_operators_str}
+- **{n_with_date}** with known launch dates
+- **{n_crewed}** crewed missions
+- **{n_destinations}** unique destinations
+- Top operators: {top_operators_str}"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -219,68 +172,62 @@ df = ds.to_pandas()
 if "operator" in df.columns:
     print(df["operator"].value_counts().head(10))
 
-# List all missions
-print(df[["name", "wikidata_id"]].head(20))
-```
+# Launches per decade
+import matplotlib.pyplot as plt
+df["decade"] = (df["launch_year"] // 10) * 10
+df.dropna(subset=["decade"]).groupby("decade").size().plot(kind="bar")
+plt.ylabel("Number of Missions")
+plt.title("Space Missions by Decade")
+plt.tight_layout()
+plt.show()
 
-## Data source
+# Crewed vs uncrewed by operator
+if "crew_count" in df.columns and "operator" in df.columns:
+    df["crewed"] = df["crew_count"].fillna(0) > 0
+    top = df["operator"].value_counts().head(8).index
+    df[df["operator"].isin(top)].groupby(["operator", "crewed"]).size().unstack().plot(kind="bar")
+    plt.title("Crewed vs Uncrewed by Operator")
+    plt.show()
+```"""
 
-[Wikidata](https://www.wikidata.org/) SPARQL endpoint. Missions identified via:
-- Q2133344 (space mission, including subclasses)
-- Q1248784 (crewed spaceflight)
-- Q12795915 (uncrewed spaceflight)
-
-Data is community-curated by [WikiProject Spaceflight](https://www.wikidata.org/wiki/Wikidata:WikiProject_Spaceflight).
-
-## Update schedule
-
-Quarterly (January, April, July, October).
-
-## Related datasets
-
-- [astronaut-database](https://huggingface.co/datasets/juliensimon/astronaut-database) -- Every person who has traveled to space
-- [launch-log](https://huggingface.co/datasets/juliensimon/space-launch-log) -- McDowell orbital launch log
-- [spacecraft-database](https://huggingface.co/datasets/juliensimon/spacecraft-database) -- Spacecraft catalog
-- [deep-space-probes](https://huggingface.co/datasets/juliensimon/deep-space-probes) -- Deep space probe trajectories
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/space-missions) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{space_missions,
-  author = {{Simon, Julien}},
-  title = {{Space Missions Database}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/space-missions}},
-  note = {{Sourced from Wikidata (CC0)}}
-}}
-```
-
-## License
-
-[CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (Wikidata content is public domain)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update space missions database: {n:,} missions"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Space Missions Database",
+        description=DESCRIPTION,
+        license="cc0-1.0",
+        tags=["space", "missions", "spaceflight", "wikidata",
+              "open-data", "tabular-data", "parquet"],
+        source_url="https://www.wikidata.org/wiki/Wikidata:WikiProject_Spaceflight",
+        task_categories=["tabular-classification"],
+        collection_url="https://huggingface.co/collections/juliensimon/space-probe-and-mission-datasets-69c3fe82d410a42b1e313167",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/GSFC_20171208_Archive_e001386/GSFC_20171208_Archive_e001386~medium.jpg",
+            "alt": "Blue Marble — Earth from space as photographed by Suomi NPP satellite",
+            "credit": "NASA/GSFC/Suomi NPP",
+        },
+        related_datasets=[
+            "juliensimon/astronaut-database",
+            "juliensimon/space-launch-log",
+            "juliensimon/spacecraft-database",
+            "juliensimon/deep-space-probes",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=["crew_count", "duration_days", "launch_year"],
+            drop_mostly_null_threshold=0.95,
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={n}\n")
+        p.publish(
+            df,
+            filename="space_missions.parquet",
+            min_rows=5000,
+            expected_columns=["name"],
+            critical_columns=["name"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update space missions database: {n:,} missions",
+        )
     print("Done.")
 
 

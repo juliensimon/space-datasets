@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""Fetch DESI DR1 Bright Galaxy Survey redshifts from NOIRLab and upload to HF."""
+"""Fetch DESI DR1 Bright Galaxy Survey redshifts from NOIRLab and upload to HF.
+
+Source: Dark Energy Spectroscopic Instrument Data Release 1
+DESI Collaboration (2025), arXiv:2503.14745
+https://data.desi.lbl.gov/doc/releases/dr1/
+"""
 
 import io
-import os
-import subprocess
 import sys
-import tempfile
 import time
-from pathlib import Path
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
 
 TAP_URL = "https://datalab.noirlab.edu/tap/sync"
 HF_REPO = "juliensimon/desi-dr1-redshifts"
@@ -31,6 +31,45 @@ BASE_WHERE = (
 
 CHUNK_SIZE = 500_000
 MAX_ROWS = 5_000_000
+
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "targetid": "DESI unique 64-bit integer target identifier; encodes sky location and targeting program",
+    "ra": "Right ascension of the fiber center, ICRS J2000.0 (degrees, 0-360)",
+    "dec": "Declination of the fiber center, ICRS J2000.0 (degrees, -90 to +90)",
+    "redshift": "Best-fit spectroscopic redshift; galaxies/QSOs: 0.05-3.5; stars near 0; null if fit failed",
+    "redshift_err": "1-sigma uncertainty on the spectroscopic redshift; large values indicate unreliable fits",
+    "spectype": "Primary spectral classification: 'GALAXY', 'STAR', or 'QSO' (quasar); determined by Redrock template fitting",
+    "subtype": "Detailed sub-classification: for galaxies 'ELG' (emission-line), 'LRG' (luminous red), 'BGS' (bright galaxy survey); for stars the MK spectral type; null if not classified",
+    "deltachi2": "Delta-chi-squared between best and second-best spectral template fit; higher values indicate more reliable redshift (deltachi2 > 25 recommended)",
+    "chi2": "Best-fit chi-squared of the redshift solution; used with deltachi2 to assess fit quality",
+    "coadd_numexp": "Number of individual exposures co-added to produce the spectrum",
+    "coadd_numnight": "Number of distinct observation nights contributing to the coadd",
+    "coadd_numtile": "Number of DESI focal-plane tiles contributing to the coadd",
+    "coadd_exptime": "Total effective exposure time of the co-added spectrum (seconds)",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Spectroscopic redshifts from the Dark Energy Spectroscopic Instrument (DESI) Data Release 1 \
+-- the largest spectroscopic survey ever conducted. This dataset contains the Bright Galaxy \
+Survey (BGS) subset with reliable redshift measurements (zwarn=0, main_primary=true).
+
+DESI is a robotic fiber-fed spectrograph on the Mayall 4-meter telescope at Kitt Peak National \
+Observatory, capable of measuring 5,000 spectra simultaneously. DR1 contains 28.4 million \
+unique spectroscopic redshifts from 14,600+ square degrees.
+
+The Bright Galaxy Survey targets galaxies with r < 19.5 magnitude during bright lunar \
+conditions. DESI represents a transformative leap in our ability to map the three-dimensional \
+structure of the universe. By measuring precise spectroscopic redshifts for tens of millions of \
+galaxies and quasars, DESI constructs a detailed map of the cosmic web. The primary science \
+goal is to measure the baryon acoustic oscillation (BAO) scale at multiple redshifts, providing \
+a standard ruler that constrains the expansion history of the universe and the nature of dark energy.
+
+The spectral classifications (GALAXY, STAR, QSO) are determined by the Redrock template-fitting \
+pipeline. Objects with zwarn=0 have passed all quality checks, making this a high-purity sample \
+suitable for cosmological analyses.
+"""
 
 
 def fetch_chunk(offset: int, limit: int) -> pd.DataFrame:
@@ -119,16 +158,6 @@ def main():
         "zwarn": "redshift_warn",
     })
 
-    # Ensure numeric types
-    for col in ["ra", "dec", "redshift", "redshift_err", "deltachi2", "chi2",
-                "coadd_exptime"]:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    for col in ["coadd_numexp", "coadd_numnight", "coadd_numtile"]:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int16")
-
     # Clean string columns
     for col in ["spectype", "subtype"]:
         if col in df.columns:
@@ -140,10 +169,13 @@ def main():
     # Drop columns that are constant after filtering
     df = df.drop(columns=["redshift_warn", "survey", "program"], errors="ignore")
 
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
+
     # Sort by targetid for reproducibility
     df = df.sort_values("targetid").reset_index(drop=True)
 
-    # Stats
+    # ── Domain-specific stats for README ─────────────────────────────
     n_total = len(df)
     n_galaxy = int((df["spectype"] == "GALAXY").sum())
     n_star = int((df["spectype"] == "STAR").sum())
@@ -154,115 +186,14 @@ def main():
     print(f"  {n_total:,} sources: {n_galaxy:,} galaxies, {n_star:,} stars, {n_qso:,} QSOs")
     print(f"  Median redshift: {median_z:.4f}, Mean redshift: {mean_z:.4f}")
 
-    check_dataset(
-        df, "desi-dr1-redshifts", min_rows=1_000_000,
-        expected_columns=["targetid", "ra", "dec", "redshift", "redshift_err",
-                          "spectype", "deltachi2"],
-        critical_columns=["targetid", "ra", "dec", "redshift"],
-    )
-
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "desi-dr1-redshifts.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("desi", tmp)
-        banner_md = banner_markdown("desi", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "DESI DR1 Bright Galaxy Survey Redshifts"
-language:
-  - en
-description: "Spectroscopic redshifts from the Dark Energy Spectroscopic Instrument (DESI) Data Release 1 — Bright Galaxy Survey subset with reliable measurements (zwarn=0). The largest spectroscopic survey ever conducted."
-task_categories:
-  - tabular-classification
-  - tabular-regression
-tags:
-  - space
-  - galaxies
-  - redshifts
-  - desi
-  - spectroscopy
-  - cosmology
-  - astronomy
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 1M<n<10M
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/desi-dr1-redshifts.parquet
-    default: true
----
-
-# DESI DR1 Bright Galaxy Survey Redshifts
-{banner_md}
-*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
-
-Spectroscopic redshifts from the [Dark Energy Spectroscopic Instrument](https://www.desi.lbl.gov/)
-(DESI) Data Release 1 — the **largest spectroscopic survey ever conducted**.
-This dataset contains the **Bright Galaxy Survey (BGS)** subset: **{n_total:,}** sources
-with reliable redshift measurements (`zwarn=0`, `main_primary=true`).
-
-## Dataset description
-
-DESI is a robotic fiber-fed spectrograph on the Mayall 4-meter telescope at
-Kitt Peak National Observatory, capable of measuring 5,000 spectra simultaneously.
-DR1 contains 28.4 million unique spectroscopic redshifts from 14,600+ square degrees.
-
-The Bright Galaxy Survey targets galaxies with r < 19.5 magnitude during bright
-lunar conditions. This curated subset includes only the main survey observations
-with reliable redshift fits (zero warning flags) and primary measurements
-(no duplicates).
-
-DESI represents a transformative leap in our ability to map the three-dimensional structure of the universe. By measuring precise spectroscopic redshifts for tens of millions of galaxies and quasars, DESI constructs a detailed map of the cosmic web -- the filaments, walls, and voids that comprise the large-scale structure of matter. The primary science goal is to measure the baryon acoustic oscillation (BAO) scale at multiple redshifts, providing a standard ruler that constrains the expansion history of the universe and the nature of dark energy. DR1 already represents more spectroscopic redshifts than all previous surveys combined.
-
-The Bright Galaxy Survey is the lowest-redshift component of DESI, targeting the most luminous galaxies with r-band magnitudes brighter than 19.5. These galaxies trace the matter distribution in the local universe (z < 0.6), where dark energy has become the dominant component driving cosmic acceleration. The BGS sample is particularly valuable for measuring the growth rate of structure through redshift-space distortions -- the apparent anisotropy in galaxy clustering caused by peculiar velocities -- which provides a direct test of general relativity on cosmological scales.
-
-The spectral classifications in this dataset (GALAXY, STAR, QSO) are determined by the Redrock template-fitting pipeline, which cross-correlates each observed spectrum against libraries of galaxy, stellar, and quasar templates. The delta-chi-squared value quantifies the confidence of the classification by measuring how much better the best-fit template matches compared to the next-best alternative. Objects with zwarn=0 have passed all quality checks, making this a high-purity sample suitable for cosmological analyses.
-
-**Breakdown by spectral type:**
-- **{n_galaxy:,}** galaxies ({100*n_galaxy/n_total:.1f}%)
-- **{n_star:,}** stars ({100*n_star/n_total:.1f}%)
-- **{n_qso:,}** QSOs ({100*n_qso/n_total:.1f}%)
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `targetid` | int64 | DESI unique 64-bit integer target identifier; encodes sky location and targeting program |
-| `ra` | float64 | Right ascension of the fiber center, ICRS J2000.0 (degrees, 0–360) |
-| `dec` | float64 | Declination of the fiber center, ICRS J2000.0 (degrees, -90 to +90) |
-| `redshift` | float64 | Best-fit spectroscopic redshift; galaxies/QSOs: 0.05–3.5; stars near 0; null if fit failed |
-| `redshift_err` | float64 | 1σ uncertainty on the spectroscopic redshift; large values or zwarn > 0 indicate unreliable fits |
-| `spectype` | string | Primary spectral classification: "GALAXY", "STAR", or "QSO" (quasar) |
-| `subtype` | string | Detailed sub-classification: for galaxies "ELG" (emission-line), "LRG" (luminous red), "BGS" (bright galaxy survey); for stars the MK spectral type (e.g. "K", "G"); null if not classified |
-| `deltachi2` | float64 | Δχ² between best and second-best spectral template fit; higher values indicate more reliable redshift (deltachi2 > 25 recommended) |
-| `chi2` | float64 | Best-fit χ² of the redshift solution; used together with deltachi2 to assess fit quality |
-| `coadd_numexp` | int16 | Number of individual exposures co-added to produce the spectrum |
-| `coadd_numnight` | int16 | Number of distinct observation nights contributing to the coadd |
-| `coadd_numtile` | int16 | Number of DESI focal-plane tiles contributing to the coadd |
-| `coadd_exptime` | float32 | Total effective exposure time of the co-added spectrum (seconds) |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n_total:,}** sources with reliable redshifts
 - Median redshift: **{median_z:.4f}**
 - Mean redshift: **{mean_z:.4f}**
 - **{n_galaxy:,}** galaxies, **{n_star:,}** stars, **{n_qso:,}** QSOs
-- Sky coverage: ~14,600 square degrees
+- Sky coverage: ~14,600 square degrees"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -271,7 +202,7 @@ df = ds.to_pandas()
 
 # Galaxy redshift distribution
 galaxies = df[df["spectype"] == "GALAXY"]
-print(f"{{len(galaxies):,}} galaxies, median z = {{galaxies['redshift'].median():.4f}}")
+print(f"{len(galaxies):,} galaxies, median z = {galaxies['redshift'].median():.4f}")
 
 # Redshift histogram
 import matplotlib.pyplot as plt
@@ -279,6 +210,7 @@ galaxies["redshift"].hist(bins=200, range=(0, 0.6))
 plt.xlabel("Redshift")
 plt.ylabel("Count")
 plt.title("DESI BGS Galaxy Redshift Distribution")
+plt.show()
 
 # Sky coverage plot
 plt.figure(figsize=(12, 6))
@@ -286,58 +218,47 @@ plt.scatter(df["ra"], df["dec"], s=0.01, alpha=0.1)
 plt.xlabel("RA (deg)")
 plt.ylabel("Dec (deg)")
 plt.title("DESI DR1 BGS Sky Coverage")
-```
+plt.show()
+```"""
 
-## Data source
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="DESI DR1 Bright Galaxy Survey Redshifts",
+        description=DESCRIPTION,
+        tags=["space", "galaxies", "redshifts", "desi", "spectroscopy",
+              "cosmology", "astronomy", "open-data", "tabular-data", "parquet"],
+        source_url="https://data.desi.lbl.gov/doc/releases/dr1/",
+        task_categories=["tabular-classification", "tabular-regression"],
+        collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA12110/PIA12110~small.jpg",
+            "alt": "Hubble Deep Field revealing myriad galaxies across cosmic time",
+            "credit": "NASA/ESA/STScI",
+        },
+    ) as p:
+        # Coerce integer columns to Int16 before clean (library only does Int64)
+        for col in ["coadd_numexp", "coadd_numnight", "coadd_numtile"]:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int16")
 
-All data comes from the [DESI Data Release 1](https://data.desi.lbl.gov/doc/releases/dr1/)
-via the [NOIRLab Astro Data Lab](https://datalab.noirlab.edu/) TAP service.
-
-DESI Collaboration (2025). "The DESI Data Release 1." arXiv:2503.14745.
-
-## Related datasets
-
-- [sdss-dr18-spectra](https://huggingface.co/datasets/juliensimon/desi-dr1-redshifts) — SDSS DR18 optical spectroscopy
-- [exoplanet-archive](https://huggingface.co/datasets/juliensimon/nasa-exoplanets) — NASA Exoplanet Archive
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/desi-dr1-redshifts) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{desi_dr1_redshifts,
-  author = {{Simon, Julien}},
-  title = {{DESI DR1 Bright Galaxy Survey Redshifts}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/desi-dr1-redshifts}},
-  note = {{Based on DESI DR1 (DESI Collaboration 2025) via NOIRLab Astro Data Lab}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Upload DESI DR1 BGS redshifts: {n_total:,} sources"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+        df = p.clean(
+            df,
+            numeric=["ra", "dec", "redshift", "redshift_err", "deltachi2",
+                      "chi2", "coadd_exptime"],
+            drop_mostly_null_threshold=0.95,
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={len(df)}\n")
+        p.publish(
+            df,
+            filename="desi_dr1_redshifts.parquet",
+            min_rows=1_000_000,
+            expected_columns=["targetid", "ra", "dec", "redshift", "redshift_err",
+                              "spectype", "deltachi2"],
+            critical_columns=["targetid", "ra", "dec", "redshift"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Upload DESI DR1 BGS redshifts: {n_total:,} sources",
+        )
     print("Done.")
 
 

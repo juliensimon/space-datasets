@@ -1,21 +1,20 @@
 #!/usr/bin/env python3
-"""Fetch hourly neutron monitor cosmic ray data from NMDB and upload to HF."""
+"""Fetch hourly neutron monitor cosmic ray data from NMDB and upload to HF.
 
-import os
-import subprocess
-import tempfile
+Source: Neutron Monitor Database (NMDB) — https://www.nmdb.eu/
+Founded under EU FP7 (contract no. 213007).
+"""
+
+import sys
 import time
 from datetime import datetime, timedelta
-from pathlib import Path
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
 
 HF_REPO = "juliensimon/neutron-monitor-cosmic-rays"
-PARQUET_NAME = "neutron_monitor.parquet"
 
 # Stations: high-latitude, mid-latitude, high-altitude, low-latitude, polar
 STATIONS = {
@@ -30,6 +29,37 @@ STATIONS = {
 API_URL = "https://www.nmdb.eu/nest/draw_graph.php"
 START_YEAR = 2005  # NMDB reliable coverage starts ~2005
 
+# ── Column descriptions ─────────────────────────────────────────────
+COLUMN_DESCRIPTIONS = {
+    "datetime": "Observation timestamp (UTC, hourly averages from 1-minute raw counts)",
+    "station": "NMDB station code (e.g. 'OULU' for Oulu Finland, 'JUNG' for Jungfraujoch Switzerland); location determines geomagnetic cutoff rigidity and therefore the cosmic ray energy threshold the station is sensitive to",
+    "count_rate": "Pressure-corrected and efficiency-corrected cosmic ray neutron count rate in counts per second; decreases during Forbush decreases (CME-driven CR depressions of 1-30%) and spikes during Ground Level Enhancements (GLEs, solar energetic particle events); null when station data are unavailable",
+    "station_name": "Human-readable station name and country (e.g. 'Oulu, Finland'); polar stations detect lower-energy cosmic rays (~0.2 GV cutoff) while equatorial stations have higher cutoffs (~15 GV)",
+    "daily_mean_count_rate": "24-hour mean count rate for this station on the same calendar day, in counts per second; used as the baseline for pct_deviation calculation",
+    "pct_deviation": "Hourly count rate deviation from the daily mean in percent, i.e. (count_rate - daily_mean) / daily_mean x 100; negative values indicate suppressed cosmic ray flux (Forbush decrease); large positive values (>1%) may indicate GLE onset",
+}
+
+DESCRIPTION = """\
+Hourly cosmic ray intensity measurements from the Neutron Monitor Database (NMDB) -- the worldwide \
+network of ground-based cosmic ray detectors. Neutron monitors detect secondary neutrons produced \
+when galactic cosmic rays interact with Earth's atmosphere.
+
+The count rate is a proxy for cosmic ray intensity at Earth and is modulated by solar activity \
+(11-year cycle), transient solar events (Forbush decreases), and geomagnetic conditions. \
+Higher-latitude and higher-altitude stations have lower geomagnetic cutoff rigidity, making them \
+more sensitive to lower-energy cosmic rays.
+
+Galactic cosmic rays (GCRs) are relativistic charged particles -- predominantly protons and heavier \
+nuclei -- accelerated to GeV-TeV energies by supernova remnant shocks. As they enter the heliosphere, \
+their flux is modulated by the solar wind's outward-convecting magnetic field: during solar maximum, \
+enhanced magnetic turbulence reduces the count rate at Earth by 15-25% compared to solar minimum. \
+On shorter timescales, neutron monitors are the primary ground-based detectors for Forbush decreases \
+-- sudden drops in cosmic ray intensity (typically 3-15% over hours) caused by the passage of \
+interplanetary CMEs. Ground-level enhancements (GLEs) -- rare but dramatic increases in count rate -- \
+signal the arrival of GeV-energy solar energetic particles from the most powerful solar flares."""
+
+
+# ── Custom fetch/parse functions ─────────────────────────────────────
 
 def fetch_nmdb(start_dt, end_dt):
     """Fetch hourly corrected count rates from NMDB for all stations."""
@@ -49,7 +79,6 @@ def fetch_nmdb(start_dt, end_dt):
         "end_hour": "23",
         "end_min": "59",
     }
-    # Add stations as repeated params
     station_params = "&".join(f"stations[]={s}" for s in STATIONS)
     url = f"{API_URL}?{station_params}"
 
@@ -67,7 +96,6 @@ def fetch_nmdb(start_dt, end_dt):
 
 def parse_nmdb_ascii(text):
     """Parse NMDB ASCII response into a long-format DataFrame."""
-    # Find the header line with station names (first non-comment, non-empty line)
     lines = text.splitlines()
     header_line = None
     data_start = None
@@ -75,27 +103,19 @@ def parse_nmdb_ascii(text):
         stripped = line.strip()
         if stripped.startswith("#") or stripped == "":
             continue
-        # First non-comment line: check if it looks like a header (no semicolons)
         if ";" not in stripped:
             header_line = stripped
             data_start = i + 1
             break
         else:
-            # No header line, data starts here
             data_start = i
             break
 
     if data_start is None:
         return pd.DataFrame()
 
-    # Extract station names from header
-    if header_line:
-        station_codes = header_line.split()
-    else:
-        # Fallback: use our station list
-        station_codes = list(STATIONS.keys())
+    station_codes = header_line.split() if header_line else list(STATIONS.keys())
 
-    # Parse data lines
     records = []
     for line in lines[data_start:]:
         stripped = line.strip()
@@ -129,25 +149,6 @@ def parse_nmdb_ascii(text):
     return pd.DataFrame(records)
 
 
-def load_existing(tmp_dir):
-    """Download existing parquet from HF. Returns DataFrame or None."""
-    parquet_path = tmp_dir / "data" / PARQUET_NAME
-    try:
-        subprocess.run(
-            ["hf", "download", HF_REPO, f"data/{PARQUET_NAME}",
-             "--repo-type", "dataset", "--local-dir", str(tmp_dir)],
-            check=True, capture_output=True, timeout=60,
-        )
-        if parquet_path.exists():
-            df = pd.read_parquet(parquet_path)
-            df["datetime"] = pd.to_datetime(df["datetime"])
-            print(f"  Loaded existing: {len(df):,} records")
-            return df
-    except Exception as e:
-        print(f"  Could not load existing ({e}), doing full rebuild")
-    return None
-
-
 def fetch_full():
     """Full rebuild: fetch year by year from START_YEAR to now."""
     now = datetime.utcnow()
@@ -174,180 +175,102 @@ def fetch_incremental(days=14):
     return fetch_nmdb(start_dt, now)
 
 
+# ── Main ─────────────────────────────────────────────────────────────
+
 def main():
     print("Fetching neutron monitor cosmic ray data from NMDB...")
     now = datetime.utcnow()
 
-    # Try incremental
-    with tempfile.TemporaryDirectory() as probe:
-        df_existing = load_existing(Path(probe))
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Neutron Monitor Cosmic Ray Intensity (Hourly)",
+        description=DESCRIPTION,
+        tags=["space", "cosmic-rays", "neutron-monitor", "space-weather",
+              "open-data", "tabular-data", "parquet"],
+        source_url="https://www.nmdb.eu/",
+        task_categories=["time-series-forecasting", "tabular-regression"],
+        collection_url="https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70",
+        banner={"url": "https://images-assets.nasa.gov/image/iss072e159172/iss072e159172~medium.jpg",
+                "alt": "Aurora borealis blankets the Earth, seen from the ISS",
+                "credit": "NASA"},
+        update_schedule="Daily at 14:30 UTC",
+        related_datasets=[
+            "juliensimon/dst-index",
+            "juliensimon/space-weather-indices",
+            "juliensimon/solar-flare-events",
+        ],
+    ) as p:
+        # Try incremental
+        df_existing = p.download_existing("neutron_monitor.parquet")
 
-    if df_existing is not None and len(df_existing) > 0:
-        print("  Incremental mode: fetching last 14 days")
-        df_new = fetch_incremental(days=14)
-        if not df_new.empty:
-            cutoff = df_new["datetime"].min()
-            df_kept = df_existing[df_existing["datetime"] < cutoff]
-            df = pd.concat([df_kept, df_new], ignore_index=True)
-            print(f"  Merged: {len(df):,} records (kept {len(df_kept):,} + {len(df_new):,} new)")
+        if df_existing is not None and len(df_existing) > 0:
+            df_existing["datetime"] = pd.to_datetime(df_existing["datetime"])
+            print("  Incremental mode: fetching last 14 days")
+            df_new = fetch_incremental(days=14)
+            if not df_new.empty:
+                cutoff = df_new["datetime"].min()
+                df_kept = df_existing[df_existing["datetime"] < cutoff]
+                df = pd.concat([df_kept, df_new], ignore_index=True)
+                print(f"  Merged: {len(df):,} records (kept {len(df_kept):,} + {len(df_new):,} new)")
+            else:
+                df = df_existing
+                print("  No new data, using existing")
         else:
-            df = df_existing
-            print("  No new data, using existing")
-    else:
-        print(f"  Full rebuild from {START_YEAR}...")
-        df = fetch_full()
+            print(f"  Full rebuild from {START_YEAR}...")
+            df = fetch_full()
 
-    if df.empty:
-        print("ERROR: No data fetched")
-        raise SystemExit(1)
+        if df.empty:
+            print("::error::No neutron monitor data retrieved")
+            sys.exit(1)
 
-    # Clean up
-    df["datetime"] = pd.to_datetime(df["datetime"])
-    df = df.sort_values(["datetime", "station"]).reset_index(drop=True)
-    df = df.drop_duplicates(subset=["datetime", "station"], keep="last")
+        # Clean up
+        df["datetime"] = pd.to_datetime(df["datetime"])
+        df = df.sort_values(["datetime", "station"]).reset_index(drop=True)
+        df = df.drop_duplicates(subset=["datetime", "station"], keep="last")
 
-    # Remove future rows
-    df = df[df["datetime"] <= pd.Timestamp.now(tz=None)]
+        # Remove future rows
+        df = df[df["datetime"] <= pd.Timestamp.now(tz=None)]
 
-    # Add station metadata (fall back to station code for any unmapped values)
-    df["station_name"] = df["station"].map(STATIONS).fillna(df["station"])
+        # Add station metadata
+        df["station_name"] = df["station"].map(STATIONS).fillna(df["station"])
 
-    # Derived columns: daily mean per station
-    df["date"] = df["datetime"].dt.date.astype(str)
-    daily_mean = df.groupby(["date", "station"])["count_rate"].transform("mean")
-    df["daily_mean_count_rate"] = daily_mean.round(3)
+        # Derived columns: daily mean per station
+        df["date"] = df["datetime"].dt.date.astype(str)
+        daily_mean = df.groupby(["date", "station"])["count_rate"].transform("mean")
+        df["daily_mean_count_rate"] = daily_mean.round(3)
 
-    # Percentage deviation from station daily mean
-    df["pct_deviation"] = (
-        ((df["count_rate"] - df["daily_mean_count_rate"]) / df["daily_mean_count_rate"] * 100)
-        .round(3)
-    )
+        # Percentage deviation from station daily mean
+        df["pct_deviation"] = (
+            ((df["count_rate"] - df["daily_mean_count_rate"]) / df["daily_mean_count_rate"] * 100)
+            .round(3)
+        )
+        df = df.drop(columns=["date"])
 
-    # Drop helper column
-    df = df.drop(columns=["date"])
+        df = p.clean(df, numeric=["count_rate", "daily_mean_count_rate", "pct_deviation"])
 
-    # Validate
-    n_total = len(df)
-    check_dataset(
-        df,
-        dataset_name="neutron-monitor",
-        min_rows=400_000,
-        expected_columns=["datetime", "station", "count_rate", "station_name",
-                          "daily_mean_count_rate", "pct_deviation"],
-        critical_columns=["count_rate"],
-        max_null_pct=0.10,
-            incremental=True)
+        # Keep only described columns
+        df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
-    # Stats for README
-    date_min = df["datetime"].min().strftime("%Y-%m-%d")
-    date_max = df["datetime"].max().strftime("%Y-%m-%d")
-    n_stations = df["station"].nunique()
-    station_list = ", ".join(sorted(df["station"].unique()))
-    mean_rate = df["count_rate"].mean()
-    min_rate = df["count_rate"].min()
-    min_rate_time = df.loc[df["count_rate"].idxmin(), "datetime"].strftime("%Y-%m-%d %H:%M")
-    min_rate_station = df.loc[df["count_rate"].idxmin(), "station"]
-    null_pct = df["count_rate"].isna().mean() * 100
+        # Stats
+        n_total = len(df)
+        date_min = df["datetime"].min().strftime("%Y-%m-%d")
+        date_max = df["datetime"].max().strftime("%Y-%m-%d")
+        n_stations = df["station"].nunique()
+        station_list = ", ".join(sorted(df["station"].unique()))
+        mean_rate = df["count_rate"].mean()
+        min_rate = df["count_rate"].min()
+        min_rate_time = df.loc[df["count_rate"].idxmin(), "datetime"].strftime("%Y-%m-%d %H:%M")
+        min_rate_station = df.loc[df["count_rate"].idxmin(), "station"]
+        null_pct = df["count_rate"].isna().mean() * 100
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / PARQUET_NAME
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet, {n_total:,} records")
-
-        banner_file = download_banner("neutron-monitor", tmp)
-        banner_md = banner_markdown("neutron-monitor", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Neutron Monitor Cosmic Ray Intensity (Hourly)"
-language:
-  - en
-description: "Hourly cosmic ray intensity from the worldwide neutron monitor network (NMDB) — {n_stations} stations from {date_min} to {date_max}."
-task_categories:
-  - time-series-forecasting
-  - tabular-regression
-tags:
-  - space
-  - cosmic-rays
-  - neutron-monitor
-  - space-weather
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 100K<n<1M
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/{PARQUET_NAME}
-    default: true
----
-
-# Neutron Monitor Cosmic Ray Intensity (Hourly)
-{banner_md}
-*Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
-
-![Update Neutron Monitor](https://github.com/juliensimon/space-datasets/actions/workflows/update-neutron-monitor.yml/badge.svg)
-![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['neutron-monitor']&label=updated&color=brightgreen)
-
-Hourly cosmic ray intensity measurements from the [Neutron Monitor Database (NMDB)](https://www.nmdb.eu/),
-the worldwide network of ground-based cosmic ray detectors. Covers **{date_min}** to **{date_max}**
-with **{n_total:,}** hourly readings across **{n_stations} stations**.
-
-## Dataset description
-
-Neutron monitors detect secondary neutrons produced when galactic cosmic rays interact with Earth's
-atmosphere. The count rate is a proxy for cosmic ray intensity at Earth and is modulated by solar
-activity (11-year cycle), transient solar events (Forbush decreases), and geomagnetic conditions.
-
-Higher-latitude and higher-altitude stations have lower geomagnetic cutoff rigidity, making them
-more sensitive to lower-energy cosmic rays. This dataset includes stations spanning a range of
-latitudes and altitudes for cross-comparison.
-
-Galactic cosmic rays (GCRs) are relativistic charged particles -- predominantly protons and heavier nuclei -- accelerated to GeV-TeV energies by supernova remnant shocks and other astrophysical processes. As they enter the heliosphere, their flux is modulated by the solar wind's outward-convecting magnetic field: during solar maximum, enhanced magnetic turbulence and more frequent coronal mass ejections scatter and decelerate incoming GCRs, reducing the count rate at Earth by 15-25% compared to solar minimum. This anti-correlation with the sunspot cycle makes neutron monitors a direct probe of heliospheric magnetic conditions integrated over the entire path from the heliopause to Earth.
-
-On shorter timescales, neutron monitors are the primary ground-based detectors for Forbush decreases -- sudden drops in cosmic ray intensity (typically 3-15% over hours) caused by the passage of interplanetary CMEs and their associated magnetic sheaths. These transient depressions can last days to weeks and serve as markers of large-scale heliospheric disturbances. Conversely, ground-level enhancements (GLEs) -- rare but dramatic increases in count rate -- signal the arrival of GeV-energy solar energetic particles from the most powerful solar flares, and are of particular concern for radiation dosimetry in aviation and human spaceflight.
-
-Each station's sensitivity to cosmic rays depends on its geomagnetic cutoff rigidity, determined primarily by geographic latitude. High-latitude stations like Oulu (cutoff ~0.8 GV) and Thule (~0.3 GV) respond to lower-energy primaries and thus show larger solar-cycle modulation, while mid-latitude stations like Rome (~6.3 GV) are sensitive only to higher-energy particles and exhibit a more muted response. The high-altitude Jungfraujoch station (3475 m) benefits from reduced atmospheric absorption, enhancing its counting statistics. Comparing stations with different cutoff rigidities enables spectral analysis of the cosmic ray modulation -- extracting information about the rigidity dependence of heliospheric transport.
-
-## Stations
-
-| Code | Location |
-|------|----------|
-| OULU | Oulu, Finland |
-| NEWK | Newark, USA |
-| JUNG | Jungfraujoch, Switzerland |
-| ROME | Rome, Italy |
-| THUL | Thule, Greenland |
-| APTY | Apatity, Russia |
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `datetime` | datetime | Observation timestamp (UTC, hourly averages from 1-minute raw counts) |
-| `station` | string | NMDB station code (e.g. "OULU" for Oulu Finland, "JUNG" for Jungfraujoch Switzerland); location determines geomagnetic cutoff rigidity and therefore the cosmic ray energy threshold the station is sensitive to |
-| `count_rate` | float | Pressure-corrected and efficiency-corrected cosmic ray neutron count rate in counts per second; decreases during Forbush decreases (CME-driven CR depressions of 1–30%) and spikes during Ground Level Enhancements (GLEs, solar energetic particle events); null when station data are unavailable |
-| `station_name` | string | Human-readable station name and country (e.g. "Oulu, Finland"); polar stations detect lower-energy cosmic rays (~0.2 GV cutoff) while equatorial stations have higher cutoffs (~15 GV) |
-| `daily_mean_count_rate` | float | 24-hour mean count rate for this station on the same calendar day, in counts per second; used as the baseline for pct_deviation calculation; null for days with fewer than 12 valid hourly readings |
-| `pct_deviation` | float | Hourly count rate deviation from the daily mean in percent, i.e. (count_rate − daily_mean) / daily_mean × 100; negative values indicate suppressed cosmic ray flux (Forbush decrease); large positive values (>1%) may indicate GLE onset |
-
-## Quick stats
-
+        quick_stats = f"""\
 - **{n_total:,}** hourly readings ({date_min} to {date_max})
 - **{n_stations}** stations: {station_list}
 - Mean count rate: **{mean_rate:.1f}**
 - Minimum count rate: **{min_rate:.1f}** ({min_rate_station}, {min_rate_time})
-- Missing values: {null_pct:.1f}%
+- Missing values: {null_pct:.1f}%"""
 
-## Usage
-
+        usage = """\
 ```python
 from datasets import load_dataset
 
@@ -355,8 +278,14 @@ ds = load_dataset("juliensimon/neutron-monitor-cosmic-rays", split="train")
 df = ds.to_pandas()
 
 # Compare stations
-import pandas as pd
+import matplotlib.pyplot as plt
+
 pivot = df.pivot_table(index="datetime", columns="station", values="count_rate")
+pivot.resample("1M").mean().plot(figsize=(12, 5))
+plt.title("Monthly Mean Cosmic Ray Intensity by Station")
+plt.ylabel("Count Rate")
+plt.tight_layout()
+plt.show()
 
 # Detect Forbush decreases (sudden drops in cosmic ray intensity)
 oulu = df[df["station"] == "OULU"].set_index("datetime")["count_rate"]
@@ -366,67 +295,24 @@ forbush = daily[daily.pct_change() < -0.03]  # >3% daily drop
 # Solar cycle modulation
 df["year"] = df["datetime"].dt.year
 yearly = df.groupby(["year", "station"])["count_rate"].mean().unstack()
-```
+yearly.plot(figsize=(10, 5))
+plt.title("Annual Mean Count Rate (Solar Cycle Modulation)")
+plt.show()
+```"""
 
-## Data source
-
-[Neutron Monitor Database (NMDB)](https://www.nmdb.eu/) — founded under the EU's FP7 programme
-(contract no. 213007). Data are the property of individual station PIs and are free for
-non-commercial use.
-
-## Update schedule
-
-Daily at 14:30 UTC via [GitHub Actions](https://github.com/juliensimon/space-datasets).
-
-## Related datasets
-
-- [dst-index](https://huggingface.co/datasets/juliensimon/dst-index) — Dst geomagnetic storm index
-- [space-weather-indices](https://huggingface.co/datasets/juliensimon/space-weather-indices) — Daily Kp, Ap, F10.7
-- [solar-flare-events](https://huggingface.co/datasets/juliensimon/solar-flare-events) — Individual flare detections
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/neutron-monitor-cosmic-rays) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-If you use this dataset, please cite:
-
-```bibtex
-@dataset{{neutron_monitor_cosmic_rays,
-  author = {{Simon, Julien}},
-  title = {{Neutron Monitor Cosmic Ray Intensity (Hourly)}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/neutron-monitor-cosmic-rays}}
-}}
-```
-
-### Data source
-
-[NMDB](https://www.nmdb.eu/) — Neutron Monitor Database
-
-## License
-
-MIT (pipeline code). Neutron monitor data: free for non-commercial use per NMDB/individual station terms.
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update neutron monitor: {n_total:,} hourly readings"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+        p.publish(
+            df,
+            filename="neutron_monitor.parquet",
+            min_rows=400_000,
+            max_null_pct=0.10,
+            expected_columns=["datetime", "station", "count_rate", "station_name",
+                              "daily_mean_count_rate", "pct_deviation"],
+            critical_columns=["count_rate"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update neutron monitor: {n_total:,} hourly readings",
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={n_total}\n")
     print("Done.")
 
 

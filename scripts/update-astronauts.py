@@ -1,17 +1,13 @@
 #!/usr/bin/env python3
-"""Fetch astronaut database from Wikidata and upload to HF."""
+"""Fetch astronaut database from Wikidata and upload to HF.
 
-import os
-import subprocess
-import tempfile
-from pathlib import Path
+Source: Wikidata SPARQL endpoint — property P106 (occupation) = Q11631 (astronaut).
+"""
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
-
+from hf_dataset_utils import Pipeline
 
 HF_REPO = "juliensimon/astronaut-database"
 
@@ -47,8 +43,6 @@ NATIONALITY_OVERRIDES = {
     "Q16617489": "Poland",              # Władimir Kozielski, Interkosmos
 }
 
-# One row per astronaut: name, birth, death, sex, nationality, employer,
-# number of spaceflights, time in space (minutes)
 SPARQL_QUERY = """
 SELECT ?person ?personLabel ?birth ?death ?sexLabel ?nationalityLabel
        (GROUP_CONCAT(DISTINCT ?employerLabel; separator="; ") AS ?employers)
@@ -56,7 +50,7 @@ SELECT ?person ?personLabel ?birth ?death ?sexLabel ?nationalityLabel
        ?timeInSpace
 WHERE {
   ?person wdt:P106 wd:Q11631.
-  ?person wdt:P31 wd:Q5.          # instance of: human (excludes fictional chars, animals)
+  ?person wdt:P31 wd:Q5.
   OPTIONAL { ?person wdt:P569 ?birth. }
   OPTIONAL { ?person wdt:P570 ?death. }
   OPTIONAL { ?person wdt:P21 ?sex. }
@@ -68,6 +62,39 @@ WHERE {
   SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul". }
 }
 GROUP BY ?person ?personLabel ?birth ?death ?sexLabel ?nationalityLabel ?timeInSpace
+"""
+
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "wikidata_id": "Wikidata entity ID (e.g. 'Q1029'); resolves to https://www.wikidata.org/wiki/Q1029 — links to the astronaut's full biography, mission list, and nationality data",
+    "name": "Full legal name as recorded in Wikidata (English transliteration for non-Latin scripts)",
+    "birth_date": "Date of birth in ISO 8601 format (YYYY-MM-DD); null for living persons who have not disclosed their birth date or for historical records with unresolvable uncertainty",
+    "death_date": "Date of death in ISO 8601 format (YYYY-MM-DD); null for living astronauts",
+    "sex": "Recorded biological sex; values: 'male', 'female'; null if not recorded in Wikidata",
+    "nationality": "Country of citizenship at the time of primary spaceflight career (e.g. 'United States', 'Russia'); uses full English country name; may differ from country of birth",
+    "employers": "Space agencies or contractors that employed the astronaut, semicolon-separated (e.g. 'NASA; Boeing'); null if no employer is recorded in Wikidata",
+    "num_flights": "Number of distinct spaceflights completed (each separate launch counts as one flight); 0 if the astronaut trained but never flew",
+    "time_in_space_min": "Cumulative time spent in space across all missions, in minutes; null for astronauts with no recorded flights",
+    "birth_year": "Integer year extracted from birth_date; enables age-group analysis when full date is unavailable; null only if birth date is entirely unknown",
+    "time_in_space_hours": "Cumulative time in space in decimal hours, derived from time_in_space_min (divided by 60, rounded to 1 decimal); null for astronauts with no recorded flights",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Complete database of every person who has traveled to space, sourced from Wikidata.
+
+Since Yuri Gagarin's flight aboard Vostok 1 in April 1961, fewer than 700 individuals \
+have crossed the Karman line (100 km altitude). This dataset records every one of them, \
+from the Mercury Seven and Voskhod cosmonauts through Space Shuttle crews, ISS expeditions, \
+and the recent wave of commercial astronauts aboard Crew Dragon and New Shepard.
+
+The dataset includes birth/death dates, sex, nationality, employer history (space agencies \
+and contractors), number of spaceflights, and total time spent in space. This enables \
+demographic analysis of astronaut corps, diversity-in-STEM research, and historical studies \
+of human spaceflight programs.
+
+Sourced from Wikidata's structured knowledge base (property P106=Q11631 for occupation:astronaut), \
+which is maintained by the WikiProject Spaceflight community and updated as new flights occur.
 """
 
 
@@ -106,7 +133,6 @@ def fetch_astronauts() -> pd.DataFrame:
     df = pd.DataFrame(rows)
 
     # Deduplicate: multiple nationalities can create duplicate rows
-    # Keep the row with the most info (longest employers string)
     df["_sort"] = df["employers"].fillna("").str.len()
     df = df.sort_values("_sort", ascending=False).drop_duplicates(
         subset=["wikidata_id"], keep="first"
@@ -126,12 +152,6 @@ def fetch_astronauts() -> pd.DataFrame:
 def main():
     df = fetch_astronauts()
 
-    # Clean string columns
-    for col in ["name", "sex", "nationality", "employers"]:
-        df[col] = df[col].astype(str).str.strip().replace(
-            {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
-        )
-
     # Derive birth_year for stats
     df["birth_year"] = pd.to_datetime(df["birth_date"], errors="coerce").dt.year
 
@@ -140,14 +160,13 @@ def main():
         df["time_in_space_min"].astype("Float64") / 60
     ).round(1)
 
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
+
     df = df.sort_values("name").reset_index(drop=True)
     print(f"  {len(df):,} unique astronauts")
 
-    check_dataset(df, "astronauts", min_rows=400,
-                  expected_columns=["name", "nationality"],
-                  critical_columns=["name", "nationality"])
-
-    # Stats for README
+    # ── Domain-specific stats for README ─────────────────────────────
     n = len(df)
     n_nationalities = int(df["nationality"].nunique())
     top_nations = df["nationality"].value_counts().head(5)
@@ -158,96 +177,14 @@ def main():
     max_flights = int(df["num_flights"].max())
     max_flights_name = df.loc[df["num_flights"].idxmax(), "name"]
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "astronauts.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_kb = out.stat().st_size / 1024
-        print(f"  {size_kb:.0f} KB parquet")
-
-        banner_file = download_banner("astronauts", tmp)
-        banner_md = banner_markdown("astronauts", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc0-1.0
-pretty_name: "Astronaut Database"
-language:
-  - en
-description: >-
-  Every person who has traveled to space, sourced from Wikidata.
-  {n:,} astronauts from {n_nationalities} countries with flight counts
-  and time in space.
-size_categories:
-  - n<1K
-task_categories:
-  - tabular-classification
-tags:
-  - space
-  - astronaut
-  - human-spaceflight
-  - wikidata
-  - missions
-  - open-data
-  - tabular-data
-  - parquet
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/astronauts.parquet
----
-
-# Astronaut Database
-{banner_md}
-*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
-
-Complete database of every person who has traveled to space — **{n:,}** astronauts
-from **{n_nationalities}** countries, sourced from [Wikidata](https://www.wikidata.org/).
-
-## Dataset description
-
-Since Yuri Gagarin's flight aboard Vostok 1 in April 1961, fewer than 700 individuals
-have crossed the Karman line (100 km altitude). This dataset records every one of them,
-from the Mercury Seven and Voskhod cosmonauts through Space Shuttle crews, ISS expeditions,
-and the recent wave of commercial astronauts aboard Crew Dragon and New Shepard.
-
-The dataset includes birth/death dates, sex, nationality, employer history (space agencies
-and contractors), number of spaceflights, and total time spent in space. This enables
-demographic analysis of astronaut corps, diversity-in-STEM research, and historical studies
-of human spaceflight programs.
-
-Sourced from Wikidata's structured knowledge base (property P106=Q11631 for occupation:astronaut),
-which is maintained by the WikiProject Spaceflight community and updated as new flights occur.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `wikidata_id` | string | Wikidata entity ID (e.g. "Q1029"); resolves to https://www.wikidata.org/wiki/Q1029 — links to the astronaut's full biography, mission list, and nationality data |
-| `name` | string | Full legal name as recorded in Wikidata (English transliteration for non-Latin scripts) |
-| `birth_date` | string | Date of birth in ISO 8601 format (YYYY-MM-DD); null for living persons who have not disclosed their birth date or for historical records with unresolvable uncertainty |
-| `death_date` | string | Date of death in ISO 8601 format (YYYY-MM-DD); null for living astronauts |
-| `sex` | string | Recorded biological sex; values: "male", "female"; null if not recorded in Wikidata |
-| `nationality` | string | Country of citizenship at the time of primary spaceflight career (e.g. "United States", "Russia"); uses full English country name; may differ from country of birth |
-| `employers` | string | Space agencies or contractors that employed the astronaut, semicolon-separated (e.g. "NASA;Boeing"); null if no employer is recorded in Wikidata |
-| `num_flights` | int | Number of distinct spaceflights completed (each separate launch counts as one flight); null if career status is uncertain or the astronaut trained but never flew |
-| `time_in_space_min` | int | Cumulative time spent in space across all missions, in minutes; null for astronauts with no recorded flights |
-| `birth_year` | int | Integer year extracted from `birth_date`; enables age-group analysis when full date is unavailable; null only if birth date is entirely unknown |
-| `time_in_space_hours` | float | Cumulative time in space in decimal hours, derived from `time_in_space_min` (divide by 60); null for astronauts with no recorded flights |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n:,}** astronauts from **{n_nationalities}** countries
 - **{n_male:,}** male, **{n_female:,}** female
 - **{n_with_flights:,}** with recorded spaceflights
 - Most flights: {max_flights_name} ({max_flights})
-- Top nationalities: {top_nations_str}
+- Top nationalities: {top_nations_str}"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -259,7 +196,7 @@ print(df["nationality"].value_counts().head(10))
 
 # Female astronauts
 female = df[df["sex"] == "female"]
-print(f"{{len(female):,}} female astronauts")
+print(f"{len(female):,} female astronauts")
 
 # Most time in space
 top_time = df.nlargest(10, "time_in_space_hours")[["name", "nationality", "time_in_space_hours"]]
@@ -267,63 +204,55 @@ print(top_time)
 
 # NASA astronauts
 nasa = df[df["employers"].str.contains("NASA", na=False)]
-print(f"{{len(nasa):,}} NASA-affiliated astronauts")
-```
+print(f"{len(nasa):,} NASA-affiliated astronauts")
 
-## Data source
+# Flight count distribution
+import matplotlib.pyplot as plt
+df["num_flights"].value_counts().sort_index().plot(kind="bar")
+plt.xlabel("Number of Flights")
+plt.ylabel("Astronauts")
+plt.title("Spaceflight Count Distribution")
+plt.show()
+```"""
 
-[Wikidata](https://www.wikidata.org/) SPARQL endpoint. Astronauts identified via
-property P106 (occupation) = Q11631 (astronaut). Data is community-curated by
-[WikiProject Spaceflight](https://www.wikidata.org/wiki/Wikidata:WikiProject_Spaceflight).
-
-## Update schedule
-
-Static dataset. Re-run manually to pick up new astronauts.
-
-## Related datasets
-
-- [launch-log](https://huggingface.co/datasets/juliensimon/space-launch-log) -- McDowell launch log
-- [satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) -- Satellite catalog
-- [nasa-eva](https://huggingface.co/datasets/juliensimon/nasa-eva-chronology) -- NASA EVA history
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/astronaut-database) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{astronaut_database,
-  author = {{Simon, Julien}},
-  title = {{Astronaut Database}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/astronaut-database}},
-  note = {{Sourced from Wikidata (CC0)}}
-}}
-```
-
-## License
-
-[CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (Wikidata content is public domain)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update astronaut database: {n:,} astronauts"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Astronaut Database",
+        description=DESCRIPTION,
+        tags=["space", "astronaut", "human-spaceflight", "wikidata",
+              "missions", "open-data", "tabular-data", "parquet"],
+        source_url="https://www.wikidata.org/",
+        task_categories=["tabular-classification"],
+        collection_url="https://huggingface.co/collections/juliensimon/space-essentials-69cbafd7ea046a10eff11405",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/GSFC_20171208_Archive_e001386/GSFC_20171208_Archive_e001386~medium.jpg",
+            "alt": "Blue Marble — Earth from space",
+            "credit": "NASA/GSFC/Suomi NPP",
+        },
+        license="cc0-1.0",
+        related_datasets=[
+            "juliensimon/space-launch-log",
+            "juliensimon/space-track-satcat",
+            "juliensimon/nasa-eva-chronology",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=["time_in_space_min", "time_in_space_hours"],
+            integer=["num_flights", "birth_year"],
+            strings=["name", "sex", "nationality", "employers"],
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={n}\n")
+        p.publish(
+            df,
+            filename="astronauts.parquet",
+            min_rows=400,
+            expected_columns=["name", "nationality"],
+            critical_columns=["name", "nationality"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update astronaut database: {n:,} astronauts",
+        )
     print("Done.")
 
 

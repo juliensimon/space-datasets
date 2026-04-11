@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
-"""Fetch TGSS ADR1 150 MHz radio catalog from VizieR and upload to HF."""
+"""Fetch TGSS ADR1 150 MHz radio catalog from VizieR and upload to HF.
 
-import os
-import subprocess
-import tempfile
-from pathlib import Path
+Source: Intema et al. (2017, A&A 598, A78) — TIFR GMRT Sky Survey
+Alternative Data Release 1 at 150 MHz, covering 90% of the sky.
+VizieR catalog: J/A+A/598/A78
+"""
 
 import pandas as pd
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
-from vizier_tap import vizier_query
+from hf_dataset_utils import Pipeline
+from hf_dataset_utils.tap import vizier_query
 
 HF_REPO = "juliensimon/tgss-radio-catalog"
 
+# ── Source query ────────────────────────────────────────────────────
 ADQL = """SELECT * FROM "J/A+A/598/A78/table3" """
 
+# ── Column mapping ──────────────────────────────────────────────────
 RENAME = {
     "RA_ICRS": "ra_deg",
     "RAJ2000": "ra_deg",
@@ -34,11 +35,48 @@ RENAME = {
     "TGSS": "source_name",
 }
 
-NUMERIC_COLS = [
-    "ra_deg", "dec_deg", "peak_flux_mjy", "integrated_flux_mjy",
-    "e_peak_flux_mjy", "e_integrated_flux_mjy", "rms_mjy",
-    "major_axis_arcsec", "minor_axis_arcsec", "position_angle_deg",
-]
+# ── Column descriptions for README schema table ────────────────────
+COLUMN_DESCRIPTIONS = {
+    "source_name": "TGSS catalog designation in the format 'TGSSADR JHHMMSS.s+DDMMSS'; the J2000 sexagesimal position is encoded directly in the name, making the sky coordinates recoverable from the ID alone",
+    "ra_deg": "ICRS J2000.0 right ascension in degrees (0-360); derived from the Gaussian fit to the 150 MHz radio emission; typical astrometric accuracy ~2 arcsec",
+    "dec_deg": "ICRS J2000.0 declination in degrees (-90 to +90); survey covers declination > -53 deg; derived from the Gaussian fit to the 150 MHz radio emission",
+    "peak_flux_mjy": "Peak surface brightness at 150 MHz in mJy/beam, measured at the beam center using a 25 arcsec FWHM synthesized beam; best flux estimator for unresolved point sources",
+    "integrated_flux_mjy": "Total integrated flux density in mJy at 150 MHz; for extended sources this exceeds the peak flux; for point sources it equals the peak flux within noise",
+    "e_peak_flux_mjy": "1-sigma uncertainty on peak flux density in mJy/beam; includes thermal noise and calibration errors",
+    "e_integrated_flux_mjy": "1-sigma uncertainty on integrated flux density in mJy; typically larger than the peak flux error for resolved sources",
+    "rms_mjy": "Local background rms noise in mJy/beam measured in an annulus around the source; indicates detection sensitivity at that sky position; sources detected at >= 7 sigma",
+    "major_axis_arcsec": "Deconvolved major axis FWHM in arcseconds after removing the 25 arcsec beam; null or ~0 for unresolved point sources where only an upper limit on size is available",
+    "minor_axis_arcsec": "Deconvolved minor axis FWHM in arcseconds; null or ~0 for unresolved point sources; a nonzero value indicates the source is spatially resolved",
+    "position_angle_deg": "Position angle of the major axis in degrees east from north (0-180); null for circular or unresolved sources where the angle is unconstrained",
+}
+
+# ── Dataset description ─────────────────────────────────────────────
+DESCRIPTION = """\
+The TIFR GMRT Sky Survey Alternative Data Release 1 (TGSS ADR1), a 150 MHz radio \
+continuum survey covering 90% of the sky (declination > -53 deg) using the Giant \
+Metrewave Radio Telescope. Fills the critical low-frequency gap in all-sky radio catalogs.
+
+TGSS ADR1 is the largest 150 MHz radio survey, observed between 2010 and 2012 with \
+the GMRT. It provides 25 arcsecond resolution and a median rms noise of ~3.5 mJy/beam. \
+The catalog is essential for low-frequency radio spectral studies, identifying \
+steep-spectrum sources such as pulsars, high-redshift radio galaxies, and galaxy \
+cluster relics.
+
+The Giant Metrewave Radio Telescope (GMRT) near Pune, India, is one of the world's \
+premier low-frequency radio interferometers, consisting of 30 fully steerable 45-meter \
+dishes spread over a 25-kilometer baseline. TGSS ADR1 exploits the GMRT's unique \
+sensitivity at 150 MHz to produce the deepest wide-field survey at this frequency, \
+surpassing earlier efforts like the 7C survey and the Westerbork Northern Sky Survey \
+(WENSS) at 325 MHz. The 150 MHz band is scientifically rich because synchrotron \
+emission from relativistic electrons is strongest at low frequencies, making TGSS \
+especially sensitive to aged electron populations that fade at higher frequencies.
+
+TGSS has proven invaluable for discovering and characterizing diffuse radio emission \
+in galaxy clusters, including radio halos, relics, and mini-halos that trace merger \
+shocks and turbulence in the intracluster medium. The catalog is also a primary \
+resource for identifying ultra-steep-spectrum (USS) radio sources, which are among \
+the best tracers of high-redshift radio galaxies at z > 2.
+"""
 
 
 def main():
@@ -47,12 +85,7 @@ def main():
     print(f"  {len(df):,} raw rows")
 
     # Rename columns
-    df = df.rename(columns=RENAME)
-
-    # Type conversions
-    for col in NUMERIC_COLS:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
+    df = df.rename(columns={k: v for k, v in RENAME.items() if k in df.columns})
 
     # Clean string columns
     for col in ["source_name"]:
@@ -61,111 +94,23 @@ def main():
                 {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
             )
 
-    # Stats
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
+
+    # ── Domain-specific stats for README ─────────────────────────────
     n_total = len(df)
     flux_median = df["peak_flux_mjy"].median() if "peak_flux_mjy" in df.columns else 0
+    rms_median = df["rms_mjy"].median() if "rms_mjy" in df.columns else 0
     ra_min, ra_max = df["ra_deg"].min(), df["ra_deg"].max()
     dec_min, dec_max = df["dec_deg"].min(), df["dec_deg"].max()
-    rms_median = df["rms_mjy"].median() if "rms_mjy" in df.columns else 0
 
-    # Validate
-    check_dataset(
-        df,
-        "tgss",
-        min_rows=500_000,
-        expected_columns=["ra_deg", "dec_deg"],
-        critical_columns=["ra_deg", "dec_deg"],
-    )
-
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "tgss_radio_sources.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("tgss", tmp)
-        banner_md = banner_markdown("tgss", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "TGSS Alternative Data Release 1 (150 MHz)"
-language:
-  - en
-description: "TGSS ADR1 catalog of {n_total:,} radio sources at 150 MHz from the Giant Metrewave Radio Telescope."
-task_categories:
-  - tabular-classification
-  - tabular-regression
-tags:
-  - space
-  - radio
-  - tgss
-  - gmrt
-  - 150mhz
-  - astronomy
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 100K<n<1M
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/tgss_radio_sources.parquet
-    default: true
----
-
-# TGSS Alternative Data Release 1 (150 MHz)
-{banner_md}
-*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
-
-The TIFR GMRT Sky Survey Alternative Data Release 1 (TGSS ADR1), a 150 MHz radio continuum
-survey covering 90% of the sky (declination > -53 deg) using the Giant Metrewave Radio Telescope.
-Contains **{n_total:,}** discrete radio sources, filling the critical low-frequency gap in
-all-sky radio catalogs.
-
-## Dataset description
-
-TGSS ADR1 is the largest 150 MHz radio survey, observed between 2010 and 2012 with the GMRT.
-It provides 25 arcsecond resolution and a median rms noise of ~3.5 mJy/beam. The catalog is
-essential for low-frequency radio spectral studies, identifying steep-spectrum sources such as
-pulsars, high-redshift radio galaxies, and galaxy cluster relics.
-
-The Giant Metrewave Radio Telescope (GMRT) near Pune, India, is one of the world's premier low-frequency radio interferometers, consisting of 30 fully steerable 45-meter dishes spread over a 25-kilometer baseline. TGSS ADR1 exploits the GMRT's unique sensitivity at 150 MHz to produce the deepest wide-field survey at this frequency, surpassing earlier efforts like the 7C survey and the Westerbork Northern Sky Survey (WENSS) at 325 MHz. The 150 MHz band is scientifically rich because synchrotron emission from relativistic electrons is strongest at low frequencies, making TGSS especially sensitive to aged electron populations that fade at higher frequencies.
-
-TGSS has proven invaluable for discovering and characterizing diffuse radio emission in galaxy clusters, including radio halos, relics, and mini-halos that trace merger shocks and turbulence in the intracluster medium. The catalog is also a primary resource for identifying ultra-steep-spectrum (USS) radio sources, which are among the best tracers of high-redshift radio galaxies at z > 2. By computing spectral indices between TGSS (150 MHz) and NVSS or FIRST (1.4 GHz), researchers can efficiently select USS candidates for targeted follow-up with optical and infrared telescopes.
-
-At 150 MHz, the ionosphere introduces direction-dependent phase errors that must be carefully calibrated. The ADR1 processing pipeline applied facet-based self-calibration to correct these effects, achieving a median positional accuracy of approximately 2 arcseconds and reliable flux densities above 7 sigma. TGSS ADR1 serves as the primary comparison catalog for next-generation low-frequency surveys from LOFAR and the future SKA-Low.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `source_name` | string | TGSS catalog designation in the format "TGSSADR JHHMMSS.s+DDMMSS"; the J2000 sexagesimal position is encoded directly in the name, making the sky coordinates recoverable from the ID alone |
-| `ra_deg` | float64 | ICRS J2000.0 right ascension in degrees (0–360); derived from the Gaussian fit to the 150 MHz radio emission; typical astrometric accuracy ~2 arcsec |
-| `dec_deg` | float64 | ICRS J2000.0 declination in degrees (−90 to +90); survey covers declination > −53°; derived from the Gaussian fit to the 150 MHz radio emission |
-| `peak_flux_mjy` | float64 | Peak surface brightness at 150 MHz in mJy/beam, measured at the beam center using a 25 arcsec FWHM synthesized beam; best flux estimator for unresolved point sources |
-| `integrated_flux_mjy` | float64 | Total integrated flux density in mJy at 150 MHz; for extended sources this exceeds the peak flux; for point sources it equals the peak flux within noise |
-| `e_peak_flux_mjy` | float64 | 1-sigma uncertainty on peak flux density in mJy/beam; includes thermal noise and calibration errors |
-| `e_integrated_flux_mjy` | float64 | 1-sigma uncertainty on integrated flux density in mJy; typically larger than the peak flux error for resolved sources |
-| `rms_mjy` | float64 | Local background rms noise in mJy/beam measured in an annulus around the source; indicates detection sensitivity at that sky position; sources detected at ≥7 sigma |
-| `major_axis_arcsec` | float64 | Deconvolved major axis FWHM in arcseconds after removing the 25 arcsec beam; null or ~0 for unresolved point sources where only an upper limit on size is available |
-| `minor_axis_arcsec` | float64 | Deconvolved minor axis FWHM in arcseconds; null or ~0 for unresolved point sources; a nonzero value indicates the source is spatially resolved |
-| `position_angle_deg` | float64 | Position angle of the major axis in degrees east from north (0–180); null for circular or unresolved sources where the angle is unconstrained |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n_total:,}** radio sources at 150 MHz
 - Median peak flux: {flux_median:.2f} mJy/beam
 - Median rms noise: {rms_median:.2f} mJy/beam
-- Sky coverage: RA {ra_min:.1f}--{ra_max:.1f} deg, Dec {dec_min:.1f}--{dec_max:.1f} deg
+- Sky coverage: RA {ra_min:.1f}--{ra_max:.1f} deg, Dec {dec_min:.1f}--{dec_max:.1f} deg"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -189,53 +134,49 @@ plt.show()
 
 # Bright sources (> 1 Jy)
 bright = df[df["integrated_flux_mjy"] > 1000]
-print(f"{{len(bright):,}} sources brighter than 1 Jy at 150 MHz")
-```
+print(f"{len(bright):,} sources brighter than 1 Jy at 150 MHz")
+```"""
 
-## Data source
-
-Intema, H.T., Jagannathan, P., Mooley, K.P., and Frail, D.A. (2017),
-*The GMRT 150 MHz all-sky radio survey -- First alternative data release TGSS ADR1.*
-Astronomy & Astrophysics, 598, A78. Via [VizieR](https://vizier.cds.unistra.fr/) CDS Strasbourg.
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/tgss-radio-catalog) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{tgss_radio_catalog,
-  author = {{Simon, Julien}},
-  title = {{TGSS Alternative Data Release 1 (150 MHz)}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/tgss-radio-catalog}},
-  note = {{Based on Intema et al. (2017) via VizieR CDS Strasbourg}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update TGSS radio catalog: {n_total:,} sources"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="TGSS Alternative Data Release 1 (150 MHz)",
+        description=DESCRIPTION,
+        tags=["space", "radio", "tgss", "gmrt", "150mhz", "astronomy",
+              "open-data", "tabular-data", "parquet"],
+        source_url="https://vizier.cds.unistra.fr/viz-bin/VizieR-3?-source=J/A+A/598/A78",
+        task_categories=["tabular-classification"],
+        collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA13277/PIA13277~small.jpg",
+            "alt": "Deep Space Network antenna at Goldstone",
+            "credit": "NASA/JPL-Caltech",
+        },
+        related_datasets=[
+            "juliensimon/nvss-radio-catalog",
+            "juliensimon/sumss-radio-catalog",
+            "juliensimon/unified-radio-catalog",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=[
+                "ra_deg", "dec_deg", "peak_flux_mjy", "integrated_flux_mjy",
+                "e_peak_flux_mjy", "e_integrated_flux_mjy", "rms_mjy",
+                "major_axis_arcsec", "minor_axis_arcsec", "position_angle_deg",
+            ],
+            drop_mostly_null_threshold=0.95,
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={len(df)}\n")
+        p.publish(
+            df,
+            filename="tgss_radio_sources.parquet",
+            min_rows=500_000,
+            expected_columns=["ra_deg", "dec_deg"],
+            critical_columns=["ra_deg", "dec_deg"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update TGSS radio catalog: {n_total:,} sources",
+        )
     print("Done.")
 
 

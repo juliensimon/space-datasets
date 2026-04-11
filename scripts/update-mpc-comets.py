@@ -1,18 +1,61 @@
 #!/usr/bin/env python3
-"""Fetch MPC comet orbital elements and upload to HF."""
+"""Fetch MPC comet orbital elements and upload to HF.
 
-import subprocess
-import tempfile
-from pathlib import Path
+Source: Minor Planet Center — CometEls.txt fixed-width format.
+Reference: https://www.minorplanetcenter.net/iau/info/CometOrbitFormat.html
+"""
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
 
 SOURCE_URL = "https://www.minorplanetcenter.net/iau/MPCORB/CometEls.txt"
 HF_REPO = "juliensimon/mpc-comet-elements"
+
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "periodic_comet_number": "IAU sequential number for periodic comets (e.g., 1 = Halley, 2 = Encke); null for non-periodic, defunct, uncertain, and interstellar comets",
+    "orbit_type": "MPC single-letter orbit type: C = long-period (Oort Cloud origin), P = short-period (<200 yr), D = defunct (no longer observable), X = lost/uncertain, I = interstellar, A = asteroid-like orbit",
+    "orbit_type_name": "Human-readable expansion of orbit_type (long-period, periodic, defunct, uncertain, interstellar, minor-planet-like)",
+    "packed_designation": "MPC packed provisional designation encoding discovery survey, year, and sequence; null for well-known periodic comets identified only by number",
+    "perihelion_year": "Calendar year (CE) of the most recent perihelion passage used in the orbital solution",
+    "perihelion_month": "Month (1-12) of the most recent perihelion passage",
+    "perihelion_day": "Fractional day of perihelion passage in Terrestrial Time (TT); includes sub-day precision (e.g., 14.567)",
+    "perihelion_date": "Perihelion passage date truncated to the nearest whole day (UTC); null for a small number of unparseable entries",
+    "perihelion_distance_au": "Distance from the Sun at perihelion in AU; sungrazers have q < 0.01 AU; values near or above 5 AU indicate distant long-period comets",
+    "eccentricity": "Orbital eccentricity; e < 1 = bound elliptical, e ~ 1 = parabolic, e > 1 = hyperbolic (interstellar or strongly perturbed)",
+    "arg_perihelion_deg": "Argument of perihelion in degrees (0-360), J2000.0 ecliptic; angle from ascending node to perihelion direction",
+    "lon_asc_node_deg": "Longitude of the ascending node in degrees (0-360), J2000.0 ecliptic; angle from vernal equinox to orbit-ecliptic intersection",
+    "inclination_deg": "Inclination to the J2000.0 ecliptic in degrees (0-180); i > 90 = retrograde orbit, typical of dynamically new Oort Cloud comets",
+    "epoch_date": "Reference epoch for perturbed (non-gravitational) osculating element solutions; null for unperturbed or two-body solutions",
+    "absolute_magnitude_h": "Total absolute magnitude parameter H used in the standard cometary brightness law m = H + 5 log delta + 10 log r; null for comets lacking photometric data",
+    "slope_parameter_g": "Photometric slope parameter G (default 4.0 for comets when not fitted); governs how brightness scales with heliocentric distance",
+    "orbital_period_years": "Orbital period in years computed from Kepler's 3rd law (P = a^1.5); null for hyperbolic or parabolic orbits (e >= 1)",
+    "is_hyperbolic": "True when eccentricity >= 1.0, indicating an unbound or interstellar trajectory",
+    "name": "Official comet name or designation (e.g., '1P/Halley', 'C/2020 F3 (NEOWISE)'); null for a small number of provisional entries",
+    "reference": "MPC short reference code for the published orbital solution (e.g., 'MPC 12345'); null if not recorded",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Orbital elements for all known comets published by the Minor Planet Center (MPC). \
+Covers periodic, long-period, defunct, and interstellar objects.
+
+The MPC maintains the authoritative catalogue of comet orbits, updated as new \
+observations refine existing solutions and new comets are discovered. Each record \
+contains the six Keplerian orbital elements (perihelion distance, eccentricity, \
+argument of perihelion, longitude of the ascending node, inclination, and \
+perihelion date), plus absolute magnitude and slope parameter.
+
+Comets occupy a special place in solar system dynamics. Short-period comets (P < 200 \
+years) predominantly originate in the Kuiper Belt and scattered disk beyond Neptune, \
+while long-period comets fall inward from the Oort Cloud at distances of 10,000--100,000 \
+AU. As a comet approaches perihelion, solar heating sublimates volatile ices, producing \
+the characteristic coma and tail. The eccentricity distribution reveals the dynamical \
+boundary between bound elliptical orbits (e < 1) and hyperbolic trajectories (e >= 1) \
+that indicate interstellar origin or strong planetary perturbation.
+"""
 
 
 def parse_comet_line(line: str) -> dict | None:
@@ -119,7 +162,10 @@ def main():
     print(f"  Parsed {len(df):,} comets")
 
     # Classify orbit type
-    orbit_type_map = {"C": "long-period", "P": "periodic", "D": "defunct", "X": "uncertain", "I": "interstellar", "A": "minor-planet"}
+    orbit_type_map = {
+        "C": "long-period", "P": "periodic", "D": "defunct",
+        "X": "uncertain", "I": "interstellar", "A": "minor-planet",
+    }
     df["orbit_type_name"] = df["orbit_type"].map(orbit_type_map)
 
     # Derived: is_hyperbolic (eccentricity >= 1)
@@ -137,25 +183,11 @@ def main():
 
     df["orbital_period_years"] = df.apply(compute_period, axis=1)
 
-    # Type coercion
-    df["periodic_comet_number"] = df["periodic_comet_number"].astype("Int64")
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
-    expected_cols = [
-        "periodic_comet_number", "orbit_type", "packed_designation",
-        "perihelion_date", "perihelion_distance_au", "eccentricity",
-        "arg_perihelion_deg", "lon_asc_node_deg", "inclination_deg",
-        "absolute_magnitude_h", "slope_parameter_g", "name",
-    ]
-    check_dataset(
-        df,
-        dataset_name="mpc-comet-elements",
-        min_rows=500,
-        expected_columns=expected_cols,
-        critical_columns=["perihelion_distance_au", "eccentricity", "inclination_deg", "name"],
-        max_null_pct=0.05,
-    )
-
-    # Stats for README
+    # ── Domain-specific stats for README ─────────────────────────────
+    n_total = len(df)
     n_periodic = int((df["orbit_type"] == "P").sum())
     n_long_period = int((df["orbit_type"] == "C").sum())
     n_hyperbolic = int(df["is_hyperbolic"].sum())
@@ -164,102 +196,14 @@ def main():
     q_max = df["perihelion_distance_au"].max()
     closest = df.loc[df["perihelion_distance_au"].idxmin()]
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "mpc_comet_elements.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("mpc-comets", tmp)
-        banner_md = banner_markdown("mpc-comets", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "MPC Comet Orbital Elements"
-language:
-  - en
-description: "Orbital elements for all known comets from the Minor Planet Center. Includes perihelion distance, eccentricity, orbital angles, magnitude, and classification."
-task_categories:
-  - tabular-classification
-  - tabular-regression
-tags:
-  - space
-  - comets
-  - orbits
-  - mpc
-  - orbital-mechanics
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - n<1K
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/mpc_comet_elements.parquet
-    default: true
----
-
-# MPC Comet Orbital Elements
-{banner_md}
-*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
-
-Orbital elements for **{len(df):,}** known comets published by the
-[Minor Planet Center](https://www.minorplanetcenter.net/) (MPC).
-Covers periodic, long-period, defunct, and interstellar objects.
-
-## Dataset description
-
-The MPC maintains the authoritative catalogue of comet orbits, updated as new
-observations refine existing solutions and new comets are discovered. Each record
-contains the six Keplerian orbital elements (perihelion distance, eccentricity,
-argument of perihelion, longitude of the ascending node, inclination, and
-perihelion date), plus absolute magnitude and slope parameter.
-
-Comets occupy a special place in solar system dynamics. Short-period comets (P < 200 years) predominantly originate in the Kuiper Belt and scattered disk beyond Neptune, while long-period comets fall inward from the Oort Cloud at distances of 10,000--100,000 AU. As a comet approaches perihelion, solar heating sublimates volatile ices, producing the characteristic coma and tail. The eccentricity distribution in this catalog reveals the dynamical boundary between bound elliptical orbits (e < 1) and hyperbolic trajectories (e >= 1) that indicate interstellar origin or strong planetary perturbation.
-
-The absolute magnitude H and slope parameter G characterize a comet's intrinsic brightness and how it varies with phase angle. Unlike asteroids, cometary magnitudes are notoriously difficult to predict because activity levels depend on volatile inventory, nucleus size, and heliocentric distance in complex ways. Sun-grazing comets with perihelion distances below 0.05 AU belong primarily to the Kreutz group, fragments of a single progenitor that broke apart centuries ago. The orbital elements in this catalog are osculating elements referred to the J2000.0 ecliptic, suitable for short-term ephemeris computation but subject to non-gravitational forces from outgassing that make long-term orbit prediction challenging.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `periodic_comet_number` | Int64 | IAU sequential number for periodic comets (e.g., 1 = Halley, 2 = Encke); null for non-periodic, defunct, uncertain, and interstellar comets |
-| `orbit_type` | string | MPC single-letter orbit type: C = long-period (Oort Cloud origin), P = short-period (<200 yr), D = defunct (no longer observable), X = lost/uncertain, I = interstellar, A = asteroid-like orbit |
-| `orbit_type_name` | string | Human-readable expansion of orbit_type (long-period, periodic, defunct, uncertain, interstellar, minor-planet-like) |
-| `packed_designation` | string | MPC packed provisional designation encoding discovery survey, year, and sequence; null for well-known periodic comets identified only by number |
-| `perihelion_year` | int | Calendar year (CE) of the most recent perihelion passage used in the orbital solution |
-| `perihelion_month` | int | Month (1–12) of the most recent perihelion passage |
-| `perihelion_day` | float | Fractional day of perihelion passage in Terrestrial Time (TT); includes sub-day precision (e.g., 14.567) |
-| `perihelion_date` | datetime | Perihelion passage date truncated to the nearest whole day (UTC); null for a small number of unparseable entries |
-| `perihelion_distance_au` | float64 | Distance from the Sun at perihelion in AU; sungrazers have q < 0.01 AU; values near or above 5 AU indicate distant long-period comets |
-| `eccentricity` | float64 | Orbital eccentricity; e < 1 = bound elliptical, e ≈ 1 = parabolic, e > 1 = hyperbolic (interstellar or strongly perturbed) |
-| `arg_perihelion_deg` | float64 | Argument of perihelion ω in degrees (0–360°), J2000.0 ecliptic; angle from ascending node to perihelion direction |
-| `lon_asc_node_deg` | float64 | Longitude of the ascending node Ω in degrees (0–360°), J2000.0 ecliptic; angle from vernal equinox to orbit–ecliptic intersection |
-| `inclination_deg` | float64 | Inclination to the J2000.0 ecliptic in degrees (0–180°); i > 90° = retrograde orbit, typical of dynamically new Oort Cloud comets |
-| `epoch_date` | datetime | Reference epoch for perturbed (non-gravitational) osculating element solutions; null for unperturbed or two-body solutions |
-| `absolute_magnitude_h` | float64 | Total absolute magnitude parameter H used in the standard cometary brightness law m = H + 5 log Δ + 10 log r; null for comets lacking photometric data |
-| `slope_parameter_g` | float64 | Photometric slope parameter G (default 4.0 for comets when not fitted); governs how brightness scales with heliocentric distance |
-| `orbital_period_years` | float64 | Orbital period in years computed from Kepler's 3rd law (P = a^1.5); null for hyperbolic or parabolic orbits (e ≥ 1) |
-| `is_hyperbolic` | bool | True when eccentricity ≥ 1.0, indicating an unbound or interstellar trajectory |
-| `name` | string | Official comet name or designation (e.g., "1P/Halley", "C/2020 F3 (NEOWISE)"); null for a small number of provisional entries |
-| `reference` | string | MPC short reference code for the published orbital solution (e.g., "MPC 12345"); null if not recorded |
-
-## Quick stats
-
-- **{len(df):,}** comets total
+    quick_stats = f"""\
+- **{n_total:,}** comets total
 - **{n_periodic:,}** periodic (P), **{n_long_period:,}** long-period (C), **{n_defunct:,}** defunct (D)
 - **{n_hyperbolic:,}** on hyperbolic orbits (eccentricity >= 1)
 - Perihelion distances range from **{q_min:.4f}** to **{q_max:.1f}** AU
-- Closest perihelion: **{closest['name']}** at **{closest['perihelion_distance_au']:.6f}** AU
+- Closest perihelion: **{closest['name']}** at **{closest['perihelion_distance_au']:.6f}** AU"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -272,63 +216,70 @@ periodic = df[df["orbit_type"] == "P"].sort_values("perihelion_distance_au")
 # Hyperbolic / interstellar visitors
 hyperbolic = df[df["is_hyperbolic"]].sort_values("eccentricity", ascending=False)
 
-# Sun-grazing comets (perihelion < 0.05 AU)
-sungrazers = df[df["perihelion_distance_au"] < 0.05]
-
 # Distribution of inclinations
+import matplotlib.pyplot as plt
 df["inclination_deg"].hist(bins=50)
-```
+plt.xlabel("Inclination (degrees)")
+plt.ylabel("Count")
+plt.title("Comet Orbital Inclination Distribution")
+plt.show()
 
-## Data source
+# Eccentricity vs perihelion distance
+plt.scatter(df["perihelion_distance_au"], df["eccentricity"], s=5, alpha=0.5)
+plt.xlabel("Perihelion Distance (AU)")
+plt.ylabel("Eccentricity")
+plt.axhline(y=1.0, color="r", linestyle="--", label="Parabolic limit")
+plt.title("Comet Eccentricity vs Perihelion Distance")
+plt.legend()
+plt.show()
+```"""
 
-[Minor Planet Center — Comet Orbital Elements](https://www.minorplanetcenter.net/iau/MPCORB/CometEls.txt).
-Format documentation: [Comet Orbit Format](https://www.minorplanetcenter.net/iau/info/CometOrbitFormat.html).
-
-## Update schedule
-
-Rebuilt monthly (static dataset).
-
-## Related datasets
-
-- [neo-close-approaches](https://huggingface.co/datasets/juliensimon/neo-close-approaches) — NEO close approaches from NASA JPL
-- [mpc-asteroid-orbits](https://huggingface.co/datasets/juliensimon/mpc-comet-elements) — MPC asteroid orbital elements
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/mpc-comet-elements) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{mpc_comet_elements,
-  author = {{Simon, Julien}},
-  title = {{MPC Comet Orbital Elements}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/mpc-comet-elements}},
-  note = {{Based on data from the IAU Minor Planet Center}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update MPC comet elements: {len(df):,} comets"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="MPC Comet Orbital Elements",
+        description=DESCRIPTION,
+        tags=["space", "comets", "orbits", "mpc", "orbital-mechanics",
+              "open-data", "tabular-data", "parquet"],
+        source_url="https://www.minorplanetcenter.net/iau/MPCORB/CometEls.txt",
+        task_categories=["tabular-classification", "tabular-regression"],
+        collection_url="https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA17666/PIA17666~small.jpg",
+            "alt": "Rosetta spacecraft approaching Comet 67P/Churyumov-Gerasimenko",
+            "credit": "NASA/ESA",
+        },
+        related_datasets=[
+            "juliensimon/neo-close-approaches",
+            "juliensimon/mpc-comet-elements",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=[
+                "perihelion_distance_au", "eccentricity",
+                "arg_perihelion_deg", "lon_asc_node_deg", "inclination_deg",
+                "absolute_magnitude_h", "slope_parameter_g",
+                "perihelion_day", "orbital_period_years",
+            ],
+            integer=["periodic_comet_number", "perihelion_year", "perihelion_month"],
         )
-
-    print(f"rows={len(df)}")
+        p.publish(
+            df,
+            filename="mpc_comet_elements.parquet",
+            min_rows=500,
+            expected_columns=[
+                "periodic_comet_number", "orbit_type", "packed_designation",
+                "perihelion_date", "perihelion_distance_au", "eccentricity",
+                "arg_perihelion_deg", "lon_asc_node_deg", "inclination_deg",
+                "absolute_magnitude_h", "slope_parameter_g", "name",
+            ],
+            critical_columns=["perihelion_distance_au", "eccentricity", "inclination_deg", "name"],
+            max_null_pct=0.05,
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update MPC comet elements: {n_total:,} comets",
+        )
     print("Done.")
 
 

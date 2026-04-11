@@ -6,7 +6,6 @@ Source: IMCCE SsODNet — Solar System Open Database Network
 Static dataset (uploaded once, no workflow).
 """
 
-import subprocess
 import tempfile
 from pathlib import Path
 
@@ -14,13 +13,138 @@ import pandas as pd
 import pyarrow.parquet as pq
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
 
 # ssoBFT bulk parquet — ~489 MB, updated regularly by IMCCE
 PARQUET_URL = "https://ssp.imcce.fr/data/ssoBFT-latest_Asteroid.parquet"
 HF_REPO = "juliensimon/ssodnet-asteroid-properties"
-MIN_ROWS = 500_000
+
+# Define the columns we want (using the dot-separated ssoBFT naming)
+WANTED = {
+    # Identity
+    "sso_id": "sso_id",
+    "sso_number": "sso_number",
+    "sso_name": "sso_name",
+    "sso_type": "sso_type",
+    "sso_class": "sso_class",
+    # Orbital summary
+    "orbital_elements.semi_major_axis.value": "semi_major_axis_au",
+    "orbital_elements.eccentricity.value": "eccentricity",
+    "orbital_elements.inclination.value": "inclination_deg",
+    "orbital_elements.orbital_period.value": "orbital_period_yr",
+    "orbital_elements.periapsis_distance.value": "periapsis_distance_au",
+    "orbital_elements.apoapsis_distance.value": "apoapsis_distance_au",
+    # Tisserand parameter (Jupiter)
+    "tisserand_parameter.Jupiter.value": "tisserand_jupiter",
+    # Family
+    "family.family_number": "family_number",
+    "family.family_name": "family_name",
+    "family.family_status": "family_status",
+    # Physical properties
+    "absolute_magnitude.value": "absolute_magnitude",
+    "absolute_magnitude.error.min": "absolute_magnitude_err_min",
+    "absolute_magnitude.error.max": "absolute_magnitude_err_max",
+    "diameter.value": "diameter_km",
+    "diameter.error.min": "diameter_err_min_km",
+    "diameter.error.max": "diameter_err_max_km",
+    "albedo.value": "albedo",
+    "albedo.error.min": "albedo_err_min",
+    "albedo.error.max": "albedo_err_max",
+    "mass.value": "mass_kg",
+    "mass.error.min": "mass_err_min_kg",
+    "mass.error.max": "mass_err_max_kg",
+    "density.value": "density_g_cm3",
+    "density.error.min": "density_err_min_g_cm3",
+    "density.error.max": "density_err_max_g_cm3",
+    "taxonomy.class": "taxonomy_class",
+    "taxonomy.complex": "taxonomy_complex",
+    "taxonomy.scheme": "taxonomy_scheme",
+    "taxonomy.waverange": "taxonomy_waverange",
+    "taxonomy.technique": "taxonomy_technique",
+    "thermal_inertia.value": "thermal_inertia",
+    "thermal_inertia.error.min": "thermal_inertia_err_min",
+    "thermal_inertia.error.max": "thermal_inertia_err_max",
+    # Spin / rotation
+    "spins.1.period.value": "rotation_period_h",
+    "spins.1.period.error.min": "rotation_period_err_min_h",
+    "spins.1.period.error.max": "rotation_period_err_max_h",
+    # MOID (Earth)
+    "moid.EMB.value": "moid_earth_au",
+}
+
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "sso_id": "SsODNet internal stable identifier (e.g., '1' for Ceres); permanent across catalog updates and used as the primary key for cross-referencing within SsODNet services",
+    "sso_number": "IAU Minor Planet Center catalog number assigned after orbit determination; null for unnumbered objects whose orbits are not yet sufficiently constrained",
+    "sso_name": "IAU-approved proper name (e.g., 'Ceres', 'Vesta'); null for the majority of objects that have a number but no name",
+    "sso_type": "Broad object type: Asteroid, Dwarf Planet, etc.",
+    "sso_class": "Dynamical orbital class: MB=Main Belt, NEA=Near-Earth Asteroid, Trojan=Jupiter Trojan, Centaur=Centaur object, KBO=Kuiper Belt Object, etc.",
+    "semi_major_axis_au": "Orbital semi-major axis in AU; defines the orbit size and mean distance from the Sun; main-belt asteroids typically 2.0-3.3 AU, NEAs <1.3 AU, KBOs >30 AU",
+    "eccentricity": "Orbital eccentricity (0 = circular, <1 = elliptical); main-belt asteroids: 0.0-0.3; near-Earth objects can reach 0.9+",
+    "inclination_deg": "Orbital inclination relative to the ecliptic plane in degrees (0-180 deg); main-belt asteroids: typically 0-30 deg",
+    "orbital_period_yr": "Time to complete one full orbit around the Sun, in years; derived from semi-major axis via Kepler's third law",
+    "periapsis_distance_au": "Closest approach distance to the Sun (perihelion) in AU; NEAs with perihelion <1.3 AU can cross Earth's orbit",
+    "apoapsis_distance_au": "Farthest distance from the Sun (aphelion) in AU",
+    "tisserand_jupiter": "Tisserand parameter with respect to Jupiter -- a near-conserved quantity used to distinguish asteroid (>3.0) from Jupiter-family comet (<3.0) orbits",
+    "family_number": "Numeric identifier of the Hirayama dynamical family; null for objects not assigned to any family",
+    "family_name": "Name of the Hirayama dynamical family (e.g., 'Vesta', 'Koronis', 'Flora'); families are remnants of ancient collisional disruptions; null for non-family members",
+    "family_status": "Membership confidence or role within the family (e.g., 'core', 'halo'); null for non-family members",
+    "absolute_magnitude": "Absolute magnitude H -- brightness the asteroid would have at 1 AU from both Sun and observer at zero phase angle; proxy for size when albedo is unknown",
+    "absolute_magnitude_err_min": "Lower (negative) uncertainty bound on H magnitude",
+    "absolute_magnitude_err_max": "Upper (positive) uncertainty bound on H magnitude",
+    "diameter_km": "Effective sphere-equivalent diameter in km (best estimate); null if not yet measured; ranges from sub-km NEAs to ~940 km (Ceres)",
+    "diameter_err_min_km": "Lower uncertainty bound on diameter (km)",
+    "diameter_err_max_km": "Upper uncertainty bound on diameter (km)",
+    "albedo": "Geometric albedo (0-1); dark primitive C-type asteroids ~0.03-0.09, stony S-type ~0.15-0.30, bright E-type/icy bodies up to 1.0; null for most objects where thermal data are unavailable",
+    "albedo_err_min": "Lower uncertainty bound on geometric albedo",
+    "albedo_err_max": "Upper uncertainty bound on geometric albedo",
+    "mass_kg": "Total mass in kg (best estimate); null for most objects -- only measurable via spacecraft flyby, mutual orbit of binary pairs, or gravitational deflection",
+    "mass_err_min_kg": "Lower uncertainty bound on mass (kg)",
+    "mass_err_max_kg": "Upper uncertainty bound on mass (kg)",
+    "density_g_cm3": "Bulk density in g/cm3 (best estimate); metallic M-types ~4-7 g/cm3, stony S-types ~2.5-3.5 g/cm3, porous rubble-pile C-types often <1.5 g/cm3",
+    "density_err_min_g_cm3": "Lower uncertainty bound on bulk density (g/cm3)",
+    "density_err_max_g_cm3": "Upper uncertainty bound on bulk density (g/cm3)",
+    "taxonomy_class": "Spectral taxonomic class letter(s) (e.g., S, C, X, V, B, D); C=carbonaceous, S=silicaceous/stony, X=metallic or enstatite, V=basaltic; null for unclassified objects",
+    "taxonomy_complex": "Broader taxonomic grouping (e.g., 'C-complex', 'S-complex', 'X-complex'); aggregates related classes that share spectral characteristics",
+    "taxonomy_scheme": "Classification scheme used (e.g., Bus-DeMeo=visible+NIR, Tholen=visible only, SMASS)",
+    "taxonomy_waverange": "Wavelength range of the spectrum used for classification (e.g., 'Vis', 'NIR', 'Vis+NIR')",
+    "taxonomy_technique": "Observational technique used (e.g., spectroscopy, photometry/color indices)",
+    "thermal_inertia": "Thermal inertia in SI units (J m-2 s-0.5 K-1); low values (~10-50) indicate fine regolith, high values (~500+) indicate bare rock; null for most objects",
+    "thermal_inertia_err_min": "Lower uncertainty bound on thermal inertia",
+    "thermal_inertia_err_max": "Upper uncertainty bound on thermal inertia",
+    "rotation_period_h": "Sidereal rotation period in hours (best estimate); null if not measured; most main-belt asteroids: 4-20 h",
+    "rotation_period_err_min_h": "Lower uncertainty bound on rotation period (hours)",
+    "rotation_period_err_max_h": "Upper uncertainty bound on rotation period (hours)",
+    "moid_earth_au": "Minimum Orbit Intersection Distance with Earth in AU; objects with MOID <0.05 AU and H <22 are classified as Potentially Hazardous Asteroids (PHAs)",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Physical and dynamical properties of asteroids and dwarf planets from the IMCCE \
+(Paris Observatory) Solar System Open Database Network (SsODNet). This is the most \
+comprehensive asteroid characterization catalog available, compiling best estimates \
+from thousands of published studies.
+
+SsODNet aggregates physical property measurements from the astronomical literature \
+into a single, curated "best estimates" flat table (ssoBFT). For each asteroid, IMCCE \
+selects the most reliable published value for each property using a transparent \
+ranking scheme. Properties include diameters, albedos, taxonomic classifications, \
+masses, densities, rotation periods, and thermal inertia -- alongside orbital \
+elements and dynamical family memberships.
+
+The physical properties reveal the extraordinary diversity of the small body \
+population. Diameters range from sub-kilometer near-Earth asteroids to dwarf planets \
+like Ceres (940 km). Albedos span two orders of magnitude, from coal-dark C-type \
+surfaces (albedo ~0.03) to highly reflective icy objects (albedo >0.5). Bulk \
+densities constrain internal structure: metallic M-types exceed 5 g/cm3, stony \
+S-types cluster around 2.5-3.5 g/cm3, and porous rubble-pile C-types often fall \
+below 1.5 g/cm3.
+
+Dynamical family membership connects individual asteroids to their collisional \
+history. The Tisserand parameter with respect to Jupiter serves as a dynamical \
+discriminant: values below 3.0 indicate Jupiter-family comet-like orbits, while \
+main-belt asteroids typically have values above 3.0.
+"""
 
 
 def main():
@@ -39,65 +163,10 @@ def main():
     print(f"  Downloaded {size / 1024 / 1024:.0f} MB")
 
     # ── Read and select columns ───────────────────────────────────────────
-    # The ssoBFT has 200+ columns with dots in names. We select the most
-    # useful physical + identity + orbital summary columns.
     print("Reading parquet and selecting columns...")
     src = pq.ParquetFile(tmp_src)
     all_cols = src.schema.names
     print(f"  Source has {src.metadata.num_rows:,} rows, {len(all_cols)} columns")
-
-    # Define the columns we want (using the dot-separated ssoBFT naming)
-    WANTED = {
-        # Identity
-        "sso_id": "sso_id",
-        "sso_number": "sso_number",
-        "sso_name": "sso_name",
-        "sso_type": "sso_type",
-        "sso_class": "sso_class",
-        # Orbital summary
-        "orbital_elements.semi_major_axis.value": "semi_major_axis_au",
-        "orbital_elements.eccentricity.value": "eccentricity",
-        "orbital_elements.inclination.value": "inclination_deg",
-        "orbital_elements.orbital_period.value": "orbital_period_yr",
-        "orbital_elements.periapsis_distance.value": "periapsis_distance_au",
-        "orbital_elements.apoapsis_distance.value": "apoapsis_distance_au",
-        # Tisserand parameter (Jupiter) — useful for classification
-        "tisserand_parameter.Jupiter.value": "tisserand_jupiter",
-        # Family
-        "family.family_number": "family_number",
-        "family.family_name": "family_name",
-        "family.family_status": "family_status",
-        # Physical properties
-        "absolute_magnitude.value": "absolute_magnitude",
-        "absolute_magnitude.error.min": "absolute_magnitude_err_min",
-        "absolute_magnitude.error.max": "absolute_magnitude_err_max",
-        "diameter.value": "diameter_km",
-        "diameter.error.min": "diameter_err_min_km",
-        "diameter.error.max": "diameter_err_max_km",
-        "albedo.value": "albedo",
-        "albedo.error.min": "albedo_err_min",
-        "albedo.error.max": "albedo_err_max",
-        "mass.value": "mass_kg",
-        "mass.error.min": "mass_err_min_kg",
-        "mass.error.max": "mass_err_max_kg",
-        "density.value": "density_g_cm3",
-        "density.error.min": "density_err_min_g_cm3",
-        "density.error.max": "density_err_max_g_cm3",
-        "taxonomy.class": "taxonomy_class",
-        "taxonomy.complex": "taxonomy_complex",
-        "taxonomy.scheme": "taxonomy_scheme",
-        "taxonomy.waverange": "taxonomy_waverange",
-        "taxonomy.technique": "taxonomy_technique",
-        "thermal_inertia.value": "thermal_inertia",
-        "thermal_inertia.error.min": "thermal_inertia_err_min",
-        "thermal_inertia.error.max": "thermal_inertia_err_max",
-        # Spin / rotation
-        "spins.1.period.value": "rotation_period_h",
-        "spins.1.period.error.min": "rotation_period_err_min_h",
-        "spins.1.period.error.max": "rotation_period_err_max_h",
-        # MOID (Earth) — useful for NEO analysis
-        "moid.EMB.value": "moid_earth_au",
-    }
 
     # Filter to columns that actually exist in the file
     available = {k: v for k, v in WANTED.items() if k in all_cols}
@@ -116,13 +185,11 @@ def main():
     print(f"  Loaded {len(df):,} rows, {len(df.columns)} columns")
 
     # ── Type coercion ─────────────────────────────────────────────────────
-    # sso_number to nullable int
     if "sso_number" in df.columns:
         df["sso_number"] = pd.to_numeric(df["sso_number"], errors="coerce").astype("Int64")
     if "family_number" in df.columns:
         df["family_number"] = pd.to_numeric(df["family_number"], errors="coerce").astype("Int64")
 
-    # Ensure float columns are float64
     float_cols = [
         "semi_major_axis_au", "eccentricity", "inclination_deg",
         "orbital_period_yr", "periapsis_distance_au", "apoapsis_distance_au",
@@ -151,6 +218,9 @@ def main():
         if col in df.columns:
             df[col] = df[col].astype(str).str.strip().replace({"nan": None, "": None, "None": None})
 
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
+
     # ── Stats ─────────────────────────────────────────────────────────────
     n_total = len(df)
     n_with_diameter = int(df["diameter_km"].notna().sum()) if "diameter_km" in df.columns else 0
@@ -161,155 +231,12 @@ def main():
     n_with_rotation = int(df["rotation_period_h"].notna().sum()) if "rotation_period_h" in df.columns else 0
     n_families = int(df["family_name"].notna().sum()) if "family_name" in df.columns else 0
 
-    # Class distribution
-    class_counts = {}
-    if "sso_class" in df.columns:
-        class_counts = df["sso_class"].value_counts().head(10).to_dict()
-
     print(f"\n  {n_total:,} asteroids total")
     print(f"  {n_with_diameter:,} with diameter")
     print(f"  {n_with_albedo:,} with albedo")
     print(f"  {n_with_taxonomy:,} with taxonomy")
-    print(f"  {n_with_mass:,} with mass")
-    print(f"  {n_with_density:,} with density")
-    print(f"  {n_with_rotation:,} with rotation period")
-    print(f"  {n_families:,} with family assignment")
-    if class_counts:
-        print("  Top classes:")
-        for cls, cnt in class_counts.items():
-            print(f"    {cls}: {cnt:,}")
 
-    # ── Validate ──────────────────────────────────────────────────────────
-    check_dataset(
-        df,
-        dataset_name="ssodnet",
-        min_rows=MIN_ROWS,
-        expected_columns=[
-            "sso_id", "sso_number", "sso_name", "sso_class",
-            "semi_major_axis_au", "eccentricity", "inclination_deg",
-            "absolute_magnitude", "diameter_km", "albedo",
-        ],
-        critical_columns=["sso_id", "semi_major_axis_au", "absolute_magnitude"],
-        max_null_pct=0.10,
-    )
-
-    # ── Write parquet + README ────────────────────────────────────────────
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "ssodnet_asteroid_properties.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"\n  {size_mb:.1f} MB parquet written")
-
-        banner_file = download_banner("ssodnet", tmp)
-        banner_md = banner_markdown("ssodnet", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "SsODNet Asteroid Physical Properties"
-language:
-  - en
-description: "Physical and orbital properties for {n_total:,} asteroids from IMCCE SsODNet — diameters, albedos, taxonomy, masses, densities, and rotation periods compiled from published literature."
-task_categories:
-  - tabular-classification
-  - tabular-regression
-tags:
-  - space
-  - asteroids
-  - physical-properties
-  - imcce
-  - orbital-mechanics
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 1M<n<10M
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/ssodnet_asteroid_properties.parquet
-    default: true
----
-
-# SsODNet Asteroid Physical Properties
-{banner_md}
-*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
-
-Physical and dynamical properties of **{n_total:,}** asteroids and dwarf planets from the
-IMCCE (Paris Observatory) Solar System Open Database Network (SsODNet). This is the most
-comprehensive asteroid characterization catalog available, compiling best estimates from
-thousands of published studies.
-
-## Dataset description
-
-SsODNet aggregates physical property measurements from the astronomical literature into
-a single, curated "best estimates" flat table (ssoBFT). For each asteroid, IMCCE selects
-the most reliable published value for each property using a transparent ranking scheme.
-Properties include diameters, albedos, taxonomic classifications, masses, densities,
-rotation periods, and thermal inertia — alongside orbital elements and dynamical family
-memberships.
-
-The fill factor varies by property: orbital elements are available for nearly all objects,
-while physical measurements like mass ({n_with_mass:,} objects) and density
-({n_with_density:,} objects) are known for far fewer.
-
-The physical properties in this catalog reveal the extraordinary diversity of the small body population. Diameters range from sub-kilometer near-Earth asteroids to dwarf planets like Ceres (940 km). Albedos span two orders of magnitude, from the coal-dark surfaces of primitive C-type asteroids (albedo ~0.03) to the highly reflective ice-rich surfaces of some outer solar system objects (albedo >0.5). Bulk densities are equally diagnostic: metallic M-type asteroids can exceed 5 g/cm3, stony S-types cluster around 2.5--3.5 g/cm3, and porous rubble-pile C-types often fall below 1.5 g/cm3. These density measurements, derived from mass estimates via spacecraft encounters, mutual orbits of binary asteroids, or gravitational deflection of neighboring bodies, constrain internal structure and macro-porosity.
-
-Dynamical family membership, included for objects with computed proper orbital elements, connects individual asteroids to their collisional history. Families are clusters in proper element space (semi-major axis, eccentricity, inclination) produced by catastrophic disruption or cratering events. The Tisserand parameter with respect to Jupiter serves as a dynamical discriminant: values below 3.0 indicate Jupiter-family comet-like orbits, while main-belt asteroids typically have values above 3.0. The minimum orbit intersection distance (MOID) with Earth flags potentially hazardous objects and is essential for planetary defense assessments.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `sso_id` | string | SsODNet internal stable identifier (e.g., "1" for Ceres); permanent across catalog updates and used as the primary key for cross-referencing within SsODNet services |
-| `sso_number` | Int64 | IAU Minor Planet Center catalog number assigned after orbit determination; null for unnumbered objects whose orbits are not yet sufficiently constrained |
-| `sso_name` | string | IAU-approved proper name (e.g., "Ceres", "Vesta"); null for the majority of objects that have a number but no name |
-| `sso_type` | string | Broad object type: Asteroid, Dwarf Planet, etc. |
-| `sso_class` | string | Dynamical orbital class: MB=Main Belt, NEA=Near-Earth Asteroid, Trojan=Jupiter Trojan, Centaur=Centaur object, KBO=Kuiper Belt Object, etc. |
-| `semi_major_axis_au` | float64 | Orbital semi-major axis in AU (1 AU = 149.6 million km = Earth-Sun distance); defines the orbit size and mean distance from the Sun; main-belt asteroids typically 2.0–3.3 AU, NEAs <1.3 AU, KBOs >30 AU |
-| `eccentricity` | float64 | Orbital eccentricity (0 = perfectly circular, <1 = elliptical); main-belt asteroids: 0.0–0.3; near-Earth objects can reach 0.9+; values at or above 1.0 indicate hyperbolic (unbound) orbits |
-| `inclination_deg` | float64 | Orbital inclination relative to the ecliptic plane in degrees (0–180°); main-belt asteroids: typically 0–30°; high inclination (>30°) suggests a scattered disk, Kuiper belt, or dynamically excited origin |
-| `orbital_period_yr` | float64 | Time to complete one full orbit around the Sun, in years; main-belt: ~3–6 years; derived from semi-major axis via Kepler's third law |
-| `periapsis_distance_au` | float64 | Closest approach distance to the Sun (perihelion) in AU; equals a(1-e); NEAs with perihelion <1.3 AU can cross Earth's orbit |
-| `apoapsis_distance_au` | float64 | Farthest distance from the Sun (aphelion) in AU; equals a(1+e) |
-| `tisserand_jupiter` | float64 | Tisserand parameter with respect to Jupiter — a near-conserved quantity used to distinguish asteroid (>3.0) from Jupiter-family comet (<3.0) orbits; also useful for classifying Trojans and Hildas |
-| `family_number` | Int64 | Numeric identifier of the Hirayama dynamical family; null for objects not assigned to any family |
-| `family_name` | string | Name of the Hirayama dynamical family (e.g., "Vesta", "Koronis", "Flora"); families are remnants of ancient collisional disruptions sharing similar proper orbital elements; null for non-family members |
-| `family_status` | string | Membership confidence or role within the family (e.g., "core", "halo"); null for non-family members |
-| `absolute_magnitude` | float64 | Absolute magnitude H — brightness the asteroid would have at 1 AU from both Sun and observer at zero phase angle; proxy for size when albedo is unknown; brighter (lower H) = larger object |
-| `absolute_magnitude_err_min` | float64 | Lower (negative) uncertainty bound on H magnitude |
-| `absolute_magnitude_err_max` | float64 | Upper (positive) uncertainty bound on H magnitude |
-| `diameter_km` | float64 | Effective sphere-equivalent diameter in km (best estimate from IMCCE's ranking of published measurements); null if not yet measured; derived from thermal emission (WISE/NEATM) or stellar occultation; ranges from sub-km NEAs to ~940 km (Ceres) |
-| `diameter_err_min_km` | float64 | Lower uncertainty bound on diameter (km) |
-| `diameter_err_max_km` | float64 | Upper uncertainty bound on diameter (km) |
-| `albedo` | float64 | Geometric albedo (0–1); fraction of incident sunlight reflected; dark primitive C-type asteroids ~0.03–0.09, stony S-type ~0.15–0.30, bright E-type/icy bodies up to 1.0; null for most objects where thermal data are unavailable |
-| `albedo_err_min` | float64 | Lower uncertainty bound on geometric albedo |
-| `albedo_err_max` | float64 | Upper uncertainty bound on geometric albedo |
-| `mass_kg` | float64 | Total mass in kg (best estimate); null for most objects — only measurable via spacecraft flyby, mutual orbit of binary pairs, or gravitational deflection; ranges from ~10^12 kg (small NEAs) to ~9.4×10^20 kg (Ceres) |
-| `mass_err_min_kg` | float64 | Lower uncertainty bound on mass (kg) |
-| `mass_err_max_kg` | float64 | Upper uncertainty bound on mass (kg) |
-| `density_g_cm3` | float64 | Bulk density in g/cm3 (best estimate); derived from mass and volume; metallic M-types ~4–7 g/cm3, stony S-types ~2.5–3.5 g/cm3, porous rubble-pile C-types often <1.5 g/cm3; null for all but a few hundred well-characterized bodies |
-| `density_err_min_g_cm3` | float64 | Lower uncertainty bound on bulk density (g/cm3) |
-| `density_err_max_g_cm3` | float64 | Upper uncertainty bound on bulk density (g/cm3) |
-| `taxonomy_class` | string | Spectral taxonomic class letter(s) (e.g., S, C, X, V, B, D); in Bus-DeMeo: C=carbonaceous, S=silicaceous/stony, X=metallic or enstatite, V=basaltic (Vesta-like); null for unclassified objects |
-| `taxonomy_complex` | string | Broader taxonomic grouping (e.g., "C-complex", "S-complex", "X-complex"); aggregates related classes that share spectral characteristics |
-| `taxonomy_scheme` | string | Classification scheme used (e.g., Bus-DeMeo=visible+NIR, Tholen=visible only, SMASS); different schemes use different letter systems and wavelength ranges |
-| `taxonomy_waverange` | string | Wavelength range of the spectrum used for classification (e.g., "Vis", "NIR", "Vis+NIR") |
-| `taxonomy_technique` | string | Observational technique used (e.g., spectroscopy, photometry/color indices) |
-| `thermal_inertia` | float64 | Thermal inertia in SI units (J m-2 s-0.5 K-1); resistance of the surface to temperature change; low values (~10–50) indicate fine regolith, high values (~500+) indicate bare rock or exposed metal; null for most objects |
-| `thermal_inertia_err_min` | float64 | Lower uncertainty bound on thermal inertia |
-| `thermal_inertia_err_max` | float64 | Upper uncertainty bound on thermal inertia |
-| `rotation_period_h` | float64 | Sidereal rotation period in hours (best estimate); null if not measured; range: ~0.1 h (fast rotators at the spin barrier for strengthless rubble piles) to thousands of hours for slow/tumbling objects; most main-belt asteroids: 4–20 h |
-| `rotation_period_err_min_h` | float64 | Lower uncertainty bound on rotation period (hours) |
-| `rotation_period_err_max_h` | float64 | Upper uncertainty bound on rotation period (hours) |
-| `moid_earth_au` | float64 | Minimum Orbit Intersection Distance with Earth in AU; the closest the two orbits pass regardless of where the bodies are; objects with MOID <0.05 AU and H <22 are classified as Potentially Hazardous Asteroids (PHAs) by the MPC |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n_total:,}** asteroids and dwarf planets
 - **{n_with_diameter:,}** with measured diameter
 - **{n_with_albedo:,}** with measured albedo
@@ -317,10 +244,9 @@ Dynamical family membership, included for objects with computed proper orbital e
 - **{n_with_mass:,}** with mass estimate
 - **{n_with_density:,}** with density estimate
 - **{n_with_rotation:,}** with rotation period
-- **{n_families:,}** with dynamical family assignment
+- **{n_families:,}** with dynamical family assignment"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -349,54 +275,39 @@ plt.xscale("log")
 plt.xlabel("Diameter (km)")
 plt.ylabel("Albedo")
 plt.legend(fontsize=7)
-```
+```"""
 
-## Data source
-
-[IMCCE SsODNet — Solar System Open Database Network](https://ssp.imcce.fr/webservices/ssodnet/)
-
-The ssoBFT (Best Flat Table) compiles best estimates of physical and dynamical properties
-for all known asteroids and dwarf planets. Data originates from thousands of peer-reviewed
-publications, curated by IMCCE (Paris Observatory). See Berthier et al. (2023),
-"SsODNet: The Solar System Open Database Network",
-[A&A 671, A151](https://doi.org/10.1051/0004-6361/202244878).
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/ssodnet-asteroid-properties) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{ssodnet_asteroid_properties,
-  author = {{Simon, Julien}},
-  title = {{SsODNet Asteroid Physical Properties}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/ssodnet-asteroid-properties}},
-  note = {{Based on IMCCE SsODNet ssoBFT, Berthier et al. (2023)}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Upload SsODNet asteroid properties: {n_total:,} objects"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="SsODNet Asteroid Physical Properties",
+        description=DESCRIPTION,
+        tags=["space", "asteroids", "physical-properties", "imcce",
+              "orbital-mechanics", "open-data", "tabular-data", "parquet"],
+        source_url="https://ssp.imcce.fr/webservices/ssodnet/",
+        task_categories=["tabular-classification", "tabular-regression"],
+        collection_url="https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA17666/PIA17666~small.jpg",
+            "alt": "Rosetta spacecraft approaching Comet 67P/Churyumov-Gerasimenko",
+            "credit": "NASA/ESA",
+        },
+    ) as p:
+        p.publish(
+            df,
+            filename="ssodnet_asteroid_properties.parquet",
+            min_rows=500_000,
+            expected_columns=[
+                "sso_id", "sso_number", "sso_name", "sso_class",
+                "semi_major_axis_au", "eccentricity", "inclination_deg",
+                "absolute_magnitude", "diameter_km", "albedo",
+            ],
+            critical_columns=["sso_id", "semi_major_axis_au", "absolute_magnitude"],
+            max_null_pct=0.10,
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Upload SsODNet asteroid properties: {n_total:,} objects",
         )
-
-    print(f"rows={n_total}")
     print("Done.")
 
 

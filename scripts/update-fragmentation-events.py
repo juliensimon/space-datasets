@@ -10,19 +10,56 @@ Based on the methodology used by NASA's Orbital Debris Program Office in the
 "History of On-Orbit Satellite Fragmentations" report series.
 """
 
-import os
-import subprocess
-import tempfile
-from pathlib import Path
-
 import pandas as pd
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
 
 SATCAT_URL = "https://celestrak.org/pub/satcat.csv"
 HF_REPO = "juliensimon/orbital-fragmentation-events"
 MIN_DEBRIS = 4  # minimum cataloged debris to qualify as a fragmentation event
+
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "parent_object_id": "International designator (COSPAR ID) of the parent object (e.g. '1999-025A'); format is YYYY-NNNP where YYYY=launch year, NNN=launch number, P=piece letter",
+    "parent_norad_id": "NORAD catalog number of the parent spacecraft or rocket body; sequential integer assigned by the 18th Space Defense Squadron; primary key for cross-referencing with TLE databases",
+    "parent_name": "Name of the parent spacecraft or rocket body as listed in the NORAD catalog (e.g. 'FENGYUN 1C', 'COSMOS 2251')",
+    "parent_object_type": "Type of the parent object: 'PAY' (payload/spacecraft), 'R/B' (rocket body or upper stage), 'DEB' (debris); most fragmentation events originate from PAY or R/B",
+    "country_code": "Two- or three-letter country or organization code of the owner/operator (e.g. 'US', 'CIS', 'PRC', 'ESA') as assigned in the SATCAT",
+    "launch_date": "Date of the original launch of the parent object (UTC); used to compute debris residence time; null if launch date not cataloged",
+    "launch_year": "Year of launch extracted from launch_date; useful for grouping fragmentation events by decade or era",
+    "launch_site": "COSPAR launch site code (e.g. 'TYMSC' = Baikonur Cosmodrome, 'AFETR' = Cape Canaveral); null if unknown",
+    "debris_cataloged": "Total number of trackable debris pieces (>~10 cm) cataloged from this fragmentation event; Fengyun-1C ASAT test: 3,500+; Cosmos/Iridium collision: 2,300+",
+    "debris_on_orbit": "Number of cataloged debris pieces still in orbit at the time of the last SATCAT update; decreases over time as fragments decay",
+    "debris_decayed": "Number of cataloged debris pieces that have reentered the atmosphere; equals debris_cataloged minus debris_on_orbit",
+    "decay_pct": "Percentage of total cataloged debris that has decayed (0-100); higher values indicate better long-term cleanup by atmospheric drag; low-altitude events decay faster",
+    "apogee_km": "Apogee (highest point) altitude of the parent object's orbit above Earth's surface in km; null if orbital elements unavailable; high apogee means long debris lifetime",
+    "perigee_km": "Perigee (lowest point) altitude of the parent object's orbit above Earth's surface in km; low perigee increases atmospheric drag and debris decay rate",
+    "altitude_km": "Mean orbital altitude in km, approximately (apogee + perigee) / 2; used to classify the orbital regime and estimate debris lifetime",
+    "inclination_deg": "Orbital inclination of the parent object in degrees (0-180); determines which latitudes the debris cloud can reach; sun-synchronous orbits are ~97-98 deg",
+    "period_min": "Orbital period of the parent object in minutes; ~88 min at 200 km LEO, ~1436 min at GEO; null if not recorded",
+    "orbit_type": "Orbital regime classification: 'LEO' (<2,000 km), 'MEO' (2,000-35,286 km), 'GEO' (~35,786 km), 'HEO' (highly elliptical), 'unknown' if altitude unavailable",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Catalog of orbital fragmentation events derived from the NORAD Satellite Catalog \
+(SATCAT) via CelesTrak. Each event represents a launch that produced significant \
+cataloged debris from breakups, explosions, collisions, or anomalous events.
+
+Orbital fragmentation is the single largest source of space debris. The most \
+consequential events include China's 2007 Fengyun-1C anti-satellite missile test \
+(over 3,500 trackable fragments), the 2009 Iridium 33/Cosmos 2251 collision \
+(~2,300 cataloged pieces), and the 2021 Russian ASAT test against Cosmos 1408. \
+Together, a handful of major breakups account for a disproportionate share of the \
+total tracked debris population.
+
+The root causes of fragmentation have shifted over time. Early decades were \
+dominated by accidental explosions of rocket upper stages retaining residual \
+propellant. More recently, deliberate destruction (ASAT tests) and accidental \
+collisions have become prominent. The Kessler syndrome hypothesis warns that \
+above a critical density threshold, collisional cascading could make certain \
+orbital bands unusable -- a concern that fragmentation event data directly informs.
+"""
 
 
 def identify_parent(group: pd.DataFrame) -> pd.Series:
@@ -151,16 +188,12 @@ def main():
     # Sort by debris count descending (most significant events first)
     events = events.sort_values("debris_cataloged", ascending=False).reset_index(drop=True)
 
-    # ── Validate ─────────────────────────────────────────────────────────
-    check_dataset(
-        events, "fragmentation-events", min_rows=200,
-        expected_columns=[
-            "parent_object_id", "parent_norad_id", "parent_name",
-            "country_code", "debris_cataloged", "debris_on_orbit",
-            "altitude_km", "orbit_type",
-        ],
-        critical_columns=["parent_norad_id", "parent_name", "debris_cataloged"],
-    )
+    # Keep only described columns
+    events = events[[c for c in events.columns if c in COLUMN_DESCRIPTIONS]]
+
+    # Drop the intermediate launch_id if it survived
+    if "launch_id" in events.columns:
+        events = events.drop(columns=["launch_id"])
 
     # ── Compute stats for README ─────────────────────────────────────────
     n_events = len(events)
@@ -178,117 +211,14 @@ def main():
         f"{code} ({count})" for code, count in top_countries.items()
     )
 
-    top5 = events.nlargest(5, "debris_cataloged")
-    top5_lines = "\n".join(
-        f"| {r['parent_name']} | {r['country_code']} | {r['debris_cataloged']:,} | "
-        f"{r['debris_on_orbit']:,} | {int(r['altitude_km']) if pd.notna(r['altitude_km']) else 'N/A'} |"
-        for _, r in top5.iterrows()
-    )
-
-    # ── Write parquet and README ─────────────────────────────────────────
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "fragmentation-events.parquet"
-        events.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.2f} MB parquet")
-
-        banner_file = download_banner("fragmentation-events", tmp)
-        banner_md = banner_markdown("fragmentation-events", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Orbital Fragmentation Events"
-language:
-  - en
-description: "Catalog of {n_events:,} orbital fragmentation events derived from the NORAD SATCAT via CelesTrak. Each event represents a launch that produced significant cataloged debris from breakups, explosions, collisions, or anomalous events. Includes parent object identification, debris counts, and orbital parameters."
-task_categories:
-  - tabular-classification
-tags:
-  - space
-  - debris
-  - fragmentation
-  - orbital-mechanics
-  - collisions
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - n<1K
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/fragmentation-events.parquet
-    default: true
----
-
-# Orbital Fragmentation Events
-{banner_md}
-*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
-
-Catalog of **{n_events:,}** orbital fragmentation events derived from the NORAD Satellite Catalog
-(SATCAT) via [CelesTrak](https://celestrak.org/). A fragmentation event is identified as any launch
-that produced {MIN_DEBRIS} or more cataloged debris objects, indicating an in-orbit breakup caused
-by explosions, collisions, anomalous events, or deliberate destruction.
-
-## Dataset description
-
-Every significant breakup event in Earth orbit since {year_min} is captured in this dataset. When a
-satellite or rocket body fragments -- whether from a propulsion failure, accidental collision, deliberate
-destruction (e.g., anti-satellite tests), or unexplained anomaly -- it produces tracked debris objects
-cataloged by the 18th Space Defense Squadron. This dataset aggregates those debris back to their
-parent launch, identifying the primary spacecraft or rocket body involved and computing debris
-statistics. It is inspired by the methodology used in NASA's "History of On-Orbit Satellite
-Fragmentations" technical report series published by the Orbital Debris Program Office.
-
-Orbital fragmentation is the single largest source of space debris. The most consequential events in history include China's 2007 Fengyun-1C anti-satellite missile test (which created over 3,500 trackable fragments, many in long-lived orbits above 800 km), the 2009 accidental collision between Iridium 33 and the defunct Cosmos 2251 (producing roughly 2,300 cataloged pieces), and the 2021 Russian ASAT test against Cosmos 1408. Together, a handful of major breakups account for a disproportionate share of the total tracked debris population. The debris_on_orbit field reveals which events continue to pollute the space environment: high-altitude fragmentations produce debris that can persist for decades or centuries, while low-altitude events clear relatively quickly through atmospheric drag.
-
-The root causes of fragmentation events have shifted over time. In the early decades of spaceflight, the dominant cause was accidental explosions of rocket upper stages that retained residual propellant or pressurized tanks after completing their mission. This led to the adoption of passivation requirements -- venting residual fuel and depressurizing batteries -- in modern launch vehicle designs. More recently, deliberate destruction (ASAT tests) and accidental collisions have become prominent causes. The Kessler syndrome hypothesis warns that above a critical density threshold, collisional cascading could make certain orbital bands unusable -- a concern that fragmentation event data directly informs.
-
-This dataset enables researchers to study fragmentation event rates over time, assess the long-term debris environment contribution by orbit altitude and event type, evaluate the effectiveness of debris mitigation policies, and identify which nations and operators have generated the most orbital debris. The decay percentage field provides a measure of how effectively atmospheric drag is cleaning up after each event.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `parent_object_id` | string | International designator of parent object (COSPAR ID) |
-| `parent_norad_id` | int32 | NORAD catalog number of the parent object |
-| `parent_name` | string | Name of the parent spacecraft or rocket body |
-| `parent_object_type` | string | `PAY` (payload), `R/B` (rocket body), `DEB` (debris) |
-| `country_code` | string | Two- or three-letter country or organization code of the owner/operator (e.g. "US", "RU", "CN", "ESA") |
-| `launch_date` | datetime | Date of the original launch of the parent object (UTC); null if not cataloged |
-| `launch_year` | int32 | Year of launch extracted from launch_date; useful for grouping and temporal analysis |
-| `launch_site` | string | COSPAR launch site code (e.g. "TYMSC" = Baikonur, "AFETR" = Cape Canaveral); null if unknown |
-| `debris_cataloged` | int32 | Total number of trackable debris pieces (>~10 cm) cataloged from this event; Fengyun-1C: 3,000+, Cosmos/Iridium: 2,000+ |
-| `debris_on_orbit` | int32 | Number of cataloged debris pieces still in orbit at last update |
-| `debris_decayed` | int32 | Number of cataloged debris pieces that have reentered the atmosphere |
-| `decay_pct` | float | Percentage of total cataloged debris that has decayed (0–100); higher values indicate better long-term cleanup by atmospheric drag |
-| `apogee_km` | float | Apogee altitude of the parent object's orbit above Earth's surface (km); null if orbital elements unavailable |
-| `perigee_km` | float | Perigee altitude of the parent object's orbit above Earth's surface (km); low perigee increases atmospheric drag and debris decay rate |
-| `altitude_km` | float | Mean orbital altitude (km), approximately (apogee + perigee) / 2; used to classify orbit regime |
-| `inclination_deg` | float | Orbital inclination of parent object (degrees, 0–180); determines which latitudes debris can reach |
-| `period_min` | float | Orbital period of parent object (minutes); ~88 min at 200 km LEO, ~1436 min at GEO |
-| `orbit_type` | string | Orbital regime: "LEO" (<2,000 km), "MEO" (2,000–35,786 km), "GEO" (~35,786 km), or "HEO" (highly elliptical) |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n_events:,}** fragmentation events spanning **{year_min}** to **{year_max}**
 - **{total_debris:,}** total cataloged debris, **{total_on_orbit:,}** still on orbit
+- Worst event: **{top_event['parent_name']}** with **{top_event['debris_cataloged']:,}** cataloged debris
 - Orbit distribution: {orbit_str}
-- Top countries: {top_countries_str}
+- Top countries: {top_countries_str}"""
 
-### Most prolific breakup events
-
-| Parent Object | Country | Debris Cataloged | On Orbit | Altitude (km) |
-|---------------|---------|----------------:|----------:|---------------:|
-{top5_lines}
-
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -296,72 +226,63 @@ ds = load_dataset("juliensimon/orbital-fragmentation-events", split="train")
 df = ds.to_pandas()
 
 # Most prolific breakups
-df.nlargest(10, "debris_cataloged")[["parent_name", "debris_cataloged", "debris_on_orbit"]]
+print(df.nlargest(10, "debris_cataloged")[["parent_name", "debris_cataloged", "debris_on_orbit"]])
 
 # Events still polluting orbit (>90% debris remaining)
 active_pollution = df[df["decay_pct"] < 10].sort_values("debris_on_orbit", ascending=False)
 
-# Breakups by orbit type
-df.groupby("orbit_type")["debris_cataloged"].sum()
+# Debris by orbit type
+import matplotlib.pyplot as plt
+by_orbit = df.groupby("orbit_type")["debris_cataloged"].sum().sort_values(ascending=False)
+by_orbit.plot(kind="bar", edgecolor="black")
+plt.ylabel("Total Cataloged Debris")
+plt.title("Fragmentation Debris by Orbit Type")
+plt.tight_layout()
+plt.show()
+```"""
 
-# Events by decade
-df["decade"] = (df["launch_year"] // 10) * 10
-df.groupby("decade")["parent_norad_id"].count()
-
-# Country breakdown
-df.groupby("country_code")["debris_cataloged"].agg(["count", "sum"]).sort_values("sum", ascending=False).head(10)
-```
-
-## Data source
-
-Derived from the [CelesTrak SATCAT](https://celestrak.org/pub/satcat.csv), which mirrors the
-official US Space Command catalog maintained by the 18th Space Defense Squadron. Fragmentation
-events are identified by grouping cataloged debris objects by their international designator prefix
-(launch ID) and filtering for launches with {MIN_DEBRIS}+ debris pieces.
-
-For authoritative event-by-event analysis including assessed causes, see NASA's
-[History of On-Orbit Satellite Fragmentations](https://orbitaldebris.jsc.nasa.gov/) report series.
-
-## Related datasets
-
-- [reentry-events](https://huggingface.co/datasets/juliensimon/reentry-events) -- Atmospheric reentry catalog
-- [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) -- Full NORAD satellite catalog
-- [active-satellites](https://huggingface.co/datasets/juliensimon/space-track-satcat) -- Currently operational spacecraft
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Citation
-
-```bibtex
-@dataset{{fragmentation_events,
-  author = {{Simon, Julien}},
-  title = {{Orbital Fragmentation Events}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/orbital-fragmentation-events}},
-  note = {{Derived from NORAD SATCAT via CelesTrak (Dr. T.S. Kelso)}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update fragmentation events: {n_events:,} events, {total_debris:,} debris"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Orbital Fragmentation Events",
+        description=DESCRIPTION,
+        tags=["space", "debris", "fragmentation", "orbital-mechanics",
+              "collisions", "open-data", "tabular-data", "parquet"],
+        source_url="https://celestrak.org/pub/satcat.csv",
+        task_categories=["tabular-classification"],
+        collection_url="https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/iss071e439624/iss071e439624~medium.jpg",
+            "alt": "An orbital sunrise illuminates the Earth's atmosphere, seen from the ISS",
+            "credit": "NASA",
+        },
+        related_datasets=[
+            "juliensimon/reentry-events",
+            "juliensimon/space-track-satcat",
+            "juliensimon/gcat-satellite-catalog",
+        ],
+    ) as p:
+        events = p.clean(
+            events,
+            numeric=["parent_norad_id", "debris_cataloged", "debris_on_orbit",
+                     "debris_decayed", "decay_pct", "apogee_km", "perigee_km",
+                     "altitude_km", "inclination_deg", "period_min"],
+            drop_mostly_null_threshold=0.95,
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={n_events}\n")
+        p.publish(
+            events,
+            filename="fragmentation_events.parquet",
+            min_rows=200,
+            expected_columns=[
+                "parent_object_id", "parent_norad_id", "parent_name",
+                "country_code", "debris_cataloged", "debris_on_orbit",
+                "altitude_km", "orbit_type",
+            ],
+            critical_columns=["parent_norad_id", "parent_name", "debris_cataloged"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update fragmentation events: {n_events:,} events, {total_debris:,} debris",
+        )
     print("Done.")
 
 

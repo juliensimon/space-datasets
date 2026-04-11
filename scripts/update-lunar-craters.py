@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""Fetch Lunar crater database (Robbins 2019) and upload to HF."""
+"""Fetch Lunar crater database (Robbins 2019) and upload to HF.
 
-import os
-import subprocess
-import tempfile
-from pathlib import Path
+Source: Robbins (2019), JGR Planets 124, 871-892.
+Distributed by USGS Astrogeology Science Center.
+"""
+
+import io
+import sys
+import zipfile
 
 import pandas as pd
+import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
 
 DATA_URLS = [
     "https://astropedia.astrogeology.usgs.gov/download/Moon/Research/Craters/lunar_crater_database_robbins_2019.csv",
@@ -17,23 +20,51 @@ DATA_URLS = [
 ]
 HF_REPO = "juliensimon/lunar-craters-robbins"
 
-# Column mapping — supports both 2019 USGS and 2014 sjrdesign column names
+# ── Column mapping ───────────────────────────────────────────────────
 KEEP_COLS = {
     "CRATER_ID": "crater_id",
-    "LAT_CIRC_IMG": "latitude_deg",
-    "LATITUDE_CIRCLE_IMAGE": "latitude_deg",
-    "LON_CIRC_IMG": "longitude_deg",
-    "LONGITUDE_CIRCLE_IMAGE": "longitude_deg",
-    "DIAM_CIRC_IMG": "diameter_km",
-    "DIAM_CIRCLE_IMAGE": "diameter_km",
-    "DEPTH_RIM_TOPO": "depth_km",
-    "DEPTH_RIMFLOOR_TOPOG": "depth_km",
+    "LAT_CIRC_IMG": "latitude_deg", "LATITUDE_CIRCLE_IMAGE": "latitude_deg",
+    "LON_CIRC_IMG": "longitude_deg", "LONGITUDE_CIRCLE_IMAGE": "longitude_deg",
+    "DIAM_CIRC_IMG": "diameter_km", "DIAM_CIRCLE_IMAGE": "diameter_km",
+    "DEPTH_RIM_TOPO": "depth_km", "DEPTH_RIMFLOOR_TOPOG": "depth_km",
     "DEPTH_FLOOR_TOPO": "floor_elevation_km",
     "DEPTH_RIM_SD": "depth_rim_sd_km",
 }
 
-NUMERIC_COLS = ["latitude_deg", "longitude_deg", "diameter_km", "depth_km",
-                "floor_elevation_km", "depth_rim_sd_km"]
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "crater_id": "Unique integer crater identifier assigned by Robbins (2019); stable across catalog versions",
+    "latitude_deg": "Selenocentric latitude of crater center in degrees (-90 to +90; positive = north)",
+    "longitude_deg": "Selenocentric longitude of crater center in degrees (0-360, positive East; prime meridian at sub-Earth point)",
+    "diameter_km": "Rim-to-rim crater diameter in km; ranges from ~1 km (catalog floor) to ~2,500 km for the largest basins",
+    "depth_km": "Rim-to-floor depth derived from LOLA topography in km; null for heavily eroded craters where the rim is indistinct",
+    "floor_elevation_km": "Absolute floor elevation in km relative to the lunar reference ellipsoid; null when floor topography is not measured",
+    "depth_rim_sd_km": "Standard deviation of rim elevation measurements in km; larger values indicate irregular or degraded rims; null when fewer than 3 rim points were measured",
+    "size_class": "Derived size category: small (<5 km), medium (5-20 km), large (20-100 km), giant (>100 km); null only if diameter is missing",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+The definitive lunar impact crater database, containing craters with diameter >= 1 km. \
+Essential reference for Artemis mission planning and lunar surface studies.
+
+This database was compiled by Stuart J. Robbins (2019) using Lunar Reconnaissance Orbiter (LRO) \
+imagery and LOLA topography. It is the most comprehensive catalog of lunar impact craters, \
+covering the entire lunar surface with consistent methodology.
+
+The Moon preserves a cratering record stretching back over four billion years, largely unmodified \
+by the plate tectonics, erosion, and volcanism that have resurfaced Earth. This makes lunar craters \
+an indispensable calibration standard for crater counting chronology across the inner solar system.
+
+Crater morphology on the Moon transitions from simple bowl-shaped structures below about 15 km \
+diameter to complex craters with central peaks, terraced walls, and flat floors at larger sizes. \
+The largest impacts produced multi-ring basins -- such as South Pole-Aitken (roughly 2,500 km \
+diameter), the largest confirmed impact structure in the solar system.
+
+This database is directly relevant to NASA's Artemis program. Crater catalogs are critical for \
+landing site selection, hazard assessment, and traverse planning, particularly in the permanently \
+shadowed regions near the south pole where water ice deposits have been detected.
+"""
 
 
 def size_class(diameter):
@@ -50,9 +81,6 @@ def size_class(diameter):
 
 def fetch_data():
     """Try multiple URLs with fallback."""
-    import io
-    import zipfile
-    import requests
     for url in DATA_URLS:
         print(f"  Trying {url[:80]}...")
         try:
@@ -61,18 +89,18 @@ def fetch_data():
             if url.endswith(".zip"):
                 with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
                     names = [n for n in zf.namelist()
-                             if n.endswith((".csv", ".tsv", ".txt")) and not n.startswith("__MACOSX") and "Changelog" not in n]
+                             if n.endswith((".csv", ".tsv", ".txt"))
+                             and not n.startswith("__MACOSX")
+                             and "Changelog" not in n]
                     if not names:
                         continue
-                    sep = "\t"  # Robbins data is always tab-separated
                     with zf.open(names[0]) as f:
-                        return pd.read_csv(f, sep=sep, low_memory=False, encoding="latin-1")
+                        return pd.read_csv(f, sep="\t", low_memory=False, encoding="latin-1")
             else:
                 return pd.read_csv(io.StringIO(resp.text), low_memory=False)
         except Exception as e:
             print(f"  Failed: {e}")
     print("::error::All download URLs failed")
-    import sys
     sys.exit(1)
 
 
@@ -85,15 +113,13 @@ def main():
     available = {c: v for c, v in KEEP_COLS.items() if c in df.columns}
     df = df[list(available.keys())].rename(columns=available)
 
-    # Type conversions
-    for col in NUMERIC_COLS:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
     # Derived column
     df["size_class"] = df["diameter_km"].apply(size_class)
 
-    # Stats
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
+
+    # ── Domain-specific stats for README ─────────────────────────────
     n_total = len(df)
     n_small = int((df["size_class"] == "small").sum())
     n_medium = int((df["size_class"] == "medium").sum())
@@ -101,99 +127,15 @@ def main():
     n_giant = int((df["size_class"] == "giant").sum())
     diam_min = df["diameter_km"].min()
     diam_max = df["diameter_km"].max()
+    has_depth = int(df["depth_km"].notna().sum()) if "depth_km" in df.columns else 0
 
-    # Validate
-    check_dataset(
-        df,
-        "lunar-craters",
-        min_rows=300_000,  # 2019 USGS has 1.3M, 2014 sjrdesign fallback has 384K
-        expected_columns=["crater_id", "latitude_deg", "longitude_deg", "diameter_km"],
-        critical_columns=["crater_id", "latitude_deg", "longitude_deg", "diameter_km"],
-    )
-
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "lunar_craters.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("lunar-craters", tmp)
-        banner_md = banner_markdown("lunar-craters", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Lunar Crater Database (Robbins 2019)"
-language:
-  - en
-description: "Definitive lunar impact crater database with {n_total:,} craters >= 1 km diameter from Robbins (2019). Artemis-relevant."
-task_categories:
-  - tabular-classification
-  - tabular-regression
-tags:
-  - space
-  - moon
-  - lunar
-  - crater
-  - planetary-science
-  - usgs
-  - artemis
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 1M<n<10M
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/lunar_craters.parquet
-    default: true
----
-
-# Lunar Crater Database (Robbins 2019)
-{banner_md}
-*Part of the [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2) collection on Hugging Face.*
-
-The definitive lunar impact crater database, containing **{n_total:,}** craters with diameter >= 1 km.
-Essential reference for Artemis mission planning and lunar surface studies.
-
-## Dataset description
-
-This database was compiled by Stuart J. Robbins (2019) using Lunar Reconnaissance Orbiter (LRO)
-imagery and LOLA topography. It is the most comprehensive catalog of lunar impact craters,
-covering the entire lunar surface with consistent methodology.
-
-The Moon preserves a cratering record stretching back over four billion years, largely unmodified by the plate tectonics, erosion, and volcanism that have resurfaced Earth. This makes lunar craters an indispensable calibration standard for crater counting chronology across the inner solar system. The size-frequency distribution of lunar craters anchors the absolute age scale used to date geological units on Mars, Mercury, and other airless bodies, linking radiometric ages from returned Apollo and Luna samples to crater density measurements.
-
-Crater morphology on the Moon transitions from simple bowl-shaped structures below about 15 km diameter to complex craters with central peaks, terraced walls, and flat floors at larger sizes. The largest impacts produced multi-ring basins — such as South Pole-Aitken (roughly 2,500 km diameter), the largest confirmed impact structure in the solar system. Depth-to-diameter measurements reveal the mechanical properties of the lunar crust and upper mantle, with the transition from simple to complex morphology reflecting the strength and layering of subsurface materials under the Moon's 1.62 m/s2 surface gravity.
-
-This database is directly relevant to NASA's Artemis program and international lunar exploration efforts. Crater catalogs are critical for landing site selection, hazard assessment, and traverse planning, particularly in the permanently shadowed regions near the south pole where water ice deposits have been detected. Understanding the local crater population constrains regolith thickness, boulder abundance, and slope stability — factors that directly affect lander and rover safety.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `crater_id` | int64 | Unique integer crater identifier assigned by Robbins (2019); stable across catalog versions |
-| `latitude_deg` | float64 | Selenocentric latitude of crater center in degrees (−90° to +90°; positive = north) |
-| `longitude_deg` | float64 | Selenocentric longitude of crater center in degrees (0–360°, positive East; prime meridian at sub-Earth point) |
-| `diameter_km` | float64 | Rim-to-rim crater diameter in km; ranges from ~1 km (catalog floor) to ~2,500 km for the largest basins |
-| `depth_km` | float64 | Rim-to-floor depth derived from LOLA topography in km; null for heavily eroded craters where the rim is indistinct |
-| `floor_elevation_km` | float64 | Absolute floor elevation in km relative to the lunar reference ellipsoid; null when floor topography is not measured |
-| `depth_rim_sd_km` | float64 | Standard deviation of rim elevation measurements in km; larger values indicate irregular or degraded rims; null when fewer than 3 rim points were measured |
-| `size_class` | string | Derived size category: small (<5 km), medium (5–20 km), large (20–100 km), giant (>100 km); null only if diameter is missing |
-
-## Quick stats
-
-- **{n_total:,}** total craters
+    quick_stats = f"""\
+- **{n_total:,}** total lunar craters
 - Size distribution: {n_small:,} small, {n_medium:,} medium, {n_large:,} large, {n_giant:,} giant
 - Diameter range: {diam_min:.2f} -- {diam_max:.1f} km
+- **{has_depth:,}** craters with depth measurements"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -210,58 +152,51 @@ plt.show()
 
 # South pole region (Artemis-relevant)
 south_pole = df[(df["latitude_deg"] < -80)]
-print(f"Craters near south pole: {{len(south_pole):,}}")
+print(f"Craters near south pole: {len(south_pole):,}")
 plt.scatter(south_pole["longitude_deg"], south_pole["latitude_deg"],
             s=south_pole["diameter_km"], alpha=0.5)
 plt.title("Lunar South Pole Craters")
 plt.show()
-```
+```"""
 
-## Data source
-
-Robbins, S.J. (2019), *A New Global Database of Lunar Impact Craters >1-2 km:
-1. Crater Locations and Sizes, Comparisons With Published Databases, and Global Analysis.*
-Journal of Geophysical Research: Planets, 124, 871-892.
-Distributed by USGS Astrogeology Science Center.
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/lunar-craters-robbins) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{lunar_craters_robbins,
-  author = {{Simon, Julien}},
-  title = {{Lunar Crater Database (Robbins 2019)}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/lunar-craters-robbins}},
-  note = {{Based on Robbins (2019) via USGS Astrogeology}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update Lunar craters: {n_total:,} records"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Lunar Crater Database (Robbins 2019)",
+        description=DESCRIPTION,
+        tags=["space", "moon", "lunar", "crater", "planetary-science",
+              "usgs", "artemis", "open-data", "tabular-data", "parquet"],
+        source_url="https://astropedia.astrogeology.usgs.gov/download/Moon/Research/Craters/",
+        task_categories=["tabular-classification", "tabular-regression"],
+        collection_url="https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/as08-14-2506/as08-14-2506~small.jpg",
+            "alt": "The Moon from Apollo 8, showing craters and surface detail",
+            "credit": "NASA/Apollo 8",
+        },
+        related_datasets=[
+            "juliensimon/impact-craters",
+            "juliensimon/ceres-craters-dawn",
+            "juliensimon/planetary-nomenclature",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=[
+                "latitude_deg", "longitude_deg", "diameter_km", "depth_km",
+                "floor_elevation_km", "depth_rim_sd_km",
+            ],
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={len(df)}\n")
+        p.publish(
+            df,
+            filename="lunar_craters.parquet",
+            min_rows=300_000,
+            expected_columns=["crater_id", "latitude_deg", "longitude_deg", "diameter_km"],
+            critical_columns=["crater_id", "latitude_deg", "longitude_deg", "diameter_km"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update Lunar craters: {n_total:,} records",
+        )
     print("Done.")
 
 

@@ -1,36 +1,82 @@
 #!/usr/bin/env python3
-"""Fetch ESA Huygens Titan descent observation catalog from PSA EPN-TAP and upload to HF."""
+"""Fetch ESA Huygens Titan descent observation catalog from PSA EPN-TAP and upload to HF.
 
-import os
-import subprocess
+Source: ESA Planetary Science Archive — EPN-TAP service
+The Huygens probe descended through Titan's atmosphere on January 14, 2005.
+"""
+
 import sys
-import tempfile
 import time
-from pathlib import Path
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
-
+from hf_dataset_utils import Pipeline
 
 TAP_URL = "https://psa.esa.int/psa-tap/tap/sync"
 HF_REPO = "juliensimon/esa-huygens-titan-descent"
 
-# Huygens instruments in order of expected catalog size
 INSTRUMENTS = [
-    "DISR",
-    "GCMS",
-    "HASI",
-    "HUYGENS_HK",
-    "SSP",
-    "DTWG",
-    "ACP",
-    "DWE",
+    "DISR", "GCMS", "HASI", "HUYGENS_HK", "SSP", "DTWG", "ACP", "DWE",
 ]
 
 PAGE_SIZE = 500_000
+
+# ── Column descriptions ─────────────────────────────────────────────
+COLUMN_DESCRIPTIONS = {
+    "granule_uid": "Unique observation/granule identifier in the PSA archive",
+    "granule_gid": "Group identifier linking related granules from the same instrument or sequence",
+    "obs_id": "Observation ID assigned by the instrument team",
+    "dataproduct_type": "EPN-TAP data product type (e.g. 'sp' for spectrum, 'im' for image, 'pr' for profile, 'cu' for cube)",
+    "target_name": "Target body name (primarily 'Titan'; descent lasted ~2.5 hours on Jan 14 2005)",
+    "target_class": "EPN-TAP target class (e.g. 'satellite')",
+    "instrument_host_name": "Name of the spacecraft hosting the instrument (Huygens)",
+    "instrument_name": "Instrument name: DISR (descent imager), GCMS (gas chromatograph mass spectrometer), HASI (atmospheric structure), SSP (surface science package), ACP (aerosol collector), DWE (Doppler wind experiment), DTWG (descent trajectory), HUYGENS_HK (housekeeping)",
+    "measurement_type": "Type of physical measurement (e.g. 'phot.flux' for photometry, 'phys.mass' for mass spectrometry)",
+    "processing_level": "Data processing level (e.g. '2' = calibrated, '3' = derived)",
+    "time_min": "Observation start time (Julian Date); Huygens descent spanned JD 2453384.88-2453385.00",
+    "time_max": "Observation end time (Julian Date)",
+    "time_sampling_step_min": "Minimum time sampling step (Julian Date units)",
+    "time_sampling_step_max": "Maximum time sampling step (Julian Date units)",
+    "time_exp_min": "Minimum exposure time (Julian Date units)",
+    "time_exp_max": "Maximum exposure time (Julian Date units)",
+    "spectral_range_min": "Spectral range lower bound (nm); for DISR optical measurements",
+    "spectral_range_max": "Spectral range upper bound (nm); for DISR optical measurements",
+    "c1min": "Spatial coordinate 1 lower bound (longitude in degrees, Titan surface 0-360 E)",
+    "c1max": "Spatial coordinate 1 upper bound (longitude in degrees)",
+    "c2min": "Spatial coordinate 2 lower bound (latitude in degrees, -90 to +90)",
+    "c2max": "Spatial coordinate 2 upper bound (latitude in degrees)",
+    "creation_date": "ISO 8601 date when this data product was created or archived in PSA",
+    "modification_date": "ISO 8601 date when this data product was last modified in PSA",
+    "release_date": "ISO 8601 date when this data product was publicly released",
+    "service_title": "Title of the EPN-TAP service providing this data",
+    "access_url": "Direct URL to retrieve the data product from the ESA PSA",
+    "access_format": "MIME type of the data product (e.g. 'application/x-pds4' for PDS4 format)",
+    "thumbnail_url": "URL to a thumbnail preview image of the data product",
+    "bib_reference": "Bibliographic reference associated with this data product",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+In-situ observation catalog from the ESA Huygens probe descent through Titan's \
+atmosphere and landing on January 14, 2005. This is the complete observation catalog \
+from the ESA Planetary Science Archive (PSA), conforming to the EPN-TAP standard.
+
+On January 14, 2005, the ESA Huygens probe made history as the first human-made \
+object to land on a body in the outer Solar System. Released from the Cassini orbiter, \
+Huygens descended through Titan's thick nitrogen-methane atmosphere for 2 hours 27 \
+minutes, transmitting data from 160 km altitude down to the surface.
+
+The Descent Imager/Spectral Radiometer (DISR) captured images revealing drainage \
+channels, shorelines, and a landscape shaped by liquid methane. The Gas Chromatograph \
+Mass Spectrometer (GCMS) analyzed atmospheric composition during descent, while the \
+Huygens Atmospheric Structure Instrument (HASI) measured temperature, pressure, and \
+density profiles. The Surface Science Package (SSP) recorded the impact and confirmed \
+Huygens landed on a soft, damp surface — likely methane-saturated hydrocarbon sediment.
+
+Each row represents one observation or data granule, with timing, spatial coverage, \
+instrument parameters, and access URLs.
+"""
 
 
 def fetch_count() -> int:
@@ -88,7 +134,7 @@ def fetch_instrument(instrument: str) -> pd.DataFrame:
             break
 
         last_id = str(df_page["granule_uid"].iloc[-1])
-        time.sleep(1)  # Be polite to the server
+        time.sleep(1)
 
     if not all_dfs:
         print(f"    WARNING: No rows for {instrument}")
@@ -102,16 +148,14 @@ def fetch_instrument(instrument: str) -> pd.DataFrame:
 def main():
     print("Fetching ESA Huygens Titan descent observation catalog...")
 
-    # Verify expected size
-    total_expected = fetch_count()
+    fetch_count()
 
-    # Fetch per instrument, then concatenate
     dfs = []
     for inst in INSTRUMENTS:
         df_inst = fetch_instrument(inst)
         if len(df_inst) > 0:
             dfs.append(df_inst)
-        time.sleep(2)  # Pause between instruments
+        time.sleep(2)
 
     if not dfs:
         print("::error::No data fetched")
@@ -120,40 +164,18 @@ def main():
     df = pd.concat(dfs, ignore_index=True)
     print(f"  Total fetched: {len(df):,} rows")
 
-    # -- Column cleanup --------------------------------------------------------
-    # Columns already arrive in snake_case from EPN-TAP; ensure consistency
+    # Column cleanup
     df.columns = [c.strip().lower() for c in df.columns]
 
-    # Coerce numeric columns
+    # Numeric columns
     numeric_cols = [
         "time_min", "time_max", "time_sampling_step_min",
         "time_sampling_step_max", "time_exp_min", "time_exp_max",
         "spectral_range_min", "spectral_range_max",
-        "spectral_sampling_step_min", "spectral_sampling_step_max",
-        "spectral_resolution_min", "spectral_resolution_max",
-        "c1min", "c1max", "c2min", "c2max", "c3min", "c3max",
-        "c1_resol_min", "c1_resol_max", "c2_resol_min", "c2_resol_max",
-        "c3_resol_min", "c3_resol_max",
-        "s_region_lon_min", "s_region_lon_max",
-        "s_region_lat_min", "s_region_lat_max",
-        "incidence_min", "incidence_max",
-        "emergence_min", "emergence_max",
-        "phase_min", "phase_max",
-        "ra_min", "ra_max", "dec_min", "dec_max",
-        "solar_longitude_min", "solar_longitude_max",
-        "sun_distance_min", "sun_distance_max",
-        "target_distance_min", "target_distance_max",
-        "subsolar_longitude_min", "subsolar_longitude_max",
-        "subsolar_latitude_min", "subsolar_latitude_max",
-        "subobserver_longitude_min", "subobserver_longitude_max",
-        "subobserver_latitude_min", "subobserver_latitude_max",
-        "local_time_min", "local_time_max",
+        "c1min", "c1max", "c2min", "c2max",
     ]
-    for col in numeric_cols:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # Clean string columns
+    # String columns
     string_cols = [
         "granule_uid", "granule_gid", "obs_id",
         "dataproduct_type", "target_name", "target_class",
@@ -163,139 +185,35 @@ def main():
         "service_title", "access_url", "access_format",
         "thumbnail_url", "bib_reference",
     ]
-    for col in string_cols:
-        if col in df.columns:
-            df[col] = (df[col].astype(str).str.strip()
-                       .replace({"": pd.NA, "None": pd.NA,
-                                 "nan": pd.NA, "null": pd.NA}))
 
     # Sort by observation start time
-    df = df.sort_values("time_min", na_position="last").reset_index(drop=True)
+    if "time_min" in df.columns:
+        df["time_min"] = pd.to_numeric(df["time_min"], errors="coerce")
+        df = df.sort_values("time_min", na_position="last").reset_index(drop=True)
 
-    # -- Stats -----------------------------------------------------------------
+    # Keep only described columns (drop undescribed EPN-TAP columns)
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
+
+    # ── Stats ────────────────────────────────────────────────────────
     n_total = len(df)
     n_instruments = df["instrument_name"].nunique()
-    instruments_summary = (df["instrument_name"].value_counts()
-                           .head(8).to_dict())
+    instruments_summary = df["instrument_name"].value_counts().head(8).to_dict()
     n_targets = df["target_name"].nunique() if "target_name" in df.columns else 0
-    time_range_min = df["time_min"].min()
-    time_range_max = df["time_max"].max()
 
     print(f"  {n_total:,} observations across {n_instruments} instruments")
-    for inst, count in instruments_summary.items():
-        print(f"    {inst}: {count:,}")
 
-    # Drop columns that are >80% null (optional EPN-TAP fields)
-    before_cols = len(df.columns)
-    for col in list(df.columns):
-        if df[col].isna().mean() > 0.80:
-            df = df.drop(columns=[col])
-    dropped = before_cols - len(df.columns)
-    if dropped:
-        print(f"  Dropped {dropped} columns (>80% null)")
+    inst_lines = "\n".join(
+        f"- **{inst}**: {count:,} observations"
+        for inst, count in instruments_summary.items()
+    )
 
-    # -- Validate --------------------------------------------------------------
-    check_dataset(df, "huygens", min_rows=5_000,
-        expected_columns=["granule_uid", "instrument_name", "target_name",
-                          "time_min", "time_max", "dataproduct_type"],
-        critical_columns=["granule_uid", "instrument_name", "time_min"])
-
-    # -- Write & upload --------------------------------------------------------
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "huygens_observations.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        # Format instrument breakdown for README
-        inst_lines = "\n".join(
-            f"- **{inst}**: {count:,} observations"
-            for inst, count in instruments_summary.items()
-        )
-
-        banner_file = download_banner("huygens-atmosphere", tmp)
-        banner_md = banner_markdown("huygens-atmosphere", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "ESA Huygens Titan Descent"
-language:
-  - en
-description: "In-situ observation catalog from the ESA Huygens probe descent through Titan's atmosphere and landing ({n_total:,} observations across {n_instruments} instruments). Static dataset from the ESA Planetary Science Archive."
-task_categories:
-  - tabular-classification
-tags:
-  - space
-  - titan
-  - huygens
-  - cassini
-  - saturn
-  - esa
-  - planetary-science
-  - atmosphere
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 10K<n<100K
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/huygens_observations.parquet
-    default: true
----
-
-# ESA Huygens Titan Descent
-{banner_md}
-*Part of the [Solar System Datasets](https://huggingface.co/collections/juliensimon/solar-system-datasets-67d1e3b4343a25fc6cf402b4) and [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c24cb17e3db14fc30f0716) collections on Hugging Face.*
-
-On January 14, 2005, the ESA Huygens probe made history as the first human-made object to land on a body in the outer Solar System. Released from the Cassini orbiter, Huygens descended through Titan's thick nitrogen-methane atmosphere for 2 hours 27 minutes, transmitting data from 160 km altitude down to the surface. The Descent Imager/Spectral Radiometer (DISR) captured images revealing drainage channels, shorelines, and a landscape shaped by liquid methane \u2014 evidence of an active hydrological cycle on another world. The Gas Chromatograph Mass Spectrometer (GCMS) analyzed atmospheric composition during descent, while the Huygens Atmospheric Structure Instrument (HASI) measured temperature, pressure, and density profiles. The Surface Science Package (SSP) recorded the impact and confirmed Huygens landed on a soft, damp surface \u2014 likely methane-saturated hydrocarbon sediment. This dataset is the only in-situ observation catalog from Titan's surface and atmosphere.
-
-## Dataset description
-
-This dataset contains **{n_total:,}** observations across {n_instruments} instruments from the ESA Planetary Science Archive (PSA), conforming to the EPN-TAP standard. Each row represents one observation or data granule, with timing, spatial coverage, instrument parameters, and access URLs.
-
-## Instruments
-
-{inst_lines}
-
-## Schema (key columns)
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `granule_uid` | string | Unique observation/granule identifier in the PSA archive |
-| `granule_gid` | string | Group identifier linking related granules from the same instrument or sequence |
-| `obs_id` | string | Observation ID assigned by the instrument team |
-| `dataproduct_type` | string | EPN-TAP data product type (e.g. "sp" for spectrum, "im" for image, "pr" for profile, "cu" for cube) |
-| `target_name` | string | Target body name (primarily "Titan"; descent lasted ~2.5 hours on Jan 14 2005) |
-| `target_class` | string | EPN-TAP target class (e.g. "satellite") |
-| `instrument_name` | string | Instrument name — one of: DISR (descent imager/spectral radiometer), GCMS (gas chromatograph mass spectrometer), HASI (atmospheric structure instrument), SSP (surface science package), ACP (aerosol collector pyrolyser), DWE (Doppler wind experiment), DTWG (descent trajectory working group), HUYGENS_HK (housekeeping) |
-| `time_min` | float64 | Observation start time (Julian Date); Huygens descent spanned JD 2453384.88–2453385.00 |
-| `time_max` | float64 | Observation end time (Julian Date) |
-| `c1min`/`c1max` | float64 | Spatial coordinate 1 bounds (longitude in degrees, Titan surface 0–360 E where applicable) |
-| `c2min`/`c2max` | float64 | Spatial coordinate 2 bounds (latitude in degrees, Titan surface -90 to +90 where applicable; many entries null for in-situ measurements) |
-| `spectral_range_min`/`max` | float64 | Spectral range bounds in nm for DISR optical measurements; null for non-spectral instruments |
-| `processing_level` | string | Data processing level (e.g. "2" = calibrated, "3" = derived; HASI and GCMS primarily level 3) |
-| `creation_date` | string | ISO 8601 date when this data product was created or archived in PSA |
-| `access_url` | string | Direct URL to retrieve the data product from the ESA PSA |
-| `access_format` | string | MIME type of the data product (e.g. "application/x-pds4" for PDS4 format) |
-
-The full schema contains up to ~50 columns following the EPN-TAP standard.
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n_total:,}** total observations
 - **{n_instruments}** instruments
 - **{n_targets}** distinct targets
-- Time span: JD {time_range_min:.1f} \u2013 {time_range_max:.1f}
+{inst_lines}"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -307,65 +225,60 @@ print(df["instrument_name"].value_counts())
 
 # DISR imaging observations
 disr = df[df["instrument_name"] == "DISR"]
-print(f"{{len(disr):,}} DISR observations")
+print(f"{len(disr):,} DISR observations")
 
-# Filter by descent phase (time range)
+# Observation counts by instrument
 import matplotlib.pyplot as plt
 df.groupby("instrument_name").size().sort_values(ascending=False).plot(kind="bar")
 plt.title("Huygens observations by instrument")
 plt.ylabel("Count")
-```
+plt.tight_layout()
+plt.show()
+```"""
 
-## Data source
+    # Filter numeric/string cols to only those present and described
+    numeric_cols = [c for c in numeric_cols if c in df.columns]
+    string_cols = [c for c in string_cols if c in df.columns]
 
-[ESA Planetary Science Archive](https://psa.esa.int/) \u2014 EPN-TAP service at
-`https://psa.esa.int/psa-tap/tap/sync`.
-
-## Related datasets
-
-- [esa-rosetta-observations](https://huggingface.co/datasets/juliensimon/esa-rosetta-observations) \u2014 ESA Rosetta comet mission
-- [cassini](https://huggingface.co/datasets/juliensimon/cassini) \u2014 Cassini Saturn orbiter
-- [galileo-atmosphere](https://huggingface.co/datasets/juliensimon/galileo-atmosphere) \u2014 Galileo Jupiter atmospheric probe
-- [huygens-atmosphere](https://huggingface.co/datasets/juliensimon/huygens-atmosphere) \u2014 Huygens atmospheric profiles
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a \u2764\ufe0f on the [dataset page](https://huggingface.co/datasets/juliensimon/esa-huygens-titan-descent) and share feedback in the Community tab! Also consider giving a \u2b50\ufe0f to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{huygens_titan_descent,
-  author = {{Simon, Julien}},
-  title = {{ESA Huygens Titan Descent}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/esa-huygens-titan-descent}},
-  note = {{Based on ESA Planetary Science Archive (PSA) EPN-TAP service}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Upload Huygens Titan descent observations: {n_total:,} observations"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="ESA Huygens Titan Descent",
+        description=DESCRIPTION,
+        tags=["space", "titan", "huygens", "cassini", "saturn", "esa",
+              "planetary-science", "atmosphere",
+              "open-data", "tabular-data", "parquet"],
+        source_url="https://psa.esa.int/",
+        task_categories=["tabular-classification"],
+        collection_url="https://huggingface.co/collections/juliensimon/solar-system-datasets-69c6fa681978de62dff2f347",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA06193/PIA06193~small.jpg",
+            "alt": "Saturn and its rings, captured by the Cassini spacecraft",
+            "credit": "NASA/JPL-Caltech/SSI",
+        },
+        related_datasets=[
+            "juliensimon/cassini-saturn-observations",
+            "juliensimon/huygens-titan-atmosphere",
+            "juliensimon/galileo-jupiter-atmosphere",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=numeric_cols,
+            strings=string_cols,
+            drop_mostly_null_threshold=0.80,
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={n_total}\n")
+        p.publish(
+            df,
+            filename="huygens_observations.parquet",
+            min_rows=5_000,
+            expected_columns=["granule_uid", "instrument_name", "target_name",
+                              "time_min", "time_max", "dataproduct_type"],
+            critical_columns=["granule_uid", "instrument_name", "time_min"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update Huygens Titan descent observations: {n_total:,} observations",
+        )
     print("Done.")
 
 

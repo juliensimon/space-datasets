@@ -1,28 +1,84 @@
 #!/usr/bin/env python3
-"""Fetch Ceres crater database (Zeilnhofer 2020) and upload to HF."""
+"""Fetch Ceres crater database (Zeilnhofer 2020) and upload to HF.
+
+Source: Zeilnhofer & Hiesinger (2020), Dawn Framing Camera 2.
+Distributed by USGS Astrogeology Science Center via Astropedia.
+"""
 
 import io
-import os
-import subprocess
 import sys
-import tempfile
 import time
 import zipfile
-from pathlib import Path
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
 
 DATA_URL = "https://astropedia.astrogeology.usgs.gov/download/Ceres/Dawn/Craters/ceres_dawn_fc2_craterdatabase_zeilnhofer_2020_v2.zip"
 HF_REPO = "juliensimon/ceres-craters-dawn"
 
-NUMERIC_COLS = [
-    "latitude_deg", "longitude_deg", "diameter_km", "depth_km",
-    "depth_diameter_ratio",
-]
+# ── Column mapping ───────────────────────────────────────────────────
+RENAME = {
+    "CRATER_ID": "crater_id", "Crater_ID": "crater_id", "ID": "crater_id",
+    "LAT_CIRC_IMG": "latitude_deg", "LATITUDE_CIRCLE_IMAGE": "latitude_deg",
+    "Lat_Circ_Img": "latitude_deg", "Lat": "latitude_deg", "lat": "latitude_deg",
+    "LON_CIRC_IMG": "longitude_deg", "LONGITUDE_CIRCLE_IMAGE": "longitude_deg",
+    "Lon_Circ_Img": "longitude_deg", "Lon": "longitude_deg", "lon": "longitude_deg",
+    "DIAM_CIRC_IMG": "diameter_km", "DIAM_CIRCLE_IMAGE": "diameter_km",
+    "Diam_Circ_Img": "diameter_km", "Diam_km": "diameter_km", "diam_km": "diameter_km",
+    "Diameter": "diameter_km", "D_km": "diameter_km",
+    "DEPTH_RIM_TOPO": "depth_km", "DEPTH_RIMFLOOR_TOPOG": "depth_km",
+    "Depth_Rim_Topo": "depth_km", "Depth_km": "depth_km", "d_km": "depth_km",
+    "DEPTH_DIAM_RATIO": "depth_diameter_ratio", "Depth_Diam_Ratio": "depth_diameter_ratio",
+    "d_D": "depth_diameter_ratio", "dD": "depth_diameter_ratio",
+    "MORPHOLOGY_EJECTA_1": "ejecta_morphology", "MORPH_EJECTA_1": "ejecta_morphology",
+    "Morphology": "morphology", "morphology": "morphology",
+    "Degradation": "degradation_state", "Degradation_State": "degradation_state",
+    "DEG_STATE": "degradation_state",
+    "Preservation": "preservation_state",
+    "Confidence": "confidence", "CONFIDENCE": "confidence",
+}
+
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "crater_id": "Unique integer crater identifier assigned in the Zeilnhofer (2020) catalog; stable across versions",
+    "latitude_deg": "Crater center planetocentric latitude (degrees, -90 to +90)",
+    "longitude_deg": "Crater center east longitude on Ceres (degrees, 0-360 E; Ceres uses east-positive convention)",
+    "diameter_km": "Crater rim-to-rim diameter (km); range ~0.1-280 km (largest: Kerwan basin)",
+    "depth_km": "Rim-to-floor depth (km); shallower than expected for size suggests infill by mass wasting or cryovolcanism; null if not measured",
+    "depth_diameter_ratio": "Depth divided by diameter; fresh craters ~0.15-0.20; decreases with degradation and ice-driven viscous relaxation",
+    "ejecta_morphology": "Morphological classification of the crater ejecta blanket (e.g., layered, radial); null for craters without distinct ejecta",
+    "morphology": "General morphological classification of the crater (e.g., simple, complex, degraded); null for unclassified craters",
+    "degradation_state": "Qualitative degradation state indicating crater freshness; fresh craters have sharp rims, degraded ones are partially infilled",
+    "preservation_state": "Preservation quality assessment of the crater structure; complements the degradation state",
+    "confidence": "Confidence level in the crater identification; lower values indicate ambiguous or uncertain detections",
+    "size_class": "Derived size category: small (<5 km), medium (5-20 km), large (20-100 km), giant (>100 km)",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+The most comprehensive catalog of impact craters on dwarf planet Ceres, containing \
+craters with diameter >= 1 km identified from Dawn Framing Camera (FC2) imagery.
+
+This database was compiled by M. F. Zeilnhofer and H. Hiesinger (2020) using images from NASA's Dawn \
+spacecraft Framing Camera 2. Every crater >= 1 km in diameter on Ceres was identified and measured, \
+providing positions, diameters, and depth measurements where available.
+
+Ceres occupies a unique position in solar system science as a volatile-rich body that has remained \
+largely intact since the early stages of planetary formation. With a mean diameter of approximately \
+940 km and a bulk density of about 2.16 g/cm3, Ceres is thought to harbor a substantial water ice \
+component beneath its regolith, and possibly a residual subsurface brine layer. The Dawn spacecraft's \
+orbital observations revealed bright deposits of sodium carbonate and ammonium-bearing minerals in \
+several craters -- most famously in Occator crater -- interpreted as recent or ongoing cryovolcanic \
+activity where brines have migrated to the surface.
+
+The crater population on Ceres provides key constraints on the age and evolution of the asteroid belt. \
+Notably, Ceres has a deficit of large craters (greater than 100 km) compared to predictions from \
+collisional models, suggesting that viscous relaxation of the ice-rich crust has erased large basins \
+over geological time. The depth-to-diameter ratios of Cerean craters are systematically shallower than \
+those on Vesta or the Moon, consistent with a mechanically weak, ice-bearing lithosphere.
+"""
 
 
 def size_class(diameter):
@@ -67,67 +123,12 @@ def main():
         sys.exit(1)
 
     print(f"  {len(df):,} raw rows, {len(df.columns)} columns")
-    print(f"  Raw columns: {list(df.columns)}")
 
     # Strip whitespace from column names
     df.columns = df.columns.str.strip()
 
-    # Rename columns to snake_case
-    # The Zeilnhofer 2020 CSV uses mixed-case names; map all known variants
-    rename_map = {
-        # Crater ID
-        "CRATER_ID": "crater_id",
-        "Crater_ID": "crater_id",
-        "crater_id": "crater_id",
-        "ID": "crater_id",
-        # Latitude
-        "LAT_CIRC_IMG": "latitude_deg",
-        "LATITUDE_CIRCLE_IMAGE": "latitude_deg",
-        "Lat_Circ_Img": "latitude_deg",
-        "Lat": "latitude_deg",
-        "lat": "latitude_deg",
-        # Longitude
-        "LON_CIRC_IMG": "longitude_deg",
-        "LONGITUDE_CIRCLE_IMAGE": "longitude_deg",
-        "Lon_Circ_Img": "longitude_deg",
-        "Lon": "longitude_deg",
-        "lon": "longitude_deg",
-        # Diameter
-        "DIAM_CIRC_IMG": "diameter_km",
-        "DIAM_CIRCLE_IMAGE": "diameter_km",
-        "Diam_Circ_Img": "diameter_km",
-        "Diam_km": "diameter_km",
-        "diam_km": "diameter_km",
-        "Diameter": "diameter_km",
-        "D_km": "diameter_km",
-        # Depth
-        "DEPTH_RIM_TOPO": "depth_km",
-        "DEPTH_RIMFLOOR_TOPOG": "depth_km",
-        "Depth_Rim_Topo": "depth_km",
-        "Depth_km": "depth_km",
-        "depth_km": "depth_km",
-        "d_km": "depth_km",
-        # Depth/Diameter ratio
-        "DEPTH_DIAM_RATIO": "depth_diameter_ratio",
-        "Depth_Diam_Ratio": "depth_diameter_ratio",
-        "d_D": "depth_diameter_ratio",
-        "dD": "depth_diameter_ratio",
-        # Morphology / degradation
-        "MORPHOLOGY_EJECTA_1": "ejecta_morphology",
-        "Morphology": "morphology",
-        "morphology": "morphology",
-        "MORPH_EJECTA_1": "ejecta_morphology",
-        "Degradation": "degradation_state",
-        "Degradation_State": "degradation_state",
-        "DEG_STATE": "degradation_state",
-        # Preservation / confidence
-        "Preservation": "preservation_state",
-        "Confidence": "confidence",
-        "CONFIDENCE": "confidence",
-    }
-
-    # Apply rename for columns that exist
-    actual_rename = {c: v for c, v in rename_map.items() if c in df.columns}
+    # Rename columns
+    actual_rename = {c: v for c, v in RENAME.items() if c in df.columns}
     df = df.rename(columns=actual_rename)
 
     # Also snake_case any remaining columns not yet renamed
@@ -140,11 +141,6 @@ def main():
         .str.lower()
     )
 
-    # Type conversions
-    for col in NUMERIC_COLS:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
     # Compute depth/diameter ratio if not present but components exist
     if "depth_diameter_ratio" not in df.columns and "depth_km" in df.columns and "diameter_km" in df.columns:
         df["depth_diameter_ratio"] = (df["depth_km"] / df["diameter_km"]).round(4)
@@ -152,7 +148,17 @@ def main():
     # Derived column: size class
     df["size_class"] = df["diameter_km"].apply(size_class)
 
-    # Stats
+    # Drop VizieR/source internal columns not in COLUMN_DESCRIPTIONS
+    for col in ["recno"]:
+        if col in df.columns:
+            df = df.drop(columns=[col])
+
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
+
+    df = df.sort_values("latitude_deg").reset_index(drop=True)
+
+    # ── Domain-specific stats for README ─────────────────────────────
     n_total = len(df)
     n_small = int((df["size_class"] == "small").sum())
     n_medium = int((df["size_class"] == "medium").sum())
@@ -162,107 +168,13 @@ def main():
     diam_max = df["diameter_km"].max()
     has_depth = int(df["depth_km"].notna().sum()) if "depth_km" in df.columns else 0
 
-    print(f"  {n_total:,} craters after processing")
-    print(f"  Diameter range: {diam_min:.2f} -- {diam_max:.1f} km")
-    print(f"  {has_depth:,} with depth measurements")
-    print(f"  Final columns: {list(df.columns)}")
-
-    # Validate
-    check_dataset(
-        df,
-        "ceres-craters",
-        min_rows=40_000,
-        expected_columns=["latitude_deg", "longitude_deg", "diameter_km"],
-        critical_columns=["latitude_deg", "longitude_deg", "diameter_km"],
-    )
-
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "ceres_craters.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("ceres-craters", tmp)
-        banner_md = banner_markdown("ceres-craters", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Ceres Crater Database (Zeilnhofer 2020, Dawn FC2)"
-language:
-  - en
-description: "44,594 impact craters on Ceres (>= 1 km) from the Dawn Framing Camera, with positions, diameters, depths, and morphology (Zeilnhofer 2020)."
-task_categories:
-  - tabular-classification
-  - tabular-regression
-tags:
-  - space
-  - ceres
-  - dawn
-  - craters
-  - planetary-science
-  - usgs
-  - asteroid
-  - nasa
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 10K<n<100K
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/ceres_craters.parquet
-    default: true
----
-
-# Ceres Crater Database (Zeilnhofer 2020, Dawn FC2)
-{banner_md}
-*Part of the [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2) collection on Hugging Face.*
-
-The most comprehensive catalog of impact craters on dwarf planet Ceres, containing **{n_total:,}** craters
-with diameter >= 1 km identified from Dawn Framing Camera (FC2) imagery.
-
-## Dataset description
-
-This database was compiled by M. F. Zeilnhofer and H. Hiesinger (2020) using images from NASA's Dawn
-spacecraft Framing Camera 2. Every crater >= 1 km in diameter on Ceres was identified and measured,
-providing positions, diameters, and depth measurements where available. Ceres is the largest object in the
-asteroid belt and the only dwarf planet in the inner solar system.
-
-Ceres occupies a unique position in solar system science as a volatile-rich body that has remained largely intact since the early stages of planetary formation. With a mean diameter of approximately 940 km and a bulk density of about 2.16 g/cm3, Ceres is thought to harbor a substantial water ice component beneath its regolith, and possibly a residual subsurface brine layer. The Dawn spacecraft's orbital observations revealed bright deposits of sodium carbonate and ammonium-bearing minerals in several craters — most famously in Occator crater — interpreted as recent or ongoing cryovolcanic activity where brines have migrated to the surface.
-
-The crater population on Ceres provides key constraints on the age and evolution of the asteroid belt. Notably, Ceres has a deficit of large craters (greater than 100 km) compared to predictions from collisional models, suggesting that viscous relaxation of the ice-rich crust has erased large basins over geological time. The depth-to-diameter ratios of Cerean craters are systematically shallower than those on Vesta or the Moon, consistent with a mechanically weak, ice-bearing lithosphere. This relaxation signature offers a window into the thermal history and internal structure of the largest main-belt body.
-
-Crater degradation states recorded in this catalog trace the geological evolution of Ceres's surface, from fresh, sharp-rimmed impacts to heavily degraded structures partially buried by mass wasting and possible cryovolcanic resurfacing. The spatial distribution of fresh versus degraded craters, combined with depth measurements, enables age dating of distinct geological provinces and constrains the timescales over which Ceres's surface has been reworked by both external bombardment and internal processes.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `name` | string | IAU official name (named after agricultural deities from world mythologies); null for unnamed craters |
-| `latitude_deg` | float64 | Crater center planetocentric latitude (degrees, -90 to +90) |
-| `longitude_deg` | float64 | Crater center east longitude on Ceres (degrees, 0–360 E; Ceres uses east-positive convention) |
-| `diameter_km` | float64 | Crater rim-to-rim diameter (km); range 0.1–280 km (largest: Kerwan basin) |
-| `depth_km` | float64 | Rim-to-floor depth (km); shallower than expected for size suggests infill by mass wasting or cryovolcanism; null if not measured |
-| `depth_diameter_ratio` | float64 | Depth divided by diameter; fresh craters ~0.15–0.20; decreases with degradation; used to assess crater age and infill |
-| `size_class` | string | Derived size category: "small" (<5 km), "medium" (5–20 km), "large" (20–100 km), "giant" (>100 km) |
-
-*Additional columns from the source may be present (morphology, degradation state, confidence, etc.).*
-
-## Quick stats
-
-- **{n_total:,}** total craters
+    quick_stats = f"""\
+- **{n_total:,}** total craters on Ceres
 - Size distribution: {n_small:,} small, {n_medium:,} medium, {n_large:,} large, {n_giant:,} giant
 - Diameter range: {diam_min:.2f} -- {diam_max:.1f} km
-- **{has_depth:,}** craters with depth measurements
+- **{has_depth:,}** craters with depth measurements"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -287,52 +199,47 @@ plt.show()
 
 # Large craters (>50 km)
 large = df[df["diameter_km"] > 50].sort_values("diameter_km", ascending=False)
-print(f"Craters >50 km: {{len(large)}}")
-```
+print(f"Craters >50 km: {len(large)}")
+```"""
 
-## Data source
-
-Zeilnhofer, M. F. and Hiesinger, H. (2020), *Ceres Crater Database*, version 2.
-Dawn Framing Camera 2 data, distributed by USGS Astrogeology Science Center via Astropedia.
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/ceres-craters-dawn) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{ceres_craters_dawn,
-  author = {{Simon, Julien}},
-  title = {{Ceres Crater Database (Zeilnhofer 2020, Dawn FC2)}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/ceres-craters-dawn}},
-  note = {{Based on Zeilnhofer & Hiesinger (2020) via USGS Astrogeology}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update Ceres craters: {n_total:,} records"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Ceres Crater Database (Zeilnhofer 2020, Dawn FC2)",
+        description=DESCRIPTION,
+        tags=["space", "ceres", "dawn", "craters", "planetary-science",
+              "usgs", "asteroid", "nasa", "open-data", "tabular-data", "parquet"],
+        source_url="https://astropedia.astrogeology.usgs.gov/download/Ceres/Dawn/Craters/",
+        task_categories=["tabular-classification", "tabular-regression"],
+        collection_url="https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA12031/PIA12031~small.jpg",
+            "alt": "Dawn spacecraft orbiting Ceres (artist concept)",
+            "credit": "NASA/JPL-Caltech",
+        },
+        related_datasets=[
+            "juliensimon/impact-craters",
+            "juliensimon/lunar-craters-robbins",
+            "juliensimon/planetary-nomenclature",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=[
+                "latitude_deg", "longitude_deg", "diameter_km", "depth_km",
+                "depth_diameter_ratio",
+            ],
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={len(df)}\n")
+        p.publish(
+            df,
+            filename="ceres_craters.parquet",
+            min_rows=40_000,
+            expected_columns=["latitude_deg", "longitude_deg", "diameter_km"],
+            critical_columns=["latitude_deg", "longitude_deg", "diameter_km"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update Ceres craters: {n_total:,} records",
+        )
     print("Done.")
 
 

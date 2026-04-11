@@ -9,22 +9,16 @@ hosted by NASA GSFC. Uses the Besselian elements CSV export which contains all
 """
 
 import io
-import os
-import subprocess
-import sys
-import tempfile
-from pathlib import Path
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
 
 CSV_URL = "https://eclipse.gsfc.nasa.gov/eclipse_besselian_from_mysqldump2.csv"
 HF_REPO = "juliensimon/solar-eclipse-catalog"
 
-# Columns to keep (from the 48-column Besselian elements CSV)
+# ── Columns to keep from the 48-column Besselian elements CSV ────────
 KEEP_COLS = [
     "cat_no", "year", "month", "day", "td_ge", "dt",
     "luna_num", "saros", "eclipse_type",
@@ -32,6 +26,7 @@ KEEP_COLS = [
     "lat_dd_ge", "lng_dd_ge", "sun_alt", "path_width", "central_duration",
 ]
 
+# ── Column mapping ───────────────────────────────────────────────────
 RENAME = {
     "cat_no": "catalog_number",
     "td_ge": "td_of_greatest_eclipse",
@@ -44,11 +39,6 @@ RENAME = {
     "path_width": "path_width_km",
 }
 
-NUMERIC_COLS = [
-    "gamma", "magnitude", "latitude", "longitude",
-    "sun_altitude", "path_width_km", "delta_t",
-]
-
 ECLIPSE_TYPE_NAMES = {
     "T": "Total",
     "A": "Annular",
@@ -56,19 +46,63 @@ ECLIPSE_TYPE_NAMES = {
     "P": "Partial",
 }
 
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "catalog_number": "Sequential catalog number (1 to ~12,000), monotonically increasing with time",
+    "date": "Date of greatest eclipse in ISO format (YYYY-MM-DD); negative year values indicate BCE dates",
+    "year": "Calendar year; negative for BCE (e.g., -500 = 500 BCE); range -1999 to +3000",
+    "td_of_greatest_eclipse": "Time of greatest eclipse in Terrestrial Dynamical Time (TDT), format HH:MM:SS",
+    "delta_t": "Difference between Terrestrial Dynamical Time and Universal Time (TDT - UT) in seconds; large and uncertain for ancient dates (e.g., >10,000 s before 1000 CE)",
+    "luna_number": "Lunation count in Brown's series (consecutive new-moon numbering since 1923-01-17)",
+    "saros_number": "Saros series number (1-180+); each series repeats every 18 years 11 days 8 hours and produces 70-80 eclipses over ~1,300 years",
+    "eclipse_type": 'Eclipse type code: "T" (total), "A" (annular), "H" (hybrid), "P" (partial)',
+    "eclipse_type_name": "Full English name of eclipse type corresponding to the eclipse_type code",
+    "is_total": "True if eclipse_type == 'T' (total eclipse with totality path on Earth's surface)",
+    "is_annular": "True if eclipse_type == 'A' (annular eclipse with annularity path on Earth's surface)",
+    "gamma": "Signed minimum distance of the Moon's shadow axis from Earth's center in units of Earth's equatorial radius; |gamma| < 0.9972 means central eclipse; positive = axis passes north of center",
+    "magnitude": "Eclipse magnitude: fraction of the Sun's diameter covered at greatest eclipse; > 1.0 for total eclipses, < 1.0 for annular/partial",
+    "latitude": "Geographic latitude of the point of greatest eclipse in decimal degrees (+ = North, - = South); null for partial eclipses",
+    "longitude": "Geographic longitude of the point of greatest eclipse in decimal degrees (+ = East, - = West); null for partial eclipses",
+    "sun_altitude": "Altitude of the Sun above the horizon at the point of greatest eclipse in degrees (0-90); low values indicate grazing central paths near the poles",
+    "path_width_km": "Width of the central eclipse path (umbra or annular path) in km; null for partial eclipses; total eclipse paths: typically 100-270 km",
+    "central_duration": "Maximum duration of totality or annularity at the point of greatest eclipse (format 'MMmSSs'); null for partial eclipses; maximum total: ~7m32s",
+    "century": "Derived century computed as year // 100 (e.g., 2024 -> 20, -500 -> -5); useful for aggregating eclipses by historical period",
+}
 
-def fetch_catalog() -> pd.DataFrame:
-    """Download the Besselian elements CSV from NASA GSFC."""
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Complete catalog of solar eclipses spanning five millennia (-1999 to +3000), \
+computed by Fred Espenak as part of NASA's Five Millennium Canon of Solar Eclipses.
+
+A solar eclipse occurs when the Moon passes between Earth and the Sun, casting its \
+shadow on Earth's surface. The geometry of each eclipse depends on the Moon's orbital \
+elements at the moment of conjunction, producing four distinct types: **total** (Moon \
+fully covers the Sun), **annular** (Moon appears smaller than the Sun, leaving a bright \
+ring), **hybrid** (transitions between total and annular along the eclipse path), and \
+**partial** (Moon only partially obscures the Sun).
+
+This catalog is derived from Fred Espenak's Five Millennium Canon of Solar Eclipses, a \
+monumental computational effort that uses Besselian elements and the polynomial expressions \
+of Chapront, Chapront-Touze, and Francou for lunar and solar coordinates to predict every \
+solar eclipse from -1999 to +3000. The calculations account for the secular acceleration of \
+the Moon, the variable rotation of the Earth (via Delta-T extrapolations), and the irregular \
+lunar limb profile.
+
+The **gamma** parameter measures how close the Moon's shadow axis passes to Earth's center \
+-- values near zero produce central eclipses at low latitudes, while values exceeding \
+roughly 0.9972 produce partial eclipses. Eclipse **magnitude** gives the fraction of the \
+Sun's diameter covered at greatest eclipse. The **Saros number** groups eclipses into \
+families that repeat every 18 years 11 days 8 hours -- each Saros series produces 70-80 \
+eclipses over roughly 1,300 years.
+"""
+
+
+def main():
     print("Fetching Five Millennium Solar Eclipse Catalog from NASA GSFC...")
     resp = requests.get(CSV_URL, timeout=120, headers={"User-Agent": "space-datasets/1.0"})
     resp.raise_for_status()
     df = pd.read_csv(io.StringIO(resp.text), low_memory=False)
     print(f"  {len(df):,} raw rows, {len(df.columns)} columns")
-    return df
-
-
-def main():
-    df = fetch_catalog()
 
     # Keep only the columns we need
     available = [c for c in KEEP_COLS if c in df.columns]
@@ -81,8 +115,6 @@ def main():
     df = df.rename(columns=RENAME)
 
     # Build a proper date column from year/month/day
-    # Years can be negative (BCE); pd.Timestamp doesn't handle that,
-    # so store as string "YYYY-MM-DD" for negative years
     def make_date_str(row):
         y, m, d = int(row["year"]), int(row["month"]), int(row["day"])
         if y < 0:
@@ -91,19 +123,9 @@ def main():
 
     df["date"] = df.apply(make_date_str, axis=1)
 
-    # Drop the raw year/month/day columns (keep year for century derivation)
+    # Drop the raw month/day columns (keep year for century derivation)
     year_col = df["year"].copy()
     df = df.drop(columns=["month", "day"])
-
-    # Numeric coercion
-    for col in NUMERIC_COLS:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    df["catalog_number"] = pd.to_numeric(df["catalog_number"], errors="coerce").astype("Int64")
-    df["luna_number"] = pd.to_numeric(df["luna_number"], errors="coerce").astype("Int64")
-    df["saros_number"] = pd.to_numeric(df["saros_number"], errors="coerce").astype("Int64")
-    df["year"] = pd.to_numeric(year_col, errors="coerce").astype("Int64")
 
     # Strip whitespace from string columns
     for col in ["eclipse_type", "td_of_greatest_eclipse", "central_duration"]:
@@ -130,12 +152,12 @@ def main():
     col_order = [c for c in col_order if c in df.columns]
     df = df[col_order]
 
-    # Sort by date ascending (catalog_number tracks chronological order)
+    # Sort by catalog number (chronological)
     df = df.sort_values("catalog_number", ascending=True).reset_index(drop=True)
 
     print(f"  {len(df):,} solar eclipses")
 
-    # Stats
+    # ── Domain-specific stats for README ─────────────────────────────
     n_total_eclipses = len(df)
     n_total = int(df["is_total"].sum())
     n_annular = int(df["is_annular"].sum())
@@ -144,111 +166,12 @@ def main():
     year_min = int(df["year"].min())
     year_max = int(df["year"].max())
 
-    print(f"  Types: {n_total} total, {n_annular} annular, {n_hybrid} hybrid, {n_partial} partial")
-    print(f"  Year range: {year_min} to {year_max}")
-
-    check_dataset(
-        df,
-        "solar-eclipses",
-        min_rows=10000,
-        expected_columns=["catalog_number", "date", "eclipse_type", "gamma", "magnitude"],
-        critical_columns=["catalog_number", "date", "eclipse_type"],
-    )
-
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "solar_eclipses.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("solar-eclipses", tmp)
-        banner_md = banner_markdown("solar-eclipses", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Five Millennium Catalog of Solar Eclipses"
-language:
-  - en
-description: "All {n_total_eclipses:,} solar eclipses from {year_min} to {year_max}, from NASA's Five Millennium Canon by Fred Espenak."
-task_categories:
-  - tabular-classification
-tags:
-  - space
-  - solar-eclipse
-  - eclipse
-  - sun
-  - moon
-  - astronomy
-  - nasa
-  - planetary-science
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 10K<n<100K
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/solar_eclipses.parquet
-    default: true
----
-
-# Five Millennium Catalog of Solar Eclipses
-{banner_md}
-*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) and [Solar System Datasets](https://huggingface.co/collections/juliensimon/solar-system-datasets-69dd8a8b30395bb6e91abc76) collections on Hugging Face.*
-
-Static dataset -- uploaded once.
-
-Complete catalog of **{n_total_eclipses:,}** solar eclipses spanning five millennia ({year_min} to {year_max}),
-computed by Fred Espenak as part of NASA's Five Millennium Canon of Solar Eclipses.
-
-## Dataset description
-
-A solar eclipse occurs when the Moon passes between Earth and the Sun, casting its shadow on Earth's surface. The geometry of each eclipse depends on the Moon's orbital elements at the moment of conjunction, producing four distinct types: **total** (Moon fully covers the Sun), **annular** (Moon appears smaller than the Sun, leaving a bright ring), **hybrid** (transitions between total and annular along the eclipse path), and **partial** (Moon only partially obscures the Sun).
-
-This catalog is derived from Fred Espenak's Five Millennium Canon of Solar Eclipses, a monumental computational effort that uses Besselian elements and the polynomial expressions of Chapront, Chapront-Touze, and Francou for lunar and solar coordinates to predict every solar eclipse from -1999 to +3000. The calculations account for the secular acceleration of the Moon, the variable rotation of the Earth (via Delta-T extrapolations), and the irregular lunar limb profile.
-
-The **gamma** parameter measures how close the Moon's shadow axis passes to Earth's center — values near zero produce central eclipses at low latitudes, while values exceeding roughly 0.9972 produce partial eclipses. Eclipse **magnitude** gives the fraction of the Sun's diameter covered at greatest eclipse. The **Saros number** groups eclipses into families that repeat every 18 years 11 days 8 hours — each Saros series produces 70-80 eclipses over roughly 1,300 years, cycling through partial, total/annular, and back to partial phases.
-
-The dataset has {n_total:,} total eclipses, {n_annular:,} annular eclipses, {n_hybrid:,} hybrid eclipses, and {n_partial:,} partial eclipses.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `catalog_number` | int64 | Sequential catalog number (1 to {n_total_eclipses:,}), monotonically increasing with time |
-| `date` | string | Date of greatest eclipse in ISO format (YYYY-MM-DD); negative year values indicate BCE dates |
-| `year` | int64 | Calendar year; negative for BCE (e.g., -500 = 500 BCE); range −1999 to +3000 |
-| `td_of_greatest_eclipse` | string | Time of greatest eclipse in Terrestrial Dynamical Time (TDT), format HH:MM:SS |
-| `delta_t` | float64 | Difference between Terrestrial Dynamical Time and Universal Time (TDT − UT) in seconds; large and uncertain for ancient dates (e.g., >10,000 s before 1000 CE) |
-| `luna_number` | int64 | Lunation count in Brown's series (consecutive new-moon numbering since 1923-01-17) |
-| `saros_number` | int64 | Saros series number (1–180+); each series repeats every 18 years 11 days 8 hours and produces 70–80 eclipses over ~1,300 years |
-| `eclipse_type` | string | Eclipse type code: "T" (total — Moon fully covers Sun), "A" (annular — ring of sunlight visible), "H" (hybrid — transitions between total and annular), "P" (partial — Moon only partially covers Sun) |
-| `eclipse_type_name` | string | Full English name of eclipse type corresponding to the `eclipse_type` code |
-| `is_total` | bool | True if eclipse_type == "T" (total eclipse with totality path on Earth's surface) |
-| `is_annular` | bool | True if eclipse_type == "A" (annular eclipse with annularity path on Earth's surface) |
-| `gamma` | float64 | Signed minimum distance of the Moon's shadow axis from Earth's center in units of Earth's equatorial radius; |gamma| < 0.9972 → central (total or annular) eclipse path exists; |gamma| > 1 → partial eclipse only; positive = axis passes north of center |
-| `magnitude` | float64 | Eclipse magnitude: fraction of the Sun's diameter covered at greatest eclipse; > 1.0 for total eclipses, < 1.0 for annular/partial |
-| `latitude` | float64 | Geographic latitude of the point of greatest eclipse in decimal degrees (+ = North, − = South); null for partial eclipses |
-| `longitude` | float64 | Geographic longitude of the point of greatest eclipse in decimal degrees (+ = East, − = West); null for partial eclipses |
-| `sun_altitude` | float64 | Altitude of the Sun above the horizon at the point of greatest eclipse in degrees (0–90°); low values indicate grazing central paths near the poles |
-| `path_width_km` | float64 | Width of the central eclipse path (umbra or annular path) in km; null for partial eclipses; total eclipse paths: typically 100–270 km; annular paths: up to ~320 km |
-| `central_duration` | string | Maximum duration of totality or annularity at the point of greatest eclipse (format "MMmSSs", e.g. "04m57s"); null for partial eclipses; maximum total: ~7m32s; maximum annular: ~12m |
-| `century` | int64 | Derived century computed as year // 100 (e.g., 2024 → 20, −500 → −5); useful for aggregating eclipses by historical period |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n_total_eclipses:,}** solar eclipses ({year_min} to {year_max})
 - **{n_total:,}** total, **{n_annular:,}** annular, **{n_hybrid:,}** hybrid, **{n_partial:,}** partial
-- Average: ~4.7 eclipses per year
+- Average: ~4.7 eclipses per year"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -257,7 +180,7 @@ df = ds.to_pandas()
 
 # Filter by eclipse type
 total = df[df["is_total"]]
-print(f"{{len(total):,}} total solar eclipses across 5 millennia")
+print(f"{len(total):,} total solar eclipses across 5 millennia")
 
 # Eclipses per century
 by_century = df.groupby("century")["eclipse_type"].value_counts().unstack(fill_value=0)
@@ -270,70 +193,58 @@ europe_total = df[
     (df["longitude"].between(-10, 40)) &
     (df["year"].between(2000, 2100))
 ]
-print(f"Total eclipses over Europe (2000-2100): {{len(europe_total)}}")
+print(f"Total eclipses over Europe (2000-2100): {len(europe_total)}")
 
-# Saros series analysis
-saros = df.groupby("saros_number").agg(
-    count=("catalog_number", "size"),
-    first_year=("year", "min"),
-    last_year=("year", "max"),
-).sort_values("count", ascending=False)
-print(saros.head(10))
-```
+# Eclipse type distribution by century
+import matplotlib.pyplot as plt
+by_century = df.groupby("century")["eclipse_type_name"].value_counts().unstack(fill_value=0)
+by_century.plot.bar(stacked=True, figsize=(14, 5), colormap="Set2")
+plt.xlabel("Century")
+plt.ylabel("Number of Eclipses")
+plt.title("Solar Eclipse Types by Century")
+plt.tight_layout()
+plt.show()
+```"""
 
-## Data source
-
-[Five Millennium Canon of Solar Eclipses: -1999 to +3000](https://eclipse.gsfc.nasa.gov/SEcat5/SEcatalog.html)
-by Fred Espenak (NASA/GSFC). Besselian elements CSV export.
-
-## Update schedule
-
-Static dataset -- uploaded once. The underlying catalog covers -1999 to +3000 and is not expected to change.
-
-## Related datasets
-
-- [silso-sunspot-number](https://huggingface.co/datasets/juliensimon/silso-sunspot-number) -- Daily sunspot numbers from SILSO
-- [iers-earth-orientation](https://huggingface.co/datasets/juliensimon/iers-earth-orientation) -- Earth orientation parameters (UT1-UTC, polar motion)
-- [lunar-craters-robbins](https://huggingface.co/datasets/juliensimon/lunar-craters-robbins) -- Lunar crater database
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/solar-eclipse-catalog) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{solar_eclipse_catalog,
-  author = {{Simon, Julien}},
-  title = {{Five Millennium Catalog of Solar Eclipses}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/solar-eclipse-catalog}},
-  note = {{Based on Fred Espenak's Five Millennium Canon of Solar Eclipses (NASA/GSFC)}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Upload solar eclipse catalog: {n_total_eclipses:,} eclipses"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Five Millennium Catalog of Solar Eclipses",
+        description=DESCRIPTION,
+        tags=["space", "solar-eclipse", "eclipse", "sun", "moon", "astronomy",
+              "nasa", "planetary-science", "open-data", "tabular-data", "parquet"],
+        source_url="https://eclipse.gsfc.nasa.gov/SEcat5/SEcatalog.html",
+        task_categories=["tabular-classification"],
+        collection_url="https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/brief-outburst_16760026566_o/brief-outburst_16760026566_o~medium.jpg",
+            "alt": "The Sun captured by NASA's Solar Dynamics Observatory",
+            "credit": "NASA/SDO",
+        },
+        related_datasets=[
+            "juliensimon/silso-sunspot-number",
+            "juliensimon/iers-earth-orientation",
+            "juliensimon/lunar-craters-robbins",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=[
+                "gamma", "magnitude", "latitude", "longitude",
+                "sun_altitude", "path_width_km", "delta_t",
+            ],
+            integer=["catalog_number", "luna_number", "saros_number", "year"],
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={len(df)}\n")
+        p.publish(
+            df,
+            filename="solar_eclipses.parquet",
+            min_rows=10000,
+            expected_columns=["catalog_number", "date", "eclipse_type", "gamma", "magnitude"],
+            critical_columns=["catalog_number", "date", "eclipse_type"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Upload solar eclipse catalog: {n_total_eclipses:,} eclipses",
+        )
     print("Done.")
 
 

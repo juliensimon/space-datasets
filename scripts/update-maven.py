@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Fetch NASA MAVEN Key Parameter (KP) in-situ data from LASP SDC and upload to HF.
+"""Fetch NASA MAVEN Key Parameter (KP) in-situ data from LASP SDC and upload to HF.
 
 MAVEN (Mars Atmosphere and Volatile EvolutioN) has been studying the Martian
 upper atmosphere and its interaction with the solar wind since September 2014.
@@ -13,29 +12,29 @@ months, merges. Multi-instrument split: one parquet per instrument under data/.
 """
 
 import io
-import os
 import re
-import shutil
 import subprocess
 import sys
-import tempfile
 import time
 from datetime import date, timedelta
 from pathlib import Path
 
 import pandas as pd
-import pyarrow.parquet as pq
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
+from hf_dataset_utils.banner import banner_markdown as render_banner
+from hf_dataset_utils.banner import download_banner
+from hf_dataset_utils.github import emit_output
+from hf_dataset_utils.readme import _size_category
+from hf_dataset_utils.upload import upload_to_hf
+from hf_dataset_utils.validation import check_dataset
 
 
 BASE_URL = "https://lasp.colorado.edu/maven/sdc/public/data/sci/kp/insitu/"
 HF_REPO = "juliensimon/nasa-maven-kp-insitu"
 
 # For initial build, start from 2025 to keep GH Actions runtime under 1 hour.
-# Each file is ~43 MB text, ~30s download+parse. Future incremental runs extend.
 START_YEAR = 2025
 START_MONTH = 1
 
@@ -43,9 +42,6 @@ SESSION = requests.Session()
 SESSION.headers.update({"User-Agent": "space-datasets/1.0 (https://github.com/juliensimon/space-datasets)"})
 
 # ── Column name mapping (positional index 1-235) ────────────────────────────
-# Index 1 = time column, 2-235 = instrument parameters.
-# Derived from the MAVEN KP .tab file header specification.
-
 NAMES = {
     1: "time",
     2: "lpw_electron_density", 3: "lpw_electron_density_quality", 4: "lpw_electron_density_quality_2",
@@ -160,266 +156,279 @@ INSTRUMENTS = {
     "spice":  (187, 235),
 }
 
-# ── Per-column descriptions for README schema tables ───────────────────────
-COLUMN_DESCRIPTIONS: dict[str, str] = {
-    "time": "Measurement timestamp (UTC, ~4-8 second cadence)",
-    # LPW
-    "lpw_electron_density":              "Electron number density in cm⁻³ (Langmuir probe)",
-    "lpw_electron_density_quality":      "Quality flag (0=bad, 1=uncertain, 2=good)",
-    "lpw_electron_density_quality_2":    "Secondary quality flag",
-    "lpw_electron_temperature":          "Electron temperature in Kelvin",
-    "lpw_electron_temperature_quality":  "Quality flag",
-    "lpw_electron_temperature_quality_2":"Secondary quality flag",
-    "lpw_spacecraft_potential":          "Spacecraft potential in Volts; used to correct ion measurements",
-    "lpw_spacecraft_potential_quality":  "Quality flag",
-    "lpw_spacecraft_potential_quality_2":"Secondary quality flag",
-    "lpw_e_field_power_2_100hz":         "Electric field power spectral density 2–100 Hz in (V/m)²/Hz",
-    "lpw_e_field_2_100hz_quality":       "Quality flag",
-    "lpw_e_field_power_100_800hz":       "Electric field power spectral density 100–800 Hz in (V/m)²/Hz",
-    "lpw_e_field_100_800hz_quality":     "Quality flag",
-    "lpw_e_field_power_0p8_1p0mhz":      "Electric field power spectral density 0.8–1.0 MHz in (V/m)²/Hz",
-    "lpw_e_field_0p8_1p0mhz_quality":    "Quality flag",
-    "lpw_euv_irradiance_0p1_7nm":        "Solar EUV irradiance 0.1–7 nm in W/m²; drives ionospheric photoionization",
-    "lpw_euv_irradiance_0p1_7nm_quality":"Quality flag",
-    "lpw_euv_irradiance_17_22nm":        "Solar EUV irradiance 17–22 nm in W/m²",
-    "lpw_euv_irradiance_17_22nm_quality":"Quality flag",
-    "lpw_euv_irradiance_lyman_alpha":    "Solar Lyman-alpha irradiance (121.6 nm) in W/m²; dominant UV line, dissociates H₂O",
-    "lpw_euv_irradiance_lyman_alpha_quality": "Quality flag",
-    # SWEA
-    "swea_electron_density":           "Electron number density in cm⁻³ from energy spectra",
-    "swea_electron_density_quality":   "Quality flag",
-    "swea_electron_temperature":       "Electron temperature in Kelvin",
-    "swea_electron_temperature_quality": "Quality flag",
-    "swea_eflux_par_5_100ev":          "Parallel electron energy flux 5–100 eV in eV/(cm²·s·sr·eV)",
-    "swea_eflux_par_5_100ev_quality":  "Quality flag",
-    "swea_eflux_par_100_500ev":        "Parallel electron energy flux 100–500 eV",
-    "swea_eflux_par_100_500ev_quality":"Quality flag",
-    "swea_eflux_par_500_1000ev":       "Parallel electron energy flux 500–1000 eV",
-    "swea_eflux_par_500_1000ev_quality":"Quality flag",
-    "swea_eflux_anti_5_100ev":         "Anti-parallel electron energy flux 5–100 eV",
-    "swea_eflux_anti_5_100ev_quality": "Quality flag",
-    "swea_eflux_anti_100_500ev":       "Anti-parallel electron energy flux 100–500 eV",
-    "swea_eflux_anti_100_500ev_quality":"Quality flag",
-    "swea_eflux_anti_500_1000ev":      "Anti-parallel electron energy flux 500–1000 eV",
-    "swea_eflux_anti_500_1000ev_quality":"Quality flag",
-    "swea_spectrum_shape":             "Energy spectrum shape parameter; distinguishes photoelectrons from solar wind electrons",
-    "swea_spectrum_shape_quality":     "Quality flag",
-    # SWIA
-    "swia_h_density":               "Solar wind proton (H⁺) number density in cm⁻³",
-    "swia_h_density_quality":       "Quality flag",
-    "swia_h_velocity_mso_x":        "Solar wind proton bulk velocity X-component in km/s (MSO frame, sunward)",
-    "swia_h_velocity_mso_x_quality":"Quality flag",
-    "swia_h_velocity_mso_y":        "Solar wind proton bulk velocity Y-component in km/s (MSO frame)",
-    "swia_h_velocity_mso_y_quality":"Quality flag",
-    "swia_h_velocity_mso_z":        "Solar wind proton bulk velocity Z-component in km/s (MSO frame, ecliptic normal)",
-    "swia_h_velocity_mso_z_quality":"Quality flag",
-    "swia_h_temperature":           "Solar wind proton temperature in Kelvin",
-    "swia_h_temperature_quality":   "Quality flag",
-    "swia_dynamic_pressure":        "Solar wind dynamic pressure in nPa; ρv² drives magnetospheric compression",
-    "swia_dynamic_pressure_quality":"Quality flag",
-    # STATIC
-    "static_quality_flag":              "Overall STATIC instrument quality flag",
-    "static_h_density":                 "H⁺ ion number density in cm⁻³",
-    "static_h_density_quality":         "Quality flag",
-    "static_o_density":                 "O⁺ ion number density in cm⁻³; dominant ion in Martian ionosphere",
-    "static_o_density_quality":         "Quality flag",
-    "static_o2_density":                "O₂⁺ ion number density in cm⁻³",
-    "static_o2_density_quality":        "Quality flag",
-    "static_h_temperature":             "H⁺ ion temperature in Kelvin",
-    "static_h_temperature_quality":     "Quality flag",
-    "static_o_temperature":             "O⁺ ion temperature in Kelvin",
-    "static_o_temperature_quality":     "Quality flag",
-    "static_o2_temperature":            "O₂⁺ ion temperature in Kelvin",
-    "static_o2_temperature_quality":    "Quality flag",
-    "static_o2_velocity_app_x":         "O₂⁺ bulk velocity X-component in APP frame in km/s",
-    "static_o2_velocity_app_x_quality": "Quality flag",
-    "static_o2_velocity_app_y":         "O₂⁺ bulk velocity Y-component in APP frame in km/s",
-    "static_o2_velocity_app_y_quality": "Quality flag",
-    "static_o2_velocity_app_z":         "O₂⁺ bulk velocity Z-component in APP frame in km/s",
-    "static_o2_velocity_app_z_quality": "Quality flag",
-    "static_o2_velocity_mso_x":         "O₂⁺ bulk velocity X-component in MSO frame in km/s",
-    "static_o2_velocity_mso_x_quality": "Quality flag",
-    "static_o2_velocity_mso_y":         "O₂⁺ bulk velocity Y-component in MSO frame in km/s",
-    "static_o2_velocity_mso_y_quality": "Quality flag",
-    "static_o2_velocity_mso_z":         "O₂⁺ bulk velocity Z-component in MSO frame in km/s",
-    "static_o2_velocity_mso_z_quality": "Quality flag",
-    "static_h_omni_flux":               "H⁺ omni-directional energy flux in eV/(cm²·s·sr·eV)",
-    "static_h_energy":                  "H⁺ characteristic energy in eV",
-    "static_h_energy_quality":          "Quality flag",
-    "static_he_omni_flux":              "He²⁺ omni-directional energy flux",
-    "static_he_energy":                 "He²⁺ characteristic energy in eV",
-    "static_he_energy_quality":         "Quality flag",
-    "static_o_omni_flux":               "O⁺ omni-directional energy flux",
-    "static_o_energy":                  "O⁺ characteristic energy in eV",
-    "static_o_energy_quality":          "Quality flag",
-    "static_o2_omni_flux":              "O₂⁺ omni-directional energy flux",
-    "static_o2_energy":                 "O₂⁺ characteristic energy in eV",
-    "static_o2_energy_quality":         "Quality flag",
-    "static_h_dir_mso_x":               "H⁺ beam direction X-component in MSO frame (unit vector)",
-    "static_h_dir_mso_y":               "H⁺ beam direction Y-component in MSO frame (unit vector)",
-    "static_h_dir_mso_z":               "H⁺ beam direction Z-component in MSO frame (unit vector)",
-    "static_h_angular_width":           "H⁺ beam angular width in degrees",
-    "static_h_angular_width_quality":   "Quality flag",
-    "static_pickup_dir_mso_x":          "Pickup ion beam direction X-component in MSO frame",
-    "static_pickup_dir_mso_y":          "Pickup ion beam direction Y-component in MSO frame",
-    "static_pickup_dir_mso_z":          "Pickup ion beam direction Z-component in MSO frame",
-    "static_pickup_angular_width":      "Pickup ion beam angular width in degrees",
-    "static_pickup_angular_width_quality": "Quality flag",
-    # SEP
-    "sep_ion_fov1f":          "Ion flux from SEP sensor 1, forward-facing in ions/(cm²·s·sr·keV)",
-    "sep_ion_fov1f_quality":  "Quality flag",
-    "sep_ion_fov1r":          "Ion flux from SEP sensor 1, rear-facing",
-    "sep_ion_fov1r_quality":  "Quality flag",
-    "sep_ion_fov2f":          "Ion flux from SEP sensor 2, forward-facing",
-    "sep_ion_fov2f_quality":  "Quality flag",
-    "sep_ion_fov2r":          "Ion flux from SEP sensor 2, rear-facing",
-    "sep_ion_fov2r_quality":  "Quality flag",
-    "sep_electron_fov1f":     "Electron flux from SEP sensor 1, forward-facing in electrons/(cm²·s·sr·keV)",
-    "sep_electron_fov1f_quality": "Quality flag",
-    "sep_electron_fov1r":     "Electron flux from SEP sensor 1, rear-facing",
-    "sep_electron_fov1r_quality": "Quality flag",
-    "sep_electron_fov2f":     "Electron flux from SEP sensor 2, forward-facing",
-    "sep_electron_fov2f_quality": "Quality flag",
-    "sep_electron_fov2r":     "Electron flux from SEP sensor 2, rear-facing",
-    "sep_electron_fov2r_quality": "Quality flag",
-    "sep_look_1f_mso_x":      "SEP sensor 1 forward look-direction X in MSO frame (unit vector)",
-    "sep_look_1f_mso_y":      "SEP sensor 1 forward look-direction Y in MSO frame",
-    "sep_look_1f_mso_z":      "SEP sensor 1 forward look-direction Z in MSO frame",
-    "sep_look_1r_mso_x":      "SEP sensor 1 rear look-direction X in MSO frame",
-    "sep_look_1r_mso_y":      "SEP sensor 1 rear look-direction Y in MSO frame",
-    "sep_look_1r_mso_z":      "SEP sensor 1 rear look-direction Z in MSO frame",
-    "sep_look_2f_mso_x":      "SEP sensor 2 forward look-direction X in MSO frame",
-    "sep_look_2f_mso_y":      "SEP sensor 2 forward look-direction Y in MSO frame",
-    "sep_look_2f_mso_z":      "SEP sensor 2 forward look-direction Z in MSO frame",
-    "sep_look_2r_mso_x":      "SEP sensor 2 rear look-direction X in MSO frame",
-    "sep_look_2r_mso_y":      "SEP sensor 2 rear look-direction Y in MSO frame",
-    "sep_look_2r_mso_z":      "SEP sensor 2 rear look-direction Z in MSO frame",
-    # MAG
-    "mag_mso_x":         "Magnetic field Bx in Mars-Sun-Orbit (MSO) frame in nT",
-    "mag_mso_x_quality": "Quality flag",
-    "mag_mso_y":         "Magnetic field By in MSO frame in nT",
-    "mag_mso_y_quality": "Quality flag",
-    "mag_mso_z":         "Magnetic field Bz in MSO frame in nT (northward positive)",
-    "mag_mso_z_quality": "Quality flag",
-    "mag_geo_x":         "Magnetic field Bx in Mars geographic frame in nT",
-    "mag_geo_x_quality": "Quality flag",
-    "mag_geo_y":         "Magnetic field By in Mars geographic frame in nT",
-    "mag_geo_y_quality": "Quality flag",
-    "mag_geo_z":         "Magnetic field Bz in Mars geographic frame in nT",
-    "mag_geo_z_quality": "Quality flag",
-    "mag_rms_deviation": "RMS deviation of |B| in nT; indicates wave activity or measurement noise",
-    "mag_rms_quality":   "Quality flag",
-    # NGIMS
-    "ngims_he":           "Helium (He) neutral number density in cm⁻³",
-    "ngims_he_precision": "1σ measurement precision in cm⁻³",
-    "ngims_he_quality":   "Quality flag",
-    "ngims_o":            "Atomic oxygen (O) neutral density in cm⁻³",
-    "ngims_o_precision":  "1σ precision",
-    "ngims_o_quality":    "Quality flag",
-    "ngims_co":           "Carbon monoxide (CO) neutral density in cm⁻³",
-    "ngims_co_precision": "1σ precision",
-    "ngims_co_quality":   "Quality flag",
-    "ngims_n2":           "Molecular nitrogen (N₂) neutral density in cm⁻³",
-    "ngims_n2_precision": "1σ precision",
-    "ngims_n2_quality":   "Quality flag",
-    "ngims_no":           "Nitric oxide (NO) neutral density in cm⁻³",
-    "ngims_no_precision": "1σ precision",
-    "ngims_no_quality":   "Quality flag",
-    "ngims_ar":           "Argon (Ar) neutral density in cm⁻³; inert tracer for atmospheric escape studies",
-    "ngims_ar_precision": "1σ precision",
-    "ngims_ar_quality":   "Quality flag",
-    "ngims_co2":          "Carbon dioxide (CO₂) neutral density in cm⁻³; dominant species below ~200 km",
-    "ngims_co2_precision":"1σ precision",
-    "ngims_co2_quality":  "Quality flag",
-    "ngims_ion32":        "O₂⁺ ion density at mass 32 in cm⁻³ (NGIMS ion mode)",
-    "ngims_ion32_precision": "1σ precision",
-    "ngims_ion32_quality":   "Quality flag",
-    "ngims_ion44":        "CO₂⁺ ion density at mass 44 in cm⁻³",
-    "ngims_ion44_precision": "1σ precision",
-    "ngims_ion44_quality":   "Quality flag",
-    "ngims_ion30":        "NO⁺ ion density at mass 30 in cm⁻³",
-    "ngims_ion30_precision": "1σ precision",
-    "ngims_ion30_quality":   "Quality flag",
-    "ngims_ion16":        "O⁺ ion density at mass 16 in cm⁻³",
-    "ngims_ion16_precision": "1σ precision",
-    "ngims_ion16_quality":   "Quality flag",
-    "ngims_ion28":        "CO⁺/N₂⁺ ion density at mass 28 in cm⁻³",
-    "ngims_ion28_precision": "1σ precision",
-    "ngims_ion28_quality":   "Quality flag",
-    "ngims_ion12":        "C⁺ ion density at mass 12 in cm⁻³",
-    "ngims_ion12_precision": "1σ precision",
-    "ngims_ion12_quality":   "Quality flag",
-    "ngims_ion17":        "OH⁺ ion density at mass 17 in cm⁻³",
-    "ngims_ion17_precision": "1σ precision",
-    "ngims_ion17_quality":   "Quality flag",
-    "ngims_ion14":        "N⁺ ion density at mass 14 in cm⁻³",
-    "ngims_ion14_precision": "1σ precision",
-    "ngims_ion14_quality":   "Quality flag",
-    # SPICE
-    "spice_geo_x":              "Spacecraft X position in Mars geographic (GEO) frame in km",
-    "spice_geo_y":              "Spacecraft Y position in GEO frame in km",
-    "spice_geo_z":              "Spacecraft Z position in GEO frame in km",
-    "spice_mso_x":              "Spacecraft X position in Mars-Sun-Orbit (MSO) frame in km (sunward)",
-    "spice_mso_y":              "Spacecraft Y position in MSO frame in km",
-    "spice_mso_z":              "Spacecraft Z position in MSO frame in km",
-    "spice_longitude":          "Sub-spacecraft east longitude on Mars in degrees (0–360°)",
-    "spice_latitude":           "Sub-spacecraft latitude on Mars in degrees (−90° to +90°)",
-    "spice_solar_zenith_angle": "Solar zenith angle at sub-spacecraft point in degrees",
-    "spice_local_time":         "Mars local solar time at sub-spacecraft point in hours (0–24)",
-    "spice_altitude":           "Spacecraft altitude above Mars areoid in km; periapsis ~155 km, apoapsis ~6300 km",
-    "spice_sc_att_geo_x":       "Spacecraft attitude (boresight) X-component in GEO frame",
-    "spice_sc_att_geo_y":       "Spacecraft attitude Y-component in GEO frame",
-    "spice_sc_att_geo_z":       "Spacecraft attitude Z-component in GEO frame",
-    "spice_sc_att_mso_x":       "Spacecraft attitude X-component in MSO frame",
-    "spice_sc_att_mso_y":       "Spacecraft attitude Y-component in MSO frame",
-    "spice_sc_att_mso_z":       "Spacecraft attitude Z-component in MSO frame",
-    "spice_app_geo_x":          "Articulated Payload Platform (APP) direction X in GEO frame",
-    "spice_app_geo_y":          "APP direction Y in GEO frame",
-    "spice_app_geo_z":          "APP direction Z in GEO frame",
-    "spice_app_mso_x":          "APP direction X in MSO frame",
-    "spice_app_mso_y":          "APP direction Y in MSO frame",
-    "spice_app_mso_z":          "APP direction Z in MSO frame",
-    "spice_orbit_number":       "Orbit number since Mars orbit insertion (November 2014)",
-    "spice_inbound_outbound":   "Orbit phase: 1 = inbound (toward periapsis), −1 = outbound",
-    "spice_mars_season_ls":     "Mars solar longitude Ls in degrees (0° = northern spring equinox)",
-    "spice_mars_sun_distance_au": "Mars–Sun distance in AU; modulates solar irradiance and solar wind density at Mars",
-    "spice_subsolar_longitude": "Sub-solar longitude on Mars in degrees",
-    "spice_subsolar_latitude":  "Sub-solar latitude on Mars in degrees",
-    "spice_submars_sun_longitude": "Sub-Mars longitude on the Sun in degrees",
-    "spice_submars_sun_latitude":  "Sub-Mars latitude on the Sun in degrees",
-    "spice_rot_mars_r1c1":  "Mars body-fixed→inertial rotation matrix [0,0] (3×3, rows r1–r3, cols c1–c3)",
-    "spice_rot_mars_r1c2":  "Rotation matrix [0,1]",
-    "spice_rot_mars_r1c3":  "Rotation matrix [0,2]",
-    "spice_rot_mars_r2c1":  "Rotation matrix [1,0]",
-    "spice_rot_mars_r2c2":  "Rotation matrix [1,1]",
-    "spice_rot_mars_r2c3":  "Rotation matrix [1,2]",
-    "spice_rot_mars_r3c1":  "Rotation matrix [2,0]",
-    "spice_rot_mars_r3c2":  "Rotation matrix [2,1]",
-    "spice_rot_mars_r3c3":  "Rotation matrix [2,2]",
-    "spice_rot_sc_r1c1":    "Spacecraft attitude rotation matrix [0,0]",
-    "spice_rot_sc_r1c2":    "Spacecraft attitude rotation matrix [0,1]",
-    "spice_rot_sc_r1c3":    "Spacecraft attitude rotation matrix [0,2]",
-    "spice_rot_sc_r2c1":    "Spacecraft attitude rotation matrix [1,0]",
-    "spice_rot_sc_r2c2":    "Spacecraft attitude rotation matrix [1,1]",
-    "spice_rot_sc_r2c3":    "Spacecraft attitude rotation matrix [1,2]",
-    "spice_rot_sc_r3c1":    "Spacecraft attitude rotation matrix [2,0]",
-    "spice_rot_sc_r3c2":    "Spacecraft attitude rotation matrix [2,1]",
-    "spice_rot_sc_r3c3":    "Spacecraft attitude rotation matrix [2,2]",
+# Human-readable descriptions per column for README schema tables
+COL_DESCRIPTIONS = {
+    "time": "Timestamp of measurement (UTC)",
+    # ── LPW ──
+    "lpw_electron_density":           "Electron number density (cm^-3), derived from probe current",
+    "lpw_electron_density_quality":   "Quality flag for electron density (0=good)",
+    "lpw_electron_density_quality_2": "Secondary quality flag for electron density",
+    "lpw_electron_temperature":           "Electron temperature (eV), derived from probe sweep",
+    "lpw_electron_temperature_quality":   "Quality flag for electron temperature (0=good)",
+    "lpw_electron_temperature_quality_2": "Secondary quality flag for electron temperature",
+    "lpw_spacecraft_potential":           "Spacecraft electrostatic potential relative to plasma (V)",
+    "lpw_spacecraft_potential_quality":   "Quality flag for spacecraft potential (0=good)",
+    "lpw_spacecraft_potential_quality_2": "Secondary quality flag for spacecraft potential",
+    "lpw_e_field_power_2_100hz":    "Electric field power spectral density in 2-100 Hz band (V^2/m^2/Hz)",
+    "lpw_e_field_2_100hz_quality":  "Quality flag for 2-100 Hz electric field power",
+    "lpw_e_field_power_100_800hz":  "Electric field power spectral density in 100-800 Hz band (V^2/m^2/Hz)",
+    "lpw_e_field_100_800hz_quality": "Quality flag for 100-800 Hz electric field power",
+    "lpw_e_field_power_0p8_1p0mhz":  "Electric field power spectral density in 0.8-1.0 MHz band (V^2/m^2/Hz)",
+    "lpw_e_field_0p8_1p0mhz_quality": "Quality flag for 0.8-1.0 MHz electric field power",
+    "lpw_euv_irradiance_0p1_7nm":        "Solar EUV irradiance in 0.1-7 nm band (W/m^2), X-ray/soft X-ray",
+    "lpw_euv_irradiance_0p1_7nm_quality": "Quality flag for 0.1-7 nm EUV irradiance",
+    "lpw_euv_irradiance_17_22nm":        "Solar EUV irradiance in 17-22 nm band (W/m^2), He II continuum",
+    "lpw_euv_irradiance_17_22nm_quality": "Quality flag for 17-22 nm EUV irradiance",
+    "lpw_euv_irradiance_lyman_alpha":        "Solar Lyman-alpha irradiance at 121.6 nm (W/m^2), dominant UV line",
+    "lpw_euv_irradiance_lyman_alpha_quality": "Quality flag for Lyman-alpha irradiance",
+    # ── SWEA ──
+    "swea_electron_density":          "Total electron number density (cm^-3) from SWEA energy spectra",
+    "swea_electron_density_quality":  "Quality flag for SWEA electron density (0=good)",
+    "swea_electron_temperature":          "Electron temperature (eV) from SWEA energy spectra",
+    "swea_electron_temperature_quality":  "Quality flag for SWEA electron temperature (0=good)",
+    "swea_eflux_par_5_100ev":          "Parallel electron energy flux in 5-100 eV band (eV/cm^2/s/sr/eV)",
+    "swea_eflux_par_5_100ev_quality":  "Quality flag for 5-100 eV parallel electron flux",
+    "swea_eflux_par_100_500ev":        "Parallel electron energy flux in 100-500 eV band",
+    "swea_eflux_par_100_500ev_quality": "Quality flag for 100-500 eV parallel electron flux",
+    "swea_eflux_par_500_1000ev":        "Parallel electron energy flux in 500-1000 eV band",
+    "swea_eflux_par_500_1000ev_quality": "Quality flag for 500-1000 eV parallel electron flux",
+    "swea_eflux_anti_5_100ev":          "Anti-parallel electron energy flux in 5-100 eV band",
+    "swea_eflux_anti_5_100ev_quality":  "Quality flag for 5-100 eV anti-parallel electron flux",
+    "swea_eflux_anti_100_500ev":        "Anti-parallel electron energy flux in 100-500 eV band",
+    "swea_eflux_anti_100_500ev_quality": "Quality flag for 100-500 eV anti-parallel electron flux",
+    "swea_eflux_anti_500_1000ev":        "Anti-parallel electron energy flux in 500-1000 eV band",
+    "swea_eflux_anti_500_1000ev_quality": "Quality flag for 500-1000 eV anti-parallel electron flux",
+    "swea_spectrum_shape":         "Shape parameter of the electron energy spectrum (power-law index)",
+    "swea_spectrum_shape_quality": "Quality flag for electron spectrum shape",
+    # ── SWIA ──
+    "swia_h_density":          "Solar wind proton (H+) number density (cm^-3)",
+    "swia_h_density_quality":  "Quality flag for proton density (0=good)",
+    "swia_h_velocity_mso_x":          "Proton bulk velocity, MSO X component (km/s; X points Sun->Mars)",
+    "swia_h_velocity_mso_x_quality":  "Quality flag for proton velocity MSO-X",
+    "swia_h_velocity_mso_y":          "Proton bulk velocity, MSO Y component (km/s)",
+    "swia_h_velocity_mso_y_quality":  "Quality flag for proton velocity MSO-Y",
+    "swia_h_velocity_mso_z":          "Proton bulk velocity, MSO Z component (km/s; Z toward north ecliptic pole)",
+    "swia_h_velocity_mso_z_quality":  "Quality flag for proton velocity MSO-Z",
+    "swia_h_temperature":          "Proton temperature (eV), from isotropic Maxwellian fit",
+    "swia_h_temperature_quality":  "Quality flag for proton temperature",
+    "swia_dynamic_pressure":          "Solar wind dynamic pressure (nPa), 0.5 * n * m_p * v^2",
+    "swia_dynamic_pressure_quality":  "Quality flag for solar wind dynamic pressure",
+    # ── STATIC ──
+    "static_quality_flag": "Overall STATIC instrument quality flag (0=good)",
+    "static_h_density":          "Hydrogen ion (H+) density in the ionosphere (cm^-3)",
+    "static_h_density_quality":  "Quality flag for H+ density",
+    "static_o_density":          "Oxygen ion (O+) density (cm^-3), primary ionospheric ion",
+    "static_o_density_quality":  "Quality flag for O+ density",
+    "static_o2_density":          "Molecular oxygen ion (O2+) density (cm^-3), dominant below ~200 km",
+    "static_o2_density_quality":  "Quality flag for O2+ density",
+    "static_h_temperature":          "H+ ion temperature (eV)",
+    "static_h_temperature_quality":  "Quality flag for H+ temperature",
+    "static_o_temperature":          "O+ ion temperature (eV)",
+    "static_o_temperature_quality":  "Quality flag for O+ temperature",
+    "static_o2_temperature":          "O2+ ion temperature (eV)",
+    "static_o2_temperature_quality":  "Quality flag for O2+ temperature",
+    "static_o2_velocity_app_x":          "O2+ bulk velocity, spacecraft APP frame X component (km/s)",
+    "static_o2_velocity_app_x_quality":  "Quality flag for O2+ velocity APP-X",
+    "static_o2_velocity_app_y":          "O2+ bulk velocity, spacecraft APP frame Y component (km/s)",
+    "static_o2_velocity_app_y_quality":  "Quality flag for O2+ velocity APP-Y",
+    "static_o2_velocity_app_z":          "O2+ bulk velocity, spacecraft APP frame Z component (km/s)",
+    "static_o2_velocity_app_z_quality":  "Quality flag for O2+ velocity APP-Z",
+    "static_o2_velocity_mso_x":          "O2+ bulk velocity, MSO frame X component (km/s)",
+    "static_o2_velocity_mso_x_quality":  "Quality flag for O2+ velocity MSO-X",
+    "static_o2_velocity_mso_y":          "O2+ bulk velocity, MSO frame Y component (km/s)",
+    "static_o2_velocity_mso_y_quality":  "Quality flag for O2+ velocity MSO-Y",
+    "static_o2_velocity_mso_z":          "O2+ bulk velocity, MSO frame Z component (km/s)",
+    "static_o2_velocity_mso_z_quality":  "Quality flag for O2+ velocity MSO-Z",
+    "static_h_omni_flux":    "H+ omnidirectional differential particle flux (cm^-2 s^-1 sr^-1 eV^-1)",
+    "static_h_energy":       "H+ characteristic energy (eV)",
+    "static_h_energy_quality": "Quality flag for H+ characteristic energy",
+    "static_he_omni_flux":    "He2+ omnidirectional differential particle flux (cm^-2 s^-1 sr^-1 eV^-1)",
+    "static_he_energy":       "He2+ characteristic energy (eV)",
+    "static_he_energy_quality": "Quality flag for He2+ characteristic energy",
+    "static_o_omni_flux":    "O+ omnidirectional differential particle flux (cm^-2 s^-1 sr^-1 eV^-1)",
+    "static_o_energy":       "O+ characteristic energy (eV)",
+    "static_o_energy_quality": "Quality flag for O+ characteristic energy",
+    "static_o2_omni_flux":    "O2+ omnidirectional differential particle flux (cm^-2 s^-1 sr^-1 eV^-1)",
+    "static_o2_energy":       "O2+ characteristic energy (eV)",
+    "static_o2_energy_quality": "Quality flag for O2+ characteristic energy",
+    "static_h_dir_mso_x":   "H+ dominant flow direction, MSO X component (unit vector)",
+    "static_h_dir_mso_y":   "H+ dominant flow direction, MSO Y component (unit vector)",
+    "static_h_dir_mso_z":   "H+ dominant flow direction, MSO Z component (unit vector)",
+    "static_h_angular_width":         "H+ beam angular half-width (degrees)",
+    "static_h_angular_width_quality": "Quality flag for H+ angular width",
+    "static_pickup_dir_mso_x":   "Pickup ion dominant flow direction, MSO X (unit vector)",
+    "static_pickup_dir_mso_y":   "Pickup ion dominant flow direction, MSO Y (unit vector)",
+    "static_pickup_dir_mso_z":   "Pickup ion dominant flow direction, MSO Z (unit vector)",
+    "static_pickup_angular_width":         "Pickup ion beam angular half-width (degrees)",
+    "static_pickup_angular_width_quality": "Quality flag for pickup ion angular width",
+    # ── SEP ──
+    "sep_ion_fov1f":          "Ion integral flux, SEP sensor 1 forward FOV (cm^-2 s^-1 sr^-1)",
+    "sep_ion_fov1f_quality":  "Quality flag for SEP sensor 1 forward ion flux",
+    "sep_ion_fov1r":          "Ion integral flux, SEP sensor 1 reverse FOV (cm^-2 s^-1 sr^-1)",
+    "sep_ion_fov1r_quality":  "Quality flag for SEP sensor 1 reverse ion flux",
+    "sep_ion_fov2f":          "Ion integral flux, SEP sensor 2 forward FOV (cm^-2 s^-1 sr^-1)",
+    "sep_ion_fov2f_quality":  "Quality flag for SEP sensor 2 forward ion flux",
+    "sep_ion_fov2r":          "Ion integral flux, SEP sensor 2 reverse FOV (cm^-2 s^-1 sr^-1)",
+    "sep_ion_fov2r_quality":  "Quality flag for SEP sensor 2 reverse ion flux",
+    "sep_electron_fov1f":          "Electron integral flux, SEP sensor 1 forward FOV (cm^-2 s^-1 sr^-1)",
+    "sep_electron_fov1f_quality":  "Quality flag for SEP sensor 1 forward electron flux",
+    "sep_electron_fov1r":          "Electron integral flux, SEP sensor 1 reverse FOV (cm^-2 s^-1 sr^-1)",
+    "sep_electron_fov1r_quality":  "Quality flag for SEP sensor 1 reverse electron flux",
+    "sep_electron_fov2f":          "Electron integral flux, SEP sensor 2 forward FOV (cm^-2 s^-1 sr^-1)",
+    "sep_electron_fov2f_quality":  "Quality flag for SEP sensor 2 forward electron flux",
+    "sep_electron_fov2r":          "Electron integral flux, SEP sensor 2 reverse FOV (cm^-2 s^-1 sr^-1)",
+    "sep_electron_fov2r_quality":  "Quality flag for SEP sensor 2 reverse electron flux",
+    "sep_look_1f_mso_x": "SEP sensor 1 forward look direction, MSO X (unit vector)",
+    "sep_look_1f_mso_y": "SEP sensor 1 forward look direction, MSO Y (unit vector)",
+    "sep_look_1f_mso_z": "SEP sensor 1 forward look direction, MSO Z (unit vector)",
+    "sep_look_1r_mso_x": "SEP sensor 1 reverse look direction, MSO X (unit vector)",
+    "sep_look_1r_mso_y": "SEP sensor 1 reverse look direction, MSO Y (unit vector)",
+    "sep_look_1r_mso_z": "SEP sensor 1 reverse look direction, MSO Z (unit vector)",
+    "sep_look_2f_mso_x": "SEP sensor 2 forward look direction, MSO X (unit vector)",
+    "sep_look_2f_mso_y": "SEP sensor 2 forward look direction, MSO Y (unit vector)",
+    "sep_look_2f_mso_z": "SEP sensor 2 forward look direction, MSO Z (unit vector)",
+    "sep_look_2r_mso_x": "SEP sensor 2 reverse look direction, MSO X (unit vector)",
+    "sep_look_2r_mso_y": "SEP sensor 2 reverse look direction, MSO Y (unit vector)",
+    "sep_look_2r_mso_z": "SEP sensor 2 reverse look direction, MSO Z (unit vector)",
+    # ── MAG ──
+    "mag_mso_x":         "Magnetic field vector, MSO X component (nT; X points Sun->Mars)",
+    "mag_mso_x_quality": "Quality flag for magnetic field MSO-X",
+    "mag_mso_y":         "Magnetic field vector, MSO Y component (nT)",
+    "mag_mso_y_quality": "Quality flag for magnetic field MSO-Y",
+    "mag_mso_z":         "Magnetic field vector, MSO Z component (nT; Z toward north ecliptic pole)",
+    "mag_mso_z_quality": "Quality flag for magnetic field MSO-Z",
+    "mag_geo_x":         "Magnetic field vector, areocentric GEO X component (nT)",
+    "mag_geo_x_quality": "Quality flag for magnetic field GEO-X",
+    "mag_geo_y":         "Magnetic field vector, areocentric GEO Y component (nT)",
+    "mag_geo_y_quality": "Quality flag for magnetic field GEO-Y",
+    "mag_geo_z":         "Magnetic field vector, areocentric GEO Z component (nT; Z toward Mars north pole)",
+    "mag_geo_z_quality": "Quality flag for magnetic field GEO-Z",
+    "mag_rms_deviation": "RMS deviation of the magnetic field magnitude over the accumulation window (nT)",
+    "mag_rms_quality":   "Quality flag for magnetic field RMS deviation",
+    # ── NGIMS ──
+    "ngims_he":           "Helium (He) neutral number density in the upper atmosphere (cm^-3)",
+    "ngims_he_precision": "1-sigma precision of the He density measurement",
+    "ngims_he_quality":   "Quality flag for He density (0=good)",
+    "ngims_o":            "Atomic oxygen (O) neutral number density (cm^-3)",
+    "ngims_o_precision":  "1-sigma precision of the O density measurement",
+    "ngims_o_quality":    "Quality flag for O density",
+    "ngims_co":           "Carbon monoxide (CO) neutral number density (cm^-3)",
+    "ngims_co_precision": "1-sigma precision of the CO density measurement",
+    "ngims_co_quality":   "Quality flag for CO density",
+    "ngims_n2":           "Molecular nitrogen (N2) neutral number density (cm^-3), dominant above ~200 km",
+    "ngims_n2_precision": "1-sigma precision of the N2 density measurement",
+    "ngims_n2_quality":   "Quality flag for N2 density",
+    "ngims_no":           "Nitric oxide (NO) neutral number density (cm^-3)",
+    "ngims_no_precision": "1-sigma precision of the NO density measurement",
+    "ngims_no_quality":   "Quality flag for NO density",
+    "ngims_ar":           "Argon (Ar) neutral number density (cm^-3), used as inert tracer",
+    "ngims_ar_precision": "1-sigma precision of the Ar density measurement",
+    "ngims_ar_quality":   "Quality flag for Ar density",
+    "ngims_co2":           "Carbon dioxide (CO2) neutral number density (cm^-3), dominant below ~200 km",
+    "ngims_co2_precision": "1-sigma precision of the CO2 density measurement",
+    "ngims_co2_quality":   "Quality flag for CO2 density",
+    "ngims_ion32":           "Ion density at m/z=32, primarily O2+ (cm^-3)",
+    "ngims_ion32_precision": "1-sigma precision of the m/z=32 ion density",
+    "ngims_ion32_quality":   "Quality flag for m/z=32 ion density",
+    "ngims_ion44":           "Ion density at m/z=44, primarily CO2+ (cm^-3)",
+    "ngims_ion44_precision": "1-sigma precision of the m/z=44 ion density",
+    "ngims_ion44_quality":   "Quality flag for m/z=44 ion density",
+    "ngims_ion30":           "Ion density at m/z=30, primarily NO+ (cm^-3)",
+    "ngims_ion30_precision": "1-sigma precision of the m/z=30 ion density",
+    "ngims_ion30_quality":   "Quality flag for m/z=30 ion density",
+    "ngims_ion16":           "Ion density at m/z=16, primarily O+ (cm^-3)",
+    "ngims_ion16_precision": "1-sigma precision of the m/z=16 ion density",
+    "ngims_ion16_quality":   "Quality flag for m/z=16 ion density",
+    "ngims_ion28":           "Ion density at m/z=28, CO+ or N2+ (cm^-3)",
+    "ngims_ion28_precision": "1-sigma precision of the m/z=28 ion density",
+    "ngims_ion28_quality":   "Quality flag for m/z=28 ion density",
+    "ngims_ion12":           "Ion density at m/z=12, primarily C+ (cm^-3)",
+    "ngims_ion12_precision": "1-sigma precision of the m/z=12 ion density",
+    "ngims_ion12_quality":   "Quality flag for m/z=12 ion density",
+    "ngims_ion17":           "Ion density at m/z=17, primarily OH+ (cm^-3)",
+    "ngims_ion17_precision": "1-sigma precision of the m/z=17 ion density",
+    "ngims_ion17_quality":   "Quality flag for m/z=17 ion density",
+    "ngims_ion14":           "Ion density at m/z=14, primarily N+ (cm^-3)",
+    "ngims_ion14_precision": "1-sigma precision of the m/z=14 ion density",
+    "ngims_ion14_quality":   "Quality flag for m/z=14 ion density",
+    # ── SPICE ──
+    "spice_geo_x": "Spacecraft position, areocentric GEO X component (km)",
+    "spice_geo_y": "Spacecraft position, areocentric GEO Y component (km)",
+    "spice_geo_z": "Spacecraft position, areocentric GEO Z component (km; toward Mars north pole)",
+    "spice_mso_x": "Spacecraft position, MSO frame X component (km; X points Sun->Mars)",
+    "spice_mso_y": "Spacecraft position, MSO frame Y component (km)",
+    "spice_mso_z": "Spacecraft position, MSO frame Z component (km; Z toward north ecliptic pole)",
+    "spice_longitude":          "Sub-spacecraft point east longitude on Mars (degrees, 0-360)",
+    "spice_latitude":           "Sub-spacecraft point latitude on Mars (degrees, -90 to +90)",
+    "spice_solar_zenith_angle": "Solar zenith angle at the sub-spacecraft point (degrees, 0=subsolar)",
+    "spice_local_time":         "Local solar time at the sub-spacecraft point (hours, 0-24)",
+    "spice_altitude":           "Spacecraft altitude above Mars areoid (km)",
+    "spice_sc_att_geo_x": "Spacecraft +Z axis direction, GEO frame X component (unit vector)",
+    "spice_sc_att_geo_y": "Spacecraft +Z axis direction, GEO frame Y component (unit vector)",
+    "spice_sc_att_geo_z": "Spacecraft +Z axis direction, GEO frame Z component (unit vector)",
+    "spice_sc_att_mso_x": "Spacecraft +Z axis direction, MSO frame X component (unit vector)",
+    "spice_sc_att_mso_y": "Spacecraft +Z axis direction, MSO frame Y component (unit vector)",
+    "spice_sc_att_mso_z": "Spacecraft +Z axis direction, MSO frame Z component (unit vector)",
+    "spice_app_geo_x": "Articulated Payload Platform (APP) boresight, GEO frame X (unit vector)",
+    "spice_app_geo_y": "Articulated Payload Platform (APP) boresight, GEO frame Y (unit vector)",
+    "spice_app_geo_z": "Articulated Payload Platform (APP) boresight, GEO frame Z (unit vector)",
+    "spice_app_mso_x": "Articulated Payload Platform (APP) boresight, MSO frame X (unit vector)",
+    "spice_app_mso_y": "Articulated Payload Platform (APP) boresight, MSO frame Y (unit vector)",
+    "spice_app_mso_z": "Articulated Payload Platform (APP) boresight, MSO frame Z (unit vector)",
+    "spice_orbit_number":       "MAVEN orbit number since Mars orbit insertion (September 2014)",
+    "spice_inbound_outbound":   "Orbit phase flag: +1=inbound (before periapsis), -1=outbound (after periapsis)",
+    "spice_mars_season_ls":     "Mars solar longitude Ls (degrees; 0=northern spring equinox)",
+    "spice_mars_sun_distance_au": "Mars-Sun distance (AU)",
+    "spice_subsolar_longitude": "Sub-solar point east longitude on Mars (degrees)",
+    "spice_subsolar_latitude":  "Sub-solar point latitude on Mars (degrees)",
+    "spice_submars_sun_longitude": "Sub-Mars point longitude as seen from the Sun (degrees)",
+    "spice_submars_sun_latitude":  "Sub-Mars point latitude as seen from the Sun (degrees)",
+    "spice_rot_mars_r1c1": "Mars body-fixed to inertial rotation matrix, element [1,1]",
+    "spice_rot_mars_r1c2": "Mars body-fixed to inertial rotation matrix, element [1,2]",
+    "spice_rot_mars_r1c3": "Mars body-fixed to inertial rotation matrix, element [1,3]",
+    "spice_rot_mars_r2c1": "Mars body-fixed to inertial rotation matrix, element [2,1]",
+    "spice_rot_mars_r2c2": "Mars body-fixed to inertial rotation matrix, element [2,2]",
+    "spice_rot_mars_r2c3": "Mars body-fixed to inertial rotation matrix, element [2,3]",
+    "spice_rot_mars_r3c1": "Mars body-fixed to inertial rotation matrix, element [3,1]",
+    "spice_rot_mars_r3c2": "Mars body-fixed to inertial rotation matrix, element [3,2]",
+    "spice_rot_mars_r3c3": "Mars body-fixed to inertial rotation matrix, element [3,3]",
+    "spice_rot_sc_r1c1": "Spacecraft body to inertial rotation matrix, element [1,1]",
+    "spice_rot_sc_r1c2": "Spacecraft body to inertial rotation matrix, element [1,2]",
+    "spice_rot_sc_r1c3": "Spacecraft body to inertial rotation matrix, element [1,3]",
+    "spice_rot_sc_r2c1": "Spacecraft body to inertial rotation matrix, element [2,1]",
+    "spice_rot_sc_r2c2": "Spacecraft body to inertial rotation matrix, element [2,2]",
+    "spice_rot_sc_r2c3": "Spacecraft body to inertial rotation matrix, element [2,3]",
+    "spice_rot_sc_r3c1": "Spacecraft body to inertial rotation matrix, element [3,1]",
+    "spice_rot_sc_r3c2": "Spacecraft body to inertial rotation matrix, element [3,2]",
+    "spice_rot_sc_r3c3": "Spacecraft body to inertial rotation matrix, element [3,3]",
 }
 
-
-# Human-readable descriptions for README
 INSTRUMENT_DESCRIPTIONS = {
-    "lpw":    "Langmuir Probe and Waves — electron density, temperature, EUV irradiance",
-    "swea":   "Solar Wind Electron Analyzer — electron energy spectra and pitch angle distributions",
-    "swia":   "Solar Wind Ion Analyzer — solar wind proton density, velocity, temperature",
-    "static": "Suprathermal and Thermal Ion Composition — ion mass/charge composition and energy spectra",
-    "sep":    "Solar Energetic Particle — high-energy particle fluxes from solar events",
-    "mag":    "Magnetometer — magnetic field vector components (MSO and GEO frames)",
-    "ngims":  "Neutral Gas and Ion Mass Spectrometer — neutral and ion densities in upper atmosphere",
-    "spice":  "Spacecraft ephemeris — position, attitude, altitude, solar zenith angle, orbit metadata",
+    "lpw":    "Langmuir Probe and Waves -- electron density, temperature, EUV irradiance",
+    "swea":   "Solar Wind Electron Analyzer -- electron energy spectra and pitch angle distributions",
+    "swia":   "Solar Wind Ion Analyzer -- solar wind proton density, velocity, temperature",
+    "static": "Suprathermal and Thermal Ion Composition -- ion mass/charge composition and energy spectra",
+    "sep":    "Solar Energetic Particle -- high-energy particle fluxes from solar events",
+    "mag":    "Magnetometer -- magnetic field vector components (MSO and GEO frames)",
+    "ngims":  "Neutral Gas and Ion Mass Spectrometer -- neutral and ion densities in upper atmosphere",
+    "spice":  "Spacecraft ephemeris -- position, attitude, altitude, solar zenith angle, orbit metadata",
 }
 
+DESCRIPTION = """\
+MAVEN (Mars Atmosphere and Volatile EvolutioN) is a NASA Mars orbiter that has been \
+studying the Martian upper atmosphere and its interaction with the solar wind since \
+September 2014. The mission investigates how Mars lost its early atmosphere and water \
+to space -- a process driven by solar wind stripping in the absence of a global magnetic \
+field. MAVEN's key parameter (KP) dataset provides time-series measurements from multiple \
+instruments at 4-8 second cadence: solar wind density, velocity, and temperature (SWIA/SWEA), \
+magnetic field components (MAG), ion composition and energy spectra (STATIC), solar energetic \
+particles (SEP), neutral gas composition (NGIMS), and electron density/temperature (LPW). \
+Combined with spacecraft ephemeris (altitude, latitude, longitude, solar zenith angle), this \
+dataset enables studies of atmospheric escape rates, ionospheric variability, and solar \
+wind-magnetosphere coupling at Mars across a full solar cycle."""
+
+
+# ── Data parsing helpers (domain-specific) ────────────────────────────────
 
 def _instrument_columns(instrument: str) -> list[str]:
     """Return the list of proper column names for an instrument (excluding time)."""
@@ -438,74 +447,47 @@ def list_tab_files(year: int, month: int) -> list[str]:
     except requests.RequestException as e:
         print(f"    WARNING: could not list {url}: {e}")
         return []
-
-    # Parse href links from HTML directory listing
     filenames = re.findall(r'href="(mvn_kp_insitu_[^"]+\.tab)"', resp.text)
     return sorted(set(filenames))
 
 
 def parse_tab_file(content: str) -> pd.DataFrame | None:
-    """Parse a MAVEN KP .tab file (fixed-width text with # header lines).
-
-    The header contains metadata including the line number where data begins.
-    Data is whitespace-delimited with 235 columns. After parsing, columns are
-    renamed from positional to proper names using the NAMES mapping.
-    """
+    """Parse a MAVEN KP .tab file (fixed-width text with # header lines)."""
     lines = content.splitlines()
-
-    # Extract data start line from header (line ~8: "#     348   Line on which data begins")
     data_start_line = None
     for line in lines[:20]:
         if "Line on which data begins" in line:
             match = re.search(r"#\s+(\d+)\s+Line on which", line)
             if match:
-                data_start_line = int(match.group(1)) - 1  # 0-indexed
+                data_start_line = int(match.group(1)) - 1
                 break
-
     if data_start_line is None:
-        # Fallback: find first non-# non-empty line
         for i, line in enumerate(lines):
             if not line.startswith("#") and line.strip():
                 data_start_line = i
                 break
-
     if data_start_line is None or data_start_line >= len(lines):
         return None
-
     data_lines = [l for l in lines[data_start_line:] if l.strip()]
     if not data_lines:
         return None
-
     data_text = "\n".join(data_lines)
     try:
         df = pd.read_csv(
-            io.StringIO(data_text),
-            sep=r"\s+",
-            header=None,
+            io.StringIO(data_text), sep=r"\s+", header=None,
             na_values=["-9.99999990E+30", "-1.00000000E+31", "NO_DATA", "NaN"],
-            low_memory=False,
         )
     except Exception:
         return None
-
     if df.empty:
         return None
-
-    # Rename columns from positional (0..n-1) to proper names (NAMES index 1..n)
     n_cols = len(df.columns)
     col_names = [NAMES.get(i + 1, f"unknown_{i + 1}") for i in range(n_cols)]
     df.columns = col_names
-
-    # Convert time to datetime
-    df["time"] = pd.to_datetime(df["time"], format="ISO8601", errors="coerce")
-
-    # Numeric coercion for all non-time columns
+    df["time"] = pd.to_datetime(df["time"], errors="coerce")
     for col in df.columns:
-        if col == "time":
-            continue
-        if df[col].dtype == object:
+        if col != "time" and df[col].dtype == object:
             df[col] = pd.to_numeric(df[col], errors="coerce")
-
     return df
 
 
@@ -518,20 +500,7 @@ def download_and_parse(year: int, month: int, filename: str) -> pd.DataFrame | N
     except requests.RequestException as e:
         print(f"    WARNING: failed to download {filename}: {e}")
         return None
-
     return parse_tab_file(resp.text)
-
-
-def load_existing_instrument(instrument: str, local_dir: Path) -> pd.DataFrame | None:
-    """Download and load an existing instrument parquet from HF."""
-    parquet_path = local_dir / "data" / instrument / f"{instrument}.parquet"
-    if parquet_path.exists():
-        df = pd.read_parquet(parquet_path)
-        if "time" in df.columns:
-            df["time"] = pd.to_datetime(df["time"])
-        return df
-    return None
-
 
 
 def generate_months(start_year: int, start_month: int, end_year: int, end_month: int):
@@ -548,130 +517,265 @@ def generate_months(start_year: int, start_month: int, end_year: int, end_month:
 def extract_instrument_df(df: pd.DataFrame, instrument: str) -> pd.DataFrame:
     """Extract time + instrument columns from a full DataFrame."""
     cols = ["time"] + _instrument_columns(instrument)
-    # Only keep columns that exist in df
     cols = [c for c in cols if c in df.columns]
     return df[cols].copy()
 
 
 def clean_instrument_df(df: pd.DataFrame) -> pd.DataFrame:
-    """Drop >80% null columns and all-null rows for an instrument DataFrame."""
-    # Drop completely empty columns first (catches string columns coerced to all-NaN)
-    all_null = [c for c in df.columns if c != "time" and df[c].isna().all()]
-    if all_null:
-        df = df.drop(columns=all_null)
-
-    # Drop columns that are >80% null (excluding time)
-    for col in list(df.columns):
-        if col == "time":
-            continue
-        if df[col].isna().mean() > 0.80:
-            df = df.drop(columns=[col])
-
-    # Drop rows where all non-time columns are null
+    """Drop rows where all non-time columns are null."""
     non_time = [c for c in df.columns if c != "time"]
     if non_time:
         df = df.dropna(subset=non_time, how="all")
     return df
 
 
-def write_readme_and_upload(work_dir: Path, time_min: str, time_max: str) -> None:
-    """Build README from parquet metadata in work_dir and upload everything to HF."""
-    import pyarrow.compute as pc
-
-    # Gather stats and schemas from parquet metadata — no full data load needed
-    instrument_stats: dict[str, tuple[int, int]] = {}
-    instrument_schemas: dict[str, list[str]] = {}
+def load_existing_instruments(tmp_dir: Path) -> dict[str, pd.DataFrame]:
+    """Download existing per-instrument parquets from HF."""
+    try:
+        subprocess.run(
+            ["hf", "download", HF_REPO, "data/",
+             "--repo-type", "dataset", "--local-dir", str(tmp_dir)],
+            check=True, capture_output=True, timeout=300,
+        )
+    except Exception as e:
+        print(f"  Could not download existing data ({e}), doing full rebuild")
+        return {}
+    existing = {}
     for instrument in INSTRUMENTS:
-        path = work_dir / "data" / instrument / f"{instrument}.parquet"
-        if path.exists():
-            meta = pq.read_metadata(path)
-            schema = pq.read_schema(path)
-            instrument_stats[instrument] = (meta.num_rows, len(schema.names))
-            instrument_schemas[instrument] = [schema.field(i).name for i in range(len(schema))]
+        parquet_path = tmp_dir / "data" / instrument / f"{instrument}.parquet"
+        if parquet_path.exists():
+            df = pd.read_parquet(parquet_path)
+            if "time" in df.columns:
+                df["time"] = pd.to_datetime(df["time"])
+            existing[instrument] = df
+            print(f"  Loaded existing {instrument}: {len(df):,} rows")
+    return existing
 
-    n_total = sum(s[0] for s in instrument_stats.values())
-    if n_total >= 100_000_000:
-        size_cat = "100M<n<1B"
-    elif n_total >= 10_000_000:
-        size_cat = "10M<n<100M"
-    elif n_total >= 1_000_000:
-        size_cat = "1M<n<10M"
+
+# ── Main ──────────────────────────────────────────────────────────────────
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--year", type=int, default=None,
+                        help="Fetch only this single year (e.g. --year 2020)")
+    args = parser.parse_args()
+
+    print("Fetching NASA MAVEN KP in-situ data...")
+
+    yesterday = date.today() - timedelta(days=1)
+
+    # Try incremental: load existing data
+    import tempfile
+    with tempfile.TemporaryDirectory() as probe:
+        existing = load_existing_instruments(Path(probe))
+
+    # Determine time range of existing data
+    existing_max_time = None
+    if existing:
+        for inst_df in existing.values():
+            if "time" in inst_df.columns and not inst_df.empty:
+                t = inst_df["time"].max()
+                if existing_max_time is None or t > existing_max_time:
+                    existing_max_time = t
+
+    if args.year:
+        fetch_start_year, fetch_start_month = args.year, 1
+        fetch_end_year, fetch_end_month = args.year, 12
+        print(f"  Single-year mode: fetching {args.year}")
+    elif existing_max_time is not None:
+        fetch_start_year = existing_max_time.year
+        fetch_start_month = existing_max_time.month
+        fetch_end_year, fetch_end_month = yesterday.year, yesterday.month
+        print(f"  Incremental from {fetch_start_year}-{fetch_start_month:02d}")
     else:
-        size_cat = "100K<n<1M"
+        existing = {}
+        fetch_start_year, fetch_start_month = START_YEAR, START_MONTH
+        fetch_end_year, fetch_end_month = yesterday.year, yesterday.month
+        print(f"  Full rebuild from {fetch_start_year}-{fetch_start_month:02d}")
 
-    configs_yaml = ""
-    for instrument in INSTRUMENTS:
-        if instrument not in instrument_stats:
+    # Fetch new data month by month
+    all_new = []
+    total_files = 0
+    for year, month in generate_months(fetch_start_year, fetch_start_month,
+                                       fetch_end_year, fetch_end_month):
+        print(f"  {year}-{month:02d}...", end="", flush=True)
+        filenames = list_tab_files(year, month)
+        if not filenames:
+            print(" no files")
+            time.sleep(1)
             continue
-        is_default = (instrument == "spice")
-        configs_yaml += f"""  - config_name: {instrument}
+        print(f" {len(filenames)} files", end="", flush=True)
+        month_rows = 0
+        for fname in filenames:
+            df_file = download_and_parse(year, month, fname)
+            if df_file is not None and not df_file.empty:
+                all_new.append(df_file)
+                month_rows += len(df_file)
+                total_files += 1
+            time.sleep(0.5)
+        print(f" -> {month_rows:,} rows")
+        time.sleep(1)
+
+    print(f"  Downloaded {total_files} files")
+    df_new = pd.concat(all_new, ignore_index=True) if all_new else pd.DataFrame()
+    if not df_new.empty:
+        print(f"  New data: {len(df_new):,} rows")
+    else:
+        print("  No new data downloaded")
+
+    if df_new.empty and not existing:
+        print("::error::No data available")
+        sys.exit(1)
+
+    # ── Per-instrument merge, clean, write ───────────────────────────────
+    instrument_dfs = {}
+    instrument_rows = {}
+
+    for instrument in INSTRUMENTS:
+        df_inst_new = extract_instrument_df(df_new, instrument) if not df_new.empty else pd.DataFrame()
+        df_inst_existing = existing.get(instrument)
+
+        if df_inst_existing is not None and not df_inst_new.empty:
+            df_inst = pd.concat([df_inst_existing, df_inst_new], ignore_index=True)
+            df_inst = df_inst.drop_duplicates(subset=["time"], keep="last")
+            print(f"  {instrument}: merged {len(df_inst_existing):,} + {len(df_inst_new):,} -> {len(df_inst):,}")
+        elif df_inst_existing is not None:
+            df_inst = df_inst_existing
+            print(f"  {instrument}: using existing {len(df_inst):,} rows")
+        elif not df_inst_new.empty:
+            df_inst = df_inst_new
+            print(f"  {instrument}: new {len(df_inst):,} rows")
+        else:
+            print(f"  {instrument}: no data, skipping")
+            continue
+
+        df_inst = df_inst.sort_values("time").reset_index(drop=True)
+        df_inst = clean_instrument_df(df_inst)
+
+        if df_inst.empty or len(df_inst.columns) <= 1:
+            print(f"    {instrument}: empty after cleaning, skipping")
+            continue
+
+        instrument_dfs[instrument] = df_inst
+        instrument_rows[instrument] = len(df_inst)
+
+    if not instrument_dfs:
+        print("::error::No instrument data after cleaning")
+        sys.exit(1)
+
+    # ── Validate ────────────────────────────────────────────────────────
+    if "spice" in instrument_dfs:
+        check_dataset(instrument_dfs["spice"], "maven", min_rows=100_000,
+                      expected_columns=["time", "spice_altitude"],
+                      critical_columns=["time"])
+    else:
+        largest = max(instrument_dfs, key=lambda k: len(instrument_dfs[k]))
+        check_dataset(instrument_dfs[largest], "maven", min_rows=100_000,
+                      expected_columns=["time"], critical_columns=["time"])
+
+    # ── Stats ───────────────────────────────────────────────────────────
+    n_total = sum(instrument_rows.values())
+    ref_df = instrument_dfs.get("spice", next(iter(instrument_dfs.values())))
+    time_min = ref_df["time"].min().strftime("%Y-%m-%d")
+    time_max = ref_df["time"].max().strftime("%Y-%m-%d")
+    size_cat = _size_category(n_total)
+
+    # ── Write and upload using Pipeline context ─────────────────────────
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="NASA MAVEN Key Parameters (In-Situ)",
+        description=DESCRIPTION,
+        tags=["space", "mars", "maven", "atmosphere", "solar-wind",
+              "magnetosphere", "planetary-science", "nasa",
+              "open-data", "tabular-data", "parquet"],
+        source_url="https://lasp.colorado.edu/maven/sdc/public/data/sci/kp/insitu/",
+        task_categories=["time-series-forecasting"],
+        update_schedule="Quarterly via [GitHub Actions](https://github.com/juliensimon/space-datasets). LASP publishes KP data with a ~6-8 month lag.",
+        collection_url="https://huggingface.co/collections/juliensimon/space-probe-and-mission-datasets-69c3fe82d410a42b1e313167",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA24309/PIA24309~small.jpg",
+            "alt": "Exploring Jezero Crater on Mars (illustration)",
+            "credit": "NASA/JPL-Caltech",
+        },
+        related_datasets=[
+            "juliensimon/esa-exomars-tgo-observations",
+            "juliensimon/esa-mars-express-observations",
+            "juliensimon/mars-perseverance-weather",
+            "juliensimon/solar-wind",
+        ],
+    ) as p:
+        # Write per-instrument parquets
+        total_size_mb = 0
+        for instrument, df_inst in instrument_dfs.items():
+            inst_dir = p.data_dir / instrument
+            inst_dir.mkdir(parents=True)
+            out = inst_dir / f"{instrument}.parquet"
+            df_inst.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
+            size_mb = out.stat().st_size / 1024 / 1024
+            total_size_mb += size_mb
+            print(f"  {instrument}: {size_mb:.1f} MB, {len(df_inst):,} rows, {len(df_inst.columns)} cols")
+        print(f"  Total: {total_size_mb:.1f} MB across {len(instrument_dfs)} instruments")
+
+        # ── Build configs YAML ──────────────────────────────────────────
+        configs_yaml = ""
+        for instrument in INSTRUMENTS:
+            if instrument not in instrument_dfs:
+                continue
+            is_default = (instrument == "spice")
+            configs_yaml += f"""  - config_name: {instrument}
     data_files:
       - split: train
         path: data/{instrument}/{instrument}.parquet
 """
-        if is_default:
-            configs_yaml += "    default: true\n"
+            if is_default:
+                configs_yaml += "    default: true\n"
 
-    inst_table = "| Instrument | Description | Rows | Columns |\n"
-    inst_table += "|------------|-------------|-----:|--------:|\n"
-    for instrument in INSTRUMENTS:
-        if instrument not in instrument_stats:
-            continue
-        desc = INSTRUMENT_DESCRIPTIONS.get(instrument, "")
-        nrows, ncols = instrument_stats[instrument]
-        inst_table += f"| **{instrument.upper()}** | {desc} | {nrows:,} | {ncols} |\n"
+        # ── Instrument table ────────────────────────────────────────────
+        inst_table = "| Instrument | Description | Rows | Columns |\n"
+        inst_table += "|------------|-------------|-----:|--------:|\n"
+        for instrument in INSTRUMENTS:
+            if instrument not in instrument_dfs:
+                continue
+            desc = INSTRUMENT_DESCRIPTIONS.get(instrument, "")
+            rows = len(instrument_dfs[instrument])
+            cols = len(instrument_dfs[instrument].columns)
+            inst_table += f"| **{instrument.upper()}** | {desc} | {rows:,} | {cols} |\n"
 
-    # Per-instrument schema tables (uses actual post-cleaning columns from parquet metadata)
-    schema_sections = ""
-    for instrument in INSTRUMENTS:
-        if instrument not in instrument_schemas:
-            continue
-        cols = instrument_schemas[instrument]
-        inst_full = INSTRUMENT_DESCRIPTIONS.get(instrument, instrument.upper())
-        schema_sections += f"\n### {instrument.upper()} — {inst_full}\n\n"
-        schema_sections += "| Column | Type | Description |\n"
-        schema_sections += "|--------|------|-------------|\n"
-        for col in cols:
-            col_type = "datetime" if col == "time" else "float"
-            desc = COLUMN_DESCRIPTIONS.get(col, "—")
-            schema_sections += f"| `{col}` | {col_type} | {desc} |\n"
+        # ── Per-instrument schema sections ──────────────────────────────
+        schema_sections = ""
+        for instrument in INSTRUMENTS:
+            if instrument not in instrument_dfs:
+                continue
+            df_inst = instrument_dfs[instrument]
+            inst_full = INSTRUMENT_DESCRIPTIONS.get(instrument, instrument.upper())
+            schema_sections += f"\n### {instrument.upper()} -- {inst_full}\n\n"
+            schema_sections += "| Column | Type | Description |\n"
+            schema_sections += "|--------|------|-------------|\n"
+            for col in df_inst.columns:
+                desc = COL_DESCRIPTIONS.get(col, "")
+                dtype = str(df_inst[col].dtype)
+                schema_sections += f"| `{col}` | {dtype} | {desc} |\n"
 
-    banner_file = download_banner("maven", work_dir)
-    banner_md = banner_markdown("maven", banner_file)
+        # ── Banner ──────────────────────────────────────────────────────
+        banner_file = download_banner(
+            "https://images-assets.nasa.gov/image/PIA24309/PIA24309~small.jpg",
+            p.tmp_dir)
+        banner_md = ""
+        if banner_file:
+            banner_md = render_banner(
+                "Exploring Jezero Crater on Mars (illustration)",
+                "NASA/JPL-Caltech",
+                filename=banner_file,
+            )
 
-    # Quick stats from spice parquet — read only 2 columns via pyarrow (no pandas).
-    # Use 1st/99th percentile for altitude to exclude rare bad data points.
-    alt_min_km = alt_max_km = max_orbit = None
-    spice_path = work_dir / "data" / "spice" / "spice.parquet"
-    if spice_path.exists():
-        try:
-            tbl = pq.read_table(spice_path, columns=["spice_altitude", "spice_orbit_number"])
-            alts = tbl["spice_altitude"].drop_null()
-            q = pc.quantile(alts, q=[0.01, 0.95])
-            alt_min_km = round(q[0].as_py(), 0)
-            alt_max_km = round(q[1].as_py(), 0)  # P95: excludes ~3% bad values (Mars–Sun distance artifact)
-            max_orbit = int(pc.max(tbl["spice_orbit_number"]).as_py())
-            del tbl, alts
-        except Exception:
-            pass
-
-    spice_rows = instrument_stats.get("spice", (0,))[0]
-    quick_stats = f"- **{spice_rows:,}** SPICE records spanning **{time_min}** to **{time_max}** (~{int(time_max[:4]) - int(time_min[:4]) + 1} years)\n"
-    if max_orbit is not None:
-        quick_stats += f"- **~{max_orbit:,}** orbits since Mars orbit insertion (November 2014)\n"
-    if alt_min_km is not None:
-        quick_stats += f"- Altitude range: **{alt_min_km:,.0f} km** (periapsis) to **{alt_max_km:,.0f} km** (apoapsis)\n"
-    quick_stats += "- 4-8 second measurement cadence across 7 instrument configs\n"
-
-    banner_file = download_banner("maven", work_dir)
-    banner_md = banner_markdown("maven", banner_file)
-
-    (work_dir / "README.md").write_text(f"""---
+        # ── README (custom multi-config format) ─────────────────────────
+        (p.tmp_dir / "README.md").write_text(f"""---
 license: cc-by-4.0
 pretty_name: "NASA MAVEN Key Parameters (In-Situ)"
 language:
   - en
-description: "Time-series from NASA's MAVEN Mars orbiter — solar wind, magnetic field, ion composition, neutral gas, and spacecraft ephemeris at 4-8 second cadence (2014–present). Seven instrument configs."
+description: "Time-series measurements from NASA's MAVEN Mars orbiter -- solar wind, magnetic field, ion composition, neutral gas, and spacecraft ephemeris at 4-8 second cadence (2014-present). Split by instrument."
 task_categories:
   - time-series-forecasting
 tags:
@@ -693,86 +797,73 @@ configs:
 
 # NASA MAVEN Key Parameters (In-Situ)
 {banner_md}
-*Part of the [Solar System Datasets](https://huggingface.co/collections/juliensimon/solar-system-datasets-67dbfa3057e38241e7ea2aee) and [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c24cb17e3db14fc30f0716) collections on Hugging Face.*
-
-![Update MAVEN](https://github.com/juliensimon/space-datasets/actions/workflows/update-maven.yml/badge.svg)
-![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.maven&label=updated&color=brightgreen)
-
-MAVEN (Mars Atmosphere and Volatile EvolutioN) is a NASA Mars orbiter that has been studying the Martian upper atmosphere and its interaction with the solar wind since September 2014. The mission investigates how Mars lost its early atmosphere and water to space — a process driven by solar wind stripping in the absence of a global magnetic field. MAVEN's key parameter (KP) dataset provides time-series measurements from multiple instruments at 4-8 second cadence: solar wind density, velocity, and temperature (SWIA/SWEA), magnetic field components (MAG), ion composition and energy spectra (STATIC), solar energetic particles (SEP), neutral gas composition (NGIMS), and electron density/temperature (LPW). Combined with spacecraft ephemeris (altitude, latitude, longitude, solar zenith angle), this dataset enables studies of atmospheric escape rates, ionospheric variability, and solar wind-magnetosphere coupling at Mars across a full solar cycle.
+*Part of a [dataset collection](https://huggingface.co/collections/juliensimon/space-probe-and-mission-datasets-69c3fe82d410a42b1e313167) on Hugging Face.*
 
 ## Dataset description
 
-Data spans **{time_min}** to **{time_max}**, split into {len(instrument_stats)} instrument configs:
+Data spans **{time_min}** to **{time_max}**, split into {len(instrument_dfs)} instrument configs:
 
 {inst_table}
 
-Each config shares the same `time` column, enabling cross-instrument joins. Per-instrument splitting reduces download size — load only the instruments you need.
+Each config shares the same `time` column, enabling cross-instrument joins. Per-instrument splitting reduces download size -- load only the instruments you need.
+
+**Coordinate frames:** MSO (Mars-Sun-Orbit) has X pointing Sun->Mars, Z toward north ecliptic pole, Y completing the right-hand system. GEO (areocentric geographic) has Z toward the Mars north pole, X through 0 deg longitude. APP is the Articulated Payload Platform body frame used by NGIMS, IUVS, and STATIC.
+
+**Quality flags:** Each physical measurement has one or two integer quality flags. 0 = good; higher values indicate caution levels defined in the MAVEN KP SIS document. Use `flag == 0` for the highest-quality science data.
+
+## Schema
+{schema_sections}
 
 ## Quick stats
 
-{quick_stats}
-## Schema
+- **{n_total:,}** total measurements across {len(instrument_dfs)} instruments
+- **Time span:** {time_min} to {time_max}
+- **Cadence:** 4-8 seconds
 
-**Coordinate frames:** MSO (Mars-Sun-Orbit): X toward Sun, Z toward north ecliptic pole, Y completes right-hand system. GEO (areocentric geographic): Z toward Mars north pole, X through 0° longitude. APP: Articulated Payload Platform body frame (STATIC, NGIMS). **Quality flags:** 0 = good; higher values indicate increasing caution per the MAVEN KP SIS. Columns >80% null across the full mission are dropped at ingest.
-{schema_sections}
 ## Usage
 
 ```python
 from datasets import load_dataset
 
 # Load a single instrument
-ds = load_dataset("juliensimon/nasa-maven-kp-insitu", "mag", split="train")
+ds = load_dataset("{HF_REPO}", "mag", split="train")
 df_mag = ds.to_pandas()
 
 # Load and join multiple instruments
-ds_spice = load_dataset("juliensimon/nasa-maven-kp-insitu", "spice", split="train")
-ds_swia = load_dataset("juliensimon/nasa-maven-kp-insitu", "swia", split="train")
+ds_spice = load_dataset("{HF_REPO}", "spice", split="train")
+ds_swia = load_dataset("{HF_REPO}", "swia", split="train")
 df = ds_spice.to_pandas().merge(ds_swia.to_pandas(), on="time")
 
 # Filter by altitude for ionospheric studies (< 500 km)
+import matplotlib.pyplot as plt
 df_iono = df[df["spice_altitude"] < 500]
-print(df_iono.describe())
-
-# Identify solar energetic particle events (elevated flux)
-ds_sep = load_dataset("juliensimon/nasa-maven-kp-insitu", "sep", split="train")
-df_sep = ds_sep.to_pandas()
-sep_events = df_sep[df_sep["sep_ion_fov1f"] > df_sep["sep_ion_fov1f"].quantile(0.99)]
-print(f"{{len(sep_events)}} high-flux SEP intervals detected")
+plt.scatter(df_iono["spice_solar_zenith_angle"], df_iono["swia_h_density"], s=0.1, alpha=0.3)
+plt.xlabel("Solar Zenith Angle (deg)")
+plt.ylabel("Proton Density (cm^-3)")
+plt.title("Solar Wind Density vs Solar Zenith Angle")
+plt.show()
 ```
 
 ## Data source
 
-[LASP SDC](https://lasp.colorado.edu/maven/sdc/public/data/sci/kp/insitu/) — NASA MAVEN Science Data Center at the Laboratory for Atmospheric and Space Physics, University of Colorado Boulder.
-
-## Update schedule
-
-Quarterly via [GitHub Actions](https://github.com/juliensimon/space-datasets). LASP publishes KP data with a ~6-8 month lag.
+[LASP SDC](https://lasp.colorado.edu/maven/sdc/public/data/sci/kp/insitu/) -- NASA MAVEN Science Data Center at the Laboratory for Atmospheric and Space Physics, University of Colorado Boulder.
 
 ## Related datasets
 
-- [esa-exomars-tgo-observations](https://huggingface.co/datasets/juliensimon/esa-exomars-tgo-observations) — ESA ExoMars TGO observation catalog
-- [esa-mars-express-observations](https://huggingface.co/datasets/juliensimon/esa-mars-express-observations) — ESA Mars Express observation catalog
-- [meda-weather](https://huggingface.co/datasets/juliensimon/meda-weather) — Mars surface weather from Perseverance rover
-- [solar-wind](https://huggingface.co/datasets/juliensimon/solar-wind) — Real-time solar wind data from L1 monitors
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/nasa-maven-kp-insitu) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
+- [juliensimon/esa-exomars-tgo-observations](https://huggingface.co/datasets/juliensimon/esa-exomars-tgo-observations)
+- [juliensimon/esa-mars-express-observations](https://huggingface.co/datasets/juliensimon/esa-mars-express-observations)
+- [juliensimon/meda-weather](https://huggingface.co/datasets/juliensimon/meda-weather)
+- [juliensimon/solar-wind](https://huggingface.co/datasets/juliensimon/solar-wind)
 
 ## Citation
 
 ```bibtex
 @dataset{{maven_kp_insitu,
-  author = {{Simon, Julien}},
   title = {{NASA MAVEN Key Parameters (In-Situ)}},
+  author = {{juliensimon}},
   year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/nasa-maven-kp-insitu}},
-  note = {{Based on NASA MAVEN KP data from LASP SDC}}
+  url = {{https://huggingface.co/datasets/{HF_REPO}}},
+  publisher = {{Hugging Face}}
 }}
 ```
 
@@ -781,225 +872,13 @@ If you find this dataset useful, please give it a ❤️ on the [dataset page](h
 [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
 """)
 
-    commit_msg = f"Update MAVEN KP in-situ: {len(instrument_stats)} instruments ({time_min} to {time_max})"
-    subprocess.run(
-        ["hf", "upload", HF_REPO, str(work_dir), ".",
-         "--repo-type", "dataset",
-         "--commit-message", commit_msg,
-         "--delete", "data/maven_kp_insitu.parquet"],
-        check=True,
-    )
+        # Upload
+        print("Uploading to HF...")
+        commit_msg = f"Update MAVEN KP in-situ: {len(instrument_dfs)} instruments ({time_min} to {time_max})"
+        upload_to_hf(HF_REPO, p.tmp_dir, commit_msg)
 
-
-def main():
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--year", type=int, default=None,
-                        help="Fetch only this single year (e.g. --year 2020)")
-    parser.add_argument("--init", action="store_true",
-                        help="First-time build: skip HF download, build from START_YEAR")
-    args = parser.parse_args()
-
-    print("Fetching NASA MAVEN KP in-situ data...")
-    yesterday = date.today() - timedelta(days=1)
-
-    # Persistent working directory — survives across months for efficient backfills.
-    # Not deleted on error so interrupted runs can be debugged or resumed.
-    work_dir = Path(tempfile.mkdtemp(prefix="maven_"))
-    print(f"  Working directory: {work_dir}")
-
-    # Download existing HF data once at the start.
-    # Safety invariant: we must have the full existing dataset locally before uploading,
-    # otherwise we'd overwrite accumulated historical parquets with a partial rebuild.
-    #
-    # Note: use --include "data/**" (not positional "data/"), because positional args
-    # are treated as exact file paths and "data/" matches nothing, downloading 0 files
-    # while still exiting 0 — silently leaving work_dir empty.
-    hf_download_ok = False
-    if not args.init:
-        try:
-            subprocess.run(
-                ["hf", "download", HF_REPO,
-                 "--repo-type", "dataset", "--local-dir", str(work_dir),
-                 "--include", "data/**"],
-                check=True, capture_output=True, timeout=600,
-            )
-        except Exception as e:
-            print(f"ERROR: Could not download existing data from HF: {e}")
-            print("  Aborting to prevent overwriting historical data on HF.")
-            print("  For a first-time build on a new HF repo, use --init.")
-            shutil.rmtree(work_dir, ignore_errors=True)
-            sys.exit(1)
-
-        # Verify that parquets were actually downloaded (not 0 files due to empty repo)
-        downloaded = [
-            inst for inst in INSTRUMENTS
-            if (work_dir / "data" / inst / f"{inst}.parquet").exists()
-        ]
-        if downloaded:
-            print(f"  Downloaded {len(downloaded)} existing instrument parquets from HF")
-            hf_download_ok = True
-        else:
-            print("  No existing parquets on HF — treating as fresh build")
-
-    # Determine time range to fetch
-    if args.year:
-        fetch_start_year, fetch_start_month = args.year, 1
-        fetch_end_year, fetch_end_month = args.year, 12
-        print(f"  Single-year mode: fetching {args.year}")
-    elif args.init:
-        fetch_start_year, fetch_start_month = START_YEAR, START_MONTH
-        fetch_end_year, fetch_end_month = yesterday.year, yesterday.month
-        print(f"  Init build from {fetch_start_year}-{fetch_start_month:02d}")
-    else:
-        # Use spice (always populated) to find the latest existing timestamp
-        spice_df = load_existing_instrument("spice", work_dir)
-        if spice_df is not None and not spice_df.empty and "time" in spice_df.columns:
-            existing_max_time = spice_df["time"].max()
-            fetch_start_year = existing_max_time.year
-            fetch_start_month = existing_max_time.month
-            print(f"  Incremental from {fetch_start_year}-{fetch_start_month:02d}")
-        else:
-            fetch_start_year, fetch_start_month = START_YEAR, START_MONTH
-            print(f"  Full rebuild from {fetch_start_year}-{fetch_start_month:02d}")
-        fetch_end_year, fetch_end_month = yesterday.year, yesterday.month
-
-    # Row-trend guard only applies when extending existing data (not backfilling from scratch)
-    use_incremental = hf_download_ok and not args.year and not args.init
-
-    total_files = 0
-
-    # ── Phase 1: Fetch all months, accumulate per-instrument chunks ───────
-    # New data is small (~370K rows/month/instrument).  Accumulating across
-    # all months avoids reloading the large existing parquets every month.
-    all_inst_chunks: dict[str, list[pd.DataFrame]] = {inst: [] for inst in INSTRUMENTS}
-
-    for year, month in generate_months(fetch_start_year, fetch_start_month,
-                                       fetch_end_year, fetch_end_month):
-        print(f"\n── {year}-{month:02d} ─────────────────────────────────────────")
-
-        filenames = list_tab_files(year, month)
-        if not filenames:
-            print("  No files, skipping")
-            time.sleep(1)
-            continue
-
-        print(f"  Fetching {len(filenames)} files...")
-        parsed_files = 0
-        for fname in filenames:
-            df_file = download_and_parse(year, month, fname)
-            if df_file is not None and not df_file.empty:
-                for instrument in INSTRUMENTS:
-                    chunk = extract_instrument_df(df_file, instrument)
-                    if not chunk.empty:
-                        all_inst_chunks[instrument].append(chunk)
-                parsed_files += 1
-                total_files += 1
-                del df_file
-            time.sleep(0.5)
-
-        if parsed_files == 0:
-            print("  No data parsed, skipping")
-        else:
-            print(f"  {parsed_files} files parsed")
-        time.sleep(1)
-
-    if total_files == 0:
-        print("\nNo files fetched — nothing to do.")
-        shutil.rmtree(work_dir, ignore_errors=True)
-        return
-
-    # ── Phase 2: Merge with existing, one instrument at a time ────────────
-    print("\n── Merging with existing data ──────────────────────────────────")
-    any_updated = False
-    for instrument in INSTRUMENTS:
-        chunks = all_inst_chunks.pop(instrument)
-        if chunks:
-            df_inst_new = pd.concat(chunks, ignore_index=True)
-            del chunks
-        else:
-            df_inst_new = pd.DataFrame()
-
-        df_inst_existing = load_existing_instrument(instrument, work_dir)
-
-        if df_inst_existing is not None and not df_inst_new.empty:
-            df_inst = pd.concat([df_inst_existing, df_inst_new], ignore_index=True)
-            del df_inst_existing, df_inst_new
-            df_inst = df_inst.drop_duplicates(subset=["time"], keep="last")
-            print(f"  {instrument}: merged → {len(df_inst):,} rows")
-        elif df_inst_existing is not None:
-            df_inst = df_inst_existing
-            del df_inst_existing
-            print(f"  {instrument}: {len(df_inst):,} rows (no new data)")
-        elif not df_inst_new.empty:
-            df_inst = df_inst_new
-            del df_inst_new
-            print(f"  {instrument}: new {len(df_inst):,} rows")
-        else:
-            continue
-
-        df_inst = df_inst.sort_values("time").reset_index(drop=True)
-
-        before_cols = len(df_inst.columns)
-        before_rows = len(df_inst)
-        df_inst = clean_instrument_df(df_inst)
-        dropped_cols = before_cols - len(df_inst.columns)
-        dropped_rows = before_rows - len(df_inst)
-        if dropped_cols or dropped_rows:
-            print(f"    Cleaned: dropped {dropped_cols} cols, {dropped_rows:,} rows")
-
-        if df_inst.empty or len(df_inst.columns) <= 1:
-            print(f"    {instrument}: empty after cleaning, skipping")
-            continue
-
-        inst_dir = work_dir / "data" / instrument
-        inst_dir.mkdir(parents=True, exist_ok=True)
-        out = inst_dir / f"{instrument}.parquet"
-        df_inst.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"    Written: {size_mb:.1f} MB ({len(df_inst):,} rows, {len(df_inst.columns)} cols)")
-        del df_inst
-        any_updated = True
-
-    if not any_updated:
-        print("\nNothing updated.")
-        shutil.rmtree(work_dir, ignore_errors=True)
-        return
-
-    # ── Phase 3: Validate, generate README, upload once ───────────────────
-    df_spice = load_existing_instrument("spice", work_dir)
-    if df_spice is not None:
-        check_dataset(
-            df_spice,
-            "maven",
-            min_rows=100_000,
-            expected_columns=["time", "spice_altitude"],
-            critical_columns=["time"],
-            incremental=use_incremental,
-        )
-        time_min = df_spice["time"].min().strftime("%Y-%m-%d")
-        time_max = df_spice["time"].max().strftime("%Y-%m-%d")
-        del df_spice
-    else:
-        time_min = time_max = f"{fetch_end_year}-{fetch_end_month:02d}"
-
-    print("\n── Uploading to HF ────────────────────────────────────────────")
-    write_readme_and_upload(work_dir, time_min, time_max)
-
-    # Final row count across all instruments
-    n_total = sum(
-        pq.read_metadata(work_dir / "data" / inst / f"{inst}.parquet").num_rows
-        for inst in INSTRUMENTS
-        if (work_dir / "data" / inst / f"{inst}.parquet").exists()
-    )
-
-    print(f"\nDone. {total_files} files, {n_total:,} total rows.")
-    print(f"  Work directory: {work_dir} (safe to delete)")
-    shutil.rmtree(work_dir, ignore_errors=True)
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={n_total}\n")
+    emit_output(rows=n_total)
+    print("Done.")
 
 
 if __name__ == "__main__":

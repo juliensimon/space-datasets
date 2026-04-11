@@ -1,17 +1,10 @@
 #!/usr/bin/env python3
 """Fetch comet catalog from Wikidata and upload to HF."""
 
-import os
-import subprocess
-import tempfile
-from pathlib import Path
-
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
-
+from hf_dataset_utils import Pipeline
 
 HF_REPO = "juliensimon/comet-catalog"
 
@@ -34,6 +27,40 @@ WHERE {
   OPTIONAL { ?comet wdt:P6259 ?epoch. }
   SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul". }
 }
+"""
+
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "wikidata_id": "Wikidata entity ID (e.g. 'Q1390' for Halley's Comet); stable URI key for enrichment joins; links to full orbital history, discovery details, and apparition records in the knowledge graph",
+    "name": "Comet name or designation (e.g. '1P/Halley', 'C/1995 O1 (Hale-Bopp)'); periodic comets use the NP/ prefix (N=number, P=periodic); non-periodic use C/; interstellar use I/",
+    "discovery_date": "ISO 8601 date (YYYY-MM-DD) of the discovery observation; null for historically known comets (e.g. Halley, visible since antiquity) or where records are too uncertain to assign a precise date",
+    "discoverer": "Name(s) of the person(s) or survey program credited with discovery; null for historically anonymous comets; modern entries may list an observatory or automated survey (e.g. LINEAR, NEOWISE)",
+    "orbital_period_yr": "Orbital period in years; short-period (Jupiter-family) comets are typically <20 yr; Halley-type 20-200 yr; long-period >200 yr; null for hyperbolic or parabolic orbits where the comet makes a single unbound pass",
+    "perihelion_au": "Closest approach distance to the Sun in AU; determines peak cometary activity and tail development; <1 AU enters the inner solar system; <0.3 AU is the sungrazing regime",
+    "eccentricity": "Orbital eccentricity; 0 = circular, <1 = elliptical (bound), =1 = parabolic, >1 = hyperbolic (unbound, possibly of interstellar origin); null when orbital solution is unavailable",
+    "inclination_deg": "Orbital inclination relative to the ecliptic plane in degrees (0-180); <30 indicates prograde low-inclination orbit typical of Jupiter-family comets; >90 indicates retrograde orbit",
+    "named_after": "Entity (person, place, or concept) that the comet's name commemorates, distinct from the discoverer; null when the comet is named solely after its discoverer(s)",
+    "epoch": "Reference epoch for the orbital elements in ISO 8601 format (YYYY-MM-DD); elements are valid near this date and diverge for predictions far from the epoch; null when orbital solution is absent",
+    "discovery_year": "Year of discovery derived from discovery_date; retained as a standalone column for easy filtering and grouping; null when discovery_date is null",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Catalog of comets sourced from Wikidata, including orbital parameters, discovery dates, \
+discoverers, and named-after information.
+
+Comets are small icy bodies that develop a coma and tails when approaching the Sun. \
+They originate from the Kuiper Belt and Oort Cloud and follow highly eccentric orbits \
+ranging from short-period comets (< 200 years) to long-period and hyperbolic visitors.
+
+This dataset aggregates structured comet data from Wikidata's SPARQL endpoint, capturing \
+orbital mechanics (period, perihelion distance, eccentricity, inclination), discovery \
+metadata (date, discoverer), and cultural information (named-after entities). It covers \
+historically significant comets like Halley's Comet and Hale-Bopp through recently \
+discovered objects.
+
+The data enables studies of comet population statistics, orbital dynamics, discovery \
+rate trends over time, and the history of comet observation and naming conventions.
 """
 
 
@@ -81,7 +108,6 @@ def fetch_comets() -> pd.DataFrame:
     df = pd.DataFrame(rows)
 
     # Deduplicate on wikidata_id: keep the most complete row
-    # Score completeness by count of non-null fields
     df["_completeness"] = df.notna().sum(axis=1)
     df = df.sort_values("_completeness", ascending=False).drop_duplicates(
         subset=["wikidata_id"], keep="first"
@@ -105,18 +131,13 @@ def main():
     # Derive discovery_year
     df["discovery_year"] = pd.to_datetime(df["discovery_date"], errors="coerce").dt.year
 
-    # Cast numeric columns to proper float types
-    for col in ["orbital_period_yr", "perihelion_au", "eccentricity", "inclination_deg"]:
-        df[col] = pd.to_numeric(df[col], errors="coerce").astype("Float64")
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
     df = df.sort_values("name").reset_index(drop=True)
     print(f"  {len(df):,} unique comets")
 
-    check_dataset(df, "comets", min_rows=500,
-                  expected_columns=["name"],
-                  critical_columns=["name"])
-
-    # Stats for README
+    # ── Domain-specific stats for README ─────────────────────────────
     n = len(df)
     n_with_period = int(df["orbital_period_yr"].notna().sum())
     n_with_perihelion = int(df["perihelion_au"].notna().sum())
@@ -124,108 +145,24 @@ def main():
     n_with_ecc = int(df["eccentricity"].notna().sum())
     n_with_year = int(df["discovery_year"].notna().sum())
 
-    # Earliest and latest discovery years
     min_year = int(df["discovery_year"].min()) if n_with_year > 0 else "N/A"
     max_year = int(df["discovery_year"].max()) if n_with_year > 0 else "N/A"
 
-    # Top discoverers
     top_discoverers = df["discoverer"].value_counts().head(5)
     top_disc_str = ", ".join(
         f"{d} ({c:,})" for d, c in top_discoverers.items()
     )
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "comets.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_kb = out.stat().st_size / 1024
-        print(f"  {size_kb:.0f} KB parquet")
-
-        banner_file = download_banner("comets", tmp)
-        banner_md = banner_markdown("comets", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc0-1.0
-pretty_name: "Comet Catalog"
-language:
-  - en
-description: >-
-  Catalog of comets sourced from Wikidata, including orbital parameters,
-  discovery dates, discoverers, and named-after information.
-  {n:,} comets with orbital mechanics data.
-size_categories:
-  - 1K<n<10K
-task_categories:
-  - tabular-classification
-tags:
-  - space
-  - comets
-  - orbital-mechanics
-  - wikidata
-  - open-data
-  - tabular-data
-  - parquet
-configs:
-  - config_name: default
-    default: true
-    data_files:
-      - split: train
-        path: data/comets.parquet
----
-
-# Comet Catalog
-{banner_md}
-*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
-
-Catalog of **{n:,}** comets sourced from [Wikidata](https://www.wikidata.org/), covering
-orbital parameters, discovery history, and naming origins.
-
-## Dataset description
-
-Comets are small icy bodies that develop a coma and tails when approaching the Sun.
-They originate from the Kuiper Belt and Oort Cloud and follow highly eccentric orbits
-ranging from short-period comets (< 200 years) to long-period and hyperbolic visitors.
-
-This dataset aggregates structured comet data from Wikidata's SPARQL endpoint, capturing
-orbital mechanics (period, perihelion distance, eccentricity, inclination), discovery
-metadata (date, discoverer), and cultural information (named-after entities). It covers
-historically significant comets like Halley's Comet and Hale-Bopp through recently
-discovered objects.
-
-The data enables studies of comet population statistics, orbital dynamics, discovery
-rate trends over time, and the history of comet observation and naming conventions.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `wikidata_id` | string | Wikidata entity ID (e.g. "Q1390" for Halley's Comet); stable URI key for enrichment joins; links to full orbital history, discovery details, and apparition records in the knowledge graph |
-| `name` | string | Comet name or designation (e.g. "1P/Halley", "C/1995 O1 (Hale-Bopp)"); periodic comets use the NP/ prefix (N=number, P=periodic); non-periodic use C/; interstellar use I/ |
-| `discovery_date` | string | ISO 8601 date (YYYY-MM-DD) of the discovery observation; null for historically known comets (e.g. Halley, visible since antiquity) or where records are too uncertain to assign a precise date |
-| `discoverer` | string | Name(s) of the person(s) or survey program credited with discovery; null for historically anonymous comets; modern entries may list an observatory or automated survey (e.g. LINEAR, NEOWISE) |
-| `orbital_period_yr` | float | Orbital period in years; short-period (Jupiter-family) comets are typically <20 yr; Halley-type 20–200 yr; long-period >200 yr; null for hyperbolic or parabolic orbits where the comet makes a single unbound pass |
-| `perihelion_au` | float | Closest approach distance to the Sun in AU; determines peak cometary activity and tail development; <1 AU enters the inner solar system; <0.3 AU is the sungrazing regime |
-| `eccentricity` | float | Orbital eccentricity; 0 = circular, <1 = elliptical (bound), =1 = parabolic, >1 = hyperbolic (unbound, possibly of interstellar origin); null when orbital solution is unavailable |
-| `inclination_deg` | float | Orbital inclination relative to the ecliptic plane in degrees (0–180); <30° indicates prograde low-inclination orbit typical of Jupiter-family comets; >90° indicates retrograde orbit |
-| `named_after` | string | Entity (person, place, or concept) that the comet's name commemorates, distinct from the discoverer; null when the comet is named solely after its discoverer(s) |
-| `epoch` | string | Reference epoch for the orbital elements in ISO 8601 format (YYYY-MM-DD); elements are valid near this date and diverge for predictions far from the epoch; null when orbital solution is absent |
-| `discovery_year` | int | Year of discovery derived from `discovery_date`; retained as a standalone column for easy filtering and grouping; null when `discovery_date` is null |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n:,}** comets in catalog
 - **{n_with_period:,}** with orbital period data
 - **{n_with_perihelion:,}** with perihelion distance
 - **{n_with_ecc:,}** with eccentricity
 - **{n_with_discoverer:,}** with named discoverer
-- Discovery years: {min_year} – {max_year}
-- Top discoverers: {top_disc_str}
+- Discovery years: {min_year} -- {max_year}
+- Top discoverers: {top_disc_str}"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -234,7 +171,7 @@ df = ds.to_pandas()
 
 # Short-period comets (period < 200 years)
 short_period = df[df["orbital_period_yr"] < 200].dropna(subset=["orbital_period_yr"])
-print(f"{{len(short_period):,}} short-period comets")
+print(f"{len(short_period):,} short-period comets")
 
 # Most recently discovered comets
 recent = df.dropna(subset=["discovery_year"]).nlargest(10, "discovery_year")
@@ -244,65 +181,53 @@ print(recent[["name", "discovery_year", "discoverer"]])
 high_ecc = df[df["eccentricity"] >= 0.99].dropna(subset=["eccentricity"])
 print(high_ecc[["name", "eccentricity", "orbital_period_yr"]])
 
-# Comets by perihelion distance
-inner = df[df["perihelion_au"] < 0.3].dropna(subset=["perihelion_au"])
-print(f"{{len(inner):,}} sungrazing comets (perihelion < 0.3 AU)")
-```
+# Perihelion distance distribution
+import matplotlib.pyplot as plt
+valid = df.dropna(subset=["perihelion_au"])
+plt.hist(valid["perihelion_au"], bins=50, range=(0, 10))
+plt.xlabel("Perihelion distance (AU)")
+plt.ylabel("Count")
+plt.title("Comet Perihelion Distribution")
+plt.show()
+```"""
 
-## Data source
-
-[Wikidata](https://www.wikidata.org/) SPARQL endpoint. Comets identified via
-P31 (instance of) / P279* (subclass of) traversal from Q3559 (comet).
-Data is community-curated by [WikiProject Astronomy](https://www.wikidata.org/wiki/Wikidata:WikiProject_Astronomy).
-
-## Update schedule
-
-Quarterly (January, April, July, October). Run `python scripts/update-comets.py` manually to refresh.
-
-## Related datasets
-
-- [mpc-comet-elements](https://huggingface.co/datasets/juliensimon/mpc-comet-elements) -- MPC orbital elements for comets
-- [jpl-small-body-database](https://huggingface.co/datasets/juliensimon/jpl-small-body-database) -- JPL small body orbital data
-- [fireball-bolide-events](https://huggingface.co/datasets/juliensimon/fireball-bolide-events) -- Fireball and bolide events
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/comet-catalog) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{comet_catalog,
-  author = {{Simon, Julien}},
-  title = {{Comet Catalog}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/comet-catalog}},
-  note = {{Sourced from Wikidata (CC0)}}
-}}
-```
-
-## License
-
-[CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (Wikidata content is public domain)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update comet catalog: {n:,} comets"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Comet Catalog",
+        description=DESCRIPTION,
+        license="cc0-1.0",
+        tags=["space", "comets", "orbital-mechanics", "wikidata",
+              "open-data", "tabular-data", "parquet"],
+        source_url="https://www.wikidata.org/",
+        task_categories=["tabular-classification"],
+        collection_url="https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA17666/PIA17666~small.jpg",
+            "alt": "Rosetta spacecraft approaching Comet 67P/Churyumov-Gerasimenko",
+            "credit": "NASA/ESA",
+        },
+        related_datasets=[
+            "juliensimon/mpc-comet-elements",
+            "juliensimon/jpl-small-body-database",
+            "juliensimon/fireball-bolide-events",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=["orbital_period_yr", "perihelion_au", "eccentricity", "inclination_deg"],
+            strings=["name", "discoverer", "named_after", "epoch"],
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={n}\n")
+        p.publish(
+            df,
+            filename="comets.parquet",
+            min_rows=500,
+            expected_columns=["name"],
+            critical_columns=["name"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update comet catalog: {n:,} comets",
+        )
     print("Done.")
 
 

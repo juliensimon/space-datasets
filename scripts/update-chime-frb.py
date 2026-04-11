@@ -1,24 +1,87 @@
 #!/usr/bin/env python3
-"""Fetch CHIME/FRB Catalog from VizieR and upload to HF."""
+"""Fetch CHIME/FRB Catalog from VizieR and upload to HF.
 
-import os
-import subprocess
-import tempfile
-from pathlib import Path
+Source: CHIME/FRB Collaboration (2021, ApJS, 257, 59)
+VizieR catalog: J/ApJS/257/59/table2
+"""
 
 import pandas as pd
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
-from vizier_tap import vizier_query
-
+from hf_dataset_utils import Pipeline
+from hf_dataset_utils.tap import vizier_query
 
 HF_REPO = "juliensimon/chime-frb-catalog"
 
+# ── Source query ────────────────────────────────────────────────────
 ADQL = """\
 SELECT Name, RpName, RAJ2000, DEJ2000, GLON, GLAT, SNR, DM, DMfitb, \
 bcwidth, Scat, Flux, Fluence, Nsb \
 FROM "J/ApJS/257/59/table2"\
+"""
+
+# ── Column mapping ──────────────────────────────────────────────────
+RENAME = {
+    "Name": "tns_name",
+    "RpName": "repeater_name",
+    "RAJ2000": "ra_deg",
+    "DEJ2000": "dec_deg",
+    "GLON": "glon_deg",
+    "GLAT": "glat_deg",
+    "SNR": "snr",
+    "DM": "dm_pc_cm3",
+    "DMfitb": "dm_fitb_pc_cm3",
+    "bcwidth": "width_ms",
+    "Scat": "scattering_time_ms",
+    "Flux": "flux_jy",
+    "Fluence": "fluence_jy_ms",
+    "Nsb": "sub_burst_count",
+}
+
+# ── Column descriptions for README schema table ────────────────────
+COLUMN_DESCRIPTIONS = {
+    "tns_name": "Transient Name Server designation encoding the discovery date (e.g. 'FRB 20181030A' = detected 2018 Oct 30, first event that day); the canonical identifier for cross-referencing with other catalogs",
+    "repeater_name": "Common name of the repeating source this burst belongs to (e.g. 'FRB 20121102A'); null for apparent one-off events; non-null values rule out cataclysmic progenitor models for that source",
+    "ra_deg": "Right ascension of best-fit burst position (ICRS J2000.0, degrees, 0-360); CHIME localization precision is typically 10-30 arcmin due to the instrument's fixed north-south orientation",
+    "dec_deg": "Declination of best-fit burst position (ICRS J2000.0, degrees, -90 to +90); CHIME is sensitive to declinations above roughly -20 deg",
+    "glon_deg": "Galactic longitude (degrees, 0-360); used to assess line-of-sight Milky Way DM contribution and scattering screen effects",
+    "glat_deg": "Galactic latitude (degrees, -90 to +90); bursts at low |b| have higher Milky Way DM contributions and stronger scattering",
+    "dm_pc_cm3": "Dispersion Measure -- integrated free-electron column density along the line of sight (pc/cm3); extragalactic FRBs typically 100-2500 pc/cm3; subtract Milky Way contribution to obtain host+IGM DM, a crude redshift proxy",
+    "dm_fitb_pc_cm3": "DM measured by fitting the burst structure (pc/cm3); may differ from dm_pc_cm3 when the burst has complex sub-structure; null if structure-based fitting was not performed",
+    "width_ms": "Burst width at 600 MHz after intra-channel dedispersion (ms); FRBs span ~0.1-100 ms; very narrow widths (<1 ms) constrain the emission region size",
+    "flux_jy": "Peak flux density at the fiducial reference frequency (Jy; 1 Jy = 10^-26 W/m2/Hz); null when only an upper or lower limit is available",
+    "fluence_jy_ms": "Burst fluence -- flux density integrated over the burst duration (Jy*ms); proportional to detected energy; used to construct the FRB energy function",
+    "scattering_time_ms": "Temporal broadening of the burst due to multi-path scattering in turbulent plasma (ms at 600 MHz); scales steeply with DM; null when the burst is unresolved",
+    "snr": "Signal-to-noise ratio of the detection in the CHIME/FRB real-time pipeline; drives the detection completeness function; bursts near the threshold (SNR ~8-10) have less reliable morphology parameters",
+    "sub_burst_count": "Number of distinct sub-bursts identified within the event envelope; values >=2 indicate temporal fine structure common in repeating sources; null when sub-burst decomposition was not attempted",
+    "is_repeater": "True if this burst originates from a source with at least one other detected burst in the catalog or literature; False for apparent one-off events; repeaters have distinct morphological and spectral properties",
+}
+
+# ── Dataset description ─────────────────────────────────────────────
+DESCRIPTION = """\
+Fast Radio Bursts (FRBs) detected by the Canadian Hydrogen Intensity Mapping Experiment \
+(CHIME) telescope -- one of the most exciting mysteries in modern astrophysics.
+
+First discovered in 2007, FRBs are millisecond-duration radio transients of extragalactic \
+origin whose physical origin remains debated, though magnetars are a leading candidate. \
+CHIME, a radio telescope at the Dominion Radio Astrophysical Observatory in British Columbia, \
+Canada, has revolutionized FRB science by detecting hundreds of bursts thanks to its enormous \
+field of view (~200 square degrees) and continuous operation at 400-800 MHz.
+
+The First CHIME/FRB Catalog (CHIME/FRB Collaboration, 2021, ApJS, 257, 59) contains FRBs \
+detected between 2018 July 25 and 2019 July 1, representing the largest uniform FRB sample \
+to date.
+
+The dispersion measure (DM) recorded for each burst encodes the integrated column density \
+of free electrons along the line of sight, making FRBs powerful probes of the intergalactic \
+medium and the so-called 'missing baryons' problem. High-DM events trace sightlines through \
+cosmological distances where the intervening plasma imprints information about large-scale \
+structure, the epoch of helium reionization, and the baryon content of the cosmic web.
+
+Repeating sources are of particular scientific interest because they rule out cataclysmic \
+progenitor models and constrain the local environment of the source. Burst morphology \
+parameters such as scattering time and sub-burst structure encode propagation effects \
+through turbulent plasma, providing diagnostics of the circum-source and host-galaxy \
+interstellar medium at extragalactic distances.
 """
 
 
@@ -27,31 +90,7 @@ def main():
     df = vizier_query(ADQL)
     print(f"  {len(df):,} FRB events")
 
-    # Rename columns
-    df = df.rename(columns={
-        "Name": "tns_name",
-        "RpName": "repeater_name",
-        "RAJ2000": "ra_deg",
-        "DEJ2000": "dec_deg",
-        "GLON": "glon_deg",
-        "GLAT": "glat_deg",
-        "SNR": "snr",
-        "DM": "dm_pc_cm3",
-        "DMfitb": "dm_fitb_pc_cm3",
-        "bcwidth": "width_ms",
-        "Scat": "scattering_time_ms",
-        "Flux": "flux_jy",
-        "Fluence": "fluence_jy_ms",
-        "Nsb": "sub_burst_count",
-    })
-
-    # Derive is_repeater from repeater_name
-    # Convert numerics
-    numeric_cols = ["ra_deg", "dec_deg", "dm_pc_cm3", "width_ms", "flux_jy",
-                    "fluence_jy_ms", "scattering_time_ms", "snr", "sub_burst_count"]
-    for col in numeric_cols:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
+    df = df.rename(columns={k: v for k, v in RENAME.items() if k in df.columns})
 
     # Clean string columns
     for col in df.select_dtypes(include=["object"]).columns:
@@ -63,115 +102,24 @@ def main():
     if "repeater_name" in df.columns:
         df["is_repeater"] = df["repeater_name"].notna() & (df["repeater_name"] != "-9999") & (df["repeater_name"] != "<NA>")
 
-    check_dataset(df, "chime-frb", min_rows=500,
-        expected_columns=["tns_name", "ra_deg", "dec_deg", "dm_pc_cm3"],
-        critical_columns=["tns_name", "dm_pc_cm3"])
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
-    # Stats for README
+    # ── Domain-specific stats for README ────────────────────────────
     n_total = len(df)
     n_repeaters = int(df["is_repeater"].sum()) if "is_repeater" in df.columns and df["is_repeater"].dtype == bool else 0
     median_dm = df["dm_pc_cm3"].median() if "dm_pc_cm3" in df.columns else 0
     max_dm = df["dm_pc_cm3"].max() if "dm_pc_cm3" in df.columns else 0
     median_snr = df["snr"].median() if "snr" in df.columns else 0
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "chime_frb_catalog.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("chime-frb", tmp)
-        banner_md = banner_markdown("chime-frb", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "CHIME/FRB Catalog"
-language:
-  - en
-description: "Fast Radio Bursts detected by the Canadian Hydrogen Intensity Mapping Experiment (CHIME), the world's most prolific FRB detector. Sourced via VizieR CDS Strasbourg."
-task_categories:
-  - tabular-classification
-tags:
-  - space
-  - frb
-  - fast-radio-burst
-  - chime
-  - radio
-  - astronomy
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 1K<n<10K
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/chime_frb_catalog.parquet
-    default: true
----
-
-# CHIME/FRB Catalog
-{banner_md}
-*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
-
-![Update CHIME/FRB](https://github.com/juliensimon/space-datasets/actions/workflows/update-chime-frb.yml/badge.svg)
-![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.chime-frb&label=updated&color=brightgreen)
-
-Fast Radio Bursts (FRBs) detected by the Canadian Hydrogen Intensity Mapping Experiment (CHIME)
-telescope. Currently **{n_total:,}** FRB events from the First CHIME/FRB Catalog.
-
-## Dataset description
-
-Fast Radio Bursts are millisecond-duration radio transients of extragalactic origin -- one of
-the most exciting mysteries in modern astrophysics. First discovered in 2007, their physical
-origin remains debated, though magnetars are a leading candidate. CHIME, a radio telescope
-at the Dominion Radio Astrophysical Observatory in British Columbia, Canada, has revolutionized
-FRB science by detecting hundreds of bursts thanks to its enormous field of view
-(~200 square degrees) and continuous operation at 400-800 MHz.
-
-The First CHIME/FRB Catalog (CHIME/FRB Collaboration, 2021, ApJS, 257, 59) contains FRBs
-detected between 2018 July 25 and 2019 July 1, representing the largest uniform FRB sample
-to date.
-
-The dispersion measure (DM) recorded for each burst encodes the integrated column density of free electrons along the line of sight, making FRBs powerful probes of the intergalactic medium and the so-called "missing baryons" problem. High-DM events trace sightlines through cosmological distances where the intervening plasma imprints information about large-scale structure, the epoch of helium reionization, and the baryon content of the cosmic web. The relationship between DM and redshift, once calibrated with host galaxy identifications, turns each FRB into a cosmological ruler.
-
-Repeating sources are of particular scientific interest because they rule out cataclysmic progenitor models and constrain the local environment of the source. The CHIME catalog's uniform selection function across a wide field of view makes it possible to derive the intrinsic FRB rate, the luminosity function, and the repeater fraction with controlled systematics. Burst morphology parameters such as scattering time and sub-burst structure encode propagation effects through turbulent plasma, providing diagnostics of the circum-source and host-galaxy interstellar medium at extragalactic distances.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `tns_name` | string | Transient Name Server designation encoding the discovery date (e.g. "FRB 20181030A" = detected 2018 Oct 30, first event that day); the canonical identifier for cross-referencing with other catalogs |
-| `repeater_name` | string | Common name of the repeating source this burst belongs to (e.g. "FRB 20121102A"); null for apparent one-off events; non-null values rule out cataclysmic progenitor models for that source |
-| `ra_deg` | float64 | Right ascension of best-fit burst position (ICRS J2000.0, degrees, 0–360); CHIME localization precision is typically 10–30 arcmin due to the instrument's fixed north-south orientation |
-| `dec_deg` | float64 | Declination of best-fit burst position (ICRS J2000.0, degrees, −90 to +90); CHIME is sensitive to declinations above roughly −20° |
-| `glon_deg` | float64 | Galactic longitude (degrees, 0–360); used to assess line-of-sight Milky Way DM contribution and scattering screen effects |
-| `glat_deg` | float64 | Galactic latitude (degrees, −90 to +90); bursts at low |b| have higher Milky Way DM contributions and stronger scattering |
-| `dm_pc_cm3` | float64 | Dispersion Measure — integrated free-electron column density along the line of sight (pc/cm³); extragalactic FRBs typically 100–2500 pc/cm³; subtract Milky Way contribution (30–500 pc/cm³, from NE2001/YMW16 models) to obtain host+IGM DM, a crude redshift proxy |
-| `dm_fitb_pc_cm3` | float64 | DM measured by fitting the burst structure (pc/cm³); may differ from `dm_pc_cm3` when the burst has complex sub-structure; null if structure-based fitting was not performed |
-| `width_ms` | float64 | Burst width at 600 MHz after intra-channel dedispersion (ms); FRBs span ~0.1–100 ms; very narrow widths (<1 ms) constrain the emission region size and rule out extended source models |
-| `flux_jy` | float64 | Peak flux density at the fiducial reference frequency (Jy; 1 Jy = 10⁻²⁶ W/m²/Hz); null when only an upper or lower limit is available |
-| `fluence_jy_ms` | float64 | Burst fluence — flux density integrated over the burst duration (Jy·ms); proportional to detected energy; used to construct the FRB energy function; null when burst profile is incomplete |
-| `scattering_time_ms` | float64 | Temporal broadening of the burst due to multi-path scattering in turbulent plasma (ms at 600 MHz); scales steeply with DM (∝ DM²); null when the burst is unresolved or scattering is below detection threshold |
-| `snr` | float64 | Signal-to-noise ratio of the detection in the CHIME/FRB real-time pipeline; drives the detection completeness function; bursts near the threshold (SNR ~8–10) have less reliable morphology parameters |
-| `sub_burst_count` | float64 | Number of distinct sub-bursts identified within the event envelope; values ≥2 indicate temporal fine structure common in repeating sources; null when sub-burst decomposition was not attempted |
-| `is_repeater` | bool | True if this burst originates from a source with at least one other detected burst in the catalog or literature; False for apparent one-off events; repeaters have distinct morphological and spectral properties |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n_total:,}** FRB events
 - **{n_repeaters}** from repeating sources
 - Median DM: **{median_dm:.1f}** pc/cm^3
 - Max DM: **{max_dm:.1f}** pc/cm^3
-- Median S/N: **{median_snr:.1f}**
+- Median S/N: **{median_snr:.1f}**"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -184,75 +132,64 @@ df["dm_pc_cm3"].hist(bins=50)
 plt.xlabel("Dispersion Measure (pc/cm^3)")
 plt.ylabel("Count")
 plt.title("CHIME/FRB DM Distribution")
+plt.show()
 
 # Repeaters vs one-offs
 repeaters = df[df["is_repeater"] == True]
 one_offs = df[df["is_repeater"] == False]
-print(f"Repeaters: {{len(repeaters)}}, One-offs: {{len(one_offs)}}")
+print(f"{len(repeaters)} repeaters, {len(one_offs)} one-offs")
 
-# Sky distribution
+# Sky distribution colored by DM
 plt.figure(figsize=(12, 6))
 plt.scatter(df["ra_deg"], df["dec_deg"], c=df["dm_pc_cm3"], s=5, cmap="viridis")
 plt.colorbar(label="DM (pc/cm^3)")
 plt.xlabel("RA (deg)")
 plt.ylabel("Dec (deg)")
 plt.title("CHIME/FRB Sky Distribution")
-```
+plt.show()
+```"""
 
-## Data source
-
-[CHIME/FRB Collaboration](https://www.chime-frb.ca/), 2021, ApJS, 257, 59.
-"The First CHIME/FRB Fast Radio Burst Catalog", accessed via
-[VizieR](https://vizier.cds.unistra.fr/), CDS Strasbourg.
-
-## Update schedule
-
-Semi-annually (1st of the month at 06:00 UTC) via [GitHub Actions](https://github.com/juliensimon/space-datasets).
-
-## Related datasets
-
-- [pulsar-catalog](https://huggingface.co/datasets/juliensimon/pulsar-catalog) -- ATNF Pulsar Catalogue
-- [gamma-ray-bursts](https://huggingface.co/datasets/juliensimon/gamma-ray-bursts) -- Fermi GBM Gamma-Ray Burst Catalog
-- [gravitational-waves](https://huggingface.co/datasets/juliensimon/gravitational-wave-events) -- LIGO/Virgo Gravitational Wave Events
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/chime-frb-catalog) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{chime_frb_catalog,
-  author = {{Simon, Julien}},
-  title = {{CHIME/FRB Catalog}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/chime-frb-catalog}},
-  note = {{Based on CHIME/FRB Collaboration (2021, ApJS, 257, 59) via VizieR CDS Strasbourg}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update CHIME/FRB catalog: {n_total:,} events"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="CHIME/FRB Catalog",
+        description=DESCRIPTION,
+        tags=["space", "frb", "fast-radio-burst", "chime", "radio",
+              "astronomy", "open-data", "tabular-data", "parquet"],
+        source_url="https://vizier.cds.unistra.fr/viz-bin/VizieR-3?-source=J/ApJS/257/59",
+        task_categories=["tabular-classification"],
+        collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA13277/PIA13277~small.jpg",
+            "alt": "Deep Space Network antenna at Goldstone",
+            "credit": "NASA/JPL-Caltech",
+        },
+        related_datasets=[
+            "juliensimon/pulsar-catalog",
+            "juliensimon/gamma-ray-bursts",
+            "juliensimon/gravitational-wave-events",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=[
+                "ra_deg", "dec_deg", "dm_pc_cm3", "dm_fitb_pc_cm3",
+                "width_ms", "flux_jy", "fluence_jy_ms",
+                "scattering_time_ms", "snr", "sub_burst_count",
+                "glon_deg", "glat_deg",
+            ],
+            drop_mostly_null_threshold=0.95,
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={len(df)}\n")
+        p.publish(
+            df,
+            filename="chime_frb_catalog.parquet",
+            min_rows=500,
+            expected_columns=["tns_name", "ra_deg", "dec_deg", "dm_pc_cm3"],
+            critical_columns=["tns_name", "dm_pc_cm3"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update CHIME/FRB catalog: {n_total:,} events",
+        )
     print("Done.")
 
 

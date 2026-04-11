@@ -1,275 +1,152 @@
 #!/usr/bin/env python3
-"""Fetch IceCube Neutrino Point Source Catalog from HEASARC and upload to HF."""
+"""Fetch IceCube Neutrino Point Source Catalog from HEASARC and upload to HF.
 
-import io
-import os
-import re
-import subprocess
-import sys
-import tempfile
-from pathlib import Path
+Source: IceCube Collaboration via NASA HEASARC
+HEASARC table: icecubepsc
+"""
 
 import pandas as pd
-import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
+from hf_dataset_utils.tap import heasarc_query
 
-
-TAP_URL = "https://heasarc.gsfc.nasa.gov/xamin/vo/tap/sync"
 HF_REPO = "juliensimon/icecube-neutrino-catalog"
 
 ADQL = "SELECT * FROM icecubepsc"
 
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "name": "Source designation (e.g. 'TXS 0506+056', 'NGC 1068'); typically the name of the astrophysical counterpart",
+    "ra": "Best-fit right ascension in degrees (J2000.0 ICRS, 0-360)",
+    "dec": "Best-fit declination in degrees (J2000.0 ICRS, -90 to +90); IceCube angular resolution ~0.4 degrees at TeV energies for muon tracks",
+    "ra_deg": "Right ascension in degrees (alternate column from HEASARC, same value as ra when both present)",
+    "dec_deg": "Declination in degrees (alternate column from HEASARC, same value as dec when both present)",
+    "lii": "Galactic longitude in degrees (0-360), derived from equatorial coordinates",
+    "bii": "Galactic latitude in degrees (-90 to +90); sources near the Galactic plane (|b| < 10 degrees) have higher atmospheric muon backgrounds",
+    "ts": "Test statistic from unbinned maximum-likelihood point source analysis; TS > 25 (~5 sigma) is typical discovery threshold",
+    "n_s": "Best-fit number of signal neutrino events attributed to the source above the atmospheric background",
+    "flux": "Best-fit neutrino flux normalization at 100 TeV in GeV/cm2/s",
+    "flux_err": "1-sigma uncertainty on the flux normalization at 100 TeV in GeV/cm2/s",
+    "spectral_index": "Best-fit power-law spectral index of the neutrino energy spectrum (dN/dE proportional to E^-gamma); typical astrophysical: 2.0-2.5",
+    "spectral_index_err": "1-sigma uncertainty on the spectral index",
+}
 
-def fetch_catalog() -> pd.DataFrame:
-    """Try text first (HEASARC prefers pipe-delimited), fall back to CSV, then JSON."""
-    # Attempt 1: pipe-delimited text
-    print("Fetching IceCube Neutrino Point Source Catalog (text)...")
-    resp = requests.get(TAP_URL, params={
-        "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "text", "QUERY": ADQL,
-    }, timeout=120)
-    resp.raise_for_status()
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+IceCube Neutrino Point Source Catalog from NASA HEASARC -- point sources of high-energy \
+astrophysical neutrinos detected by the IceCube Neutrino Observatory at the South Pole.
 
-    lines = [l for l in resp.text.strip().splitlines() if l.strip() and not l.startswith("-")]
-    if len(lines) >= 2:
-        header = [c.strip() for c in lines[0].split("|")]
-        rows = []
-        for line in lines[1:]:
-            rows.append([c.strip() for c in line.split("|")])
-        df = pd.DataFrame(rows, columns=header)
-        df = df.loc[:, df.columns != ""]
-        if len(df) > 10:
-            print(f"  Text parse OK: {len(df):,} rows")
-            return df
+The IceCube Neutrino Observatory is a cubic-kilometer particle detector buried in the \
+Antarctic ice at the South Pole. It detects high-energy neutrinos from astrophysical \
+sources such as active galactic nuclei, blazars, and other extreme cosmic environments.
 
-    # Attempt 2: CSV
-    print("Retrying with FORMAT=csv...")
-    resp = requests.get(TAP_URL, params={
-        "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "csv", "QUERY": ADQL,
-    }, timeout=120)
-    resp.raise_for_status()
+The point source catalog represents the result of searches for statistically significant \
+clustering of neutrino arrival directions above the isotropic atmospheric background. Each \
+candidate source is characterized by a test statistic (TS) reflecting the likelihood of a \
+genuine astrophysical signal versus the null hypothesis, along with a best-fit number of \
+signal events and spectral index. These searches probe hadronic acceleration in jets, \
+accretion flows, and shock environments across the sky.
 
-    if not resp.text.strip().startswith("<?xml"):
-        try:
-            df = pd.read_csv(io.StringIO(resp.text))
-            if len(df) > 10:
-                print(f"  CSV parse OK: {len(df):,} rows")
-                return df
-        except Exception as e:
-            print(f"  CSV parse failed: {e}")
-    else:
-        print("  CSV not supported (got XML/VOTable response)")
-
-    # Attempt 3: JSON
-    print("Retrying with FORMAT=json...")
-    resp = requests.get(TAP_URL, params={
-        "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "json", "QUERY": ADQL,
-    }, timeout=120)
-    resp.raise_for_status()
-
-    try:
-        data = resp.json()
-        if "data" in data and "metadata" in data:
-            cols = [m["name"] for m in data["metadata"]]
-            df = pd.DataFrame(data["data"], columns=cols)
-        else:
-            df = pd.DataFrame(data)
-        if len(df) > 10:
-            print(f"  JSON parse OK: {len(df):,} rows")
-            return df
-    except Exception as e:
-        print(f"  JSON parse failed: {e}")
-
-    print("::error::All fetch formats failed")
-    sys.exit(1)
-
-
-def to_snake_case(name: str) -> str:
-    """Convert column name to snake_case."""
-    s = re.sub(r"[^\w]", "_", name.strip().lower())
-    s = re.sub(r"_+", "_", s).strip("_")
-    return s
+Neutrino point source detection is inherently challenging because the atmospheric neutrino \
+background is orders of magnitude larger than the astrophysical signal, and the angular \
+resolution of muon track reconstruction in ice (~0.5-1 degree at TeV energies) limits the \
+ability to resolve individual sources. Cross-correlation with gamma-ray, X-ray, and radio \
+catalogs is a key strategy for identifying astrophysical counterparts.\
+"""
 
 
 def main():
-    df = fetch_catalog()
+    print("Fetching IceCube Neutrino Point Source Catalog from HEASARC...")
+    df = heasarc_query("icecubepsc", ADQL)
+    print(f"  {len(df):,} sources fetched")
 
-    # Rename columns to snake_case
-    df.columns = [to_snake_case(c) for c in df.columns]
+    # Normalize column names to snake_case
+    df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
 
-    # Coerce numeric columns
+    # Numeric coercion
     numeric_cols = ["ra", "dec", "lii", "bii", "flux", "flux_err",
                     "spectral_index", "spectral_index_err",
                     "n_s", "ts", "dec_deg", "ra_deg"]
-    for col in numeric_cols:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # Clean empty strings to NaN for string columns
+    # Clean string columns
     for col in df.select_dtypes(include="object").columns:
-        if col in df.columns:
-            df[col] = df[col].astype(str).str.strip().replace(
-                {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
-            )
-
-    df = df.reset_index(drop=True)
-
-    n_total = len(df)
-    print(f"  {n_total:,} sources total")
-
-    check_dataset(df, "icecube", min_rows=100,
-                  expected_columns=[c for c in ["ra", "dec"] if c in df.columns],
-                  critical_columns=[c for c in ["ra", "dec"] if c in df.columns])
-
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "icecube_neutrino_catalog.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("icecube", tmp)
-        banner_md = banner_markdown("icecube", banner_file)
-
-        # Build a dynamic column table for columns not covered by the fixed schema below
-        known_cols = {
-            "name", "ra", "dec", "lii", "bii",
-            "flux", "flux_err", "spectral_index", "spectral_index_err",
-            "n_s", "ts", "dec_deg", "ra_deg",
-        }
-        extra_cols = [c for c in df.columns if c not in known_cols]
-        extra_table = "\n".join(
-            f"| `{c}` | {str(df[c].dtype)} | |"
-            for c in extra_cols
+        df[col] = df[col].astype(str).str.strip().replace(
+            {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
         )
 
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "IceCube Neutrino Point Source Catalog"
-language:
-  - en
-description: "IceCube Neutrino Point Source Catalog from NASA HEASARC — point sources of high-energy astrophysical neutrinos detected by the IceCube Neutrino Observatory."
-task_categories:
-  - tabular-classification
-tags:
-  - space
-  - neutrino
-  - icecube
-  - high-energy
-  - astronomy
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - n<1K
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/icecube_neutrino_catalog.parquet
-    default: true
----
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
-# IceCube Neutrino Point Source Catalog
-{banner_md}
-*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
+    df = df.reset_index(drop=True)
+    n_total = len(df)
 
-Point source catalog from the [IceCube Neutrino Observatory](https://icecube.wisc.edu/),
-sourced via NASA HEASARC. Currently **{n_total:,}** sources.
+    # Stats
+    n_with_ts = int(df["ts"].notna().sum()) if "ts" in df.columns else 0
+    max_ts = df["ts"].max() if "ts" in df.columns and n_with_ts > 0 else 0
 
-## Dataset description
-
-The IceCube Neutrino Observatory is a cubic-kilometer particle detector buried in the
-Antarctic ice at the South Pole. It detects high-energy neutrinos from astrophysical
-sources such as active galactic nuclei, blazars, and other extreme cosmic environments.
-This catalog lists point sources identified in IceCube neutrino data.
-
-The point source catalog represents the result of searches for statistically significant clustering of neutrino arrival directions above the isotropic atmospheric background. Each candidate source is characterized by a test statistic (TS) reflecting the likelihood of a genuine astrophysical signal versus the null hypothesis, along with a best-fit number of signal events and spectral index. These searches are sensitive to both steady emitters and time-integrated emission from variable sources, probing hadronic acceleration in jets, accretion flows, and shock environments across the sky.
-
-Neutrino point source detection is inherently challenging because the atmospheric neutrino background is orders of magnitude larger than the astrophysical signal, and the angular resolution of muon track reconstruction in ice (~0.5--1 degree at TeV energies) limits the ability to resolve individual sources. The catalog therefore includes both high-confidence detections and sub-threshold candidates that may become significant with additional exposure. Cross-correlation with gamma-ray, X-ray, and radio catalogs is a key strategy for identifying the astrophysical counterparts and understanding the relative contributions of leptonic and hadronic processes in candidate source populations such as blazars, Seyfert galaxies, and starburst galaxies.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `name` | string | Source designation (e.g., "TXS 0506+056", "NGC 1068") — typically the name of the astrophysical counterpart |
-| `ra` | float64 | Best-fit right ascension in degrees (J2000.0 ICRS) |
-| `dec` | float64 | Best-fit declination in degrees (J2000.0 ICRS); IceCube's angular resolution ~0.4° at TeV energies for muon tracks |
-| `ra_deg` | float64 | Right ascension in degrees (alternate column from HEASARC, same value as `ra` when both present) |
-| `dec_deg` | float64 | Declination in degrees (alternate column from HEASARC, same value as `dec` when both present) |
-| `lii` | float64 | Galactic longitude in degrees (0–360°), derived from equatorial coordinates |
-| `bii` | float64 | Galactic latitude in degrees (−90° to +90°); sources near the Galactic plane (|b| < 10°) have higher atmospheric muon backgrounds |
-| `ts` | float64 | Test statistic from the unbinned maximum-likelihood point source analysis; −2Δln(L) between signal+background and background-only hypotheses; TS > 25 (~5σ) is the typical discovery threshold |
-| `n_s` | float64 | Best-fit number of signal neutrino events attributed to the source above the atmospheric background; even bright sources typically have fewer than 100 associated events |
-| `flux` | float64 | Best-fit neutrino flux normalization at 100 TeV in GeV/cm²/s |
-| `flux_err` | float64 | 1-sigma uncertainty on the flux normalization at 100 TeV in GeV/cm²/s |
-| `spectral_index` | float64 | Best-fit power-law spectral index Γ of the neutrino energy spectrum (dN/dE ∝ E^−Γ); typical astrophysical: Γ ≈ 2.0–2.5; softer spectra (Γ > 2.5) may indicate thermal contributions |
-| `spectral_index_err` | float64 | 1-sigma uncertainty on the spectral index |
-{extra_table}
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n_total:,}** neutrino point sources
+- **{n_with_ts:,}** with test statistic values"""
+    if max_ts > 0:
+        quick_stats += f"\n- Maximum TS: **{max_ts:.1f}**"
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
 ds = load_dataset("juliensimon/icecube-neutrino-catalog", split="train")
 df = ds.to_pandas()
 
+# Most significant sources
+top = df.nlargest(10, "ts")[["name", "ra", "dec", "ts", "n_s", "flux"]]
+print(top)
+
 # Sky map of neutrino sources
-print(f"{{len(df):,}} IceCube point sources")
-```
+import matplotlib.pyplot as plt
+plt.scatter(df["ra"], df["dec"], s=5, alpha=0.6, c=df["ts"], cmap="viridis")
+plt.colorbar(label="Test Statistic")
+plt.xlabel("RA (deg)")
+plt.ylabel("Dec (deg)")
+plt.title("IceCube Neutrino Point Sources")
+plt.show()
+```"""
 
-## Data source
-
-[IceCube Neutrino Observatory](https://icecube.wisc.edu/) via
-[NASA HEASARC](https://heasarc.gsfc.nasa.gov/) TAP service (`icecubepsc` table).
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/icecube-neutrino-catalog) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{icecube_neutrino_catalog,
-  author = {{Simon, Julien}},
-  title = {{IceCube Neutrino Point Source Catalog}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/icecube-neutrino-catalog}},
-  note = {{Based on IceCube data via NASA HEASARC}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update IceCube neutrino catalog: {n_total:,} sources"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="IceCube Neutrino Point Source Catalog",
+        description=DESCRIPTION,
+        tags=["space", "neutrino", "icecube", "high-energy",
+              "astronomy", "open-data", "tabular-data", "parquet"],
+        source_url="https://heasarc.gsfc.nasa.gov/W3Browse/all/icecubepsc.html",
+        task_categories=["tabular-classification"],
+        collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/GSFC_20171208_Archive_e002215/GSFC_20171208_Archive_e002215~medium.jpg",
+            "alt": "The gamma-ray sky as seen by NASA's Fermi telescope",
+            "credit": "NASA/DOE/Fermi LAT Collaboration",
+        },
+        related_datasets=[
+            "juliensimon/fermi-4fgl-dr4",
+            "juliensimon/fermi-4lac-agn-catalog",
+            "juliensimon/chandra-x-ray-sources",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=[c for c in numeric_cols if c in df.columns],
+            drop_mostly_null_threshold=0.95,
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={len(df)}\n")
+        p.publish(
+            df,
+            filename="icecube_neutrino_catalog.parquet",
+            min_rows=100,
+            expected_columns=["name", "ra", "dec"],
+            critical_columns=["ra", "dec"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update IceCube neutrino catalog: {n_total:,} sources",
+        )
     print("Done.")
 
 

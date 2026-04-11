@@ -1,24 +1,23 @@
 #!/usr/bin/env python3
-"""Fetch hourly Dst geomagnetic index from WDC Kyoto and upload to HF."""
+"""Fetch hourly Dst geomagnetic index from WDC Kyoto and upload to HF.
 
-import os
+Source: World Data Center for Geomagnetism, Kyoto
+https://wdc.kugi.kyoto-u.ac.jp/dstdir/
+"""
+
 import re
-import subprocess
-import tempfile
+import sys
 import time
 from datetime import datetime
-from pathlib import Path
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
 
+HF_REPO = "juliensimon/dst-index"
 
 # URL patterns: final (1957-2020), provisional (2021-2025), realtime (recent)
-# .for.request files only exist for some years; HTML index pages have data for all years.
-
 DST_SOURCES = [
     ("final", "https://wdc.kugi.kyoto-u.ac.jp/dst_final/{ym6}/dst{ym4}.for.request", 1957, 2020),
     ("provisional", "https://wdc.kugi.kyoto-u.ac.jp/dst_provisional/{ym6}/dst{ym4}.for.request", 2021, 2025),
@@ -30,8 +29,43 @@ DST_HTML_BASES = {
     "provisional": "https://wdc.kugi.kyoto-u.ac.jp/dst_provisional/{ym6}/index.html",
     "realtime": "https://wdc.kugi.kyoto-u.ac.jp/dst_realtime/{ym6}/index.html",
 }
-HF_REPO = "juliensimon/dst-index"
 
+# ── Column descriptions ─────────────────────────────────────────────
+COLUMN_DESCRIPTIONS = {
+    "datetime": "Hour-averaged timestamp (UTC); Dst has been reported at 1-hour cadence since 1957",
+    "dst_nt": "Disturbance Storm Time index in nT -- measures ring current injection at mid-latitudes; negative values indicate ring current enhancement; quiet: -20 to 0 nT, minor storm: -30 to -50 nT, moderate: -50 to -100 nT, intense: < -100 nT, extreme: < -250 nT",
+    "daily_mean_nt": "24-hour mean Dst (nT) for the calendar day containing this record; smooths over short-duration spikes to represent overall storm level",
+    "quality": "Data quality flag: 'final' (definitive WDC-processed values), 'provisional' (recent months, pending full processing), or 'realtime' (near-real-time, subject to revision)",
+    "is_storm": "True if Dst <= -50 nT, the conventional threshold for a geomagnetic storm",
+    "storm_intensity": "Derived storm severity: 'quiet' (> -50 nT), 'weak' (-50 to -100 nT), 'moderate' (-100 to -250 nT), 'intense' (-250 to -500 nT), 'super' (< -500 nT, extremely rare; Carrington 1859 estimated at -850 nT)",
+}
+
+DESCRIPTION = """\
+Hourly Disturbance Storm Time (Dst) index from WDC Kyoto -- the standard measure \
+of geomagnetic storm intensity since 1957.
+
+The Dst index measures the strength of the ring current -- a toroidal electric current flowing \
+in the magnetosphere. During geomagnetic storms, the ring current intensifies and Dst drops \
+sharply (e.g. -100 to -500 nT for major storms). This index is the primary metric used by \
+satellite operators and power grid managers to assess storm severity.
+
+Dst complements the Kp/Ap indices by providing hourly resolution vs. 3-hourly/daily. \
+The ring current is a toroidal band of 10-200 keV ions (primarily H+ and O+) trapped in the inner \
+magnetosphere at geocentric distances of 3-8 Earth radii. During quiet times, the ring current \
+produces a modest depression of the surface magnetic field (Dst around -20 to +10 nT). When a CME \
+or high-speed stream arrives with sustained southward interplanetary magnetic field (Bz < 0), \
+enhanced convection electric fields inject fresh particles from the plasma sheet into the ring \
+current, causing Dst to plunge rapidly during the storm main phase.
+
+Dst is derived from the horizontal field component (H) at four low-latitude magnetometer stations: \
+Hermanus (South Africa), Kakioka (Japan), Honolulu (Hawaii), and San Juan (Puerto Rico). The hourly \
+cadence resolves the storm main phase (typically 6-12 hours of rapid decrease) and the recovery phase \
+(1-7 days of gradual return to baseline). The Dst index has direct applications in satellite operations: \
+empirical models relate Dst excursions to increased satellite surface charging, single-event upset rates \
+in electronics, and thermospheric density enhancements that accelerate orbital decay."""
+
+
+# ── Custom fetch/parse functions (domain-specific) ───────────────────
 
 def parse_dst_wdc(text, quality):
     """Parse WDC-format Dst data. Each line has 24 hourly values + daily mean."""
@@ -39,17 +73,12 @@ def parse_dst_wdc(text, quality):
     for line in text.splitlines():
         if not line.startswith("DST"):
             continue
-        # Format: DST YYMM*DD QQ X VVV 0 h0 h1 h2 ... h23 mean
-        # Positions are fixed-width: values start at col 20, each 4 chars wide
         try:
             yy = int(line[3:5])
             mm = int(line[5:7])
             dd = int(line[8:10])
-            # Handle century
             year = 1900 + yy if yy >= 57 else 2000 + yy
 
-            # 24 hourly values start at position 20, 4 chars each
-            # Then daily mean at position 116, 4 chars
             values_str = line[20:]
             hourly = []
             for i in range(24):
@@ -59,7 +88,6 @@ def parse_dst_wdc(text, quality):
                 else:
                     hourly.append(int(val_str))
 
-            # Daily mean is the last value (position 24)
             mean_str = values_str[96:100].strip()
             daily_mean = int(mean_str) if mean_str and mean_str != "9999" else None
 
@@ -75,25 +103,6 @@ def parse_dst_wdc(text, quality):
     return records
 
 
-def load_existing_dst(tmp_dir):
-    """Download existing Dst parquet from HF. Returns DataFrame or None."""
-    parquet_path = tmp_dir / "data" / "dst_index.parquet"
-    try:
-        subprocess.run(
-            ["hf", "download", HF_REPO, "data/dst_index.parquet",
-             "--repo-type", "dataset", "--local-dir", str(tmp_dir)],
-            check=True, capture_output=True, timeout=30,
-        )
-        if parquet_path.exists():
-            df = pd.read_parquet(parquet_path)
-            df["datetime"] = pd.to_datetime(df["datetime"])
-            print(f"  Loaded existing: {len(df):,} hourly records")
-            return df
-    except Exception as e:
-        print(f"  Could not load existing ({e}), doing full rebuild")
-    return None
-
-
 def parse_dst_html(html, year, month, quality):
     """Parse Dst data from WDC Kyoto HTML index page (<pre class="data"> block)."""
     m = re.search(r'<pre class="data">(.*?)</pre>', html, re.DOTALL)
@@ -104,11 +113,9 @@ def parse_dst_html(html, year, month, quality):
         line = line.rstrip()
         if not line or not line.strip():
             continue
-        # Data lines start with day number (1-31), left-padded with spaces
         stripped = line.strip()
         if not stripped[0].isdigit():
             continue
-        # Split: first token is day, then 24 hourly values
         parts = line.split()
         if len(parts) < 25:
             continue
@@ -146,13 +153,12 @@ def fetch_month(url_template, year, month, quality, retries=3):
             if resp.status_code == 200 and resp.text.startswith("DST"):
                 return parse_dst_wdc(resp.text, quality)
             if resp.status_code == 404:
-                break  # fall through to HTML fallback
+                break
         except Exception:
             pass
         if attempt < retries - 1:
             time.sleep(2 ** attempt)
 
-    # Fallback: parse the HTML index page
     html_template = DST_HTML_BASES.get(quality)
     if html_template:
         html_url = html_template.format(ym6=ym6)
@@ -180,183 +186,120 @@ def fetch_months(url_template, year, months, quality):
     return records
 
 
+# ── Main ─────────────────────────────────────────────────────────────
+
 def main():
     print("Fetching Dst index from WDC Kyoto...")
     now = datetime.utcnow()
 
-    # Try incremental
-    import tempfile as _tf
-    with _tf.TemporaryDirectory() as probe:
-        df_existing = load_existing_dst(Path(probe))
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Dst Geomagnetic Storm Index (Hourly)",
+        description=DESCRIPTION,
+        tags=["space", "space-weather", "geomagnetic", "dst-index", "wdc-kyoto",
+              "ring-current", "magnetosphere", "open-data", "tabular-data", "parquet"],
+        source_url="https://wdc.kugi.kyoto-u.ac.jp/dstdir/",
+        task_categories=["time-series-forecasting", "tabular-regression"],
+        collection_url="https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70",
+        banner={"url": "https://images-assets.nasa.gov/image/iss072e159172/iss072e159172~medium.jpg",
+                "alt": "Aurora borealis blankets the Earth, seen from the ISS",
+                "credit": "NASA"},
+        update_schedule="Daily at 13:00 UTC",
+        related_datasets=[
+            "juliensimon/space-weather-indices",
+            "juliensimon/solar-flare-events",
+            "juliensimon/geomagnetic-kp-index",
+        ],
+    ) as p:
+        # Try incremental
+        df_existing = p.download_existing("dst_index.parquet")
 
-    if df_existing is not None and len(df_existing) >= 400_000:
-        # Incremental: fetch only realtime (current year) + last provisional month
-        print("  Incremental mode: fetching recent months only")
-        new_records = []
+        if df_existing is not None and len(df_existing) >= 400_000:
+            df_existing["datetime"] = pd.to_datetime(df_existing["datetime"])
+            print("  Incremental mode: fetching recent months only")
+            new_records = []
 
-        # Realtime: all months of current year
-        rt_template = DST_SOURCES[2][1]  # realtime URL template
-        rt_months = list(range(1, now.month + 1))
-        new_records.extend(fetch_months(rt_template, now.year, rt_months, "realtime"))
-        print(f"  Realtime {now.year}: {len(new_records)} records ({len(rt_months)} months)")
+            # Realtime: all months of current year
+            rt_template = DST_SOURCES[2][1]
+            rt_months = list(range(1, now.month + 1))
+            new_records.extend(fetch_months(rt_template, now.year, rt_months, "realtime"))
+            print(f"  Realtime {now.year}: {len(new_records)} records ({len(rt_months)} months)")
 
-        # Provisional: re-fetch last 2 months of previous quality tier (corrections)
-        prov_template = DST_SOURCES[1][1]  # provisional URL template
-        prov_year = now.year - 1
-        prov_months = [11, 12]
-        prov_records = fetch_months(prov_template, prov_year, prov_months, "provisional")
-        new_records.extend(prov_records)
-        print(f"  Provisional {prov_year} (Nov-Dec): {len(prov_records)} records")
+            # Provisional: re-fetch last 2 months of previous year (corrections)
+            prov_template = DST_SOURCES[1][1]
+            prov_year = now.year - 1
+            prov_months = [11, 12]
+            prov_records = fetch_months(prov_template, prov_year, prov_months, "provisional")
+            new_records.extend(prov_records)
+            print(f"  Provisional {prov_year} (Nov-Dec): {len(prov_records)} records")
 
-        df_new = pd.DataFrame(new_records)
-        if not df_new.empty:
-            df_new["datetime"] = pd.to_datetime(df_new["datetime"])
-            # Remove overlapping period from existing, then append new
-            cutoff = df_new["datetime"].min()
-            df_kept = df_existing[df_existing["datetime"] < cutoff]
-            df = pd.concat([df_kept, df_new], ignore_index=True)
-            print(f"  Merged: {len(df):,} records (kept {len(df_kept):,} + {len(df_new):,} new)")
+            df_new = pd.DataFrame(new_records)
+            if not df_new.empty:
+                df_new["datetime"] = pd.to_datetime(df_new["datetime"])
+                cutoff = df_new["datetime"].min()
+                df_kept = df_existing[df_existing["datetime"] < cutoff]
+                df = pd.concat([df_kept, df_new], ignore_index=True)
+                print(f"  Merged: {len(df):,} records (kept {len(df_kept):,} + {len(df_new):,} new)")
+            else:
+                df = df_existing
+                print("  No new data")
         else:
-            df = df_existing
-            print("  No new data")
-    else:
-        # Full rebuild
-        print("  Full rebuild from 1957...")
-        all_records = []
-        for quality, url_template, start_year, end_year in DST_SOURCES:
-            actual_end = min(end_year, now.year)
-            for year in range(start_year, actual_end + 1):
-                end_month = now.month if year == now.year else 12
-                months = list(range(1, end_month + 1))
-                all_records.extend(fetch_months(url_template, year, months, quality))
-                print(f"  {quality} {year}: fetched")
-        df = pd.DataFrame(all_records)
-    df["datetime"] = pd.to_datetime(df["datetime"])
-    df = df.sort_values("datetime").reset_index(drop=True)
+            # Full rebuild
+            print("  Full rebuild from 1957...")
+            all_records = []
+            for quality, url_template, start_year, end_year in DST_SOURCES:
+                actual_end = min(end_year, now.year)
+                for year in range(start_year, actual_end + 1):
+                    end_month = now.month if year == now.year else 12
+                    months = list(range(1, end_month + 1))
+                    all_records.extend(fetch_months(url_template, year, months, quality))
+                    print(f"  {quality} {year}: fetched")
+            df = pd.DataFrame(all_records)
 
-    # Remove future/empty rows
-    df = df[df["datetime"] <= pd.Timestamp.now()]
+        if df.empty:
+            print("::error::No Dst data retrieved")
+            sys.exit(1)
 
-    # Propagate daily mean to all hours of that day
-    df["daily_mean_nt"] = df.groupby(df["datetime"].dt.date)["daily_mean_nt"].transform("first")
+        df["datetime"] = pd.to_datetime(df["datetime"])
+        df = df.sort_values("datetime").reset_index(drop=True)
 
-    # Derived columns
-    df["is_storm"] = df["dst_nt"] <= -50
-    df["storm_intensity"] = pd.cut(
-        df["dst_nt"],
-        bins=[-float("inf"), -500, -250, -100, -50, float("inf")],
-        labels=["super", "intense", "moderate", "weak", "quiet"],
-    )
+        # Remove future/empty rows
+        df = df[df["datetime"] <= pd.Timestamp.now()]
 
-    print(f"  {len(df):,} hourly records")
+        # Propagate daily mean to all hours of that day
+        df["daily_mean_nt"] = df.groupby(df["datetime"].dt.date)["daily_mean_nt"].transform("first")
 
-    # Stats
-    n_total = len(df)
-    date_min = df["datetime"].min().strftime("%Y-%m-%d")
-    date_max = df["datetime"].max().strftime("%Y-%m-%d")
-    n_storm_hours = int(df["is_storm"].sum())
-    min_dst = df["dst_nt"].min()
-    min_dst_time = df.loc[df["dst_nt"].idxmin(), "datetime"].strftime("%Y-%m-%d %H:%M")
-    n_final = int((df["quality"] == "final").sum())
-    n_provisional = int((df["quality"] == "provisional").sum())
-    n_realtime = int((df["quality"] == "realtime").sum())
+        # Derived columns
+        df["is_storm"] = df["dst_nt"] <= -50
+        df["storm_intensity"] = pd.cut(
+            df["dst_nt"],
+            bins=[-float("inf"), -500, -250, -100, -50, float("inf")],
+            labels=["super", "intense", "moderate", "weak", "quiet"],
+        )
 
-    check_dataset(df, "dst-index", min_rows=400_000,
-                  expected_columns=["datetime", "dst_nt", "quality"],
-                  critical_columns=["datetime", "dst_nt"],
-                  incremental=True)
+        df = p.clean(df, numeric=["dst_nt", "daily_mean_nt"])
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
+        # Keep only described columns
+        df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
-        out = data_dir / "dst_index.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
+        # Stats
+        n_total = len(df)
+        date_min = df["datetime"].min().strftime("%Y-%m-%d")
+        date_max = df["datetime"].max().strftime("%Y-%m-%d")
+        n_storm_hours = int(df["is_storm"].sum())
+        min_dst = df["dst_nt"].min()
+        min_dst_time = df.loc[df["dst_nt"].idxmin(), "datetime"].strftime("%Y-%m-%d %H:%M")
+        n_final = int((df["quality"] == "final").sum())
+        n_provisional = int((df["quality"] == "provisional").sum())
+        n_realtime = int((df["quality"] == "realtime").sum())
 
-        banner_file = download_banner("dst-index", tmp)
-        banner_md = banner_markdown("dst-index", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Dst Geomagnetic Storm Index (Hourly)"
-language:
-  - en
-description: "Hourly Disturbance Storm Time (Dst) index from WDC Kyoto — the standard measure of geomagnetic storm intensity since 1957."
-task_categories:
-  - time-series-forecasting
-  - tabular-regression
-tags:
-  - space
-  - space-weather
-  - geomagnetic
-  - dst-index
-  - wdc-kyoto
-  - ring-current
-  - magnetosphere
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 100K<n<1M
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/dst_index.parquet
-    default: true
----
-
-# Dst Geomagnetic Index (Hourly)
-{banner_md}
-*Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
-
-![Update Dst Index](https://github.com/juliensimon/space-datasets/actions/workflows/update-dst-index.yml/badge.svg)
-![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['dst-index']&label=updated&color=brightgreen)
-
-Hourly Disturbance Storm Time (Dst) index from [WDC Kyoto](https://wdc.kugi.kyoto-u.ac.jp/dstdir/),
-the standard measure of geomagnetic storm intensity. Covers **{date_min}** to **{date_max}**
-with **{n_total:,}** hourly readings.
-
-## Dataset description
-
-The Dst index measures the strength of the ring current — a toroidal electric current flowing
-in the magnetosphere. During geomagnetic storms, the ring current intensifies and Dst drops
-sharply (e.g. -100 to -500 nT for major storms). This index is the primary metric used by
-satellite operators and power grid managers to assess storm severity.
-
-Dst complements the Kp/Ap indices (available in our
-[space-weather-indices](https://huggingface.co/datasets/juliensimon/space-weather-indices) dataset)
-by providing **hourly** resolution vs. 3-hourly/daily.
-
-The ring current is a toroidal band of 10-200 keV ions (primarily H+ and O+) trapped in the inner magnetosphere at geocentric distances of 3-8 Earth radii. During quiet times, the ring current produces a modest depression of the surface magnetic field (Dst around -20 to +10 nT). When a CME or high-speed stream arrives with sustained southward interplanetary magnetic field (Bz < 0), enhanced convection electric fields inject fresh particles from the plasma sheet into the ring current, causing Dst to plunge rapidly during the storm main phase. The largest storms in the space age reached Dst below -500 nT (November 2003, March 1989), while the Carrington Event of 1859 is estimated at approximately -850 nT.
-
-Dst is derived from the horizontal field component (H) at four low-latitude magnetometer stations: Hermanus (South Africa), Kakioka (Japan), Honolulu (Hawaii), and San Juan (Puerto Rico). By using near-equatorial stations, the measurement isolates the symmetric ring current signature from the auroral electrojet contributions that dominate at higher latitudes. The hourly cadence resolves the storm main phase (typically 6-12 hours of rapid decrease) and the recovery phase (1-7 days of gradual return to baseline as ring current particles are lost through charge exchange with geocoronal hydrogen and wave-particle scattering into the loss cone).
-
-The Dst index has direct applications in satellite operations: empirical models relate Dst excursions to increased satellite surface charging, single-event upset rates in electronics, and thermospheric density enhancements that accelerate orbital decay. The Burton equation and its variants use solar wind parameters (velocity, density, Bz) to predict Dst in near-real-time, making this dataset valuable for training machine learning models that forecast storm intensity from upstream L1 measurements.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `datetime` | datetime | Hour-averaged timestamp (UTC); Dst has been reported at 1-hour cadence since 1957 |
-| `dst_nt` | int | Disturbance Storm Time index in nT — measures ring current injection at mid-latitudes; negative values indicate ring current enhancement; quiet: −20 to 0 nT, minor storm: −30 to −50 nT, moderate: −50 to −100 nT, intense: < −100 nT, extreme: < −250 nT |
-| `daily_mean_nt` | int | 24-hour mean Dst (nT) for the calendar day containing this record; smooths over short-duration spikes to represent overall storm level |
-| `quality` | string | Data quality flag: "final" (definitive WDC-processed values), "provisional" (recent months, pending full processing), or "realtime" (near-real-time, subject to revision) |
-| `is_storm` | bool | True if Dst <= −50 nT, the conventional threshold for a geomagnetic storm |
-| `storm_intensity` | string | Derived storm severity: "quiet" (> −50 nT), "weak" (−50 to −100 nT), "moderate" (−100 to −250 nT), "intense" (−250 to −500 nT), "super" (< −500 nT, extremely rare; Carrington 1859 estimated at −850 nT) |
-
-## Quick stats
-
+        quick_stats = f"""\
 - **{n_total:,}** hourly readings ({date_min} to {date_max})
 - **{n_storm_hours:,}** storm hours (Dst <= -50 nT)
 - Deepest storm: **{min_dst} nT** on {min_dst_time}
-- Data quality: {n_final:,} final, {n_provisional:,} provisional, {n_realtime:,} realtime
+- Data quality: {n_final:,} final, {n_provisional:,} provisional, {n_realtime:,} realtime"""
 
-## Usage
-
+        usage = """\
 ```python
 from datasets import load_dataset
 
@@ -367,76 +310,33 @@ df = ds.to_pandas()
 major = df[df["dst_nt"] < -100].sort_values("dst_nt")
 
 # Storm frequency by year
+import matplotlib.pyplot as plt
+
 df["year"] = df["datetime"].dt.year
 storms_per_year = df[df["is_storm"]].groupby("year").size()
+storms_per_year.plot.bar(figsize=(12, 4))
+plt.title("Geomagnetic Storm Hours per Year")
+plt.ylabel("Hours with Dst <= -50 nT")
+plt.tight_layout()
+plt.show()
 
 # Dst time series around a specific storm
 storm = df[(df["datetime"] >= "2024-05-10") & (df["datetime"] <= "2024-05-15")]
+storm.plot(x="datetime", y="dst_nt", title="May 2024 Storm")
+plt.show()
+```"""
 
-# Compare with Kp index (load space-weather-indices dataset)
-# Both datasets can be joined on date for cross-analysis
-```
-
-## Data source
-
-[WDC for Geomagnetism, Kyoto](https://wdc.kugi.kyoto-u.ac.jp/dstdir/). Three quality tiers:
-- **Final** (1957-2020): Definitive, quality-checked values
-- **Provisional** (2021-2025): Visually screened but not final
-- **Real-time** (recent): Quicklook values, may be revised
-
-## Update schedule
-
-Daily at 13:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-datasets).
-
-## Related datasets
-
-- [space-weather-indices](https://huggingface.co/datasets/juliensimon/space-weather-indices) — Daily Kp, Ap, F10.7 indices
-- [solar-flare-events](https://huggingface.co/datasets/juliensimon/solar-flare-events) — Individual flare detections
-- [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) — Orbital element history (for drag analysis)
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/dst-index) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-If you use this dataset, please cite:
-
-```bibtex
-@dataset{{dst_index,
-  author = {{Simon, Julien}},
-  title = {{Dst Geomagnetic Storm Index (Hourly)}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/dst-index}}
-}}
-```
-
-### Data source
-
-[WDC for Geomagnetism, Kyoto](https://wdc.kugi.kyoto-u.ac.jp/dstdir/)
-
-## License
-
-MIT (pipeline code). Dst data: free for non-commercial use per WDC Kyoto terms.
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update Dst index: {n_total:,} hourly readings"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+        p.publish(
+            df,
+            filename="dst_index.parquet",
+            min_rows=400_000,
+            expected_columns=["datetime", "dst_nt", "quality"],
+            critical_columns=["datetime", "dst_nt"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update Dst index: {n_total:,} hourly readings",
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={n_total}\n")
     print("Done.")
 
 

@@ -1,22 +1,126 @@
 #!/usr/bin/env python3
 """Fetch Gaia DR3 White Dwarf candidates (Gentile Fusillo+ 2021) from VizieR and upload to HF."""
 
-import os
-import subprocess
-import tempfile
-from pathlib import Path
-
 import pandas as pd
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
-from vizier_tap import vizier_query
+from hf_dataset_utils import Pipeline
+from hf_dataset_utils.tap import vizier_query
 
 HF_REPO = "juliensimon/gaia-dr3-white-dwarfs"
 
 # Gentile Fusillo+ 2021 (MNRAS 508, 3877): THE definitive Gaia DR3 WD catalog
-# 359,073 high-confidence white dwarf candidates
 ADQL = 'SELECT * FROM "J/MNRAS/508/3877/maincat"'
+
+# ── Column mapping ───────────────────────────────────────────────────
+RENAME = {
+    "WDJname": "wdj_name",
+    "WDJ": "wdj_name",
+    "Source": "source_id",
+    "GaiaEDR3": "source_id",
+    "GaiaDR2": "source_id_dr2",
+    "EDR3Name": "edr3_name",
+    "RA_ICRS": "ra_deg",
+    "DE_ICRS": "dec_deg",
+    "Plx": "parallax_mas",
+    "e_Plx": "parallax_error_mas",
+    "pmRA": "pmra_mas_yr",
+    "e_pmRA": "pmra_error_mas_yr",
+    "pmDE": "pmdec_mas_yr",
+    "e_pmDE": "pmdec_error_mas_yr",
+    "Gmag": "g_mag",
+    "e_Gmag": "g_mag_error",
+    "BPmag": "bp_mag",
+    "e_BPmag": "bp_mag_error",
+    "RPmag": "rp_mag",
+    "e_RPmag": "rp_mag_error",
+    "BP-RP": "bp_rp",
+    "Pwd": "prob_wd",
+    "Teff": "teff_k",
+    "e_Teff": "teff_error_k",
+    "logg": "log_g",
+    "e_logg": "log_g_error",
+    "Mass": "mass_msun",
+    "e_Mass": "mass_error_msun",
+    "chi2": "chi2",
+    "Grv": "radial_velocity_km_s",
+    "e_Grv": "radial_velocity_error_km_s",
+    "RUWE": "ruwe",
+    "GAbsmag": "g_abs_mag",
+    "Dist": "distance_pc",
+    "e_Dist": "distance_error_pc",
+    "AG": "extinction_g",
+    "E_BP-RP_": "ebp_rp",
+}
+
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "wdj_name": "White Dwarf J designation, a unique identifier encoding the J2000 position of the source",
+    "source_id": "Gaia DR3 unique source identifier (64-bit integer as string); stable within the Gaia DR3 data release",
+    "source_id_dr2": "Gaia DR2 source identifier for cross-matching with earlier data releases; null where no DR2 counterpart exists",
+    "edr3_name": "Gaia EDR3 designation string; alternative identifier format",
+    "ra_deg": "Right ascension, ICRS at Gaia reference epoch, in decimal degrees (0-360)",
+    "dec_deg": "Declination, ICRS at Gaia reference epoch, in decimal degrees (-90 to +90)",
+    "parallax_mas": "Gaia parallax in milliarcseconds; essential for distance determination and absolute magnitude calculation",
+    "parallax_error_mas": "1-sigma uncertainty on Gaia parallax (mas)",
+    "pmra_mas_yr": "Proper motion in right ascension (mas/yr), includes cos(dec) factor; traces the star's tangential velocity",
+    "pmra_error_mas_yr": "1-sigma uncertainty on proper motion in RA (mas/yr)",
+    "pmdec_mas_yr": "Proper motion in declination (mas/yr)",
+    "pmdec_error_mas_yr": "1-sigma uncertainty on proper motion in Dec (mas/yr)",
+    "g_mag": "Mean Gaia G-band (330-1050 nm) apparent magnitude; white dwarfs typically G = 12-21 mag",
+    "g_mag_error": "Uncertainty on mean G-band magnitude",
+    "bp_mag": "Mean Gaia BP-band (330-680 nm) apparent magnitude; null for faint stars with poor BP photometry",
+    "bp_mag_error": "Uncertainty on mean BP-band magnitude",
+    "rp_mag": "Mean Gaia RP-band (640-1050 nm) apparent magnitude; null for faint stars with poor RP photometry",
+    "rp_mag_error": "Uncertainty on mean RP-band magnitude",
+    "bp_rp": "Gaia BP-RP colour index; encodes surface temperature -- bluer (lower) values indicate hotter white dwarfs",
+    "prob_wd": "Probability of being a white dwarf (0-1), assigned by a random forest classifier trained on spectroscopically confirmed WDs; Pwd > 0.75 is commonly used as a high-confidence threshold",
+    "teff_k": "Effective temperature in Kelvin, derived by fitting Gaia photometry and parallax to WD atmosphere models; range typically 4,000-100,000 K",
+    "teff_error_k": "1-sigma uncertainty on effective temperature (K)",
+    "log_g": "Surface gravity in log(cm/s^2), derived from atmosphere model fits; WDs have log g ~ 7-9, compared to ~4.4 for the Sun",
+    "log_g_error": "1-sigma uncertainty on log surface gravity",
+    "mass_msun": "Stellar mass in solar masses, derived from log g and Teff using mass-radius relations; WD mass distribution peaks near 0.6 Msun",
+    "mass_error_msun": "1-sigma uncertainty on mass (solar masses)",
+    "chi2": "Chi-squared goodness-of-fit from the atmosphere model fitting; high values may indicate poor fits or unusual objects",
+    "radial_velocity_km_s": "Gaia radial velocity in km/s; available only for brighter WDs with sufficient spectral signal",
+    "radial_velocity_error_km_s": "Uncertainty on radial velocity (km/s)",
+    "ruwe": "Renormalized unit weight error from Gaia astrometry; values > 1.4 suggest binarity, source confusion, or poor astrometric solution",
+    "g_abs_mag": "Absolute G-band magnitude, derived from apparent magnitude and parallax; WDs typically M_G = 10-16 mag",
+    "distance_pc": "Distance in parsecs, derived from Gaia parallax using a Bayesian prior",
+    "distance_error_pc": "Uncertainty on distance (parsecs)",
+    "extinction_g": "Interstellar extinction in the G band (magnitudes); used to correct apparent magnitudes for dust",
+    "ebp_rp": "Colour excess E(BP-RP) due to interstellar reddening; used to correct colours for dust",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+The definitive Gaia DR3 white dwarf catalog from Gentile Fusillo et al. (2021), containing \
+high-confidence white dwarf candidates identified from ESA Gaia astrometry and photometry. \
+Each source includes a WD probability score, atmospheric parameters (effective temperature, \
+surface gravity), mass estimates, and multi-band photometry.
+
+White dwarfs are the dense stellar remnants left after low- and intermediate-mass stars \
+exhaust their nuclear fuel. They represent the final evolutionary stage of over 95% of all \
+stars. This catalog was constructed by selecting Gaia DR3 sources in the white dwarf region \
+of the Hertzsprung-Russell diagram and assigning each a probability of being a genuine WD \
+(prob_wd) using a random forest classifier trained on spectroscopically confirmed samples.
+
+Atmospheric parameters (Teff, log g) and masses were derived by fitting Gaia photometry \
+and parallaxes to hydrogen-atmosphere (DA) and helium-atmosphere (DB) white dwarf models.
+
+White dwarfs are remarkably compact objects, packing roughly the mass of the Sun into a \
+volume comparable to the Earth. Their interiors are supported against gravitational collapse \
+not by nuclear fusion but by electron degeneracy pressure -- a quantum mechanical effect that \
+sets a theoretical upper mass limit near 1.4 solar masses (the Chandrasekhar limit). The \
+mass distribution of white dwarfs peaks sharply near 0.6 solar masses, reflecting the \
+initial-to-final mass relation that maps a main-sequence progenitor of several solar masses \
+down to a compact remnant through extensive mass loss on the asymptotic giant branch.
+
+Because white dwarfs cool predictably over billions of years -- radiating away their \
+residual thermal energy with well-understood physics -- they serve as cosmic chronometers. \
+The white dwarf luminosity function (the number of white dwarfs per luminosity bin) encodes \
+the age of the Galactic disk: the faint end cutoff corresponds to the oldest, coolest white \
+dwarfs and provides an independent age estimate of 8-10 Gyr for the thin disk.
+"""
 
 
 def main():
@@ -28,64 +132,7 @@ def main():
     if "recno" in df.columns:
         df = df.drop(columns=["recno"])
 
-    # Discover actual column names from VizieR
-    print(f"  Columns ({len(df.columns)}): {list(df.columns)[:20]}...")
-
-    # Rename key columns to snake_case (VizieR names vary; build a broad rename dict)
-    rename = {
-        "WDJname": "wdj_name",
-        "WDJ": "wdj_name",
-        "Source": "source_id",
-        "GaiaEDR3": "source_id",
-        "GaiaDR2": "source_id_dr2",
-        "EDR3Name": "edr3_name",
-        "RA_ICRS": "ra_deg",
-        "DE_ICRS": "dec_deg",
-        "Plx": "parallax_mas",
-        "e_Plx": "parallax_error_mas",
-        "pmRA": "pmra_mas_yr",
-        "e_pmRA": "pmra_error_mas_yr",
-        "pmDE": "pmdec_mas_yr",
-        "e_pmDE": "pmdec_error_mas_yr",
-        "Gmag": "g_mag",
-        "e_Gmag": "g_mag_error",
-        "BPmag": "bp_mag",
-        "e_BPmag": "bp_mag_error",
-        "RPmag": "rp_mag",
-        "e_RPmag": "rp_mag_error",
-        "BP-RP": "bp_rp",
-        "Pwd": "prob_wd",
-        "Teff": "teff_k",
-        "e_Teff": "teff_error_k",
-        "logg": "log_g",
-        "e_logg": "log_g_error",
-        "Mass": "mass_msun",
-        "e_Mass": "mass_error_msun",
-        "chi2": "chi2",
-        "Grv": "radial_velocity_km_s",
-        "e_Grv": "radial_velocity_error_km_s",
-        "RUWE": "ruwe",
-        "GAbsmag": "g_abs_mag",
-        "Dist": "distance_pc",
-        "e_Dist": "distance_error_pc",
-        "AG": "extinction_g",
-        "E_BP-RP_": "ebp_rp",
-    }
-    df = df.rename(columns={k: v for k, v in rename.items() if k in df.columns})
-
-    # Convert numeric columns
-    numeric_cols = [
-        "ra_deg", "dec_deg", "parallax_mas", "parallax_error_mas",
-        "pmra_mas_yr", "pmra_error_mas_yr", "pmdec_mas_yr", "pmdec_error_mas_yr",
-        "g_mag", "g_mag_error", "bp_mag", "bp_mag_error", "rp_mag", "rp_mag_error",
-        "bp_rp", "prob_wd", "teff_k", "teff_error_k", "log_g", "log_g_error",
-        "mass_msun", "mass_error_msun", "chi2", "radial_velocity_km_s",
-        "radial_velocity_error_km_s", "ruwe", "g_abs_mag",
-        "distance_pc", "distance_error_pc", "extinction_g", "ebp_rp",
-    ]
-    for col in numeric_cols:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
+    df = df.rename(columns={k: v for k, v in RENAME.items() if k in df.columns})
 
     # Convert source_id to string (Gaia source IDs are 64-bit ints)
     if "source_id" in df.columns:
@@ -98,11 +145,14 @@ def main():
                 {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
             )
 
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
+
     # Sort by source_id
     if "source_id" in df.columns:
         df = df.sort_values("source_id").reset_index(drop=True)
 
-    # Stats
+    # ── Domain-specific stats for README ─────────────────────────────
     n_total = len(df)
     g_median = df["g_mag"].median() if "g_mag" in df.columns else float("nan")
     teff_median = df["teff_k"].median() if "teff_k" in df.columns else float("nan")
@@ -110,139 +160,15 @@ def main():
     pwd_median = df["prob_wd"].median() if "prob_wd" in df.columns else float("nan")
     n_high_prob = int((df["prob_wd"] > 0.75).sum()) if "prob_wd" in df.columns else 0
 
-    # Validate
-    check_dataset(
-        df,
-        "gaia-wd",
-        min_rows=250_000,
-        expected_columns=["source_id", "ra_deg", "dec_deg", "prob_wd"],
-        critical_columns=["source_id", "ra_deg", "dec_deg"],
-    )
-
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "gaia_dr3_white_dwarfs.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("gaia-wd", tmp)
-        banner_md = banner_markdown("gaia-wd", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Gaia DR3 White Dwarfs"
-language:
-  - en
-description: "Gaia DR3 white dwarf candidates from the Gentile Fusillo+ 2021 catalog — {n_total:,} high-confidence WD candidates with atmospheric parameters, masses, and photometry."
-task_categories:
-  - tabular-classification
-  - tabular-regression
-tags:
-  - space
-  - gaia
-  - white-dwarfs
-  - stars
-  - esa
-  - astronomy
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 100K<n<1M
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/gaia_dr3_white_dwarfs.parquet
-    default: true
----
-
-# Gaia DR3 White Dwarfs
-{banner_md}
-*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
-
-The definitive Gaia DR3 white dwarf catalog from Gentile Fusillo et al. (2021), containing
-**{n_total:,}** high-confidence white dwarf candidates identified from ESA Gaia astrometry
-and photometry. Each source includes a WD probability score, atmospheric parameters
-(effective temperature, surface gravity), mass estimates, and multi-band photometry.
-
-## Dataset description
-
-White dwarfs are the dense stellar remnants left after low- and intermediate-mass stars
-exhaust their nuclear fuel. They represent the final evolutionary stage of over 95% of all
-stars. This catalog was constructed by selecting Gaia DR3 sources in the white dwarf region
-of the Hertzsprung-Russell diagram and assigning each a probability of being a genuine WD
-(`prob_wd`) using a random forest classifier trained on spectroscopically confirmed samples.
-
-Atmospheric parameters (Teff, log g) and masses were derived by fitting Gaia photometry
-and parallaxes to hydrogen-atmosphere (DA) and helium-atmosphere (DB) white dwarf models.
-
-White dwarfs are remarkably compact objects, packing roughly the mass of the Sun into a
-volume comparable to the Earth. Their interiors are supported against gravitational collapse
-not by nuclear fusion but by electron degeneracy pressure -- a quantum mechanical effect that
-sets a theoretical upper mass limit near 1.4 solar masses (the Chandrasekhar limit). The
-mass distribution of white dwarfs peaks sharply near 0.6 solar masses, reflecting the
-initial-to-final mass relation that maps a main-sequence progenitor of several solar masses
-down to a compact remnant through extensive mass loss on the asymptotic giant branch. The
-width and shape of this mass peak, along with the high-mass and low-mass tails, encode
-information about binary evolution, merger products, and the star formation history of the
-Galactic disk.
-
-Because white dwarfs cool predictably over billions of years -- radiating away their
-residual thermal energy with well-understood physics -- they serve as cosmic chronometers.
-The white dwarf luminosity function (the number of white dwarfs per luminosity bin) encodes
-the age of the Galactic disk: the faint end cutoff corresponds to the oldest, coolest white
-dwarfs and provides an independent age estimate of 8--10 Gyr for the thin disk. With Gaia
-parallaxes enabling precise absolute magnitudes, this catalog allows construction of the
-luminosity function with unprecedented completeness out to several hundred parsecs.
-
-The Hertzsprung-Russell diagram of white dwarfs reveals rich substructure beyond the main
-cooling sequence. A bifurcation separates hydrogen-atmosphere (DA) white dwarfs from
-helium-atmosphere (DB/DC) objects, which follow a redder cooling track. Crystallization of
-the carbon-oxygen core produces a pile-up on the cooling sequence, observable as an
-overdensity first conclusively detected in Gaia data. Massive white dwarfs from merged
-binary systems populate a distinct sequence at higher surface gravities. This catalog,
-with its probability scores, atmospheric parameters, and multi-band photometry, provides
-the foundation for studying all of these phenomena across a volume-complete sample.
-
-## Key columns
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `wdj_name` | string | WD J designation |
-| `source_id` | string | Gaia DR3 unique source identifier |
-| `ra_deg` | float64 | Right ascension ICRS (degrees) |
-| `dec_deg` | float64 | Declination ICRS (degrees) |
-| `parallax_mas` | float64 | Parallax (milliarcseconds) |
-| `prob_wd` | float64 | Probability of being a white dwarf (0-1) |
-| `g_mag` | float64 | Mean G-band magnitude |
-| `bp_mag` | float64 | Mean BP-band magnitude |
-| `rp_mag` | float64 | Mean RP-band magnitude |
-| `bp_rp` | float64 | BP-RP color index |
-| `g_abs_mag` | float64 | Absolute G-band magnitude |
-| `teff_k` | float64 | Effective temperature (K) |
-| `log_g` | float64 | Surface gravity (log cm/s^2) |
-| `mass_msun` | float64 | Mass (solar masses) |
-| `distance_pc` | float64 | Distance (parsecs) |
-| `ruwe` | float64 | Renormalized unit weight error |
-
-Full schema includes {len(df.columns)} columns with proper motions, uncertainties, extinction, and radial velocities.
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n_total:,}** white dwarf candidates
-- **{n_high_prob:,}** with Pwd > 0.75
+- **{n_high_prob:,}** with Pwd > 0.75 (high confidence)
 - Median G magnitude: {g_median:.2f}
 - Median Teff: {teff_median:,.0f} K
 - Median mass: {mass_median:.2f} Msun
-- Median Pwd: {pwd_median:.3f}
+- Median Pwd: {pwd_median:.3f}"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -251,7 +177,7 @@ df = ds.to_pandas()
 
 # High-confidence white dwarfs
 high_conf = df[df["prob_wd"] > 0.75]
-print(f"High-confidence WDs: {{len(high_conf):,}}")
+print(f"High-confidence WDs: {len(high_conf):,}")
 
 # HR diagram
 import matplotlib.pyplot as plt
@@ -270,57 +196,51 @@ plt.xlabel("Mass (solar masses)")
 plt.ylabel("Count")
 plt.title("White Dwarf Mass Distribution")
 plt.show()
-```
+```"""
 
-## Data source
-
-Gentile Fusillo, N.P. et al. (2021), "A catalogue of white dwarfs in Gaia EDR3",
-*MNRAS*, 508, 3877. Accessed via [VizieR CDS](https://vizier.cds.unistra.fr/)
-(catalog J/MNRAS/508/3877).
-
-## Related datasets
-
-- [Gaia DR3 Eclipsing Binaries](https://huggingface.co/datasets/juliensimon/gaia-dr3-eclipsing-binaries) -- Gaia eclipsing binary candidates
-- [Gaia DR3 Variable Star Summary](https://huggingface.co/datasets/juliensimon/gcvs-variable-stars) -- all Gaia variable star classifications
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/gaia-dr3-white-dwarfs) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{gaia_dr3_white_dwarfs,
-  author = {{Simon, Julien}},
-  title = {{Gaia DR3 White Dwarfs}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/gaia-dr3-white-dwarfs}},
-  note = {{Based on Gentile Fusillo+ 2021 (MNRAS 508, 3877) via VizieR CDS}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update Gaia DR3 white dwarfs: {n_total:,} sources"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Gaia DR3 White Dwarfs",
+        description=DESCRIPTION,
+        tags=["space", "gaia", "white-dwarfs", "stars", "esa", "astronomy",
+              "open-data", "tabular-data", "parquet"],
+        source_url="https://vizier.cds.unistra.fr/viz-bin/VizieR-3?-source=J/MNRAS/508/3877",
+        task_categories=["tabular-classification", "tabular-regression"],
+        collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/GSFC_20171208_Archive_e000191/GSFC_20171208_Archive_e000191~medium.jpg",
+            "alt": "A youthful globular star cluster observed by the Hubble Space Telescope",
+            "credit": "NASA/ESA/Hubble",
+        },
+        related_datasets=[
+            "juliensimon/gaia-dr3-eclipsing-binaries",
+            "juliensimon/gcvs-variable-stars",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=[
+                "ra_deg", "dec_deg", "parallax_mas", "parallax_error_mas",
+                "pmra_mas_yr", "pmra_error_mas_yr", "pmdec_mas_yr", "pmdec_error_mas_yr",
+                "g_mag", "g_mag_error", "bp_mag", "bp_mag_error", "rp_mag", "rp_mag_error",
+                "bp_rp", "prob_wd", "teff_k", "teff_error_k", "log_g", "log_g_error",
+                "mass_msun", "mass_error_msun", "chi2", "radial_velocity_km_s",
+                "radial_velocity_error_km_s", "ruwe", "g_abs_mag",
+                "distance_pc", "distance_error_pc", "extinction_g", "ebp_rp",
+            ],
+            drop_mostly_null_threshold=0.95,
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={len(df)}\n")
+        p.publish(
+            df,
+            filename="gaia_dr3_white_dwarfs.parquet",
+            min_rows=250_000,
+            expected_columns=["source_id", "ra_deg", "dec_deg", "prob_wd"],
+            critical_columns=["source_id", "ra_deg", "dec_deg"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update Gaia DR3 white dwarfs: {n_total:,} sources",
+        )
     print("Done.")
 
 

@@ -1,123 +1,75 @@
 #!/usr/bin/env python3
-"""Fetch Ritter & Kolb Cataclysmic Variable catalog from HEASARC and upload to HF."""
+"""Fetch Ritter & Kolb Cataclysmic Variable catalog from HEASARC and upload to HF.
 
-import io
-import os
-import subprocess
-import sys
-import tempfile
-from pathlib import Path
+Source: Ritter H., Kolb U., 2003, A&A 404, 301 (Edition 7.24)
+HEASARC table: rittercv
+"""
 
 import pandas as pd
-import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
+from hf_dataset_utils.tap import heasarc_query
 
-
-TAP_URL = "https://heasarc.gsfc.nasa.gov/xamin/vo/tap/sync"
 HF_REPO = "juliensimon/cataclysmic-variable-catalog"
 
 ADQL = "SELECT * FROM rittercv"
 
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "name": "Standard CV designation (e.g. 'SS Cyg', 'AM Her'); CVs are close binaries where a white dwarf accretes matter from a donor star",
+    "ra": "Right ascension ICRS J2000.0 in degrees (0-360)",
+    "dec": "Declination ICRS J2000.0 in degrees (-90 to +90)",
+    "lii": "Galactic longitude in degrees (0-360, increasing toward Galactic center direction)",
+    "bii": "Galactic latitude in degrees (-90 to +90; most CVs within |b| < 30 deg)",
+    "class": "CV classification code from Ritter & Kolb catalog (e.g. DN, NL, N, RN, AM, IP)",
+    "type2": "Secondary classification flag from Ritter & Kolb (qualifier or additional subtype)",
+    "porb": "Orbital period in hours; typical range 1.3-12 h; the 2-3 h 'period gap' reflects disrupted mass transfer",
+    "porb2": "Secondary or alternative orbital period solution in hours (null if not applicable)",
+    "mag1": "V-band magnitude at outburst maximum (brightest state); lower value = brighter",
+    "mag2": "V-band magnitude at quiescence (faint state); difference mag2-mag1 = outburst amplitude",
+    "spect1": "MK spectral type of the primary component (accreting white dwarf or disk)",
+    "spect2": "MK spectral type of the secondary (donor) star",
+    "cv_subtype": "Derived CV subtype: 'dwarf_nova' (DN, recurring outbursts), 'polar' (AM Her, strongly magnetic), 'intermediate_polar' (DQ Her/IP), 'nova_like' (NL, steady high accretion), 'classical_nova' (N/RN, thermonuclear runaway), or 'other'",
+}
 
-def fetch_catalog() -> pd.DataFrame:
-    """Try CSV first, fall back to JSON, then pipe-delimited text."""
-    # Attempt 1: CSV
-    print("Fetching Ritter & Kolb CV catalog (CSV)...")
-    resp = requests.get(TAP_URL, params={
-        "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "csv", "QUERY": ADQL,
-    }, timeout=120)
-    resp.raise_for_status()
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Catalog of cataclysmic variables (CVs) from the Ritter & Kolb catalog, sourced from \
+NASA HEASARC. CVs are binary star systems where a white dwarf accretes matter from a \
+companion star.
 
-    if not resp.text.strip().startswith("<?xml"):
-        try:
-            df = pd.read_csv(io.StringIO(resp.text))
-            if len(df) > 100:
-                print(f"  CSV parse OK: {len(df):,} rows")
-                return df
-        except Exception as e:
-            print(f"  CSV parse failed: {e}")
-    else:
-        print("  CSV returned XML, skipping")
+Cataclysmic variables (CVs) are binary star systems in which a white dwarf accretes \
+matter from a low-mass companion star (typically a red dwarf) that overflows its Roche \
+lobe. The infalling material forms an accretion disk around the white dwarf, producing \
+dramatic brightness variations across timescales from seconds to decades. CVs are \
+classified into several subtypes based on their outburst behavior and magnetic field \
+strength:
 
-    # Attempt 2: JSON
-    print("Retrying with FORMAT=json...")
-    resp = requests.get(TAP_URL, params={
-        "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "json", "QUERY": ADQL,
-    }, timeout=120)
-    resp.raise_for_status()
+Dwarf novae (DN) exhibit quasi-periodic outbursts of 2-8 magnitudes caused by thermal \
+instabilities in the accretion disk. Classical novae (N) undergo thermonuclear explosions \
+on the white dwarf surface when accreted hydrogen reaches a critical mass, brightening by \
+6-19 magnitudes. Polars (AM Her) are strongly magnetic white dwarfs (B ~ 10-230 MG) where \
+the magnetic field channels accretion directly onto the poles. Intermediate polars (DQ Her) \
+are moderately magnetic white dwarfs with a truncated accretion disk. Nova-like variables \
+(NL) are high mass-transfer rate systems in a persistent bright state.
 
-    try:
-        data = resp.json()
-        if "data" in data and "metadata" in data:
-            cols = [m["name"] for m in data["metadata"]]
-            df = pd.DataFrame(data["data"], columns=cols)
-        else:
-            df = pd.DataFrame(data)
-        if len(df) > 100:
-            print(f"  JSON parse OK: {len(df):,} rows")
-            return df
-    except Exception as e:
-        print(f"  JSON parse failed: {e}")
-
-    # Attempt 3: pipe-delimited text
-    print("Retrying with FORMAT=text...")
-    resp = requests.get(TAP_URL, params={
-        "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "text", "QUERY": ADQL,
-    }, timeout=120)
-    resp.raise_for_status()
-
-    lines = [l for l in resp.text.strip().splitlines()
-             if l.strip() and not l.startswith("-")]
-    if len(lines) >= 2:
-        header = [c.strip() for c in lines[0].split("|")]
-        rows = []
-        for line in lines[1:]:
-            rows.append([c.strip() for c in line.split("|")])
-        df = pd.DataFrame(rows, columns=header)
-        df = df.loc[:, df.columns != ""]
-        print(f"  Text parse OK: {len(df):,} rows")
-        return df
-
-    print("::error::All fetch formats failed")
-    sys.exit(1)
+The Ritter & Kolb catalog is the standard reference catalog for CV research, containing \
+orbital periods, spectral types, magnitudes, and classifications for the known CV \
+population. This dataset is essential for population studies, period distribution \
+analysis, and understanding the evolution of compact binary systems.
+"""
 
 
 def main():
-    df = fetch_catalog()
+    print("Fetching Ritter & Kolb CV catalog from HEASARC...")
+    df = heasarc_query("rittercv", ADQL)
+    print(f"  {len(df):,} cataclysmic variables fetched")
 
     # Clean empty strings to NaN
     df = df.replace(r"^\s*$", pd.NA, regex=True)
 
-    # Auto-drop columns that are >95% null
-    null_frac = df.isna().mean()
-    drop_cols = null_frac[null_frac > 0.95].index.tolist()
-    if drop_cols:
-        print(f"  Dropping {len(drop_cols)} columns >95% null: {drop_cols[:10]}...")
-        df = df.drop(columns=drop_cols)
-
     # Lowercase column names to snake_case
     df.columns = [c.strip().lower() for c in df.columns]
-
-    # Numeric coercion on coordinate and physical columns
-    numeric_candidates = ["ra", "dec", "period", "mag1", "mag2",
-                          "porb", "porb2", "ra_deg", "dec_deg",
-                          "lii", "bii"]
-    for col in numeric_candidates:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    # Also coerce anything that looks like magnitude or period
-    for col in df.columns:
-        if any(kw in col for kw in ["mag", "period", "porb", "flux", "dist"]):
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    # Second pass: drop columns that became all-null after numeric coercion
-    all_null = [c for c in df.columns if df[c].isna().all()]
-    if all_null:
-        print(f"  Dropping {len(all_null)} all-null columns after coercion: {all_null}")
-        df = df.drop(columns=all_null)
 
     # Derive CV subtype classification if a type column exists
     type_col = None
@@ -151,178 +103,40 @@ def main():
 
         df["cv_subtype"] = df[type_col].apply(classify_cv)
         print(f"  Derived cv_subtype from '{type_col}'")
-        subtype_counts = df["cv_subtype"].value_counts()
-        for st, cnt in subtype_counts.items():
-            print(f"    {st}: {cnt:,}")
 
-    # Identify name column
+    # Sort by name
     name_col = None
     for candidate in ["name", "source_name", "object_name", "designation"]:
         if candidate in df.columns:
             name_col = candidate
             break
-
     if name_col:
         df = df.sort_values(name_col).reset_index(drop=True)
-        print(f"  Sorted by '{name_col}'")
 
-    # Final guard: drop any remaining all-null columns before validation
-    all_null = [c for c in df.columns if df[c].isna().all()]
-    if all_null:
-        print(f"  Dropping {len(all_null)} remaining all-null columns: {all_null}")
-        df = df.drop(columns=all_null)
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
+    # ── Domain-specific stats for README ─────────────────────────────
     n_total = len(df)
-    print(f"  {n_total:,} cataclysmic variables total")
-
-    check_dataset(df, "cataclysmic-variables", min_rows=1000,
-                  expected_columns=[c for c in ["name", "ra", "dec", "type"]
-                                    if c in df.columns],
-                  critical_columns=[c for c in ["name", "ra", "dec"]
-                                    if c in df.columns])
-
-    # Stats for README
-    n_cols = len(df.columns)
     has_subtype = "cv_subtype" in df.columns
     if has_subtype:
         subtype_counts = df["cv_subtype"].value_counts()
-        subtype_str = "\n".join(
-            f"  - **{st}**: {cnt:,}" for st, cnt in subtype_counts.items()
-        )
+        subtype_lines = [f"- **{cnt:,}** {st}" for st, cnt in subtype_counts.items()]
+        subtype_str = "\n".join(subtype_lines)
     else:
-        subtype_str = "  - Type classification not available"
+        subtype_str = "- Type classification not available"
 
-    has_period = "period" in df.columns or "porb" in df.columns
-    period_col = "period" if "period" in df.columns else ("porb" if "porb" in df.columns else None)
-    if period_col:
-        n_with_period = int(df[period_col].notna().sum())
-    else:
-        n_with_period = 0
+    period_col = "porb" if "porb" in df.columns else None
+    n_with_period = int(df[period_col].notna().sum()) if period_col else 0
+    period_median = df[period_col].median() if period_col and n_with_period > 0 else 0
 
-    # Build schema table from actual columns with descriptions
-    col_descriptions = {
-        "name": "Standard CV designation (e.g. 'SS Cyg', 'AM Her'); CVs are close binaries where a white dwarf accretes matter from a donor star",
-        "ra": "Right ascension ICRS J2000.0 (degrees, 0–360)",
-        "dec": "Declination ICRS J2000.0 (degrees, -90 to +90)",
-        "lii": "Galactic longitude in degrees (0–360, increasing toward Galactic center direction)",
-        "bii": "Galactic latitude in degrees (-90 to +90; most CVs within |b| < 30°)",
-        "class": "CV classification code from Ritter & Kolb catalog (e.g. DN, NL, N, RN, AM, IP)",
-        "type2": "Secondary classification flag from Ritter & Kolb (qualifier or additional subtype)",
-        "porb": "Orbital period in hours; typical range 1.3–12 h; the 2–3 h 'period gap' reflects disrupted mass transfer",
-        "porb2": "Secondary or alternative orbital period solution in hours (null if not applicable)",
-        "mag1": "V-band magnitude at outburst maximum (brightest state); lower value = brighter",
-        "mag2": "V-band magnitude at quiescence (faint state); difference mag2−mag1 = outburst amplitude",
-        "spectral_type": "MK spectral type of the secondary (donor) star",
-        "spect1": "MK spectral type of the primary component (accreting white dwarf or disk)",
-        "spect2": "MK spectral type of the secondary (donor) star",
-        "period": "Orbital period in hours; typical range 1.3–12 h; null for systems without confirmed period",
-        "cv_subtype": "Derived CV subtype: 'dwarf_nova' (DN, recurring outbursts), 'polar' (AM Her, strongly magnetic), 'intermediate_polar' (DQ Her/IP), 'nova_like' (NL, steady high accretion), 'classical_nova' (N/RN, thermonuclear runaway), or 'other'",
-        "source_name": "Source catalog designation for this object",
-        "object_name": "Object name as provided by the source catalog",
-        "designation": "Standard IAU-style designation",
-        "ra_deg": "Right ascension ICRS J2000.0 (degrees, 0–360)",
-        "dec_deg": "Declination ICRS J2000.0 (degrees, -90 to +90)",
-    }
-    schema_rows = []
-    for col in df.columns:
-        dtype = str(df[col].dtype)
-        desc = col_descriptions.get(col, "")
-        schema_rows.append(f"| `{col}` | {dtype} | {desc} |")
-    schema_table = "\n".join(schema_rows)
-
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "cataclysmic_variables.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("cataclysmic-variables", tmp)
-        banner_md = banner_markdown("cataclysmic-variables", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Ritter & Kolb Cataclysmic Variable Catalog"
-language:
-  - en
-description: "Catalog of cataclysmic variables (CVs) from the Ritter & Kolb catalog — white dwarfs accreting from companion stars"
-task_categories:
-  - tabular-classification
-tags:
-  - space
-  - cataclysmic-variable
-  - white-dwarf
-  - nova
-  - dwarf-nova
-  - binary-star
-  - astronomy
-  - accretion
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 1K<n<10K
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/cataclysmic_variables.parquet
-    default: true
----
-
-# Ritter & Kolb Cataclysmic Variable Catalog
-{banner_md}
-*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) and [Variable Stars & Transients](https://huggingface.co/collections/juliensimon/variable-stars-transients-69c24caf2f17e36128946744) collections on Hugging Face.*
-
-![Update Cataclysmic Variables](https://github.com/juliensimon/space-datasets/actions/workflows/update-cataclysmic-variables.yml/badge.svg)
-![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.cataclysmic-variables&label=updated&color=brightgreen)
-
-The Ritter & Kolb catalog of cataclysmic variables (CVs), sourced from NASA HEASARC.
-Currently **{n_total:,}** CVs with {n_cols} attributes.
-
-## Dataset description
-
-Cataclysmic variables (CVs) are binary star systems in which a white dwarf accretes
-matter from a low-mass companion star (typically a red dwarf) that overflows its Roche
-lobe. The infalling material forms an accretion disk around the white dwarf, producing
-dramatic brightness variations across timescales from seconds to decades. CVs are
-classified into several subtypes based on their outburst behavior and magnetic field
-strength:
-
-- **Dwarf novae** (DN): exhibit quasi-periodic outbursts of 2-8 magnitudes caused by
-  thermal instabilities in the accretion disk. Includes SU UMa, U Gem, and Z Cam subtypes.
-- **Classical novae** (N): undergo thermonuclear explosions on the white dwarf surface
-  when accreted hydrogen reaches a critical mass, brightening by 6-19 magnitudes.
-- **Polars** (AM Her): strongly magnetic white dwarfs (B ~ 10-230 MG) where the magnetic
-  field channels accretion directly onto the poles, preventing disk formation.
-- **Intermediate polars** (DQ Her): moderately magnetic white dwarfs (B ~ 1-10 MG)
-  with a truncated accretion disk and magnetically channeled inner flow.
-- **Nova-like variables** (NL): high mass-transfer rate systems in a persistent
-  bright state without the outburst cycles of dwarf novae.
-
-The Ritter & Kolb catalog is the standard reference catalog for CV research, containing
-orbital periods, spectral types, magnitudes, and classifications for the known CV
-population. This dataset is essential for population studies, period distribution
-analysis, and understanding the evolution of compact binary systems.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-{schema_table}
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n_total:,}** cataclysmic variables
-- **{n_with_period:,}** systems with measured orbital period
+- **{n_with_period:,}** systems with measured orbital period (median {period_median:.1f} h)
 - CV subtypes:
-{subtype_str}
+{subtype_str}"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -330,83 +144,60 @@ ds = load_dataset("juliensimon/cataclysmic-variable-catalog", split="train")
 df = ds.to_pandas()
 
 # Filter by CV subtype
-{"dwarf_novae = df[df['cv_subtype'] == 'dwarf_nova']" if has_subtype else "# cv_subtype column not available"}
-{"polars = df[df['cv_subtype'] == 'polar']" if has_subtype else ""}
+dwarf_novae = df[df["cv_subtype"] == "dwarf_nova"]
+polars = df[df["cv_subtype"] == "polar"]
+print(f"{len(dwarf_novae):,} dwarf novae, {len(polars):,} polars")
 
-# Period distribution
-{f'''import matplotlib.pyplot as plt
-periods = df["{period_col}"].dropna()
-periods[periods > 0].hist(bins=50)
-plt.xlabel("Orbital period")
-plt.ylabel("Count")
-plt.title("CV Orbital Period Distribution")''' if period_col else "# No period column available"}
-
-# Sky distribution
+# Period distribution showing the famous period gap
 import matplotlib.pyplot as plt
-import numpy as np
-fig, ax = plt.subplots(subplot_kw={{"projection": "aitoff"}})
-ra = np.radians(df["ra"].values - 180) if "ra" in df.columns else []
-dec = np.radians(df["dec"].values) if "dec" in df.columns else []
-ax.scatter(ra, dec, s=1, alpha=0.5)
-plt.title("Cataclysmic Variables - Sky Distribution")
-```
+periods = df["porb"].dropna()
+periods[periods > 0].hist(bins=50)
+plt.xlabel("Orbital period (hours)")
+plt.ylabel("Count")
+plt.title("CV Orbital Period Distribution")
+plt.axvspan(2.0, 3.0, alpha=0.2, color="red", label="Period gap")
+plt.legend()
+plt.show()
+```"""
 
-## Data source
-
-All data comes from the [Ritter & Kolb Cataclysmic Binaries catalog](https://heasarc.gsfc.nasa.gov/W3Browse/all/rittercv.html)
-hosted by NASA's High Energy Astrophysics Science Archive Research Center (HEASARC),
-accessed via the TAP protocol. Originally published in:
-Ritter H., Kolb U., 2003, A&A 404, 301 (Edition 7.24).
-
-## Update schedule
-
-Quarterly (Feb/May/Aug/Nov 1st at 08:30 UTC) via [GitHub Actions](https://github.com/juliensimon/space-datasets).
-
-## Related datasets
-
-- [xray-binary-catalog](https://huggingface.co/datasets/juliensimon/xray-binary-catalog) — X-ray binary systems
-- [gaia-dr3-white-dwarfs](https://huggingface.co/datasets/juliensimon/gaia-dr3-white-dwarfs) — Gaia white dwarf catalog
-- [gcvs-variable-stars](https://huggingface.co/datasets/juliensimon/gcvs-variable-stars) — General Catalogue of Variable Stars
-- [kepler-eclipsing-binaries](https://huggingface.co/datasets/juliensimon/kepler-eclipsing-binaries) — Kepler eclipsing binary catalog
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a heart on the [dataset page](https://huggingface.co/datasets/juliensimon/cataclysmic-variable-catalog) and share feedback in the Community tab! Also consider giving a star to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{cataclysmic_variable_catalog,
-  author = {{Simon, Julien}},
-  title = {{Ritter & Kolb Cataclysmic Variable Catalog}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/cataclysmic-variable-catalog}},
-  note = {{Based on Ritter & Kolb (2003) catalog, sourced from NASA HEASARC}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update cataclysmic variable catalog: {n_total:,} CVs"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Ritter & Kolb Cataclysmic Variable Catalog",
+        description=DESCRIPTION,
+        tags=["space", "cataclysmic-variable", "white-dwarf", "nova",
+              "dwarf-nova", "binary-star", "astronomy", "accretion",
+              "open-data", "tabular-data", "parquet"],
+        source_url="https://heasarc.gsfc.nasa.gov/W3Browse/all/rittercv.html",
+        task_categories=["tabular-classification"],
+        collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA03606/PIA03606~small.jpg",
+            "alt": "The Crab Nebula, a supernova remnant",
+            "credit": "NASA/ESA/Hubble",
+        },
+        related_datasets=[
+            "juliensimon/xray-binary-catalog",
+            "juliensimon/gaia-dr3-white-dwarfs",
+            "juliensimon/gcvs-variable-stars",
+            "juliensimon/kepler-eclipsing-binaries",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=["ra", "dec", "lii", "bii", "porb", "porb2", "mag1", "mag2"],
+            drop_mostly_null_threshold=0.95,
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={len(df)}\n")
+        p.publish(
+            df,
+            filename="cataclysmic_variables.parquet",
+            min_rows=1000,
+            expected_columns=["name", "ra", "dec"],
+            critical_columns=["name", "ra", "dec"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update cataclysmic variable catalog: {n_total:,} CVs",
+        )
     print("Done.")
 
 

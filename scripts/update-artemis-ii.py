@@ -6,18 +6,19 @@ Crew, timeline, and payload data from NASA press kit and public sources.
 """
 
 import math
-import os
 import re
-import subprocess
-import tempfile
-from pathlib import Path
+import sys
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
-
+from hf_dataset_utils import Pipeline
+from hf_dataset_utils.banner import banner_markdown as render_banner
+from hf_dataset_utils.banner import download_banner
+from hf_dataset_utils.github import emit_output
+from hf_dataset_utils.readme import _size_category, _yaml_escape, _yaml_tag, _citation_bibtex
+from hf_dataset_utils.upload import upload_to_hf, write_parquet
+from hf_dataset_utils.validation import check_dataset
 
 HF_REPO = "juliensimon/artemis-ii"
 HORIZONS_URL = "https://ssd.jpl.nasa.gov/api/horizons.api"
@@ -25,6 +26,52 @@ HORIZONS_URL = "https://ssd.jpl.nasa.gov/api/horizons.api"
 # Mission time bounds (ICPS separation to splashdown)
 MISSION_START = "2026-04-02T02:00"
 MISSION_END = "2026-04-10T23:50"
+
+# ── Column descriptions (trajectory) ────────────────────────────────
+TRAJ_COLUMN_DESCRIPTIONS = {
+    "epoch_tdb": "Timestamp of the state vector in Barycentric Dynamical Time (TDB), sampled at 10-minute intervals throughout the mission; TDB differs from UTC by a slowly varying offset (~69 s during 2026)",
+    "x_km": "Geocentric X position in km in the J2000 mean ecliptic and equinox frame; origin at Earth's center; X-axis points toward vernal equinox; typical range +/-450,000 km",
+    "y_km": "Geocentric Y position in km (J2000 ecliptic frame); orthogonal to X in the ecliptic plane",
+    "z_km": "Geocentric Z position in km (J2000 ecliptic frame); positive toward ecliptic north pole; small for near-ecliptic trajectories",
+    "vx_km_s": "X velocity component in km/s (J2000 geocentric frame); Orion reaches ~10.8 km/s at TLI and ~11 km/s at entry interface",
+    "vy_km_s": "Y velocity component in km/s (J2000 geocentric frame)",
+    "vz_km_s": "Z velocity component in km/s (J2000 geocentric frame)",
+    "distance_earth_km": "Distance from Earth's center in km, derived as sqrt(x^2+y^2+z^2); peaks near 450,000 km during the lunar flyby; Earth's surface is at 6,371 km",
+    "speed_km_s": "Scalar speed in km/s, derived as sqrt(vx^2+vy^2+vz^2); peaks at TLI burn (~10.8 km/s)",
+    "distance_moon_km": "Distance from the Moon's center in km from selenocentric Horizons query; minimum occurs at closest lunar approach (~8,900 km); null if Horizons returned mismatched row counts",
+    "mission_phase": "Mission segment label: earth_orbit, transit_outbound, lunar_approach, lunar_flyby, transit_return, or entry",
+}
+
+CREW_COLUMN_DESCRIPTIONS = {
+    "name": "Full name of the crew member",
+    "role": "Role on the mission: Commander, Pilot, Mission Specialist 1, or Mission Specialist 2",
+    "agency": "Space agency: NASA or CSA (Canadian Space Agency)",
+    "nationality": "Nationality of the crew member",
+    "birth_date": "Date of birth in YYYY-MM-DD format",
+    "birth_place": "City and state/province of birth",
+    "selection_year": "Year selected as astronaut/candidate by their space agency",
+    "military_rank": "Military rank and branch if applicable; null for civilian astronauts",
+    "previous_missions": "Previous spaceflight missions with dates; null if first flight",
+    "previous_flight_days": "Total days spent in space on previous missions; 0 for rookie astronauts",
+    "eva_count": "Number of previous extravehicular activities (spacewalks); 0 if none",
+    "eva_hours": "Total hours of previous EVA time; 0.0 if no EVAs",
+    "notable": "Notable achievements or distinctions of the crew member",
+}
+
+TIMELINE_COLUMN_DESCRIPTIONS = {
+    "met": "Mission Elapsed Time in T+DD:HH:MM format (or T-HH:MM:SS for pre-launch events); referenced from booster ignition/liftoff at T+00:00:00",
+    "phase": "Mission phase label: terminal_countdown, ascent, earth_orbit, transit_outbound, lunar_flyby, transit_return, or entry",
+    "event": "Free-text description of the mission event or milestone",
+}
+
+PAYLOAD_COLUMN_DESCRIPTIONS = {
+    "name": "Name of the CubeSat or experiment (e.g. 'TACHELES', 'Proximity Ops Demo')",
+    "type": "Payload type: 'CubeSat' for secondary spacecraft or 'experiment' for onboard demonstrations",
+    "provider_country": "Country providing the payload (e.g. 'Germany', 'USA')",
+    "provider_agency": "Space agency or organization providing the payload (e.g. 'DLR', 'NASA')",
+    "mass_kg": "Payload mass in kg; null for experiments without a discrete mass",
+    "objective": "Primary scientific or technology demonstration objective of the payload",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -63,15 +110,12 @@ def parse_horizons_vectors(text):
     records = []
     i = 0
     while i < len(data_lines):
-        # Line 1: JD = A.D. YYYY-Mon-DD HH:MM:SS.SSSS TDB
         m = re.search(r"A\.D\.\s+(\d{4}-\w{3}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+)\s+TDB", data_lines[i])
         if not m:
             i += 1
             continue
         epoch_str = m.group(1)
-        # Line 2: X = ... Y = ... Z = ...
         pos = re.findall(r"[XYZ]\s*=\s*([-\dE.+]+)", data_lines[i + 1])
-        # Line 3: VX = ... VY = ... VZ = ...
         vel = re.findall(r"V[XYZ]\s*=\s*([-\dE.+]+)", data_lines[i + 2])
         if len(pos) == 3 and len(vel) == 3:
             records.append({
@@ -114,12 +158,10 @@ def fetch_trajectory():
             df_moon["x_km"]**2 + df_moon["y_km"]**2 + df_moon["z_km"]**2
         ).apply(math.sqrt)
     else:
-        # Fall back: compute from magnitudes
         df["distance_moon_km"] = pd.NA
 
     # Mission phase labels
     df["mission_phase"] = "transit_outbound"
-    # TLI: ~MET +1d 01h 37m from launch (launch was Apr 1 22:35 UTC)
     tli_time = pd.Timestamp("2026-04-03T00:12")
     lunar_soi_entry = pd.Timestamp("2026-04-06T04:00")
     closest_approach = pd.Timestamp("2026-04-06T23:58")
@@ -176,13 +218,11 @@ def build_crew_df():
 def build_timeline_df():
     """Mission timeline from NASA press kit and launch blog."""
     events = [
-        # Terminal countdown
         ("T-00:10:00", "terminal_countdown", "Ground Launch Sequencer initiates terminal count"),
         ("T-00:08:00", "terminal_countdown", "Crew Access Arm retract"),
         ("T-00:04:00", "terminal_countdown", "Core stage APU start; LOX terminate replenish"),
         ("T-00:00:33", "terminal_countdown", "Go for automated launch sequencer"),
         ("T-00:00:06", "terminal_countdown", "RS-25 engine start sequence"),
-        # Ascent
         ("T+00:00:00", "ascent", "Booster ignition and liftoff"),
         ("T+00:00:07", "ascent", "SLS clears launch tower; roll/pitch maneuver"),
         ("T+00:00:56", "ascent", "SLS reaches supersonic speed"),
@@ -192,7 +232,6 @@ def build_timeline_df():
         ("T+00:03:18", "ascent", "Spacecraft adapter fairing separation"),
         ("T+00:08:02", "ascent", "Core stage main engine cutoff (MECO)"),
         ("T+00:08:14", "ascent", "Core stage / ICPS separation"),
-        # Earth orbit
         ("T+00:20:00", "earth_orbit", "Orion solar array deployment"),
         ("T+00:49:00", "earth_orbit", "Perigee raise maneuver"),
         ("T+01:47:57", "earth_orbit", "Apogee raise burn to high Earth orbit"),
@@ -202,7 +241,6 @@ def build_timeline_df():
         ("T+05:00:00", "earth_orbit", "ICPS disposal burn"),
         ("T+05:04:00", "earth_orbit", "CubeSat deployment begins"),
         ("T+13:44:00", "earth_orbit", "Perigee raise burn (end of Flight Day 1)"),
-        # Transit outbound
         ("T+1d 01:37", "transit_outbound", "Translunar injection (TLI) burn"),
         ("T+1d 23:25", "transit_outbound", "Outbound trajectory correction burn"),
         ("T+2d 02:05", "transit_outbound", "Crew CPR demonstration in microgravity"),
@@ -211,11 +249,9 @@ def build_timeline_df():
         ("T+3d 20:30", "transit_outbound", "Rapid spacesuit donning/pressurization demo"),
         ("T+4d 05:23", "transit_outbound", "Trajectory correction burn #3"),
         ("T+4d 06:59", "transit_outbound", "Orion enters lunar sphere of influence"),
-        # Lunar flyby
         ("T+4d 22:00", "lunar_flyby", "Lunar flyby observation begins"),
         ("T+5d 01:23", "lunar_flyby", "Closest approach to the Moon"),
         ("T+5d 01:26", "lunar_flyby", "Maximum distance from Earth"),
-        # Transit return
         ("T+5d 19:47", "transit_return", "Orion exits lunar sphere of influence"),
         ("T+5d 21:10", "transit_return", "Lunar flyby science debrief"),
         ("T+6d 04:23", "transit_return", "Return trajectory correction burn #1"),
@@ -224,15 +260,13 @@ def build_timeline_df():
         ("T+7d 23:15", "transit_return", "Orthostatic intolerance garment assessment"),
         ("T+8d 04:33", "transit_return", "Return trajectory correction burn #2"),
         ("T+8d 20:33", "transit_return", "Return trajectory correction burn #3"),
-        # Entry and splashdown
         ("T+8d 22:30", "entry", "Entry checklist begins; crew dons entry suits"),
         ("T+9d 01:13", "entry", "Crew/service module separation"),
         ("T+9d 01:16", "entry", "Crew module raise burn"),
         ("T+9d 01:33", "entry", "Entry interface (400,000 ft altitude)"),
         ("T+9d 01:46", "entry", "Splashdown in Pacific Ocean"),
     ]
-    df = pd.DataFrame(events, columns=["met", "phase", "event"])
-    return df
+    return pd.DataFrame(events, columns=["met", "phase", "event"])
 
 
 def build_payloads_df():
@@ -262,6 +296,18 @@ def build_payloads_df():
          "provider_agency": "NASA", "mass_kg": None,
          "objective": "Evaluate spacecraft manual control beyond low Earth orbit"},
     ])
+
+
+# ---------------------------------------------------------------------------
+# Schema table helper
+# ---------------------------------------------------------------------------
+
+def _schema_section(title, descriptions):
+    """Generate a markdown schema table from column descriptions dict."""
+    lines = [f"### {title}", "", "| Column | Description |", "|--------|-------------|"]
+    for col, desc in descriptions.items():
+        lines.append(f"| `{col}` | {desc} |")
+    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
@@ -300,24 +346,40 @@ def main():
     print(f"  Crew: {len(df_crew)} members")
     print(f"  Payloads: {len(df_payloads)} items")
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
+    # ── Build multi-config dataset using Pipeline context ───────────
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Artemis II Mission Data",
+        description="",  # custom README below
+        tags=[],
+        source_url="https://ssd.jpl.nasa.gov/horizons/",
+        collection_url="https://huggingface.co/collections/juliensimon/space-probe-and-mission-datasets-69c3fe82d410a42b1e313167",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA14111/PIA14111~small.jpg",
+            "alt": "Voyager spacecraft artist concept",
+            "credit": "NASA/JPL-Caltech",
+        },
+    ) as p:
+        # Write all 4 parquet configs
+        write_parquet(df_traj, p.data_dir / "trajectory.parquet")
+        write_parquet(df_crew, p.data_dir / "crew.parquet")
+        write_parquet(df_timeline, p.data_dir / "timeline.parquet")
+        write_parquet(df_payloads, p.data_dir / "payloads.parquet")
 
-        df_traj.to_parquet(data_dir / "trajectory.parquet", index=False,
-                           engine="pyarrow", compression="zstd")
-        df_crew.to_parquet(data_dir / "crew.parquet", index=False,
-                           engine="pyarrow", compression="zstd")
-        df_timeline.to_parquet(data_dir / "timeline.parquet", index=False,
-                               engine="pyarrow", compression="zstd")
-        df_payloads.to_parquet(data_dir / "payloads.parquet", index=False,
-                               engine="pyarrow", compression="zstd")
+        # Banner
+        banner_file = download_banner(p.banner["url"], p.tmp_dir)
+        banner_md = render_banner(
+            p.banner["alt"], p.banner["credit"],
+            filename=banner_file,
+        ) if banner_file else ""
 
-        banner_file = download_banner("artemis-ii", tmp)
-        banner_md = banner_markdown("artemis-ii", banner_file)
+        # Custom multi-config README
+        traj_schema = _schema_section("Trajectory schema", TRAJ_COLUMN_DESCRIPTIONS)
+        crew_schema = _schema_section("Crew schema", CREW_COLUMN_DESCRIPTIONS)
+        timeline_schema = _schema_section("Timeline schema", TIMELINE_COLUMN_DESCRIPTIONS)
+        payload_schema = _schema_section("Payloads schema", PAYLOAD_COLUMN_DESCRIPTIONS)
 
-        (tmp / "README.md").write_text(f"""---
+        readme = f"""---
 license: cc-by-4.0
 pretty_name: "Artemis II Mission Data"
 language:
@@ -364,11 +426,11 @@ configs:
 
 # Artemis II Mission Data
 {banner_md}
-*Part of the [Space Probe & Mission Datasets](https://huggingface.co/collections/juliensimon/space-probe-and-mission-datasets-69c3fe82d410a42b1e313167) collection on Hugging Face.*
+*Part of a [dataset collection](https://huggingface.co/collections/juliensimon/space-probe-and-mission-datasets-69c3fe82d410a42b1e313167) on Hugging Face.*
 
-![Update Artemis II](https://github.com/juliensimon/space-datasets/actions/workflows/update-artemis-ii.yml/badge.svg)
+## Dataset description
 
-Comprehensive dataset for NASA's **Artemis II** mission — the first crewed flight beyond low Earth orbit since Apollo 17 (1972). Covers the ~10-day crewed lunar flyby aboard the Orion spacecraft *Integrity*, launched April 1, 2026 on SLS Block 1.
+Comprehensive dataset for NASA's **Artemis II** mission -- the first crewed flight beyond low Earth orbit since Apollo 17 (1972). Covers the ~10-day crewed lunar flyby aboard the Orion spacecraft *Integrity*, launched April 1, 2026 on SLS Block 1.
 
 ## Configs
 
@@ -381,23 +443,13 @@ This dataset has four configs (tables):
 | `crew` | **{len(df_crew)}** | Crew manifest with biographical data |
 | `payloads` | **{len(df_payloads)}** | CubeSats and onboard experiments |
 
-## Trajectory schema
+{traj_schema}
 
-Geocentric J2000 ecliptic state vectors from [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/) (spacecraft ID `-1024`).
+{crew_schema}
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `epoch_tdb` | datetime | Timestamp of the state vector in Barycentric Dynamical Time (TDB), sampled at 10-minute intervals throughout the mission; TDB differs from UTC by a slowly varying offset (≈69 s during 2026) |
-| `x_km` | float | Geocentric X position in km in the J2000 mean ecliptic and equinox frame; origin at Earth's center; X-axis points toward vernal equinox; typical range ±450,000 km (Earth–Moon distance ≈384,400 km) |
-| `y_km` | float | Geocentric Y position in km (J2000 ecliptic frame); orthogonal to X in the ecliptic plane |
-| `z_km` | float | Geocentric Z position in km (J2000 ecliptic frame); positive toward ecliptic north pole; small for near-ecliptic trajectories |
-| `vx_km_s` | float | X velocity component in km/s (J2000 geocentric frame); Orion reaches ~10.8 km/s at TLI and decelerates to ≈11 km/s at entry interface |
-| `vy_km_s` | float | Y velocity component in km/s (J2000 geocentric frame) |
-| `vz_km_s` | float | Z velocity component in km/s (J2000 geocentric frame) |
-| `distance_earth_km` | float | Distance from Earth's center in km, derived as √(x²+y²+z²); peaks near 450,000 km during the lunar flyby; Earth's surface is at 6,371 km, LEO at ~400 km |
-| `speed_km_s` | float | Scalar speed in km/s, derived as √(vx²+vy²+vz²); peaks at TLI burn (≈10.8 km/s), reaches minimum near maximum Earth distance, then increases again during return; entry interface speed ≈11 km/s |
-| `distance_moon_km` | float | Distance from the Moon's center in km from selenocentric Horizons query; minimum occurs at closest lunar approach (~8,900 km); null if Horizons returned a different number of rows than geocentric query |
-| `mission_phase` | string | Mission segment label assigned by event timestamps: `earth_orbit` (launch through ICPS separation burn), `transit_outbound` (TLI through lunar sphere-of-influence entry), `lunar_approach` (SOI entry through closest approach), `lunar_flyby` (closest approach through SOI exit), `transit_return` (SOI exit through entry interface), `entry` (entry interface through splashdown) |
+{timeline_schema}
+
+{payload_schema}
 
 ## Quick stats
 
@@ -405,7 +457,7 @@ Geocentric J2000 ecliptic state vectors from [JPL Horizons](https://ssd.jpl.nasa
 - Maximum distance from Earth: **{max_earth_dist:,.0f} km** ({max_earth_dist / 1.609:.0f} statute miles)
 - Closest lunar approach: **{min_moon_dist:,.0f} km** at {closest_approach_time.strftime("%Y-%m-%d %H:%M")} TDB
 - Maximum speed: **{max_speed:.2f} km/s** ({max_speed * 3600:.0f} km/h)
-- Crew: **4** (3 NASA + 1 CSA) — first crewed mission beyond LEO in 54 years
+- Crew: **4** (3 NASA + 1 CSA) -- first crewed mission beyond LEO in 54 years
 - CubeSats: **4** secondary payloads from Germany, South Korea, Saudi Arabia, Argentina
 
 ## Usage
@@ -423,7 +475,7 @@ plt.figure(figsize=(12, 4))
 plt.plot(df["epoch_tdb"], df["distance_moon_km"])
 plt.xlabel("Time (TDB)")
 plt.ylabel("Distance from Moon (km)")
-plt.title("Artemis II — Distance to Moon")
+plt.title("Artemis II -- Distance to Moon")
 plt.tight_layout()
 plt.show()
 
@@ -439,7 +491,7 @@ payloads = load_dataset("juliensimon/artemis-ii", "payloads", split="train").to_
 
 ## Data source
 
-- **Trajectory:** [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/) — spacecraft `-1024` ("Integrity Orion EM-2"), geocentric and selenocentric vectors
+- **Trajectory:** [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/) -- spacecraft `-1024` ("Integrity Orion EM-2")
 - **Timeline & crew:** [NASA Artemis II Press Kit](https://www.nasa.gov/wp-content/uploads/2026/01/artemis-ii-press-kit.pdf) and [launch blog](https://www.nasa.gov/blogs/missions/2026/04/01/live-artemis-ii-launch-day-updates/)
 - **Payload data:** NASA, DLR, KARI, KACST, CONAE public announcements
 
@@ -449,48 +501,28 @@ Updated during the mission as JPL Horizons trajectory data is refined. Will swit
 
 ## Related datasets
 
-- [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) — Orbital element history for tracked objects
-- [donki-space-weather-events](https://huggingface.co/datasets/juliensimon/donki-space-weather-events) — Space weather events (relevant for crew radiation exposure)
-- [dst-index](https://huggingface.co/datasets/juliensimon/dst-index) — Geomagnetic storm index
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/artemis-ii) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
+- [juliensimon/space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history)
+- [juliensimon/donki-space-weather-events](https://huggingface.co/datasets/juliensimon/donki-space-weather-events)
+- [juliensimon/dst-index](https://huggingface.co/datasets/juliensimon/dst-index)
 
 ## Citation
 
-```bibtex
-@dataset{{artemis_ii,
-  author = {{Simon, Julien}},
-  title = {{Artemis II Mission Data}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/artemis-ii}},
-  note = {{Trajectory from JPL Horizons; mission data from NASA press kit}}
-}}
-```
+{_citation_bibtex(HF_REPO, "Artemis II Mission Data")}
 
 ## License
 
 [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
+"""
+        (p.tmp_dir / "README.md").write_text(readme)
 
-        print("Uploading to HF...")
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", f"Update Artemis II: {n_vectors:,} trajectory vectors, "
-             f"{len(df_timeline)} events, {len(df_crew)} crew"],
-            check=True,
+        # Upload
+        upload_to_hf(
+            HF_REPO, p.tmp_dir,
+            f"Update Artemis II: {n_vectors:,} trajectory vectors, "
+            f"{len(df_timeline)} events, {len(df_crew)} crew",
         )
 
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={n_vectors}\n")
+    emit_output(rows=n_vectors)
     print("Done.")
 
 

@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Fetch nebula catalog from Wikidata and upload to HF."""
+"""Fetch nebula catalog from Wikidata and upload to HF.
 
-import os
-import subprocess
-import tempfile
-from pathlib import Path
+Source: Wikidata SPARQL — emission, reflection, dark, and planetary nebulae
+identified via P31 (instance of) for four nebula-type entities.
+"""
+
+import json as _json
+import time
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
-
+from hf_dataset_utils import Pipeline
 
 HF_REPO = "juliensimon/nebula-catalog"
 
@@ -81,13 +81,43 @@ VALID_NEBULA_TYPES = SPECIFIC_TYPE_LABELS | {
     "nova remnant",
 }
 
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "wikidata_id": "Wikidata entity ID (e.g. 'Q12345'); stable URI for cross-referencing other catalogs and knowledge bases",
+    "name": "Common or catalog name as recorded in Wikidata (e.g. 'Orion Nebula', 'NGC 1499', 'Barnard 68'); null for objects with no recorded label",
+    "nebula_type": "Physical nebula class: 'planetary nebula' (expanding shell from AGB star), 'emission nebula' (ionized HII region), 'reflection nebula' (dust scattering starlight), 'dark nebula' (opaque dust blocking background), 'supernova remnant' (ejecta from stellar explosion)",
+    "constellation": "IAU constellation in which the nebula is located (e.g. 'Orion', 'Cygnus'); null if not recorded in Wikidata",
+    "ra_deg": "Right ascension in decimal degrees, ICRS J2000.0; range 0-360; null if coordinates not in Wikidata",
+    "dec_deg": "Declination in decimal degrees, ICRS J2000.0; range -90 to +90; null if coordinates not in Wikidata",
+    "catalog_id": "Cross-reference identifiers from NGC, IC, Messier, and other catalogs, semicolon-separated (e.g. 'NGC 1952; M 1'); null for objects catalogued only in Wikidata",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Catalog of nebulae sourced from Wikidata, covering emission, reflection, \
+dark, and planetary nebulae across the sky.
+
+Nebulae are clouds of interstellar gas and dust -- the birthplaces of stars, \
+the remnants of dying ones, and some of the most visually spectacular objects \
+in the universe. This dataset aggregates structured data from Wikidata's \
+knowledge base, drawing on decades of cataloguing from Messier, NGC, IC, and \
+other surveys.
+
+Each entry includes the nebula's name, type, host constellation, equatorial \
+coordinates (right ascension and declination), and representative catalog \
+identifiers. This enables sky-survey cross-matching, population studies by \
+type or constellation, and spatial distribution analysis.
+
+Sourced from Wikidata SPARQL using P31 (instance of) for emission (Q207326), \
+reflection (Q167278), dark (Q46587), and planetary (Q204194) nebulae.
+"""
+
 
 def _pick_best_type(types_str):
     """Pick the most specific nebula type from a semicolon-separated list."""
     if not types_str:
         return None
     types = [t.strip() for t in types_str.split(";")]
-    # Prefer specific nebula type labels
     for t in types:
         if t.lower() in SPECIFIC_TYPE_LABELS:
             return t
@@ -96,8 +126,6 @@ def _pick_best_type(types_str):
 
 def _query_wikidata_json(sparql, label="query", retries=3):
     """Run a SPARQL query against Wikidata (JSON), with truncation-tolerant parsing."""
-    import json as _json
-    import time
     for attempt in range(retries):
         try:
             resp = requests.get(
@@ -110,11 +138,9 @@ def _query_wikidata_json(sparql, label="query", retries=3):
             try:
                 results = _json.loads(resp.text, strict=False)["results"]["bindings"]
             except _json.JSONDecodeError:
-                # Truncated response — salvage what we can by finding the last complete record
                 text = resp.text
                 last_close = text.rfind("}")
                 if last_close > 0:
-                    # Find the end of the last complete binding array entry
                     truncated = text[:last_close + 1] + "]}}"
                     results = _json.loads(truncated, strict=False)["results"]["bindings"]
                     print(f"  {label}: salvaged {len(results):,} rows from truncated response")
@@ -134,10 +160,8 @@ def _query_wikidata_json(sparql, label="query", retries=3):
 
 def fetch_nebulae() -> pd.DataFrame:
     """Query Wikidata SPARQL for all nebulae (per-type to stay under size limits)."""
-    import time
     print("Querying Wikidata for nebulae...")
 
-    # Fetch each nebula type separately to stay under Wikidata response limits
     all_results = []
     for qid, type_name in NEBULA_TYPE_QUERIES:
         sparql = SPARQL_TEMPLATE.format(qid=qid)
@@ -164,7 +188,7 @@ def fetch_nebulae() -> pd.DataFrame:
     # Drop entries with no real name (bare Q-IDs = junk Wikidata entities)
     df = df[~df["name"].str.match(r"^Q\d+$", na=False)]
 
-    # For nebula_type: prefer specific type labels over generic ones.
+    # For nebula_type: prefer specific type labels over generic ones
     df["_type_score"] = df["nebula_type"].apply(
         lambda t: 1 if (t or "").lower() in SPECIFIC_TYPE_LABELS else 0
     )
@@ -176,22 +200,21 @@ def fetch_nebulae() -> pd.DataFrame:
         columns=["_type_score", "_completeness"]
     )
 
-    # Filter: only keep entities whose best type is a recognized nebula type.
-    # Wikidata entities often have multiple P31 values (e.g. "dark nebula" AND "summit"),
-    # and the UNION query pulls in non-nebula entities that share a type QID.
+    # Filter: only keep entities whose best type is a recognized nebula type
     before = len(df)
     df = df[df["nebula_type"].str.lower().isin(VALID_NEBULA_TYPES)]
     print(f"  Filtered to valid nebula types: {len(df):,} / {before:,}")
 
-    # Drop columns that are >95% null (distance_ly, angular_size)
+    # Drop distance_ly if >95% null (common for Wikidata nebulae)
     for col in list(df.columns):
-        null_pct = df[col].isna().mean()
-        if null_pct > 0.95:
-            df = df.drop(columns=[col])
-            print(f"  Dropped column '{col}' ({null_pct:.0%} null)")
+        if col not in COLUMN_DESCRIPTIONS:
+            null_pct = df[col].isna().mean()
+            if null_pct > 0.95:
+                df = df.drop(columns=[col])
+                print(f"  Dropped column '{col}' ({null_pct:.0%} null)")
 
     # Pass 2: catalog IDs (raw rows per-type, aggregated in Python)
-    cat_raw = {}  # qid -> list of catalog IDs
+    cat_raw = {}
     for qid, type_name in NEBULA_TYPE_QUERIES:
         time.sleep(2)
         try:
@@ -205,7 +228,6 @@ def fetch_nebulae() -> pd.DataFrame:
                     cat_raw.setdefault(neb_qid, set()).add(cat_id)
         except Exception as e:
             print(f"  Catalog query for {type_name} failed ({e}), skipping")
-    # Aggregate: join unique catalog IDs with semicolons
     cat_map = {qid: "; ".join(sorted(ids)) for qid, ids in cat_raw.items()}
     df["catalog_id"] = df["wikidata_id"].map(cat_map)
     n_with_cat = df["catalog_id"].notna().sum()
@@ -217,26 +239,13 @@ def fetch_nebulae() -> pd.DataFrame:
 def main():
     df = fetch_nebulae()
 
-    # Numeric coercions
-    for col in ["ra_deg", "dec_deg", "distance_ly", "angular_size"]:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    # Clean string columns
-    for col in ["name", "nebula_type", "constellation", "catalog_id"]:
-        if col in df.columns:
-            df[col] = df[col].astype(str).str.strip().replace(
-                {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
-            )
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
     df = df.sort_values("name").reset_index(drop=True)
     print(f"  {len(df):,} unique nebulae")
 
-    check_dataset(df, "nebulae", min_rows=10000,
-                  expected_columns=["name"],
-                  critical_columns=["name"])
-
-    # Stats for README
+    # ── Domain-specific stats for README ─────────────────────────────
     n = len(df)
     type_counts = df["nebula_type"].value_counts()
     top_types = type_counts.head(8)
@@ -252,87 +261,7 @@ def main():
     n_with_coords = int(df[["ra_deg", "dec_deg"]].notna().all(axis=1).sum())
     n_with_catalog = int(df["catalog_id"].notna().sum()) if "catalog_id" in df.columns else 0
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "nebulae.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_kb = out.stat().st_size / 1024
-        print(f"  {size_kb:.0f} KB parquet")
-
-        banner_file = download_banner("nebulae", tmp)
-        banner_md = banner_markdown("nebulae", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc0-1.0
-pretty_name: "Nebula Catalog"
-language:
-  - en
-description: >-
-  Catalog of nebulae sourced from Wikidata, covering emission, reflection,
-  dark, and planetary nebulae. {n:,} entries with coordinates, distances,
-  angular sizes, and constellation assignments.
-size_categories:
-  - 10K<n<100K
-task_categories:
-  - tabular-classification
-tags:
-  - space
-  - astronomy
-  - nebulae
-  - deep-sky
-  - wikidata
-  - open-data
-  - tabular-data
-  - parquet
-configs:
-  - config_name: default
-    default: true
-    data_files:
-      - split: train
-        path: data/nebulae.parquet
----
-
-# Nebula Catalog
-{banner_md}
-*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
-
-A comprehensive catalog of **{n:,}** nebulae sourced from [Wikidata](https://www.wikidata.org/),
-covering emission, reflection, dark, and planetary nebulae across the sky.
-
-## Dataset description
-
-Nebulae are clouds of interstellar gas and dust — the birthplaces of stars,
-the remnants of dying ones, and some of the most visually spectacular objects
-in the universe. This dataset aggregates structured data from Wikidata's
-knowledge base, drawing on decades of cataloguing from Messier, NGC, IC, and
-other surveys.
-
-Each entry includes the nebula's name, type, host constellation, equatorial
-coordinates (right ascension and declination), distance from Earth, angular
-size on the sky, and a representative catalog identifier. This enables
-sky-survey cross-matching, population studies by type or constellation, and
-distance/size distribution analysis.
-
-Sourced from Wikidata SPARQL using P31 (instance of) for emission (Q207326),
-reflection (Q167278), dark (Q46587), and planetary (Q204194) nebulae.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `wikidata_id` | string | Wikidata entity ID (e.g. "Q12345"); stable URI for cross-referencing other catalogs |
-| `name` | string | Common or catalog name as recorded in Wikidata (e.g. "Orion Nebula", "NGC 1499", "Barnard 68"); null for objects with no recorded label |
-| `nebula_type` | string | Physical nebula class: "planetary nebula" (expanding shell from AGB star), "emission nebula" (ionized HII region), "reflection nebula" (dust scattering starlight), "dark nebula" (opaque dust blocking background), "supernova remnant" (ejecta from stellar explosion) |
-| `constellation` | string | IAU constellation in which the nebula is located (e.g. "Orion", "Cygnus"); null if not recorded in Wikidata |
-| `ra_deg` | float | Right ascension in decimal degrees, ICRS J2000.0; range 0–360; null if coordinates not in Wikidata |
-| `dec_deg` | float | Declination in decimal degrees, ICRS J2000.0; range −90 to +90; null if coordinates not in Wikidata |
-| `catalog_id` | string | Cross-reference identifiers from NGC, IC, Messier, and other catalogs, semicolon-separated (e.g. "NGC 1952; M 1"); null for objects catalogued only in Wikidata |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n:,}** nebulae total
 - **{n_with_coords:,}** with equatorial coordinates
 - **{n_with_catalog:,}** with catalog identifiers
@@ -340,10 +269,9 @@ reflection (Q167278), dark (Q46587), and planetary (Q204194) nebulae.
 
 ### Breakdown by type
 
-{top_types_str}
+{top_types_str}"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -359,69 +287,54 @@ print(pn[["name", "constellation", "ra_deg", "dec_deg"]].head(10))
 
 # Nebulae in Orion
 orion = df[df["constellation"] == "Orion"]
-print(f"{{len(orion):,}} nebulae in Orion")
+print(f"{len(orion):,} nebulae in Orion")
 
-# Dark nebulae
-dark = df[df["nebula_type"] == "dark nebula"]
-print(f"{{len(dark):,}} dark nebulae")
-```
+# Distribution by type
+import matplotlib.pyplot as plt
+df["nebula_type"].value_counts().plot.barh()
+plt.xlabel("Count")
+plt.title("Nebulae by Type")
+plt.tight_layout()
+plt.show()
+```"""
 
-## Data source
-
-[Wikidata](https://www.wikidata.org/) SPARQL endpoint. Nebulae identified via
-property P31 (instance of) for four nebula-type entities. Data is
-community-curated and reflects contributions from astronomical cataloguing
-projects worldwide.
-
-## Update schedule
-
-Quarterly (January, April, July, October). Re-run manually at any time to
-pick up newly catalogued objects.
-
-## Related datasets
-
-- [planetary-nebulae](https://huggingface.co/datasets/juliensimon/planetary-nebulae) -- dedicated planetary nebula catalog
-- [ngc-ic-catalog](https://huggingface.co/datasets/juliensimon/ngc-ic-catalog) -- NGC/IC catalog of deep-sky objects
-- [messier-catalog](https://huggingface.co/datasets/juliensimon/messier-catalog) -- Messier catalog
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/nebula-catalog) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{nebula_catalog,
-  author = {{Simon, Julien}},
-  title = {{Nebula Catalog}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/nebula-catalog}},
-  note = {{Sourced from Wikidata (CC0)}}
-}}
-```
-
-## License
-
-[CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (Wikidata content is public domain)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update nebula catalog: {n:,} nebulae"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Nebula Catalog",
+        description=DESCRIPTION,
+        license="cc0-1.0",
+        tags=["space", "astronomy", "nebulae", "deep-sky", "wikidata",
+              "open-data", "tabular-data", "parquet"],
+        source_url="https://www.wikidata.org/",
+        task_categories=["tabular-classification"],
+        collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA03606/PIA03606~small.jpg",
+            "alt": "The Crab Nebula observed by the Hubble Space Telescope",
+            "credit": "NASA/ESA/Hubble",
+        },
+        related_datasets=[
+            "juliensimon/planetary-nebulae",
+            "juliensimon/ngc-ic-catalog",
+            "juliensimon/messier-catalog",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=["ra_deg", "dec_deg"],
+            strings=["name", "wikidata_id", "nebula_type", "constellation", "catalog_id"],
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={n}\n")
+        p.publish(
+            df,
+            filename="nebulae.parquet",
+            min_rows=10000,
+            expected_columns=["name"],
+            critical_columns=["name"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update nebula catalog: {n:,} nebulae",
+        )
     print("Done.")
 
 

@@ -2,20 +2,65 @@
 """Fetch NEO close-approach data from NASA JPL and upload to HF."""
 
 import math
-import os
-import subprocess
-import tempfile
-from pathlib import Path
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
+from hf_dataset_utils import Pipeline
 
 CAD_API = "https://ssd-api.jpl.nasa.gov/cad.api"
 HF_REPO = "juliensimon/neo-close-approaches"
 
 AU_TO_LD = 389.17  # 1 AU in Lunar Distances
+
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "designation": "Primary designation of the NEO (e.g. '433', '2024 YR4'); assigned by the Minor Planet Center; numbered objects use their permanent number, unnumbered use provisional designation",
+    "orbit_id": "Orbit solution ID used for the close-approach computation; identifies which JPL orbit fit was used; changes when new astrometric observations refine the orbit",
+    "close_approach_jd": "Close-approach time in Julian Date (TDB timescale); precise epoch of closest geometric approach to Earth; used for orbital mechanics calculations",
+    "close_approach_date": "Close-approach date and time in UTC; derived from the Julian Date for human-readable reference",
+    "distance_au": "Nominal closest-approach distance to Earth in astronomical units (AU); 1 AU = 149.6 million km; computed from the best-fit orbit solution",
+    "distance_min_au": "Minimum possible approach distance in AU at the 3-sigma confidence level; lower bound accounting for orbital uncertainty; tighter for well-observed objects",
+    "distance_max_au": "Maximum possible approach distance in AU at the 3-sigma confidence level; upper bound accounting for orbital uncertainty",
+    "distance_ld": "Nominal closest-approach distance in Lunar Distances (1 LD = 384,400 km); more intuitive scale for close approaches; the Moon orbits at 1.0 LD",
+    "velocity_relative_kms": "Relative velocity of the NEO with respect to Earth at closest approach in km/s; determines kinetic energy of a potential impact; typical range 5-30 km/s",
+    "velocity_infinity_kms": "Hyperbolic excess velocity (v-infinity) in km/s; the NEO's velocity relative to Earth at infinite distance; determines deflection mission requirements",
+    "time_uncertainty": "3-sigma uncertainty in the close-approach time (e.g. '< 00:01' or '4_15:23' for days_hours:minutes); reflects how well the orbit is determined; large values indicate poorly constrained predictions",
+    "absolute_magnitude": "Absolute magnitude H of the NEO; brightness at 1 AU from both Sun and observer at zero phase angle; proxy for size: H=18 ~ 1 km, H=22 ~ 140 m, H=25 ~ 40 m (size depends on unknown albedo)",
+    "diameter_km": "Measured physical diameter in km from thermal IR (WISE/NEOWISE), radar, or occultation; null for the vast majority of NEOs; range from sub-km to tens of km",
+    "diameter_sigma_km": "1-sigma uncertainty on the measured diameter in km; null when diameter itself is null",
+    "full_name": "Full formatted name/designation including permanent number and name where assigned (e.g. '433 Eros (1898 DQ)'); provides the most complete identification string",
+    "estimated_diameter_min_m": "Estimated minimum diameter in meters assuming a bright (albedo=0.25) S-type surface; computed from absolute magnitude when no measured diameter is available; null when measured diameter exists",
+    "estimated_diameter_max_m": "Estimated maximum diameter in meters assuming a dark (albedo=0.05) C-type surface; computed from absolute magnitude when no measured diameter is available; null when measured diameter exists",
+    "is_pha": "Potentially Hazardous Asteroid flag: True if absolute magnitude H <= 22 (roughly >= 140 m diameter) AND minimum approach distance <= 0.05 AU; these objects warrant continued monitoring",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+All close approaches of Near-Earth Objects (asteroids and comets) to Earth within 0.05 AU \
+(~7.5 million km), spanning 1900 to 2100, from NASA JPL CNEOS. Updated daily.
+
+This dataset contains every known close approach of a near-Earth object (NEO) to Earth, \
+computed by NASA's Center for Near-Earth Object Studies (CNEOS) at the Jet Propulsion \
+Laboratory. The data is recomputed continuously as new observations refine orbit estimates \
+and new asteroids are discovered.
+
+Each record includes the closest-approach distance (with 3-sigma uncertainty bounds), \
+relative velocity, absolute magnitude, and -- where available -- measured diameter. For \
+objects without a measured diameter, estimates derived from absolute magnitude using standard \
+albedo assumptions are included.
+
+Near-Earth objects are asteroids and comets whose orbits bring them within 1.3 AU of the Sun, \
+placing them on trajectories that can intersect Earth's path. Close approaches within 0.05 AU \
+(~19.5 lunar distances) are of particular interest for planetary defense. At these distances, \
+gravitational perturbations from Earth can significantly alter an object's future orbit.
+
+The distinction between past and predicted future approaches is scientifically important. \
+Historical approaches are constrained by astrometric observations and have well-determined \
+parameters. Future predictions depend on orbit propagation and degrade in accuracy over time, \
+especially for small objects with short observation arcs or those subject to non-gravitational \
+forces like the Yarkovsky effect.
+"""
 
 
 def estimate_diameter_m(h_mag, albedo):
@@ -85,120 +130,27 @@ def main():
     for col in ["estimated_diameter_min_m", "estimated_diameter_max_m"]:
         df[col] = df[col].round(1)
 
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
+
+    # ── Domain-specific stats for README ─────────────────────────────
+    n_total = len(df)
     n_past = int((df["close_approach_date"] <= pd.Timestamp.now()).sum())
-    n_future = len(df) - n_past
+    n_future = n_total - n_past
     n_pha = int(df["is_pha"].sum())
     n_with_diameter = int(df["diameter_km"].notna().sum())
     year_min = int(df["close_approach_date"].dt.year.min())
     year_max = int(df["close_approach_date"].dt.year.max())
     closest = df.loc[df["distance_au"].idxmin()]
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "neo_close_approaches.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("neo", tmp)
-        banner_md = banner_markdown("neo", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Near-Earth Object Close Approaches"
-language:
-  - en
-description: "All asteroid and comet close approaches to Earth within 0.05 AU (1900-2100) from NASA JPL CNEOS. Updated daily."
-task_categories:
-  - tabular-classification
-  - tabular-regression
-tags:
-  - space
-  - asteroid
-  - neo
-  - planetary-defense
-  - nasa
-  - near-earth-object
-  - open-data
-  - jpl
-  - cneos
-  - potentially-hazardous-asteroid
-  - tabular-data
-  - parquet
-size_categories:
-  - 10K<n<100K
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/neo_close_approaches.parquet
-    default: true
----
-
-# Near-Earth Object Close Approaches
-{banner_md}
-*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
-
-![Update NEO Close Approaches](https://github.com/juliensimon/space-datasets/actions/workflows/update-neo.yml/badge.svg)
-![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.neo&label=updated&color=brightgreen)
-
-All close approaches of Near-Earth Objects (asteroids and comets) to Earth within 0.05 AU
-(~7.5 million km), spanning **{year_min}** to **{year_max}**. Currently **{len(df):,}** recorded approaches
-({n_past:,} past, {n_future:,} future predictions).
-
-## Dataset description
-
-This dataset contains every known close approach of a near-Earth object (NEO) to Earth,
-computed by NASA's Center for Near-Earth Object Studies (CNEOS) at the Jet Propulsion
-Laboratory. The data is recomputed continuously as new observations refine orbit
-estimates and new asteroids are discovered.
-
-Each record includes the closest-approach distance (with 3-sigma uncertainty bounds),
-relative velocity, absolute magnitude, and — where available — measured diameter.
-For objects without a measured diameter, we include estimates derived from
-absolute magnitude using standard albedo assumptions.
-
-Near-Earth objects are asteroids and comets whose orbits bring them within 1.3 AU of the Sun, placing them on trajectories that can intersect Earth's path. They originate primarily from gravitational perturbations in the main asteroid belt -- resonances with Jupiter eject fragments into planet-crossing orbits over millions of years -- or from the disintegration of short-period comets. The population spans a vast size range, from sub-meter fragments to objects tens of kilometers across, with the current catalog heavily weighted toward objects larger than about 140 meters due to survey detection limits.
-
-Close approaches within 0.05 AU (~19.5 lunar distances) are of particular interest for planetary defense. At these distances, gravitational perturbations from Earth can significantly alter an object's future orbit, a phenomenon that makes long-term trajectory prediction inherently uncertain. The 3-sigma distance bounds in this dataset reflect that orbital uncertainty: well-observed objects with long data arcs have tight bounds, while newly discovered objects may have approach distances uncertain by orders of magnitude. The velocity columns capture both the geocentric relative velocity (v_rel) and the hyperbolic excess velocity (v_inf), which together determine the kinetic energy of a potential impact and the feasibility of deflection missions.
-
-The distinction between past and predicted future approaches is scientifically important. Historical approaches are constrained by astrometric observations and have well-determined parameters. Future predictions depend on orbit propagation and degrade in accuracy over time, especially for small objects with short observation arcs or those subject to non-gravitational forces like the Yarkovsky effect -- a thermal radiation pressure that slowly shifts asteroid orbits by up to ~0.01 AU per million years and is the dominant source of uncertainty for sub-kilometer NEOs on century timescales.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `designation` | string | Primary designation (e.g. "433", "2024 YR4") |
-| `orbit_id` | string | Orbit solution ID used for computation |
-| `close_approach_jd` | float64 | Close-approach time (Julian Date, TDB) |
-| `close_approach_date` | datetime | Close-approach date/time (UTC) |
-| `distance_au` | float64 | Nominal approach distance (AU) |
-| `distance_min_au` | float64 | Minimum possible distance, 3-sigma (AU) |
-| `distance_max_au` | float64 | Maximum possible distance, 3-sigma (AU) |
-| `distance_ld` | float64 | Nominal approach distance (Lunar Distances) |
-| `velocity_relative_kms` | float64 | Velocity relative to Earth (km/s) |
-| `velocity_infinity_kms` | float64 | V-infinity / hyperbolic excess velocity (km/s) |
-| `time_uncertainty` | string | 3-sigma time uncertainty (e.g. "< 00:01" or "4_15:23") |
-| `absolute_magnitude` | float64 | Absolute magnitude H (brightness proxy for size) |
-| `diameter_km` | float64 | Measured diameter in km (null if unknown) |
-| `diameter_sigma_km` | float64 | Diameter 1-sigma uncertainty in km |
-| `full_name` | string | Full formatted name/designation |
-| `estimated_diameter_min_m` | float64 | Estimated diameter (m) assuming albedo 0.25 (bright) |
-| `estimated_diameter_max_m` | float64 | Estimated diameter (m) assuming albedo 0.05 (dark) |
-| `is_pha` | bool | Potentially Hazardous Asteroid flag (H <= 22 and distance <= 0.05 AU) |
-
-## Quick stats
-
-- **{len(df):,}** close approaches ({year_min}--{year_max})
+    quick_stats = f"""\
+- **{n_total:,}** close approaches ({year_min}--{year_max})
+- **{n_past:,}** past, **{n_future:,}** future predictions
 - **{n_pha:,}** involving Potentially Hazardous Asteroids
 - **{n_with_diameter:,}** objects with measured diameters
-- Closest recorded approach: **{closest['full_name'].strip()}** at **{closest['distance_ld']:.2f} LD** ({closest['distance_au']:.6f} AU)
+- Closest recorded approach: **{closest['full_name'].strip()}** at **{closest['distance_ld']:.2f} LD** ({closest['distance_au']:.6f} AU)"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -218,65 +170,58 @@ big_close = df[
 ]
 
 # Approaches per decade
+import matplotlib.pyplot as plt
 df["decade"] = (df["close_approach_date"].dt.year // 10) * 10
 by_decade = df.groupby("decade").size()
-```
+by_decade.plot(kind="bar")
+plt.xlabel("Decade")
+plt.ylabel("Number of close approaches")
+plt.title("NEO Close Approaches per Decade")
+plt.show()
+```"""
 
-## Data source
-
-[NASA JPL CNEOS SBDB Close-Approach Data API](https://ssd-api.jpl.nasa.gov/doc/cad.html).
-Orbits are continuously refined as new astrometric observations are collected by surveys
-like Catalina Sky Survey, Pan-STARRS, and ATLAS.
-
-## Update schedule
-
-Daily at 10:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-datasets).
-
-## Related datasets
-
-- [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) — Full NORAD satellite catalog
-- [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) — 232M historical TLE records
-- [space-launch-log](https://huggingface.co/datasets/juliensimon/space-launch-log) — Global launch history from GCAT
-- [starlink-fleet-data](https://huggingface.co/datasets/juliensimon/starlink-fleet-data) — Daily Starlink constellation snapshots
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/neo-close-approaches) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{neo_close_approaches,
-  author = {{Simon, Julien}},
-  title = {{NEO Close Approaches}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/neo-close-approaches}},
-  note = {{Based on NASA/JPL Center for Near Earth Object Studies (CNEOS) data via the SBDB Close-Approach API}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update NEO close approaches: {len(df):,} records"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Near-Earth Object Close Approaches",
+        description=DESCRIPTION,
+        tags=["space", "asteroid", "neo", "planetary-defense", "nasa",
+              "near-earth-object", "open-data", "jpl", "cneos",
+              "potentially-hazardous-asteroid", "tabular-data", "parquet"],
+        source_url="https://ssd-api.jpl.nasa.gov/doc/cad.html",
+        task_categories=["tabular-classification", "tabular-regression"],
+        collection_url="https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA25329/PIA25329~small.jpg",
+            "alt": "NASA's DART spacecraft approaching the Didymos asteroid system",
+            "credit": "NASA/Johns Hopkins APL",
+        },
+        related_datasets=[
+            "juliensimon/sentry-impact-risk",
+            "juliensimon/fireball-bolide-events",
+            "juliensimon/jpl-small-body-database",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=[
+                "close_approach_jd", "distance_au", "distance_min_au", "distance_max_au",
+                "distance_ld", "velocity_relative_kms", "velocity_infinity_kms",
+                "absolute_magnitude", "diameter_km", "diameter_sigma_km",
+                "estimated_diameter_min_m", "estimated_diameter_max_m",
+            ],
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={len(df)}\n")
+        p.publish(
+            df,
+            filename="neo_close_approaches.parquet",
+            min_rows=10000,
+            expected_columns=["designation", "close_approach_date", "distance_au",
+                              "velocity_relative_kms", "absolute_magnitude"],
+            critical_columns=["designation", "close_approach_date", "distance_au"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update NEO close approaches: {n_total:,} records",
+        )
     print("Done.")
 
 

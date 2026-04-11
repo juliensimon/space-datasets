@@ -3,7 +3,7 @@
 
 Two configs:
   - gateways: ground stations from starlinkinsider.com + FCC IBFS bulk data
-  - pops: 14 Points of Presence (DNS codes → cities with coordinates)
+  - pops: 14 Points of Presence (DNS codes -> cities with coordinates)
 
 Sources:
   1. starlinkinsider.com — scraped daily, covers international stations with status
@@ -13,13 +13,10 @@ Starlinkinsider stations take priority for status. FCC-only stations (US) are
 merged in with their FCC license status. Stations not in either source are dropped.
 """
 
-import io
 import json
-import os
 import re
 import subprocess
 import sys
-import tempfile
 import time
 import zipfile
 from pathlib import Path
@@ -27,8 +24,11 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline, check_dataset, write_parquet
+from hf_dataset_utils.banner import banner_markdown as render_banner
+from hf_dataset_utils.banner import download_banner
+from hf_dataset_utils.github import emit_output
+from hf_dataset_utils.readme import _citation_bibtex, _size_category
 
 INSIDER_URL = "https://starlinkinsider.com/starlink-gateway-locations/"
 FCC_FTP_URL = "ftp://ftp.fcc.gov/pub/Bureaus/International/databases/IBFS.zip"
@@ -57,6 +57,23 @@ POPS = [
     {"code": "syd", "city": "Sydney", "country": "AU", "lat": -33.8688, "lon": 151.2093},
     {"code": "nrt", "city": "Tokyo", "country": "JP", "lat": 35.6762, "lon": 139.6503},
 ]
+
+# ── Column descriptions ─────────────────────────────────────────────────────
+
+GW_COLUMN_DESCRIPTIONS = {
+    "name": "Location name (City, State/Country) of the Starlink gateway earth station; derived from FCC IBFS filings or Starlink Insider community data",
+    "lat": "Latitude in decimal degrees (WGS-84); precise to 4 decimal places for FCC-sourced stations, geocoded for Insider-sourced stations",
+    "lon": "Longitude in decimal degrees (WGS-84); precise to 4 decimal places for FCC-sourced stations, geocoded for Insider-sourced stations",
+    "status": "Operational status: 'operational' (live and serving traffic) or 'planned' (licensed/announced but not yet active); derived from Starlink Insider or FCC filing status codes",
+}
+
+POP_COLUMN_DESCRIPTIONS = {
+    "code": "DNS prefix code from Starlink reverse DNS hostnames (e.g., 'lax', 'frntdeu'); identifies the PoP in customer.<code><N>.isp.starlink.com patterns",
+    "city": "City name where the Point of Presence is located; determined from SpaceX peering/IXP registrations",
+    "country": "ISO 3166-1 alpha-2 country code (e.g., 'US', 'DE', 'JP')",
+    "lat": "Latitude in decimal degrees (WGS-84) of the PoP city center",
+    "lon": "Longitude in decimal degrees (WGS-84) of the PoP city center",
+}
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -156,7 +173,7 @@ def fetch_fcc_stations() -> list[dict]:
     """Download FCC IBFS bulk data and extract SpaceX earth stations."""
     print(f"Fetching FCC IBFS from {FCC_FTP_URL}...")
     try:
-        resp = subprocess.run(
+        subprocess.run(
             ["curl", "-s", "--max-time", "120", FCC_FTP_URL, "-o", "/tmp/IBFS.zip"],
             check=True, capture_output=True, text=True,
         )
@@ -171,9 +188,6 @@ def fetch_fcc_stations() -> list[dict]:
         return []
 
     with zf:
-        # Parse main.dat — find SpaceX SES (Satellite Earth Station) filings
-        # Schema: filing_key[0], filing_state[1], callsign[2], file_number[3],
-        #         subsystem_code[4], status_code[5], ..., description[40], address_key[41]
         main_rows = _parse_ibfs_file(zf, "main.dat")
         addr_rows = _parse_ibfs_file(zf, "address.dat")
 
@@ -192,11 +206,6 @@ def fetch_fcc_stations() -> list[dict]:
                         or "space exploration" in desc.lower()):
                     filing_status[r[0]] = r[5].strip()
 
-        # Parse site.dat — extract coordinates
-        # Schema: site_key[0], filing_key[1], site_name[2], site_desc[3],
-        #         contact[4], address[5], ?, city[7], county[8], state[9], zip[10],
-        #         phone[11], elevation[12], lat_deg[13], lat_min[14], lat_sec[15],
-        #         lat_hemi[16], lon_deg[17], lon_min[18], lon_sec[19], lon_hemi[20]
         site_rows = _parse_ibfs_file(zf, "site.dat")
 
     # Dedup by normalized city name, prefer operational status
@@ -215,12 +224,10 @@ def fetch_fcc_stations() -> list[dict]:
             continue
 
         name = f"{city}, {state}" if state else city
-        # Clean duplicated state codes like "Arvin, CA., CA" or "Hillsboro, TX, TX"
         name = re.sub(r",\s*[A-Z]{2}\.,", ",", name)
         name = re.sub(r",\s*([A-Z]{2}),\s*\1$", r", \1", name)
 
         status_code = filing_status[r[1]]
-        # A/C = authorized/conditional, ATPN = authorized to proceed notification
         status = "operational" if status_code in ("A/C", "ATPN", "AFP") else "planned"
 
         city_norm = normalize_city(name)
@@ -240,149 +247,22 @@ def fetch_fcc_stations() -> list[dict]:
     return stations
 
 
-# ── HF README ────────────────────────────────────────────────────────────────
+# ── Dataset description ──────────────────────────────────────────────────────
+DESCRIPTION = """\
+Starlink ground infrastructure data: gateway earth stations and internet Points of \
+Presence (PoPs). Gateway earth stations maintain continuous Ka-band and Ku-band links \
+with the overhead satellite constellation -- when a user terminal communicates with a \
+Starlink satellite, the signal is relayed down to the nearest gateway, which connects \
+to the terrestrial internet backbone.
 
-def build_readme(n_gateways: int, n_operational: int, n_planned: int, banner_md: str = "") -> str:
-    return f"""---
-license: cc-by-4.0
-pretty_name: "Starlink Ground Stations and PoPs"
-language:
-  - en
-description: "Worldwide Starlink gateway and Point of Presence locations from FCC IBFS filings and Starlink Insider. Updated daily."
-task_categories:
-  - tabular-classification
-tags:
-  - space
-  - starlink
-  - ground-stations
-  - satellite-internet
-  - geospatial
-  - open-data
-  - spacex
-  - fcc
-  - tabular-data
-  - parquet
-configs:
-  - config_name: gateways
-    data_files:
-      - split: train
-        path: data/gateways.parquet
-  - config_name: pops
-    data_files:
-      - split: train
-        path: data/pops.parquet
-size_categories:
-  - n<1K
----
+SpaceX has been aggressively expanding its gateway network worldwide to reduce \
+"bent-pipe" latency and increase aggregate network capacity. The Points of Presence \
+(PoPs) serve a different function: these are internet exchange points in major cities \
+where Starlink peers with other networks and content delivery providers.
 
-# Starlink Ground Stations & Points of Presence
-{banner_md}
-*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
-
-![Update Ground Stations](https://github.com/juliensimon/space-datasets/actions/workflows/update-ground-stations.yml/badge.svg)
-![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['ground-stations']&label=updated&color=brightgreen)
-
-Starlink ground infrastructure data: gateway earth stations and internet Points of Presence (PoPs).
-
-## Dataset description
-
-Starlink's ground segment is as critical to its operation as the satellites themselves. Each gateway earth station houses multiple parabolic antennas (typically 2-4 dishes per site) that maintain continuous Ka-band and Ku-band links with the overhead satellite constellation. When a user terminal communicates with a Starlink satellite, the signal is relayed down to the nearest gateway, which connects to the terrestrial internet backbone. The geographic distribution of gateways directly determines service quality: users far from any gateway experience higher latency because their traffic must hop across multiple satellites via inter-satellite laser links before reaching a ground connection point.
-
-SpaceX has been aggressively expanding its gateway network worldwide to reduce this "bent-pipe" latency and increase aggregate network capacity. Early service relied on a handful of US gateways, but the network now spans six continents. Each gateway site requires regulatory approval from the host country's telecommunications authority -- in the US, this means FCC International Bureau (IBFS) earth station license filings, which are public record and provide precise geographic coordinates. The Points of Presence (PoPs) serve a different function: these are internet exchange points in major cities where Starlink peers with other networks and content delivery providers, determining the last-mile routing of user traffic after it exits the Starlink network.
-
-This dataset is valuable for network performance modeling (estimating latency based on user-to-gateway distance), regulatory analysis of Starlink's global expansion strategy, competitive intelligence in the satellite broadband market, and visualization of the ground infrastructure that supports the world's largest satellite constellation.
-
-## Configs
-
-### `gateways` — {n_gateways} ground stations ({n_operational} operational, {n_planned} planned)
-
-Gateway earth stations that connect Starlink satellites to the terrestrial internet.
-
-**Sources:**
-- [Starlink Insider](https://starlinkinsider.com/starlink-gateway-locations/) — international coverage, community-verified status
-- [FCC IBFS](ftp://ftp.fcc.gov/pub/Bureaus/International/databases/) — US earth station license filings (SpaceX SES applications)
-
-Starlinkinsider stations take priority for status when both sources cover the same location.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `name` | string | Location name (City, State/Country) |
-| `lat` | float | Latitude (WGS-84) |
-| `lon` | float | Longitude (WGS-84) |
-| `status` | string | `operational` or `planned` |
-
-### `pops` — {len(POPS)} Points of Presence
-
-Internet exchange points where Starlink traffic exits to the public internet.
-Identified via reverse DNS patterns (`customer.<code><N>.isp.starlink.com`).
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `code` | string | DNS prefix code (e.g. `lax`, `frntdeu`) |
-| `city` | string | City name |
-| `country` | string | ISO 3166-1 alpha-2 country code |
-| `lat` | float | Latitude (WGS-84) |
-| `lon` | float | Longitude (WGS-84) |
-
-## Usage
-
-```python
-from datasets import load_dataset
-
-# Load gateways
-gateways = load_dataset("juliensimon/starlink-ground-stations", "gateways", split="train")
-
-# Load PoPs
-pops = load_dataset("juliensimon/starlink-ground-stations", "pops", split="train")
-
-# Operational stations only
-operational = gateways.filter(lambda x: x["status"] == "operational")
-```
-
-## Data sources
-
-- [Starlink Insider](https://starlinkinsider.com/starlink-gateway-locations/) — community-maintained list of Starlink gateway locations with operational status
-- [FCC IBFS](ftp://ftp.fcc.gov/pub/Bureaus/International/databases/) — bulk extract of International Bureau Filing System earth station license data (SpaceX SES filings with DMS coordinates)
-- [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) — geocoding for stations without coordinates
-
-## Update schedule
-
-Daily at 09:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-datasets).
-
-## Related datasets
-
-- [starlink-fleet-data](https://huggingface.co/datasets/juliensimon/starlink-fleet-data) — Daily Starlink constellation health snapshots
-- [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) — NORAD satellite catalog
-- [space-launch-log](https://huggingface.co/datasets/juliensimon/space-launch-log) — Global launch history from GCAT
-
-## See it in action
-
-This dataset powers the ground station map in [Starlink Viz](https://github.com/juliensimon/starlink-viz) — interactive 3D visualization of gateway and PoP locations.
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/starlink-ground-stations) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{starlink_ground_stations,
-  author = {{Simon, Julien}},
-  title = {{Starlink Ground Stations}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/starlink-ground-stations}},
-  note = {{Based on data from Starlink Insider and FCC IBFS}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
+This dataset is valuable for network performance modeling, regulatory analysis of \
+Starlink's global expansion strategy, and visualization of the ground infrastructure \
+that supports the world's largest satellite constellation.\
 """
 
 
@@ -401,7 +281,7 @@ def main():
         print(f"ERROR: Starlinkinsider scrape failed ({e})")
         sys.exit(1)
 
-    # Build norm→cache-key map for coordinate lookup
+    # Build norm->cache-key map for coordinate lookup
     norm_to_key: dict[str, str] = {}
     for k in geo_cache:
         norm_to_key[normalize_city(k)] = k
@@ -463,48 +343,183 @@ def main():
     gw_df = pd.DataFrame(gw_records, columns=["name", "lat", "lon", "status"])
     pop_df = pd.DataFrame(POPS, columns=["code", "city", "country", "lat", "lon"])
 
+    # Keep only described columns
+    gw_df = gw_df[[c for c in gw_df.columns if c in GW_COLUMN_DESCRIPTIONS]]
+    pop_df = pop_df[[c for c in pop_df.columns if c in POP_COLUMN_DESCRIPTIONS]]
+
     check_dataset(gw_df, "ground-stations", min_rows=50,
-        expected_columns=["name", "lat", "lon", "status"],
-        critical_columns=["lat", "lon"])
+                  expected_columns=["name", "lat", "lon", "status"],
+                  critical_columns=["lat", "lon"])
 
     n_operational = len(gw_df[gw_df["status"] == "operational"])
     n_planned = len(gw_df[gw_df["status"] == "planned"])
     print(f"\nGateways: {len(gw_df)} ({n_operational} operational, {n_planned} planned)")
     print(f"PoPs: {len(pop_df)}")
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
+    # ── Schema helpers ───────────────────────────────────────────────
+    def _schema(descs):
+        lines = ["| Column | Type | Description |", "|--------|------|-------------|"]
+        for col, desc in descs.items():
+            lines.append(f"| `{col}` | -- | {desc} |")
+        return "\n".join(lines)
 
-        gw_path = data_dir / "gateways.parquet"
-        pop_path = data_dir / "pops.parquet"
-        gw_df.to_parquet(gw_path, index=False, engine="pyarrow")
-        pop_df.to_parquet(pop_path, index=False, engine="pyarrow")
-        print(f"  gateways.parquet: {gw_path.stat().st_size / 1024:.1f} KB")
-        print(f"  pops.parquet: {pop_path.stat().st_size / 1024:.1f} KB")
+    quick_stats = f"""\
+- **{len(gw_df)}** gateway earth stations ({n_operational} operational, {n_planned} planned)
+- **{len(pop_df)}** Points of Presence across {pop_df['country'].nunique()} countries
+- Coverage spans {gw_df['lat'].min():.1f} to {gw_df['lat'].max():.1f} latitude"""
 
-        banner_file = download_banner("ground-stations", tmp)
-        banner_md = banner_markdown("ground-stations", banner_file)
-        readme_path = tmp / "README.md"
-        readme_path.write_text(build_readme(len(gw_df), n_operational, n_planned, banner_md))
+    usage = f"""\
+```python
+from datasets import load_dataset
 
-        print("\nUploading to HF...")
+# Load gateways
+gateways = load_dataset("{HF_REPO}", "gateways", split="train")
+
+# Load PoPs
+pops = load_dataset("{HF_REPO}", "pops", split="train")
+
+# Operational stations only
+operational = gateways.filter(lambda x: x["status"] == "operational")
+
+# Map gateway distribution with matplotlib
+import matplotlib.pyplot as plt
+df = gateways.to_pandas()
+op = df[df["status"] == "operational"]
+pl = df[df["status"] == "planned"]
+plt.scatter(op["lon"], op["lat"], c="green", label="Operational", s=20)
+plt.scatter(pl["lon"], pl["lat"], c="orange", label="Planned", s=20)
+plt.xlabel("Longitude")
+plt.ylabel("Latitude")
+plt.legend()
+plt.title("Starlink Ground Stations")
+plt.show()
+```"""
+
+    total_rows = len(gw_df) + len(pop_df)
+
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Starlink Ground Stations & Points of Presence",
+        description=DESCRIPTION,
+        tags=["space", "starlink", "ground-stations", "satellite-internet",
+              "geospatial", "open-data", "spacex", "fcc", "tabular-data", "parquet"],
+        source_url="https://starlinkinsider.com/starlink-gateway-locations/",
+        collection_url="https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/iss071e439624/iss071e439624~medium.jpg",
+            "alt": "An orbital sunrise illuminates the Earth's atmosphere, seen from the ISS",
+            "credit": "NASA",
+        },
+    ) as p:
+        write_parquet(gw_df, p.data_dir / "gateways.parquet")
+        write_parquet(pop_df, p.data_dir / "pops.parquet")
+
+        # Banner
+        banner_file = download_banner(p.banner["url"], p.tmp_dir)
+        banner_md = render_banner(
+            p.banner["alt"], p.banner["credit"],
+            filename=banner_file,
+        ) if banner_file else ""
+
+        readme = f"""---
+license: cc-by-4.0
+pretty_name: "Starlink Ground Stations & Points of Presence"
+language:
+  - en
+description: "Worldwide Starlink gateway and Point of Presence locations from FCC IBFS filings and Starlink Insider. Updated daily."
+task_categories:
+  - tabular-classification
+tags:
+  - space
+  - starlink
+  - ground-stations
+  - satellite-internet
+  - geospatial
+  - open-data
+  - spacex
+  - fcc
+  - tabular-data
+  - parquet
+configs:
+  - config_name: gateways
+    data_files:
+      - split: train
+        path: data/gateways.parquet
+    default: true
+  - config_name: pops
+    data_files:
+      - split: train
+        path: data/pops.parquet
+size_categories:
+  - {_size_category(total_rows)}
+---
+
+# Starlink Ground Stations & Points of Presence
+{banner_md}
+*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
+
+## Dataset description
+
+{DESCRIPTION}
+
+## Configs
+
+### `gateways` -- {len(gw_df)} ground stations ({n_operational} operational, {n_planned} planned)
+
+Gateway earth stations that connect Starlink satellites to the terrestrial internet.
+
+{_schema(GW_COLUMN_DESCRIPTIONS)}
+
+### `pops` -- {len(pop_df)} Points of Presence
+
+Internet exchange points where Starlink traffic exits to the public internet.
+
+{_schema(POP_COLUMN_DESCRIPTIONS)}
+
+## Quick stats
+
+{quick_stats}
+
+## Usage
+
+{usage}
+
+## Data sources
+
+- [Starlink Insider](https://starlinkinsider.com/starlink-gateway-locations/) -- community-maintained list with operational status
+- [FCC IBFS](ftp://ftp.fcc.gov/pub/Bureaus/International/databases/) -- US earth station license filings
+- [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) -- geocoding for stations without coordinates
+
+## Update schedule
+
+Daily at 09:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-datasets).
+
+## Related datasets
+
+- [juliensimon/starlink-fleet-data](https://huggingface.co/datasets/juliensimon/starlink-fleet-data) -- Daily Starlink constellation health snapshots
+- [juliensimon/space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) -- NORAD satellite catalog
+- [juliensimon/space-launch-log](https://huggingface.co/datasets/juliensimon/space-launch-log) -- Global launch history from GCAT
+
+## Citation
+
+{_citation_bibtex(HF_REPO, "Starlink Ground Stations & Points of Presence")}
+
+## License
+
+[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
+"""
+        (p.tmp_dir / "README.md").write_text(readme)
+
+        # Upload
+        from hf_dataset_utils import upload_to_hf
         commit_msg = (
             f"Update ground stations: {len(gw_df)} gateways "
             f"({n_operational} operational, {n_planned} planned), "
             f"{len(pop_df)} PoPs"
         )
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
-        )
+        upload_to_hf(HF_REPO, p.tmp_dir, commit_msg)
+        emit_output(rows=len(gw_df))
 
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={len(gw_df)}\n")
     print("Done.")
 
 
