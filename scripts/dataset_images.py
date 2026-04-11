@@ -286,9 +286,9 @@ DATASET_IMAGES = {
         "credit": "NASA/JPL-Caltech",
     },
     "maven": {
-        "url": "https://images-assets.nasa.gov/image/PIA24309/PIA24309~small.jpg",
-        "alt": "Exploring Jezero Crater on Mars (illustration)",
-        "credit": "NASA/JPL-Caltech",
+        "url": "https://images-assets.nasa.gov/image/PIA18612/PIA18612~small.jpg",
+        "alt": "Artist's concept of NASA's MAVEN spacecraft orbiting Mars",
+        "credit": "NASA/Goddard Space Flight Center",
     },
     "mars-rovers": {
         "url": "https://images-assets.nasa.gov/image/PIA19808/PIA19808~small.jpg",
