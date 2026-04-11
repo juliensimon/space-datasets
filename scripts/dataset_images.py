@@ -280,6 +280,21 @@ DATASET_IMAGES = {
         "alt": "Mercury as seen by the MESSENGER spacecraft",
         "credit": "NASA/Johns Hopkins APL/Carnegie Institution of Washington",
     },
+    "mercury-craters": {
+        "url": "https://images-assets.nasa.gov/image/PIA11245/PIA11245~small.jpg",
+        "alt": "Mercury as seen by the MESSENGER spacecraft",
+        "credit": "NASA/Johns Hopkins APL/Carnegie Institution of Washington",
+    },
+    "mercury-degradation": {
+        "url": "https://images-assets.nasa.gov/image/PIA11245/PIA11245~small.jpg",
+        "alt": "Mercury as seen by the MESSENGER spacecraft",
+        "credit": "NASA/Johns Hopkins APL/Carnegie Institution of Washington",
+    },
+    "pluto-atmosphere": {
+        "url": "https://images-assets.nasa.gov/image/PIA19952/PIA19952~small.jpg",
+        "alt": "Pluto in enhanced color, captured by NASA's New Horizons spacecraft",
+        "credit": "NASA/Johns Hopkins APL/SwRI",
+    },
     "juice": {
         "url": "https://images-assets.nasa.gov/image/PIA00600/PIA00600~small.jpg",
         "alt": "Jupiter's Great Red Spot and the Galilean satellites",

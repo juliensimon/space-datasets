@@ -1,6 +1,6 @@
 # space-datasets — Open Space, Astronomy & Physics Datasets on Hugging Face
 
-Open-source data pipelines that publish **178 space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
+Open-source data pipelines that publish **177 space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
 
 All datasets are loadable in one line (`load_dataset("juliensimon/...")`), require no API keys, and work with `pandas`, `polars`, or any Parquet-compatible tool.
 
@@ -181,9 +181,9 @@ Data returned by humanity's most distant spacecraft and surface explorers. Inclu
 | [isro-missions](https://huggingface.co/datasets/juliensimon/isro-missions) | ISRO spacecraft, launchers, customer satellites, and research centres | ![ISRO](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['isro']&label=updated&color=brightgreen) | Quarterly | <1 MB |
 | [mars-chemcam-compositions](https://huggingface.co/datasets/juliensimon/mars-chemcam-compositions) | 30K+ Mars rock/soil oxide compositions from Curiosity ChemCam LIBS | — | Static | 1 MB |
 | [mars-perseverance-weather](https://huggingface.co/datasets/juliensimon/mars-perseverance-weather) | Mars surface weather from Perseverance MEDA (temperature, pressure, wind, UV) | ![MEDA](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['meda-weather']&label=updated&color=brightgreen) | Monthly | ~100 MB |
+| [nasa-eva-chronology](https://huggingface.co/datasets/juliensimon/nasa-eva-chronology) | 375 spacewalks (EVAs) — complete history from Gemini to ISS | — | Static | <1 MB |
 | [nasa-mars-rover-images](https://huggingface.co/datasets/juliensimon/nasa-mars-rover-images) | 400K+ image metadata from Perseverance and Curiosity rovers (sol, camera, position, URLs) | ![Mars Rovers](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['mars-rovers']&label=updated&color=brightgreen) | Weekly | ~50 MB |
 | [nasa-maven-kp-insitu](https://huggingface.co/datasets/juliensimon/nasa-maven-kp-insitu) | MAVEN Mars atmosphere key parameters: solar wind, magnetic field, ion composition at 4-8s cadence | ![MAVEN](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['maven']&label=updated&color=brightgreen) | Quarterly | ~500 MB |
-| [nasa-eva-chronology](https://huggingface.co/datasets/juliensimon/nasa-eva-chronology) | 375 spacewalks (EVAs) — complete history from Gemini to ISS | — | Static | <1 MB |
 | [pds-planetary-missions](https://huggingface.co/datasets/juliensimon/pds-planetary-missions) | NASA PDS mission catalog — 98 missions, 115 spacecraft, 748 instruments with targets and cross-references | — | Static | <5 MB |
 | [pluto-atmosphere](https://huggingface.co/datasets/juliensimon/pluto-atmosphere) | Pluto atmospheric profiles (temperature, pressure, composition, haze) from New Horizons | — | Static | <1 MB |
 
@@ -363,35 +363,57 @@ The only secret needed is `HF_TOKEN` — a Hugging Face write token, set in the 
 pip install pandas pyarrow requests huggingface_hub[hf_xet]
 
 # Orbital Mechanics
+python scripts/update-asterank.py
+python scripts/update-bus-demeo.py
 python scripts/update-comets.py
 python scripts/update-constellation-census.py
 python scripts/update-constellation-tles.py
 python scripts/update-fireballs.py
+python scripts/update-fragmentation-events.py
 python scripts/update-gcat.py
 python scripts/update-gcat-satcat.py
 python scripts/update-ground-stations.py
+python scripts/update-launch-cost.py
 python scripts/update-launch-log.py
 python scripts/update-launch-vehicles.py
+python scripts/update-lcdb.py
+python scripts/update-meteor-showers.py
+python scripts/update-meteorite-landings.py
+python scripts/update-mpc-comets.py
 python scripts/update-neo.py
+python scripts/update-neowise.py
+python scripts/update-nesvorny-families.py
 python scripts/update-nhats.py
 python scripts/update-reentry-events.py
 python scripts/update-satcat.py
 python scripts/update-satnogs.py
 python scripts/update-sbdb.py
+python scripts/update-sdss-taxonomy.py
 python scripts/update-sentry.py
 python scripts/update-space-agencies.py
 python scripts/update-space-missions.py
 python scripts/update-spacecraft.py
 python scripts/update-spacex-launches.py
+python scripts/update-ssodnet.py
 python scripts/update-starlink.py
 SPACETRACK_USER=xxx SPACETRACK_PASS=xxx python scripts/update-tle-history.py
 python scripts/update-tle-latest.py
+python scripts/update-tno-centaur.py
 python scripts/update-ucs.py  # requires: pip install openpyxl
 python scripts/update-wmo-oscar.py
 
 # Planetary Science
+python scripts/update-ceres-craters.py
 python scripts/update-impact-craters.py
+python scripts/update-lunar-craters.py
+python scripts/update-lunar-geochemistry.py
+python scripts/update-mars-craters.py
+python scripts/update-mercury-craters.py
+python scripts/update-mercury-degradation.py
 python scripts/update-meteorites.py
+python scripts/update-planetary-nomenclature.py
+python scripts/update-pluto-atmosphere.py
+pip install beautifulsoup4 lxml && python scripts/update-solar-system-moons.py
 
 # Space Weather
 python scripts/update-ae-index.py
@@ -399,11 +421,14 @@ python scripts/update-celestrak-sw.py
 python scripts/update-donki.py
 python scripts/update-dst-index.py
 python scripts/update-f107.py
+python scripts/update-forbush-decreases.py
 python scripts/update-iers-eop.py
 python scripts/update-kp-index.py
 python scripts/update-neutron-monitor.py
 python scripts/update-omni.py
+python scripts/update-solar-eclipses.py
 pip install netCDF4 && python scripts/update-solar-flares.py
+pip install beautifulsoup4 lxml && python scripts/update-solar-proton-events.py
 python scripts/update-solar-radio.py
 python scripts/update-solar-wind.py
 python scripts/update-space-weather.py
@@ -415,51 +440,116 @@ python scripts/update-swpc-alerts.py
 python scripts/update-artemis-ii.py
 python scripts/update-astronauts.py
 python scripts/update-bepicolombo.py
+python scripts/update-cassini.py
+python scripts/update-chemcam.py
 python scripts/update-deep-space-probes.py
+python scripts/update-eva.py
 python scripts/update-exomars-tgo.py
+python scripts/update-galileo-atmosphere.py
+python scripts/update-gcat-deep-space.py
 python scripts/update-huygens.py
+python scripts/update-huygens-atmosphere.py
+python scripts/update-insight-marsquakes.py
+python scripts/update-isro.py
 python scripts/update-juice.py
 python scripts/update-mars-express.py
 python scripts/update-mars-rovers.py
 python scripts/update-maven.py
 python scripts/update-meda-weather.py
+python scripts/update-pds-missions.py
 python scripts/update-rosetta.py
 python scripts/update-venus-express.py
 
 # Astronomy
+python scripts/update-4xmm-dr14.py
+python scripts/update-aavso-vsx.py
+python scripts/update-apogee-dr17.py
 python scripts/update-astronomers.py
 python scripts/update-black-holes.py
+python scripts/update-bright-stars.py
+python scripts/update-brown-dwarfs.py
+python scripts/update-carbon-stars.py
 python scripts/update-cataclysmic-variables.py
+python scripts/update-chandra.py
 python scripts/update-chime-frb.py
+python scripts/update-cns5.py
 python scripts/update-constellations.py
 python scripts/update-cosmic-voids.py
+python scripts/update-cosmicflows.py
+python scripts/update-desi.py
 python scripts/update-erosita.py
 python scripts/update-exoplanets.py
 pip install astropy && python scripts/update-fermi-4fgl.py
+python scripts/update-first.py
+python scripts/update-gaia-cepheids.py
+python scripts/update-gaia-eb.py
+python scripts/update-gaia-rrlyrae.py
+python scripts/update-gaia-sb.py
+python scripts/update-gaia-wd.py
+python scripts/update-gaia-yso.py
+pip install astropy && python scripts/update-galah.py
 python scripts/update-galaxy-clusters.py
+python scripts/update-galaxy-zoo.py
 python scripts/update-gcvs.py
+python scripts/update-geneva-copenhagen.py
+python scripts/update-globular-clusters.py
+python scripts/update-gravitational-lenses.py
 python scripts/update-gravitational-waves.py
 python scripts/update-grb.py
+python scripts/update-grbweb.py
+python scripts/update-gswlc.py
+python scripts/update-hecate.py
 python scripts/update-hii-regions.py
+python scripts/update-hipparcos.py
+python scripts/update-icecube.py
+python scripts/update-icrf3.py
+python scripts/update-kepler-eb.py
+python scripts/update-kepler-ttv.py
+python scripts/update-magnetars.py
 python scripts/update-messier.py
+python scripts/update-milliquas.py
 python scripts/update-nebulae.py
 python scripts/update-ngc-ic.py
+python scripts/update-nvss.py
 python scripts/update-observatories.py
+python scripts/update-open-clusters.py
+python scripts/update-otter-tde.py
+python scripts/update-pantheon.py
+python scripts/update-planck-pgcc.py
 python scripts/update-planck-sz2.py
+python scripts/update-planetary-nebulae.py
 pip install beautifulsoup4 lxml && python scripts/update-pulsar-glitches.py
 python scripts/update-pulsars.py
 python scripts/update-quasars.py
+python scripts/update-rave-dr6.py
+python scripts/update-rc3.py
+python scripts/update-roma-bzcat.py
 python scripts/update-snr.py
+python scripts/update-sumss.py
 python scripts/update-supernovae.py
 python scripts/update-tess-toi.py
+python scripts/update-tgss.py
+python scripts/update-unified-radio.py
+python scripts/update-vlass.py
 python scripts/update-wds.py
+python scripts/update-wolf-rayet.py
 python scripts/update-xray-binaries.py
 
 # Physics
+python scripts/update-auger.py
 pip install crdb && python scripts/update-crdb.py
+python scripts/update-fermi-3fhl.py
+python scripts/update-fermi-3pc.py
+python scripts/update-fermi-4lac.py
 python scripts/update-fermi-gbm-triggers.py
+python scripts/update-hawc.py
+python scripts/update-icecat.py
+python scripts/update-integral-ibis.py
+python scripts/update-lhaaso.py
 pip install particle && python scripts/update-pdg.py
 python scripts/update-physics-nobel.py
+python scripts/update-swift-bat.py
+python scripts/update-tevcat.py
 
 ```
 
