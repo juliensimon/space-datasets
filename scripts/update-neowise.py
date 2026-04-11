@@ -6,20 +6,15 @@ Static dataset (uploaded once, no workflow).
 """
 
 import io
-import subprocess
-import tempfile
 import zipfile
-from pathlib import Path
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
 
 ZIP_URL = "https://sbnarchive.psi.edu/pds4/non_mission/neowise_diameters_albedos_V2_0.zip"
 HF_REPO = "juliensimon/neowise-asteroid-properties"
-MIN_ROWS = 100_000
 
 # Column definitions per CSV file, matching PDS4 XML labels exactly.
 # Each table has a slightly different schema; we normalise after loading.
@@ -126,6 +121,77 @@ MISSING_SENTINELS = {
     "beaming_param_err": 0.0,
 }
 
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "object_id": "Primary identifier (asteroid number, satellite ID, or provisional designation)",
+    "asteroid_number": "IAU asteroid catalog number (null for unnumbered/satellites)",
+    "prov_desig": "Provisional designation (null if none)",
+    "comet_desig": "Comet designation for dual-nature objects (null if none)",
+    "mpc_packed_name": "MPC packed-format designation",
+    "population": "Dynamical population: main_belt, neo, hilda, jupiter_trojan, centaur, irregular_satellite, ambiguous, fixed_diameter",
+    "absolute_mag": "Absolute H magnitude used as input to thermal fit",
+    "slope_param": "G slope parameter for photometric phase correction",
+    "mean_jd": "Mean Julian Date of observations used for fitting",
+    "n_w1": "Number of W1 (3.4 um) band measurements used",
+    "n_w2": "Number of W2 (4.6 um) band measurements used",
+    "n_w3": "Number of W3 (12 um) band measurements used",
+    "n_w4": "Number of W4 (22 um) band measurements used",
+    "fit_code": "4-char code: D=diameter, V=vis albedo, B=beaming/F=FRM, I=IR albedo, -=fixed",
+    "diameter_km": "Best-fit effective spherical diameter (km)",
+    "diameter_err_km": "1-sigma diameter uncertainty (km)",
+    "v_albedo": "Visible geometric albedo (best-fit or assumed)",
+    "v_albedo_err": "1-sigma visible albedo uncertainty",
+    "ir_albedo": "Infrared geometric albedo (best-fit or assumed)",
+    "ir_albedo_err": "1-sigma infrared albedo uncertainty",
+    "beaming_param": "NEATM thermal beaming parameter eta",
+    "beaming_param_err": "1-sigma beaming parameter uncertainty",
+    "stacked_flag": '"S" if fit used co-added images on predicted position',
+    "reference": "Short reference code for original publication",
+    "notes": "Flags: OrbChange, NoOrb, BrokenLink (null if none)",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Physical properties (diameters, albedos, beaming parameters) of asteroids derived \
+from WISE/NEOWISE infrared observations, spanning main-belt asteroids, NEOs, Hildas, \
+Jupiter Trojans, Centaurs, irregular satellites, and ambiguous objects.
+
+The WISE (Wide-field Infrared Survey Explorer) and NEOWISE missions observed over \
+164,000 minor planets at thermal infrared wavelengths (3.4--22 microns). Thermal \
+model fits to these observations yield diameter and albedo estimates that are \
+independent of visible-light assumptions. This dataset combines all published \
+NEOWISE diameter/albedo tables from the PDS Small Bodies Node (V2.0), covering \
+observations from January 2010 through December 2016.
+
+Each record represents a single thermal-model fit for one object. The `fit_code` \
+column indicates which parameters were allowed to vary: D=diameter, V=visible albedo, \
+B=beaming parameter (or F=fast-rotating model), I=infrared albedo.
+
+Thermal infrared observations fundamentally changed our understanding of asteroid \
+sizes. In visible light, an asteroid's brightness depends on both its size and its \
+surface reflectivity (albedo), creating a degeneracy that makes size estimation from \
+optical data alone unreliable by factors of two or more. At thermal infrared \
+wavelengths, brightness is dominated by the object's thermal emission -- essentially \
+how much sunlight it absorbs and re-radiates as heat -- which depends primarily on \
+its physical cross-section. By fitting the Near-Earth Asteroid Thermal Model (NEATM) \
+to multi-band infrared photometry, WISE/NEOWISE broke this size-albedo degeneracy \
+for over 164,000 minor planets, producing the largest uniform survey of asteroid \
+physical properties ever conducted.
+
+The beaming parameter (eta) in the NEATM captures how thermal radiation is \
+distributed across the surface. A perfectly smooth, non-rotating sphere in \
+instantaneous thermal equilibrium would have eta = 1. Real asteroids show values \
+ranging from about 0.8 to 2.5, reflecting the combined effects of surface roughness, \
+thermal inertia, and spin rate.
+
+The visible geometric albedo measurements in this dataset reveal the compositional \
+diversity of the asteroid belt. Dark objects (albedo below 0.10) are predominantly \
+carbonaceous C-complex asteroids. Bright objects (albedo above 0.15) are typically \
+silicaceous S-complex asteroids. The population-level albedo distributions across \
+main-belt, NEO, Hilda, Trojan, and Centaur groups encode the thermal and chemical \
+gradient of the early solar nebula and subsequent dynamical mixing.
+"""
+
 
 def main():
     # ── Download ──────────────────────────────────────────────────────────
@@ -156,9 +222,7 @@ def main():
     print(f"  Total raw rows: {len(df):,}")
 
     # ── Normalise identifiers ─────────────────────────────────────────────
-    # Build a single object_id from asteroid_number / satellite_number / prov_desig / comet_desig
     def _make_object_id(row):
-        # Prefer asteroid number > satellite number > provisional > comet designation
         for col in ("asteroid_number", "satellite_number"):
             val = row.get(col)
             if pd.notna(val) and str(val).strip() not in ("", "0"):
@@ -204,21 +268,8 @@ def main():
     if "asteroid_number" in df.columns:
         df.loc[df["asteroid_number"] == 0, "asteroid_number"] = pd.NA
 
-    # ── Final column selection ────────────────────────────────────────────
-    final_cols = [
-        "object_id", "asteroid_number", "prov_desig", "comet_desig",
-        "mpc_packed_name", "population",
-        "absolute_mag", "slope_param", "mean_jd",
-        "n_w1", "n_w2", "n_w3", "n_w4", "fit_code",
-        "diameter_km", "diameter_err_km",
-        "v_albedo", "v_albedo_err",
-        "ir_albedo", "ir_albedo_err",
-        "beaming_param", "beaming_param_err",
-        "stacked_flag", "reference", "notes",
-    ]
-    # Only keep columns that exist (some tables lack certain columns)
-    final_cols = [c for c in final_cols if c in df.columns]
-    df = df[final_cols]
+    # ── Final column selection (only described columns) ───────────────────
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
     # ── Stats ─────────────────────────────────────────────────────────────
     n_total = len(df)
@@ -231,133 +282,16 @@ def main():
     print(f"  {n_total:,} objects across {n_populations} populations")
     print(f"  Median diameter: {median_diam:.1f} km")
     print(f"  Median V-albedo: {median_albedo:.3f}")
-    for pop, count in pop_counts.items():
-        print(f"    {pop}: {count:,}")
 
-    # ── Validate ──────────────────────────────────────────────────────────
-    check_dataset(
-        df,
-        dataset_name="neowise",
-        min_rows=MIN_ROWS,
-        expected_columns=[
-            "object_id", "population", "diameter_km", "v_albedo",
-            "absolute_mag", "beaming_param",
-        ],
-        critical_columns=["object_id", "diameter_km", "v_albedo"],
-        max_null_pct=0.10,
-    )
-
-    # ── Write parquet + README ────────────────────────────────────────────
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "neowise_asteroid_properties.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("neowise", tmp)
-        banner_md = banner_markdown("neowise", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "NEOWISE Asteroid Diameters and Albedos"
-language:
-  - en
-description: "Physical properties (diameters, albedos, beaming parameters) for {n_total:,} asteroids from WISE/NEOWISE infrared observations."
-task_categories:
-  - tabular-classification
-  - tabular-regression
-tags:
-  - space
-  - asteroids
-  - neowise
-  - wise
-  - nasa
-  - orbital-mechanics
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 100K<n<1M
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/neowise_asteroid_properties.parquet
-    default: true
----
-
-# NEOWISE Asteroid Diameters and Albedos
-{banner_md}
-*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
-
-Physical properties of **{n_total:,}** asteroids derived from WISE/NEOWISE infrared observations,
-spanning main-belt asteroids, NEOs, Hildas, Jupiter Trojans, Centaurs, irregular satellites,
-and ambiguous objects. Includes effective spherical diameters, visible and infrared geometric
-albedos, and NEATM thermal beaming parameters.
-
-## Dataset description
-
-The WISE (Wide-field Infrared Survey Explorer) and NEOWISE missions observed over 164,000
-minor planets at thermal infrared wavelengths (3.4--22 microns). Thermal model fits to these
-observations yield diameter and albedo estimates that are independent of visible-light
-assumptions. This dataset combines all published NEOWISE diameter/albedo tables from the
-PDS Small Bodies Node (V2.0), covering observations from January 2010 through December 2016.
-
-Each record represents a single thermal-model fit for one object. The `fit_code` column
-indicates which parameters were allowed to vary: D=diameter, V=visible albedo, B=beaming
-parameter (or F=fast-rotating model), I=infrared albedo.
-
-Thermal infrared observations fundamentally changed our understanding of asteroid sizes. In visible light, an asteroid's brightness depends on both its size and its surface reflectivity (albedo), creating a degeneracy that makes size estimation from optical data alone unreliable by factors of two or more. At thermal infrared wavelengths, however, brightness is dominated by the object's thermal emission -- essentially how much sunlight it absorbs and re-radiates as heat -- which depends primarily on its physical cross-section. By fitting the Near-Earth Asteroid Thermal Model (NEATM) to multi-band infrared photometry, WISE/NEOWISE broke this size-albedo degeneracy for over 164,000 minor planets, producing the largest uniform survey of asteroid physical properties ever conducted.
-
-The beaming parameter (eta) in the NEATM captures how thermal radiation is distributed across the surface. A perfectly smooth, non-rotating sphere in instantaneous thermal equilibrium would have eta = 1. Real asteroids show values ranging from about 0.8 to 2.5, reflecting the combined effects of surface roughness (craters and boulders create local hot spots that beam radiation preferentially toward the sub-solar point), thermal inertia (heat is conducted into the subsurface and re-radiated later as the body rotates), and spin rate. Low beaming parameters suggest rough, slowly rotating surfaces; high values indicate smooth, fast-rotating bodies or those observed at high phase angles.
-
-The visible geometric albedo measurements in this dataset reveal the compositional diversity of the asteroid belt. Dark objects (albedo below 0.10) are predominantly carbonaceous C-complex asteroids rich in organic compounds and hydrated minerals -- primitive material largely unchanged since the solar system's formation 4.6 billion years ago. Bright objects (albedo above 0.15) are typically silicaceous S-complex asteroids with stony, olivine-pyroxene surfaces, or more rarely the high-albedo E-types and V-types (basaltic fragments from differentiated parent bodies like Vesta). The population-level albedo distributions across main-belt, NEO, Hilda, Trojan, and Centaur groups encode the thermal and chemical gradient of the early solar nebula and subsequent dynamical mixing.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `object_id` | string | Primary identifier (asteroid number, satellite ID, or provisional designation) |
-| `asteroid_number` | Int64 | IAU asteroid catalog number (null for unnumbered/satellites) |
-| `prov_desig` | string | Provisional designation (null if none) |
-| `comet_desig` | string | Comet designation for dual-nature objects (null if none) |
-| `mpc_packed_name` | string | MPC packed-format designation |
-| `population` | string | Dynamical population: main_belt, neo, hilda, jupiter_trojan, centaur, irregular_satellite, ambiguous, fixed_diameter |
-| `absolute_mag` | float64 | Absolute H magnitude used as input to thermal fit |
-| `slope_param` | float64 | G slope parameter for photometric phase correction |
-| `mean_jd` | float64 | Mean Julian Date of observations used for fitting |
-| `n_w1` | Int64 | Number of W1 (3.4 um) band measurements used |
-| `n_w2` | Int64 | Number of W2 (4.6 um) band measurements used |
-| `n_w3` | Int64 | Number of W3 (12 um) band measurements used |
-| `n_w4` | Int64 | Number of W4 (22 um) band measurements used |
-| `fit_code` | string | 4-char code: D=diameter, V=vis albedo, B=beaming/F=FRM, I=IR albedo, -=fixed |
-| `diameter_km` | float64 | Best-fit effective spherical diameter (km) |
-| `diameter_err_km` | float64 | 1-sigma diameter uncertainty (km) |
-| `v_albedo` | float64 | Visible geometric albedo (best-fit or assumed) |
-| `v_albedo_err` | float64 | 1-sigma visible albedo uncertainty |
-| `ir_albedo` | float64 | Infrared geometric albedo (best-fit or assumed) |
-| `ir_albedo_err` | float64 | 1-sigma infrared albedo uncertainty |
-| `beaming_param` | float64 | NEATM thermal beaming parameter eta |
-| `beaming_param_err` | float64 | 1-sigma beaming parameter uncertainty |
-| `stacked_flag` | string | "S" if fit used co-added images on predicted position |
-| `reference` | string | Short reference code for original publication |
-| `notes` | string | Flags: OrbChange, NoOrb, BrokenLink (null if none) |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n_total:,}** objects across **{n_populations}** dynamical populations
 - **{int(pop_counts.get('main_belt', 0)):,}** main-belt asteroids
 - **{int(pop_counts.get('neo', 0)):,}** near-Earth objects
 - **{int(pop_counts.get('jupiter_trojan', 0)):,}** Jupiter Trojans
 - **{n_with_albedo:,}** objects with measured visible albedo
-- Median diameter: **{median_diam:.1f} km** | Median V-albedo: **{median_albedo:.3f}**
+- Median diameter: **{median_diam:.1f} km** | Median V-albedo: **{median_albedo:.3f}**"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -380,52 +314,43 @@ plt.scatter(sample["diameter_km"], sample["v_albedo"], s=0.5, alpha=0.3)
 plt.xscale("log")
 plt.xlabel("Diameter (km)")
 plt.ylabel("Visible Albedo")
-```
+```"""
 
-## Data source
-
-[PDS Small Bodies Node — NEOWISE Diameters and Albedos V2.0](https://sbnarchive.psi.edu/pds4/non_mission/neowise_diameters_albedos_V2_0.zip)
-
-Based on observations by the Wide-field Infrared Survey Explorer (WISE) and its NEOWISE
-reactivation mission. See Mainzer et al. (2011), Masiero et al. (2011, 2014, 2017),
-Grav et al. (2012), Bauer et al. (2013), Nugent et al. (2015, 2016).
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/neowise-asteroid-properties) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{neowise_asteroid_properties,
-  author = {{Simon, Julien}},
-  title = {{NEOWISE Asteroid Diameters and Albedos}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/neowise-asteroid-properties}},
-  note = {{Based on WISE/NEOWISE data from the PDS Small Bodies Node, Mainzer et al.}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Upload NEOWISE asteroid properties: {n_total:,} objects"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="NEOWISE Asteroid Diameters and Albedos",
+        description=DESCRIPTION,
+        tags=["space", "asteroids", "neowise", "wise", "nasa",
+              "orbital-mechanics", "open-data", "tabular-data", "parquet"],
+        source_url="https://sbnarchive.psi.edu/pds4/non_mission/neowise_diameters_albedos_V2_0.zip",
+        task_categories=["tabular-classification", "tabular-regression"],
+        collection_url="https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA17666/PIA17666~small.jpg",
+            "alt": "Rosetta spacecraft approaching Comet 67P/Churyumov-Gerasimenko",
+            "credit": "NASA/ESA",
+        },
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=float_cols,
+            integer=["asteroid_number", "n_w1", "n_w2", "n_w3", "n_w4"],
         )
-
-    print(f"rows={n_total}")
+        p.publish(
+            df,
+            filename="neowise_asteroid_properties.parquet",
+            min_rows=100_000,
+            expected_columns=[
+                "object_id", "population", "diameter_km", "v_albedo",
+                "absolute_mag", "beaming_param",
+            ],
+            critical_columns=["object_id", "diameter_km", "v_albedo"],
+            max_null_pct=0.10,
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Upload NEOWISE asteroid properties: {n_total:,} objects",
+        )
     print("Done.")
 
 

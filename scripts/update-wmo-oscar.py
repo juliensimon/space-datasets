@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
-"""Fetch WMO OSCAR satellite and instrument data, upload to HF."""
+"""Fetch WMO OSCAR satellite and instrument data, upload to HF.
 
-import os
-import re
-import subprocess
-import tempfile
-from pathlib import Path
+Two configs:
+  - satellites: Earth observation satellite missions with orbit and physical specs
+  - instruments: Earth observation instruments cataloged in OSCAR
+
+Source: WMO OSCAR/Space (Observing Systems Capability Analysis and Review Tool),
+the authoritative international reference for satellite-based Earth observation.
+"""
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline, check_dataset, write_parquet
+from hf_dataset_utils.banner import banner_markdown as render_banner
+from hf_dataset_utils.banner import download_banner
+from hf_dataset_utils.github import emit_output
+from hf_dataset_utils.readme import _citation_bibtex, _size_category
 
 SATELLITES_URL = "https://space.oscar.wmo.int/satellites"
 INSTRUMENTS_URL = "https://space.oscar.wmo.int/instruments"
@@ -19,12 +24,70 @@ HF_REPO = "juliensimon/wmo-oscar-satellites"
 HEADERS = {"Accept": "application/json"}
 TIMEOUT = 60
 
+# ── Column descriptions ─────────────────────────────────────────────────────
 
-def _snake_case(name):
-    """Convert CamelCase or mixed-case to snake_case."""
-    s = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", name)
-    s = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", s)
-    return s.lower()
+SAT_COLUMN_DESCRIPTIONS = {
+    "id": "WMO OSCAR internal satellite identifier; unique integer",
+    "acronym": "Satellite acronym used in OSCAR and the wider Earth observation community (e.g., 'Sentinel-1A', 'GOES-16', 'Meteosat-12')",
+    "name": "Full official satellite name as registered with WMO",
+    "programme": "Satellite programme name (e.g., 'Copernicus', 'GOES', 'JPSS')",
+    "lead_agency": "Acronym of the lead space agency responsible for the mission (e.g., 'ESA', 'NASA', 'CMA', 'ISRO')",
+    "status": "Current operational status: 'Operational', 'Planned', 'Inactive', 'Prototype', or 'Being developed'",
+    "orbit_type": "Full orbit type name (e.g., 'Sun-synchronous', 'Geostationary', 'Non-sun-synchronous', 'Drifting')",
+    "orbit_type_abbr": "Abbreviated orbit type code used in OSCAR (e.g., 'SSO', 'GEO')",
+    "launch_date": "Actual or planned launch date in ISO 8601 format (YYYY-MM-DD); null if unknown",
+    "eol_date": "Actual or expected end-of-life date; null for operational or planned satellites without a scheduled decommission",
+    "launch_year": "Year of launch extracted from launch_date; null if launch date is unknown",
+    "launch_month": "Month of launch (1-12); null if launch date is unknown or only year is provided",
+    "launch_day": "Day of launch (1-31); null if launch date is unknown or only year/month provided",
+    "eol_year": "Year of end-of-life; null if satellite is operational or EOL date is unknown",
+    "eol_month": "Month of end-of-life (1-12); null if EOL date is unknown",
+    "eol_day": "Day of end-of-life (1-31); null if EOL date is unknown",
+    "mass_kg": "Total satellite mass at launch in kilograms; null if not reported by the agency",
+    "dry_mass_kg": "Satellite mass without fuel in kilograms; null for most entries",
+    "power_w": "Electrical power generation capacity in watts; null for most entries",
+    "altitude_km": "Nominal orbital altitude in kilometers; ~800 km for sun-synchronous LEO, ~35,786 km for GEO",
+    "longitude": "Assigned geostationary longitude in degrees; null for non-GEO satellites",
+    "inclination": "Orbital inclination in degrees; ~98 deg for sun-synchronous, 0 deg for geostationary",
+    "equator_crossing_time": "Local solar time of the ascending/descending equator crossing (e.g., '13:30'); critical for sun-synchronous orbits",
+    "ascending_descending": "Whether the equator crossing time refers to the ascending or descending node pass",
+    "wigos_station_id": "WMO Integrated Global Observing System station identifier; links satellite to WMO observing network",
+    "instrument_acronyms": "Comma-separated list of instrument acronyms onboard the satellite (e.g., 'AVHRR/3,AMSU-A,MHS')",
+    "instrument_count": "Number of distinct instruments carried by the satellite; derived from instrument_acronyms",
+    "slug": "URL slug for the satellite's page on space.oscar.wmo.int",
+}
+
+INST_COLUMN_DESCRIPTIONS = {
+    "id": "WMO OSCAR internal instrument identifier; unique integer",
+    "acronym": "Instrument acronym (e.g., 'MODIS', 'AVHRR/3', 'AMSU-A', 'SAR-C'); used across the Earth observation community",
+    "full_name": "Full instrument name describing its measurement principle (e.g., 'Moderate Resolution Imaging Spectroradiometer')",
+    "agency": "Acronym of the space agency that developed the instrument",
+    "classification": "WMO instrument classification describing measurement type (e.g., 'Imaging radar (SAR)', 'Multi-purpose imaging VIS/IR radiometer', 'GNSS radio-occultation sounder')",
+    "satellite_acronyms": "Comma-separated list of satellites carrying this instrument; links to the satellites config",
+    "satellite_count": "Number of distinct satellite platforms carrying or planned to carry this instrument",
+    "earliest_launch_year": "Earliest launch year among all host satellites; indicates when this instrument class first flew",
+    "latest_eol_year": "Latest end-of-life year among all host satellites; indicates the latest planned operation of this instrument class",
+    "slug": "URL slug for the instrument's page on space.oscar.wmo.int",
+}
+
+# ── Dataset description ──────────────────────────────────────────────────────
+DESCRIPTION = """\
+The most comprehensive international database of Earth observation satellites and \
+instruments, maintained by the World Meteorological Organization (WMO) through their \
+OSCAR/Space portal (Observing Systems Capability Analysis and Review Tool).
+
+Unlike catalogs that focus on a single agency (e.g., NASA, ESA), OSCAR provides truly \
+global coverage of the full Earth observation satellite constellation -- from major programs \
+like Sentinel, Landsat, and GOES to missions operated by ISRO, CMA, JAXA, KARI, Roscosmos, \
+and dozens of smaller agencies. It is used by WMO member states for gap analysis, mission \
+planning, and coordination of the Global Observing System.
+
+This dataset is particularly valuable for constellation analysis (mapping global coverage \
+by orbit type, status, and agency), instrument gap analysis (identifying which measurement \
+capabilities exist or are missing), mission planning (cross-referencing platforms with \
+instrument payloads), and historical trend analysis (tracking the growth of the Earth \
+observation fleet over time).\
+"""
 
 
 def fetch_satellites():
@@ -122,17 +185,14 @@ def fetch_instruments():
 
 def transform_satellites(df):
     """Clean and coerce satellite data types."""
-    # Parse launch_date (ISO format YYYY-MM-DD)
     df["launch_date"] = pd.to_datetime(
         df["launch_date"], format="%Y-%m-%d", errors="coerce"
     )
-    # eol_date has mixed formats (some include time " HH:MM:SS")
     df["eol_date"] = pd.to_datetime(
         df["eol_date"].astype(str).str.split(" ").str[0],
         format="%Y-%m-%d", errors="coerce",
     )
 
-    # Coerce numeric columns
     for col in ["mass_kg", "dry_mass_kg", "power_w", "altitude_km",
                 "launch_year", "eol_year", "launch_month", "launch_day",
                 "eol_month", "eol_day"]:
@@ -142,37 +202,36 @@ def transform_satellites(df):
     for col in ["mass_kg", "dry_mass_kg", "power_w"]:
         df.loc[df[col] == 0, col] = pd.NA
 
-    # Coerce longitude/inclination (may have empty strings)
     for col in ["longitude", "inclination"]:
         df[col] = df[col].replace("", pd.NA)
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # Clean string columns
     for col in df.select_dtypes(include="object").columns:
         df[col] = df[col].str.strip()
         df[col] = df[col].replace("", pd.NA)
 
-    # Replace year 0 with NaN
     for col in ["launch_year", "eol_year"]:
         df.loc[df[col] == 0, col] = pd.NA
     for col in ["launch_month", "launch_day", "eol_month", "eol_day"]:
         df.loc[df[col] == 0, col] = pd.NA
 
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in SAT_COLUMN_DESCRIPTIONS]]
     return df
 
 
 def transform_instruments(df):
     """Clean and coerce instrument data types."""
-    # Replace 0 years with NaN
     for col in ["earliest_launch_year", "latest_eol_year"]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
         df.loc[df[col] == 0, col] = pd.NA
 
-    # Clean string columns
     for col in df.select_dtypes(include="object").columns:
         df[col] = df[col].str.strip()
         df[col] = df[col].replace("", pd.NA)
 
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in INST_COLUMN_DESCRIPTIONS]]
     return df
 
 
@@ -207,45 +266,74 @@ def main():
     n_orbit_types = satellites["orbit_type"].dropna().nunique()
     n_inst_classes = instruments["classification"].nunique()
 
-    # Top agencies by satellite count
-    top_agencies = (
-        satellites["lead_agency"]
-        .value_counts()
-        .head(10)
-        .to_dict()
-    )
-    agency_list = ", ".join(
-        f"{a} ({c})" for a, c in top_agencies.items()
-    )
+    top_agencies = satellites["lead_agency"].value_counts().head(10).to_dict()
+    agency_list = ", ".join(f"{a} ({c})" for a, c in top_agencies.items())
 
-    # Size category
-    max_count = max(len(satellites), len(instruments))
-    if max_count < 1000:
-        size_cat = "n<1K"
-    elif max_count < 10000:
-        size_cat = "1K<n<10K"
-    else:
-        size_cat = "10K<n<100K"
+    # Schema helper
+    def _schema(descs):
+        lines = ["| Column | Type | Description |", "|--------|------|-------------|"]
+        for col, desc in descs.items():
+            lines.append(f"| `{col}` | -- | {desc} |")
+        return "\n".join(lines)
 
-    # ── Write parquet + README ───────────────────────────────────────────
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp_dir = Path(tmp)
-        data_dir = tmp_dir / "data"
-        data_dir.mkdir()
+    quick_stats = f"""\
+- **{len(satellites):,}** satellites from **{n_agencies}** agencies across **{n_orbit_types}** orbit types
+- **{n_operational}** currently operational, **{n_planned}** planned
+- **{len(instruments):,}** instruments in **{n_inst_classes}** classification categories
+- Top agencies: {agency_list}"""
 
-        satellites.to_parquet(
-            data_dir / "satellites.parquet",
-            index=False, engine="pyarrow", compression="zstd",
-        )
-        instruments.to_parquet(
-            data_dir / "instruments.parquet",
-            index=False, engine="pyarrow", compression="zstd",
-        )
+    usage = f"""\
+```python
+from datasets import load_dataset
 
-        banner_file = download_banner("wmo-oscar", tmp_dir)
-        banner_md = banner_markdown("wmo-oscar", banner_file)
+sats = load_dataset("{HF_REPO}", "satellites", split="train")
+insts = load_dataset("{HF_REPO}", "instruments", split="train")
 
-        (tmp_dir / "README.md").write_text(f"""---
+sdf = sats.to_pandas()
+
+# Operational satellites by agency
+print(sdf[sdf["status"] == "Operational"]["lead_agency"].value_counts().head(10))
+
+# Satellites by orbit type
+print(sdf["orbit_type"].value_counts())
+
+# Heaviest satellites
+print(sdf.nlargest(10, "mass_kg")[["acronym", "name", "lead_agency", "mass_kg"]])
+
+# Status distribution with matplotlib
+import matplotlib.pyplot as plt
+sdf["status"].value_counts().plot.bar()
+plt.ylabel("Count")
+plt.title("Satellites by Status")
+plt.tight_layout()
+plt.show()
+```"""
+
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="WMO OSCAR Satellite Database",
+        description=DESCRIPTION,
+        tags=["space", "satellites", "earth-observation", "wmo", "oscar",
+              "international", "remote-sensing", "open-data", "tabular-data", "parquet"],
+        source_url="https://space.oscar.wmo.int/",
+        collection_url="https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/iss071e439624/iss071e439624~medium.jpg",
+            "alt": "An orbital sunrise illuminates the Earth's atmosphere, seen from the ISS",
+            "credit": "NASA",
+        },
+    ) as p:
+        write_parquet(satellites, p.data_dir / "satellites.parquet")
+        write_parquet(instruments, p.data_dir / "instruments.parquet")
+
+        # Banner
+        banner_file = download_banner(p.banner["url"], p.tmp_dir)
+        banner_md = render_banner(
+            p.banner["alt"], p.banner["credit"],
+            filename=banner_file,
+        ) if banner_file else ""
+
+        readme = f"""---
 license: cc-by-4.0
 pretty_name: "WMO OSCAR Satellite Database"
 language:
@@ -275,175 +363,63 @@ configs:
       - split: train
         path: data/instruments.parquet
 size_categories:
-  - {size_cat}
+  - {_size_category(max(len(satellites), len(instruments)))}
 ---
 
 # WMO OSCAR Satellite Database
 {banner_md}
 *Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
 
-The most comprehensive international database of Earth observation satellites and instruments, maintained by the World Meteorological Organization (WMO) through their
-[OSCAR/Space](https://space.oscar.wmo.int/) portal (Observing Systems Capability Analysis and Review Tool).
-Currently **{len(satellites):,}** satellites and **{len(instruments):,}** instruments from **{n_agencies}** space agencies worldwide.
-
-Unlike catalogs that focus on a single agency (e.g., NASA, ESA), OSCAR provides truly global coverage of the full Earth observation satellite constellation -- from major programs like Sentinel, Landsat, and GOES to missions operated by ISRO, CMA, JAXA, KARI, Roscosmos, and dozens of smaller agencies.
-
 ## Dataset description
 
-WMO OSCAR/Space is the authoritative reference for operational meteorological and Earth observation satellites. It is used by WMO member states for gap analysis, mission planning, and coordination of the Global Observing System. Every satellite entry includes its operational status, orbit parameters, launch/end-of-life dates, physical specifications (mass, power), and a list of onboard instruments. The instrument catalog covers {n_inst_classes} distinct instrument classes, from moderate-resolution optical imagers and SAR to GNSS radio-occultation sounders and space lidars.
-
-This dataset is particularly valuable for:
-- **Constellation analysis**: mapping global Earth observation coverage by orbit type, status, and agency
-- **Instrument gap analysis**: identifying which measurement capabilities exist, are planned, or are missing
-- **Mission planning**: cross-referencing satellite platforms with their instrument payloads
-- **International cooperation studies**: analyzing which agencies collaborate on which programs
-- **Historical trend analysis**: tracking the growth of the Earth observation fleet over time
+{DESCRIPTION}
 
 ## Configs
 
 ### `satellites` -- {len(satellites):,} satellite missions
 
-Every satellite in the WMO OSCAR database with orbit and physical specifications.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | int | WMO OSCAR satellite ID |
-| `acronym` | string | Satellite acronym (e.g., "Sentinel-1A") |
-| `name` | string | Full satellite name |
-| `programme` | string | Satellite programme name |
-| `lead_agency` | string | Lead space agency acronym |
-| `status` | string | Operational status (Operational, Planned, Inactive, etc.) |
-| `orbit_type` | string | Orbit type (Sunsynchronous, Geostationary, etc.) |
-| `orbit_type_abbr` | string | Orbit type abbreviation |
-| `launch_date` | datetime | Launch date |
-| `eol_date` | datetime | End-of-life date |
-| `launch_year` | int | Launch year |
-| `launch_month` | int | Launch month |
-| `launch_day` | int | Launch day |
-| `eol_year` | int | End-of-life year |
-| `eol_month` | int | End-of-life month |
-| `eol_day` | int | End-of-life day |
-| `mass_kg` | float | Total mass in kg |
-| `dry_mass_kg` | float | Dry mass in kg |
-| `power_w` | float | Power in watts |
-| `altitude_km` | float | Orbital altitude in km |
-| `longitude` | float | Longitude (geostationary satellites) |
-| `inclination` | float | Orbital inclination in degrees |
-| `equator_crossing_time` | string | Local equator crossing time |
-| `ascending_descending` | string | Ascending/descending node |
-| `wigos_station_id` | string | WMO WIGOS station identifier |
-| `instrument_acronyms` | string | Comma-separated instrument acronyms |
-| `instrument_count` | int | Number of instruments onboard |
-| `slug` | string | URL slug on OSCAR |
+{_schema(SAT_COLUMN_DESCRIPTIONS)}
 
 ### `instruments` -- {len(instruments):,} instruments
 
-Every Earth observation instrument cataloged in OSCAR.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | int | WMO OSCAR instrument ID |
-| `acronym` | string | Instrument acronym |
-| `full_name` | string | Full instrument name |
-| `agency` | string | Developing agency acronym |
-| `classification` | string | Instrument classification (e.g., "Imaging radar (SAR)") |
-| `satellite_acronyms` | string | Comma-separated host satellite acronyms |
-| `satellite_count` | int | Number of host satellites |
-| `earliest_launch_year` | int | Earliest launch year among host satellites |
-| `latest_eol_year` | int | Latest end-of-life year among host satellites |
-| `slug` | string | URL slug on OSCAR |
+{_schema(INST_COLUMN_DESCRIPTIONS)}
 
 ## Quick stats
 
-- **{len(satellites):,}** satellites from **{n_agencies}** agencies across **{n_orbit_types}** orbit types
-- **{n_operational}** currently operational, **{n_planned}** planned
-- **{len(instruments):,}** instruments in **{n_inst_classes}** classification categories
-- Top agencies: {agency_list}
+{quick_stats}
 
 ## Usage
 
-```python
-from datasets import load_dataset
-
-sats = load_dataset("juliensimon/wmo-oscar-satellites", "satellites", split="train")
-insts = load_dataset("juliensimon/wmo-oscar-satellites", "instruments", split="train")
-
-sdf = sats.to_pandas()
-
-# Operational satellites by agency
-print(sdf[sdf["status"] == "Operational"]["lead_agency"].value_counts().head(10))
-
-# Satellites by orbit type
-print(sdf["orbit_type"].value_counts())
-
-# Heaviest satellites
-print(sdf.nlargest(10, "mass_kg")[["acronym", "name", "lead_agency", "mass_kg"]])
-
-# Instruments by classification
-idf = insts.to_pandas()
-print(idf["classification"].value_counts())
-
-# SAR instruments and their host satellites
-sar = idf[idf["classification"] == "Imaging radar (SAR)"]
-print(sar[["acronym", "full_name", "agency", "satellite_acronyms"]])
-```
+{usage}
 
 ## Data source
 
-[WMO OSCAR/Space](https://space.oscar.wmo.int/) (Observing Systems Capability Analysis and Review Tool),
-maintained by the World Meteorological Organization. OSCAR is the international reference for
-satellite-based Earth observation capabilities, used by 193 WMO member states for mission planning
-and gap analysis.
-
-## Update schedule
-
-Static dataset -- rebuilt manually when significant updates occur (approximately quarterly).
+[WMO OSCAR/Space](https://space.oscar.wmo.int/) (Observing Systems Capability Analysis
+and Review Tool), maintained by the World Meteorological Organization.
 
 ## Related datasets
 
-- [gcat-satellite-catalog](https://huggingface.co/datasets/juliensimon/gcat-satellite-catalog) -- GCAT general catalog of artificial space objects
-- [ucs-satellite-database](https://huggingface.co/datasets/juliensimon/ucs-satellite-database) -- Union of Concerned Scientists active satellite database
-- [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) -- NORAD satellite catalog from Space-Track
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/wmo-oscar-satellites) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
+- [juliensimon/gcat-satellite-catalog](https://huggingface.co/datasets/juliensimon/gcat-satellite-catalog) -- GCAT general catalog of artificial space objects
+- [juliensimon/ucs-satellite-database](https://huggingface.co/datasets/juliensimon/ucs-satellite-database) -- Union of Concerned Scientists active satellite database
+- [juliensimon/space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) -- NORAD satellite catalog from Space-Track
 
 ## Citation
 
-```bibtex
-@dataset{{wmo_oscar_satellites,
-  author = {{Simon, Julien}},
-  title = {{WMO OSCAR Satellite Database}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/wmo-oscar-satellites}},
-  note = {{Based on WMO OSCAR/Space, World Meteorological Organization}}
-}}
-```
+{_citation_bibtex(HF_REPO, "WMO OSCAR Satellite Database")}
 
 ## License
 
 [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
+"""
+        (p.tmp_dir / "README.md").write_text(readme)
 
-        print("Uploading to HF...")
+        # Upload
+        from hf_dataset_utils import upload_to_hf
         commit_msg = (f"Update WMO OSCAR: {len(satellites):,} satellites, "
                       f"{len(instruments):,} instruments")
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp_dir), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
-        )
+        upload_to_hf(HF_REPO, p.tmp_dir, commit_msg)
+        emit_output(rows=total_rows)
 
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={total_rows}\n")
     print(f"Done. {total_rows:,} total rows "
           f"({len(satellites):,} satellites, {len(instruments):,} instruments).")
 

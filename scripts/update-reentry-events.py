@@ -1,19 +1,49 @@
 #!/usr/bin/env python3
 """Derive reentry events from CelesTrak SATCAT and upload to HF."""
 
-import os
-import subprocess
-import sys
-import tempfile
-from pathlib import Path
-
 import pandas as pd
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
 
 SATCAT_URL = "https://celestrak.org/pub/satcat.csv"
 HF_REPO = "juliensimon/reentry-events"
+
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "norad_id": "NORAD catalog number -- sequential integer assigned by the 18th Space Defense Squadron at launch; primary key for cross-referencing with TLE databases and the SATCAT",
+    "object_name": "Official name as listed in the NORAD catalog (e.g. 'COSMOS 1234 DEB'); rocket bodies typically include 'R/B' and debris fragments include 'DEB' in the name",
+    "object_type": "Object classification: 'PAY' (payload/spacecraft), 'R/B' (rocket body or upper stage), 'DEB' (fragmentation debris), 'UNK' (unknown/unclassified)",
+    "country_code": "Two- or three-letter country or organization code (e.g. 'US', 'CIS', 'PRC', 'ISS' for ISS-associated objects) identifying the launch owner as assigned in the SATCAT",
+    "launch_date": "Date the object was launched into orbit (UTC); null for a small number of objects with incomplete catalog entries",
+    "decay_date": "Date the object reentered Earth's atmosphere (UTC); for uncontrolled reentries this is the date radar tracking was lost; for controlled reentries it is the planned impact date",
+    "period_min": "Last recorded orbital period in minutes before reentry; LEO objects typically 88-128 min; null if no orbital period was recorded in the final catalog entry",
+    "inclination_deg": "Last recorded orbital inclination in degrees (0-180); the angle between the orbital plane and the equatorial plane; polar orbits ~90 deg, equatorial ~0 deg",
+    "apogee_km": "Last recorded apogee (highest point) altitude above Earth's surface in km; null if not recorded; typically low and declining for objects near reentry",
+    "perigee_km": "Last recorded perigee (lowest point) altitude above Earth's surface in km; null if not recorded; objects with perigee below ~200 km reenter within days to weeks",
+    "rcs": "Radar cross-section in m-squared; proxy for object size used by space surveillance radars; null for many objects where RCS was not published or was too small to measure reliably",
+    "days_in_orbit": "Number of days between launch and reentry (decay_date minus launch_date); null if either date is missing; ranges from 0 (immediate reentry) to tens of thousands of days",
+    "decay_year": "Calendar year of reentry; derived from decay_date for efficient grouping and time-series analysis",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Catalog of objects that have reentered Earth's atmosphere, derived from the NORAD \
+Satellite Catalog (SATCAT) via CelesTrak. Includes launch and decay dates, orbital \
+parameters, and time in orbit.
+
+Every object launched into Earth orbit eventually returns -- whether through natural \
+orbital decay, controlled deorbits, or breakup. This dataset catalogs every object \
+in the NORAD SATCAT that has a recorded decay date, providing a comprehensive history \
+of atmospheric reentries including payloads, rocket bodies, and debris.
+
+Atmospheric reentry is governed by the interplay between altitude, ballistic coefficient, \
+and solar activity. Objects in low orbits (below ~400 km) experience enough atmospheric \
+drag to decay within months or years, while those at 800+ km can persist for centuries. \
+Solar maxima heat and expand the upper atmosphere, dramatically increasing drag on LEO \
+objects. Controlled reentries of large objects target uninhabited ocean areas (the \
+'spacecraft cemetery' in the South Pacific), while uncontrolled reentries carry a small \
+but nonzero risk of surviving debris reaching populated areas.
+"""
 
 
 def main():
@@ -60,13 +90,10 @@ def main():
     # Sort by decay date descending (most recent reentries first)
     df = df.sort_values("decay_date", ascending=False).reset_index(drop=True)
 
-    check_dataset(df, "reentry-events", min_rows=20_000,
-        expected_columns=["norad_id", "object_name", "object_type",
-                          "launch_date", "decay_date", "decay_year",
-                          "days_in_orbit"],
-        critical_columns=["norad_id", "object_name", "decay_date"])
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
-    # Compute stats for README
+    # ── Compute stats for README ─────────────────────────────────────────
     n_total = len(df)
     n_payload = int((df["object_type"] == "PAY").sum())
     n_debris = int((df["object_type"] == "DEB").sum())
@@ -79,100 +106,14 @@ def main():
         f"{code} ({count:,})" for code, count in top_countries.items()
     )
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "reentry-events.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("reentry-events", tmp)
-        banner_md = banner_markdown("reentry-events", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Reentry Events"
-language:
-  - en
-description: "Catalog of {n_total:,} objects that have reentered Earth's atmosphere, derived from the NORAD SATCAT via CelesTrak. Includes launch and decay dates, orbital parameters, and time in orbit. Updated daily."
-task_categories:
-  - tabular-classification
-tags:
-  - space
-  - reentry
-  - orbital-mechanics
-  - satellites
-  - debris
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 10K<n<100K
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/reentry-events.parquet
-    default: true
----
-
-# Reentry Events
-{banner_md}
-*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
-
-![Update Reentry Events](https://github.com/juliensimon/space-datasets/actions/workflows/update-reentry-events.yml/badge.svg)
-![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.reentry-events&label=updated&color=brightgreen)
-
-Catalog of **{n_total:,}** objects that have reentered Earth's atmosphere, derived from the
-NORAD Satellite Catalog (SATCAT) via [CelesTrak](https://celestrak.org/). An object is
-considered reentered when its DECAY_DATE is recorded in the SATCAT. Covers reentries
-from {year_min} to {year_max}.
-
-## Dataset description
-
-Every object launched into Earth orbit eventually returns -- whether through natural orbital
-decay, controlled deorbits, or breakup. This dataset catalogs every object in the NORAD
-SATCAT that has a recorded decay date, providing a comprehensive history of atmospheric
-reentries. It includes payloads, rocket bodies, and debris, with derived fields like
-time spent in orbit and decay year for trend analysis.
-
-Atmospheric reentry is governed by the interplay between an object's altitude, ballistic coefficient, and solar activity. Objects in low orbits (below ~400 km) experience enough atmospheric drag to decay within months or years, while those at 800+ km can persist for centuries. Solar maxima heat and expand the upper atmosphere, dramatically increasing drag on LEO objects -- a single active solar cycle can sweep thousands of debris fragments from orbit. The dataset captures this dynamic: objects launched during the 1960s space race that have only recently decayed, alongside modern satellites deliberately deorbited within weeks of mission completion to comply with the 25-year orbital debris mitigation guidelines.
-
-Controlled reentries of large objects (like space stations, upper stages, or defunct satellites) are carefully planned to target uninhabited ocean areas, typically the South Pacific Ocean Uninhabited Area (SPOUA), also known as the "spacecraft cemetery." Uncontrolled reentries are far more common and carry a small but nonzero risk of surviving debris reaching populated areas. The object type field is critical for risk assessment: large rocket bodies (R/B) and payloads (PAY) are more likely to produce surviving fragments than small debris pieces, which typically burn up completely during reentry heating.
-
-This dataset supports orbital lifetime prediction modeling, compliance monitoring for debris mitigation guidelines, reentry risk assessment, and historical analysis of how the space environment cleans itself through atmospheric drag. The days-in-orbit field enables actuarial-style survival analysis of different object populations, revealing how orbital altitude, size, and solar cycle timing determine an object's residence time in space.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `norad_id` | int32 | NORAD catalog number — sequential integer assigned by the 18th Space Defense Squadron at launch; primary key for cross-referencing with TLE databases and the SATCAT |
-| `object_name` | string | Official name as listed in the NORAD catalog (e.g. "COSMOS 1234 DEB"); rocket bodies typically include "R/B" and debris fragments include "DEB" in the name |
-| `object_type` | string | Object classification: `PAY` (payload/spacecraft), `R/B` (rocket body or upper stage), `DEB` (fragmentation debris), `UNK` (unknown/unclassified) |
-| `country_code` | string | ISO 3166-based two-letter country code or special organization code (e.g. "US", "RU", "CN", "ISS" for ISS-associated objects) identifying the launch owner |
-| `launch_date` | datetime | Date the object was launched into orbit (UTC); null for a small number of objects with incomplete catalog entries |
-| `decay_date` | datetime | Date the object reentered Earth's atmosphere (UTC); for uncontrolled reentries this is the date radar tracking was lost; for controlled reentries it is the planned impact date |
-| `period_min` | float | Last recorded orbital period in minutes before reentry; LEO objects typically 88–128 min; null if no orbital period was recorded |
-| `inclination_deg` | float | Last recorded orbital inclination in degrees (0–180); the angle between the orbital plane and the equatorial plane; polar orbits are ~90°, equatorial ~0° |
-| `apogee_km` | float | Last recorded apogee (highest point) altitude above Earth's surface in km; null if not recorded; typically low and declining for objects near reentry |
-| `perigee_km` | float | Last recorded perigee (lowest point) altitude above Earth's surface in km; null if not recorded; objects with perigee below ~200 km reenter within days to weeks |
-| `rcs` | float | Radar cross-section in m²; proxy for object size used by space surveillance radars; null for many objects where RCS was not published or was too small to measure reliably |
-| `days_in_orbit` | int | Number of days between launch and reentry (decay_date − launch_date); null if either date is missing; ranges from 0 (immediate reentry) to tens of thousands (objects launched in the 1960s) |
-| `decay_year` | int32 | Calendar year of reentry; derived from decay_date for efficient grouping and time-series analysis |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n_total:,}** reentered objects
 - **{n_payload:,}** payloads, **{n_debris:,}** debris fragments, **{n_rocket:,}** rocket bodies
 - Median time in orbit: **{median_days:,}** days
 - Reentries span **{year_min}** to **{year_max}**
-- Top countries: {top_countries_str}
+- Top countries: {top_countries_str}"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -181,73 +122,62 @@ df = ds.to_pandas()
 
 # Reentries per year
 reentries_by_year = df.groupby("decay_year")["norad_id"].count()
-reentries_by_year.tail(10)
+print(reentries_by_year.tail(10))
 
 # Longest-lived objects
 longest = df.nlargest(10, "days_in_orbit")[["object_name", "days_in_orbit", "launch_date", "decay_date"]]
+print(longest)
 
-# Reentries by object type
-df["object_type"].value_counts()
+# Reentry trend over recent decades
+import matplotlib.pyplot as plt
+yearly = df[df["decay_year"] >= 1970].groupby("decay_year")["norad_id"].count()
+yearly.plot(kind="bar", figsize=(14, 5), edgecolor="black", width=0.8)
+plt.xlabel("Year")
+plt.ylabel("Reentries")
+plt.title("Annual Atmospheric Reentries")
+plt.tight_layout()
+plt.show()
+```"""
 
-# Recent reentries (last 30 days)
-import pandas as pd
-recent = df[df["decay_date"] > pd.Timestamp.now() - pd.Timedelta(days=30)]
-```
-
-## Data source
-
-Derived from the [CelesTrak SATCAT](https://celestrak.org/pub/satcat.csv), which mirrors
-the official US Space Command catalog maintained by the 18th Space Defense Squadron.
-Objects with a recorded DECAY_DATE are extracted as reentry events.
-
-## Update schedule
-
-Daily at 07:15 UTC via [GitHub Actions](https://github.com/juliensimon/space-datasets).
-
-## Related datasets
-
-- [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) -- Full NORAD satellite catalog
-- [space-launch-log](https://huggingface.co/datasets/juliensimon/space-launch-log) -- Global launch history from GCAT
-- [tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) -- Historical two-line element sets
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/reentry-events) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{reentry_events,
-  author = {{Simon, Julien}},
-  title = {{Reentry Events}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/reentry-events}},
-  note = {{Derived from NORAD SATCAT via CelesTrak (Dr. T.S. Kelso)}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update reentry events: {n_total:,} objects"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Reentry Events",
+        description=DESCRIPTION,
+        tags=["space", "reentry", "orbital-mechanics", "satellites",
+              "debris", "open-data", "tabular-data", "parquet"],
+        source_url="https://celestrak.org/pub/satcat.csv",
+        task_categories=["tabular-classification"],
+        collection_url="https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/iss071e439624/iss071e439624~medium.jpg",
+            "alt": "An orbital sunrise illuminates the Earth's atmosphere, seen from the ISS",
+            "credit": "NASA",
+        },
+        related_datasets=[
+            "juliensimon/space-track-satcat",
+            "juliensimon/space-launch-log",
+            "juliensimon/space-track-tle-history",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=["norad_id", "period_min", "inclination_deg",
+                     "apogee_km", "perigee_km", "rcs", "days_in_orbit"],
+            drop_mostly_null_threshold=0.95,
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={n_total}\n")
+        p.publish(
+            df,
+            filename="reentry_events.parquet",
+            min_rows=20_000,
+            expected_columns=["norad_id", "object_name", "object_type",
+                              "launch_date", "decay_date", "decay_year",
+                              "days_in_orbit"],
+            critical_columns=["norad_id", "object_name", "decay_date"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update reentry events: {n_total:,} objects",
+        )
     print("Done.")
 
 

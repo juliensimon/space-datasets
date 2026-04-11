@@ -1,24 +1,70 @@
 #!/usr/bin/env python3
-"""Fetch space weather events from NASA DONKI and upload to HF."""
+"""Fetch space weather events from NASA DONKI and upload to HF.
 
-import os
-import subprocess
-import tempfile
+Incremental: downloads existing parquet, fetches recent events, merges.
+Falls back to full rebuild if no existing data.
+
+Source: NASA CCMC DONKI API (https://ccmc.gsfc.nasa.gov/tools/DONKI/)
+"""
+
 import time
 from datetime import datetime, timedelta
-from pathlib import Path
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
-
+from hf_dataset_utils import Pipeline
 
 DONKI_BASE = "https://kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get"
 HF_REPO = "juliensimon/donki-space-weather-events"
 START_YEAR = 2010
+OVERLAP_DAYS = 14
 
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "event_type": "Event category: CME (coronal mass ejection), GST (geomagnetic storm), IPS (interplanetary shock), HSS (high-speed stream), or SEP (solar energetic particle)",
+    "activity_id": "Unique DONKI event identifier (e.g. '2024-05-08T22:09:00-CME-001'); primary key for cross-referencing",
+    "start_time": "Event start time in UTC; for CMEs this is the first coronagraph appearance, for GSTs the storm onset",
+    "source_location": "Solar source location in heliographic coordinates (e.g. 'N23W45'); CME-only, null for other event types",
+    "active_region": "NOAA active region number associated with the event (e.g. 13664); CME-only, null for other types",
+    "note": "Analyst notes from CCMC space weather forecasters; may contain event details or IPS location info",
+    "link": "URL to the DONKI web page for this specific event; useful for accessing additional details and linked analyses",
+    "cme_speed_kms": "CME speed in km/s from coronagraph analysis (SOHO/LASCO or STEREO/COR); ranges from ~250 to >3000 km/s; CME-only",
+    "cme_half_angle_deg": "CME angular half-width in degrees from coronagraph imagery; halo CMEs have half-angle near 90 degrees; CME-only",
+    "cme_latitude": "CME source latitude in degrees from coronagraph analysis; CME-only",
+    "cme_longitude": "CME source longitude in degrees from coronagraph analysis; CME-only",
+    "cme_type": "CME morphological type: S (slow), C (common), O (occasional), R (rare), ER (extremely rare); CME-only",
+    "cme_time_21_5": "Estimated time the CME reaches 21.5 solar radii (roughly 0.1 AU); used for transit-time modeling; CME-only",
+    "cme_measurement": "Coronagraph measurement technique used for CME parameter estimation; CME-only",
+    "gst_max_kp": "Maximum Kp index recorded during the geomagnetic storm (0-9 scale); Kp >= 5 is a minor storm, >= 7 strong, 9 extreme; GST-only",
+    "gst_kp_count": "Number of 3-hour Kp index readings during the storm duration; GST-only",
+    "linked_events": "Comma-separated activity IDs of causally linked events; enables Sun-to-Earth chain analysis (e.g. CME -> IPS -> GST)",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Space weather events from NASA's DONKI (Database Of Notifications, Knowledge, \
+Information) at the Community Coordinated Modeling Center. Covers coronal mass \
+ejections, geomagnetic storms, interplanetary shocks, high-speed streams, and \
+solar energetic particles from 2010 to present.
+
+DONKI tracks the chain of space weather events from Sun to Earth. A CME erupts \
+from the solar corona at speeds ranging from 250 to over 3,000 km/s, driving an \
+interplanetary shock (IPS) ahead of it. When the shock and CME arrive at Earth, \
+they compress the magnetosphere and produce a geomagnetic storm (GST) measurable \
+via the Kp and Dst indices. High-speed streams (HSS) from coronal holes produce \
+recurring disturbances on a ~27-day cadence, while solar energetic particle (SEP) \
+events deliver MeV-range protons within minutes to hours of the initiating flare or CME.
+
+DONKI is uniquely valuable because it preserves the causal linkages between these \
+phenomena via the linked_events field. Unlike raw index time series, DONKI records \
+which specific CME triggered which geomagnetic storm, making it possible to study \
+transit times, geoeffectiveness as a function of CME speed and direction, and the \
+statistical reliability of CME arrival forecasts.\
+"""
+
+
+# ── Fetch helpers (kept from original) ───────────────────────────────
 
 def fetch_donki(endpoint, start_date, end_date, extra_params=None):
     """Fetch from a DONKI endpoint with date range."""
@@ -42,7 +88,7 @@ def fetch_by_year(endpoint, extra_params=None):
             print(f"    {year}: {len(records)} records")
         except Exception as e:
             print(f"    {year}: error - {e}")
-        time.sleep(0.5)  # Be polite to the API
+        time.sleep(0.5)
     return all_records
 
 
@@ -59,7 +105,6 @@ def parse_cmes(raw):
             "note": cme.get("note"),
             "link": cme.get("link"),
         }
-        # Extract best analysis
         analyses = cme.get("cmeAnalyses") or []
         best = next((a for a in analyses if a.get("isMostAccurate")), analyses[0] if analyses else None)
         if best:
@@ -70,11 +115,8 @@ def parse_cmes(raw):
             row["cme_type"] = best.get("type")
             row["cme_time_21_5"] = best.get("time21_5")
             row["cme_measurement"] = best.get("measurementTechnique")
-
-        # Linked events
         linked = cme.get("linkedEvents") or []
         row["linked_events"] = ", ".join(e.get("activityID", "") for e in linked) if linked else None
-
         rows.append(row)
     return rows
 
@@ -83,11 +125,8 @@ def parse_gsts(raw):
     """Parse geomagnetic storm records."""
     rows = []
     for gst in raw:
-        # Extract max Kp from allKpIndex
         kp_list = gst.get("allKpIndex") or []
         max_kp = max((k.get("kpIndex", 0) for k in kp_list), default=None) if kp_list else None
-        kp_times = [{"time": k.get("observedTime"), "kp": k.get("kpIndex")} for k in kp_list]
-
         row = {
             "event_type": "GST",
             "activity_id": gst.get("gstID"),
@@ -133,10 +172,6 @@ ENDPOINTS = [
     ("SEP", "SEP", lambda raw: parse_simple_events(raw, "SEP")),
 ]
 
-# How many days to re-fetch for corrections (DONKI backfills events)
-
-OVERLAP_DAYS = 14
-
 
 def fetch_incremental(start_date, end_date):
     """Fetch all event types for a date range."""
@@ -153,200 +188,111 @@ def fetch_incremental(start_date, end_date):
     return all_rows
 
 
-def load_existing(tmp_dir):
-    """Download existing parquet from HF. Returns DataFrame or None."""
-    parquet_path = tmp_dir / "data" / "donki_events.parquet"
-    try:
-        subprocess.run(
-            ["hf", "download", HF_REPO, "data/donki_events.parquet",
-             "--repo-type", "dataset", "--local-dir", str(tmp_dir)],
-            check=True, capture_output=True, timeout=30,
-        )
-        if parquet_path.exists():
-            df = pd.read_parquet(parquet_path)
-            df["start_time"] = pd.to_datetime(df["start_time"])
-            print(f"  Loaded existing: {len(df):,} events")
-            return df
-    except Exception as e:
-        print(f"  Could not load existing ({e}), doing full rebuild")
-    return None
-
-
-def main():
-    print("Fetching DONKI space weather events...")
-
-    now = datetime.utcnow()
-
-    # Try incremental: load existing, fetch only recent data
-    with tempfile.TemporaryDirectory() as probe:
-        df_existing = load_existing(Path(probe))
-
-    if df_existing is not None and len(df_existing) > 0:
-        # Incremental: fetch from (max_date - overlap) to today
-        max_date = df_existing["start_time"].max()
-        fetch_from = (max_date - timedelta(days=OVERLAP_DAYS)).strftime("%Y-%m-%d")
-        fetch_to = now.strftime("%Y-%m-%d")
-        print(f"  Incremental fetch: {fetch_from} to {fetch_to}")
-
-        new_rows = fetch_incremental(fetch_from, fetch_to)
-        df_new = pd.DataFrame(new_rows)
-
-        if not df_new.empty:
-            df_new["start_time"] = pd.to_datetime(df_new["start_time"], errors="coerce")
-            df_new["cme_time_21_5"] = pd.to_datetime(df_new.get("cme_time_21_5"), errors="coerce")
-            df_new["active_region"] = pd.to_numeric(df_new.get("active_region"), errors="coerce").astype("Int64")
-
-            # Merge: new records override existing ones (for corrections)
-            df = pd.concat([df_existing, df_new], ignore_index=True)
-            df = df.drop_duplicates("activity_id", keep="last")
-            print(f"  Merged: {len(df):,} events ({len(df) - len(df_existing):+,} net)")
-        else:
-            df = df_existing
-            print("  No new events")
-    else:
-        # Full rebuild
-        print("  Full rebuild from 2010...")
-        all_rows = []
-        for label, endpoint, parser in ENDPOINTS:
-            print(f"  Fetching {label}...")
-            raw = fetch_by_year(endpoint)
-            rows = parser(raw)
-            all_rows.extend(rows)
-            print(f"  {len(raw)} {label}s total")
-
-        df = pd.DataFrame(all_rows)
+def coerce_types(df):
+    """Apply type coercion to DONKI DataFrame."""
     df["start_time"] = pd.to_datetime(df["start_time"], errors="coerce")
     df["cme_time_21_5"] = pd.to_datetime(df.get("cme_time_21_5"), errors="coerce")
     df["active_region"] = pd.to_numeric(df.get("active_region"), errors="coerce").astype("Int64")
-    df = df.sort_values("start_time").reset_index(drop=True)
+    return df
 
-    # Stats
-    n_total = len(df)
-    n_cme = int((df["event_type"] == "CME").sum())
-    n_gst = int((df["event_type"] == "GST").sum())
-    n_ips = int((df["event_type"] == "IPS").sum())
-    n_hss = int((df["event_type"] == "HSS").sum())
-    n_sep = int((df["event_type"] == "SEP").sum())
-    date_min = df["start_time"].min().strftime("%Y-%m-%d")
-    date_max = df["start_time"].max().strftime("%Y-%m-%d")
-    fastest_cme = df.loc[df["cme_speed_kms"].idxmax()] if "cme_speed_kms" in df.columns else None
-    max_kp = df["gst_max_kp"].max() if "gst_max_kp" in df.columns else None
 
-    check_dataset(df, "donki", min_rows=5000,
-                  expected_columns=["activity_id", "event_type", "start_time"],
-                  critical_columns=["activity_id", "start_time"],
-                  incremental=True)
+# ── Main pipeline ────────────────────────────────────────────────────
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
+def main():
+    print("Fetching DONKI space weather events...")
+    now = datetime.utcnow()
 
-        out = data_dir / "donki_events.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="NASA DONKI Space Weather Events",
+        description=DESCRIPTION,
+        tags=["space", "space-weather", "cme", "geomagnetic-storm", "solar",
+              "nasa", "open-data", "coronal-mass-ejection", "ccmc", "donki",
+              "solar-wind", "tabular-data", "parquet"],
+        source_url="https://ccmc.gsfc.nasa.gov/tools/DONKI/",
+        task_categories=["tabular-classification", "time-series-forecasting"],
+        update_schedule="Daily at 14:00 UTC via GitHub Actions",
+        collection_url="https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/iss072e159172/iss072e159172~medium.jpg",
+            "alt": "Aurora borealis blankets the Earth, seen from the ISS",
+            "credit": "NASA",
+        },
+        related_datasets=[
+            "juliensimon/solar-flare-events",
+            "juliensimon/space-weather-indices",
+            "juliensimon/dst-index",
+            "juliensimon/neo-close-approaches",
+        ],
+    ) as p:
+        # Try incremental
+        df_existing = p.download_existing("donki_events.parquet")
 
-        fastest_speed = int(fastest_cme["cme_speed_kms"]) if fastest_cme is not None else "N/A"
-        fastest_date = fastest_cme["start_time"].strftime("%Y-%m-%d") if fastest_cme is not None else "N/A"
+        if df_existing is not None and len(df_existing) > 0:
+            df_existing["start_time"] = pd.to_datetime(df_existing["start_time"])
+            max_date = df_existing["start_time"].max()
+            fetch_from = (max_date - timedelta(days=OVERLAP_DAYS)).strftime("%Y-%m-%d")
+            fetch_to = now.strftime("%Y-%m-%d")
+            print(f"  Incremental fetch: {fetch_from} to {fetch_to}")
 
-        banner_file = download_banner("donki", tmp)
-        banner_md = banner_markdown("donki", banner_file)
+            new_rows = fetch_incremental(fetch_from, fetch_to)
+            df_new = pd.DataFrame(new_rows)
 
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "NASA DONKI Space Weather Events"
-language:
-  - en
-description: "Coronal mass ejections, geomagnetic storms, interplanetary shocks, and solar energetic particles from NASA CCMC DONKI (2010-present)."
-task_categories:
-  - tabular-classification
-  - time-series-forecasting
-tags:
-  - space
-  - space-weather
-  - cme
-  - geomagnetic-storm
-  - solar
-  - nasa
-  - open-data
-  - coronal-mass-ejection
-  - ccmc
-  - donki
-  - solar-wind
-  - tabular-data
-  - parquet
-size_categories:
-  - 10K<n<100K
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/donki_events.parquet
-    default: true
----
+            if not df_new.empty:
+                df_new = coerce_types(df_new)
+                df = p.merge(df_existing, df_new, dedup_on="activity_id", sort_by="start_time")
+                print(f"  Merged: {len(df):,} events ({len(df) - len(df_existing):+,} net)")
+            else:
+                df = df_existing
+                print("  No new events")
+        else:
+            # Full rebuild
+            print("  Full rebuild from 2010...")
+            all_rows = []
+            for label, endpoint, parser in ENDPOINTS:
+                print(f"  Fetching {label}...")
+                raw = fetch_by_year(endpoint)
+                rows = parser(raw)
+                all_rows.extend(rows)
+                print(f"  {len(raw)} {label}s total")
+            df = pd.DataFrame(all_rows)
 
-# DONKI Space Weather Events
-{banner_md}
-*Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
+        df = coerce_types(df)
+        df = df.sort_values("start_time").reset_index(drop=True)
 
-![Update DONKI](https://github.com/juliensimon/space-datasets/actions/workflows/update-donki.yml/badge.svg)
-![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.donki&label=updated&color=brightgreen)
+        # Keep only described columns
+        df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
-Space weather events from NASA's [DONKI](https://kauai.ccmc.gsfc.nasa.gov/DONKI/) (Database Of
-Notifications, Knowledge, Information) at the Community Coordinated Modeling Center. Covers
-**{date_min}** to **{date_max}** with **{n_total:,}** events.
+        df = p.clean(
+            df,
+            numeric=["cme_speed_kms", "cme_half_angle_deg", "cme_latitude",
+                      "cme_longitude", "gst_max_kp", "gst_kp_count"],
+        )
 
-## Dataset description
+        # ── Stats for README ────────────────────────────────────────
+        n_total = len(df)
+        n_cme = int((df["event_type"] == "CME").sum())
+        n_gst = int((df["event_type"] == "GST").sum())
+        n_ips = int((df["event_type"] == "IPS").sum())
+        n_hss = int((df["event_type"] == "HSS").sum())
+        n_sep = int((df["event_type"] == "SEP").sum())
+        date_min = df["start_time"].min().strftime("%Y-%m-%d")
+        date_max = df["start_time"].max().strftime("%Y-%m-%d")
 
-DONKI tracks the chain of space weather events from Sun to Earth:
+        fastest_speed = "N/A"
+        fastest_date = "N/A"
+        if "cme_speed_kms" in df.columns and df["cme_speed_kms"].notna().any():
+            idx = df["cme_speed_kms"].idxmax()
+            fastest_speed = int(df.loc[idx, "cme_speed_kms"])
+            fastest_date = df.loc[idx, "start_time"].strftime("%Y-%m-%d")
 
-1. **CME** (Coronal Mass Ejection) — eruption of magnetized plasma from the Sun
-2. **IPS** (Interplanetary Shock) — shock wave propagating through solar wind
-3. **GST** (Geomagnetic Storm) — disturbance in Earth's magnetosphere
-4. **HSS** (High Speed Stream) — fast solar wind from coronal holes
-5. **SEP** (Solar Energetic Particle) — high-energy particles from solar events
-
-Events are **cross-linked** via the `linked_events` column, enabling causal chain analysis
-(e.g., which CME caused which geomagnetic storm).
-
-The Sun-to-Earth propagation chain typically unfolds over 1-4 days. A CME erupts from the solar corona at speeds ranging from 250 to over 3,000 km/s, driving an interplanetary shock (IPS) ahead of it as it plows through the ambient solar wind. When the shock and CME arrive at Earth, they compress the magnetosphere and inject energy into the ring current, producing a geomagnetic storm (GST) measurable via the Kp and Dst indices. Separately, high-speed streams (HSS) from coronal holes produce recurring geomagnetic disturbances on a ~27-day cadence tied to solar rotation, while solar energetic particle (SEP) events deliver MeV-range protons within minutes to hours of the initiating flare or CME.
-
-DONKI is uniquely valuable because it preserves the causal linkages between these phenomena. Unlike raw index time series (Kp, Dst, F10.7), DONKI records which specific CME triggered which geomagnetic storm, making it possible to study transit times, geoeffectiveness as a function of CME speed and direction, and the statistical reliability of CME arrival forecasts. The dataset also includes analyst-curated CME parameters from coronagraph imagery (SOHO/LASCO, STEREO/COR), such as angular width and measurement technique, enabling research into the morphology of Earth-directed versus limb events.
-
-For space weather forecasting and machine learning applications, DONKI provides labeled training data connecting solar eruptions to their terrestrial impacts. Researchers use it to build CME arrival-time models (e.g., drag-based ensemble models), geomagnetic storm intensity predictors, and SEP event classifiers. Satellite operators rely on these event catalogs to correlate anomaly logs with specific space weather drivers.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `event_type` | string | CME, GST, IPS, HSS, or SEP |
-| `activity_id` | string | Unique event identifier |
-| `start_time` | datetime | Event start time (UTC) |
-| `source_location` | string | Solar source location (CME only, e.g. "N23W45") |
-| `active_region` | int | NOAA active region number (CME only) |
-| `note` | string | Analyst notes |
-| `link` | string | DONKI web page for this event |
-| `cme_speed_kms` | float | CME speed in km/s (CME only) |
-| `cme_half_angle_deg` | float | CME half-angle in degrees (CME only) |
-| `cme_latitude` | float | CME latitude (CME only) |
-| `cme_longitude` | float | CME longitude (CME only) |
-| `cme_type` | string | CME type: S (slow), C (common), O (occasional), R (rare), ER (extremely rare) |
-| `cme_time_21_5` | datetime | Time CME reaches 21.5 solar radii (CME only) |
-| `cme_measurement` | string | Measurement technique (CME only) |
-| `gst_max_kp` | float | Maximum Kp index during storm (GST only) |
-| `gst_kp_count` | int | Number of Kp readings during storm (GST only) |
-| `linked_events` | string | Comma-separated IDs of linked events (causal chain) |
-
-## Quick stats
-
+        quick_stats = f"""\
 - **{n_total:,}** events ({date_min} to {date_max})
 - **{n_cme:,}** CMEs, **{n_gst:,}** geomagnetic storms, **{n_ips:,}** interplanetary shocks
 - **{n_hss:,}** high speed streams, **{n_sep:,}** solar energetic particle events
-- Fastest CME: **{fastest_speed} km/s** on {fastest_date}
+- Fastest CME: **{fastest_speed} km/s** on {fastest_date}"""
 
-## Usage
-
+        usage = """\
 ```python
 from datasets import load_dataset
 
@@ -361,78 +307,32 @@ storms = df[df["event_type"] == "GST"]
 storms_with_cme = storms[storms["linked_events"].str.contains("CME", na=False)]
 
 # CME speed distribution
+import matplotlib.pyplot as plt
 cmes = df[df["event_type"] == "CME"]
 cmes["cme_speed_kms"].hist(bins=50)
+plt.xlabel("CME Speed (km/s)")
+plt.ylabel("Count")
+plt.title("DONKI CME Speed Distribution")
+plt.show()
 
 # Event frequency by type and year
 df["year"] = df["start_time"].dt.year
 df.groupby(["year", "event_type"]).size().unstack().plot()
+plt.title("DONKI Events by Type and Year")
+plt.show()
+```"""
 
-# Causal chain: find all events linked to a specific CME
-cme_id = "2024-05-08T22:09:00-CME-001"
-chain = df[df["linked_events"].str.contains(cme_id, na=False)]
-```
-
-## Data source
-
-[NASA CCMC DONKI API](https://ccmc.gsfc.nasa.gov/tools/DONKI/). Events are catalogued by
-space weather analysts at the Community Coordinated Modeling Center (CCMC) using data from
-SOHO, STEREO, SDO, and ground-based observatories.
-
-## Update schedule
-
-Daily at 14:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-datasets).
-
-## Related datasets
-
-- [solar-flare-events](https://huggingface.co/datasets/juliensimon/solar-flare-events) — GOES X-ray flare detections
-- [space-weather-indices](https://huggingface.co/datasets/juliensimon/space-weather-indices) — Daily Kp, Ap, F10.7
-- [dst-index](https://huggingface.co/datasets/juliensimon/dst-index) — Hourly Dst geomagnetic index
-- [neo-close-approaches](https://huggingface.co/datasets/juliensimon/neo-close-approaches) — Near-Earth object approaches
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/donki-space-weather-events) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-If you use this dataset, please cite:
-
-```bibtex
-@dataset{{donki_space_weather_events,
-  author = {{Simon, Julien}},
-  title = {{NASA DONKI Space Weather Events}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/donki-space-weather-events}}
-}}
-```
-
-### Data source
-
-[NASA CCMC DONKI API](https://ccmc.gsfc.nasa.gov/tools/DONKI/)
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update DONKI events: {n_total:,} events ({n_cme:,} CMEs, {n_gst:,} storms)"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+        p.publish(
+            df,
+            filename="donki_events.parquet",
+            min_rows=5000,
+            expected_columns=["activity_id", "event_type", "start_time"],
+            critical_columns=["activity_id", "start_time"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update DONKI events: {n_total:,} events ({n_cme:,} CMEs, {n_gst:,} storms)",
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={n_total}\n")
     print("Done.")
 
 

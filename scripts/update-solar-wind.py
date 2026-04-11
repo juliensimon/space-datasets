@@ -1,29 +1,66 @@
 #!/usr/bin/env python3
-"""
-Fetch real-time solar wind data from NOAA SWPC and upload to HF.
+"""Fetch real-time solar wind data from NOAA SWPC and upload to HF.
 
 Merges plasma (density, speed, temperature) and magnetometer (Bt, Bx/By/Bz GSM)
 data from the DSCOVR/ACE L1 monitors. Incremental: appends 7-day rolling window
 to existing dataset.
 """
 
-import os
-import subprocess
-import tempfile
-from datetime import datetime, timezone
-from pathlib import Path
-
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
-
+from hf_dataset_utils import Pipeline
 
 HF_REPO = "juliensimon/solar-wind"
 
 PLASMA_URL = "https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json"
 MAG_URL = "https://services.swpc.noaa.gov/products/solar-wind/mag-7-day.json"
+
+# ── Column descriptions ─────────────────────────────────────────────
+COLUMN_DESCRIPTIONS = {
+    "time_tag": "Measurement timestamp from DSCOVR/ACE at the L1 Lagrange point (UTC, ~1-minute cadence)",
+    "density": "Solar wind proton number density in protons/cm3; typical quiet-time range 3-10 p/cm3; high density combined with high speed increases dynamic pressure, compressing the magnetosphere",
+    "speed": "Solar wind bulk velocity in km/s; typical 350-800 km/s; coronal hole streams reach 600-800 km/s; CME-driven shocks can exceed 1500 km/s",
+    "temperature": "Solar wind proton temperature in Kelvin; typical ~10^5 K; abnormally low values (~10^4 K) suggest passage of a magnetic cloud",
+    "bt": "Total IMF magnitude in nT — sqrt(Bx^2 + By^2 + Bz^2); typical 2-10 nT; elevated during CME passage",
+    "bx_gsm": "IMF Bx component in Geocentric Solar Magnetospheric (GSM) coordinates in nT; typical range +/-20 nT; sun-Earth direction component",
+    "by_gsm": "IMF By component in GSM coordinates in nT; typical range +/-20 nT; controls asymmetric magnetospheric convection and field-aligned currents",
+    "bz_gsm": "IMF Bz component in GSM coordinates in nT — the primary geomagnetic storm driver; sustained southward (negative) Bz enables dayside magnetic reconnection; < -10 nT drives moderate storms, < -30 nT drives severe storms; typical range +/-20 nT",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Real-time solar wind plasma and magnetic field measurements from the DSCOVR and ACE \
+spacecraft at the L1 Lagrange point, via NOAA SWPC. Updated daily.
+
+The solar wind is a continuous stream of charged particles flowing from the Sun. \
+Its speed, density, and magnetic field orientation (especially Bz) are the primary \
+drivers of geomagnetic storms. When Bz turns strongly southward (negative), it \
+couples with Earth's magnetosphere and can trigger storms that affect satellites, \
+power grids, and GPS.
+
+This dataset is the missing link in the Sun-to-Earth causal chain: \
+solar flare -> CME -> solar wind -> Dst/Kp storm -> orbital drag.
+
+The measurements come from the DSCOVR (Deep Space Climate Observatory) and ACE \
+(Advanced Composition Explorer) spacecraft orbiting the Sun-Earth L1 Lagrange point, \
+approximately 1.5 million km upstream of Earth. At this vantage point, the instruments \
+sample the solar wind roughly 15-60 minutes before it reaches the magnetopause, providing \
+a critical lead time for geomagnetic storm prediction. DSCOVR's Faraday Cup measures the \
+bulk plasma properties (proton density, speed, and temperature), while its fluxgate \
+magnetometer measures the interplanetary magnetic field (IMF) vector in Geocentric Solar \
+Magnetospheric (GSM) coordinates.
+
+The Bz component of the IMF in GSM coordinates is the single most important parameter for \
+geomagnetic coupling. When Bz is strongly southward (negative), the IMF opposes Earth's \
+northward magnetic field at the dayside magnetopause, enabling magnetic reconnection that \
+transfers solar wind energy into the magnetosphere. Sustained Bz below -10 nT typically \
+produces moderate geomagnetic storms (Kp 6-7, Dst below -100 nT), while extreme events \
+with Bz below -30 nT can trigger severe storms affecting power grids and satellite operations.
+
+Typical quiet-time solar wind conditions show speeds of 300-450 km/s and densities of \
+3-10 protons/cm^3. Coronal hole high-speed streams elevate speeds to 600-800 km/s, while \
+interplanetary CMEs can drive transient speeds above 1,000 km/s with enhanced magnetic fields."""
 
 
 def fetch_solar_wind():
@@ -62,118 +99,58 @@ def fetch_solar_wind():
     return df
 
 
-def load_existing(tmp_dir):
-    """Download existing parquet from HF."""
-    parquet_path = tmp_dir / "data" / "solar_wind.parquet"
-    try:
-        subprocess.run(
-            ["hf", "download", HF_REPO, "data/solar_wind.parquet",
-             "--repo-type", "dataset", "--local-dir", str(tmp_dir)],
-            check=True, capture_output=True, timeout=30,
-        )
-        if parquet_path.exists():
-            df = pd.read_parquet(parquet_path)
-            df["time_tag"] = pd.to_datetime(df["time_tag"])
-            print(f"  Loaded existing: {len(df):,} readings")
-            return df
-    except Exception as e:
-        print(f"  No existing data ({e}), starting fresh")
-    return None
+def main():
+    print("Fetching solar wind data from NOAA SWPC...")
 
+    df_new = fetch_solar_wind()
 
-def generate_readme(df, banner_md=""):
-    """Generate HF dataset README."""
-    n = len(df)
-    date_min = df["time_tag"].min().strftime("%Y-%m-%d")
-    date_max = df["time_tag"].max().strftime("%Y-%m-%d")
-    avg_speed = df["speed"].mean()
-    max_speed = df["speed"].max()
-    min_bz = df["bz_gsm"].min()
-    n_southward = int((df["bz_gsm"] < 0).sum())
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Real-Time Solar Wind (DSCOVR/ACE)",
+        description=DESCRIPTION,
+        tags=["space", "space-weather", "solar-wind", "dscovr", "ace", "noaa",
+              "magnetosphere", "bz", "geomagnetic", "open-data", "tabular-data", "parquet"],
+        source_url="https://www.swpc.noaa.gov/products/real-time-solar-wind",
+        task_categories=["time-series-forecasting", "tabular-regression"],
+        collection_url="https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70",
+        banner={"url": "https://images-assets.nasa.gov/image/iss072e159172/iss072e159172~medium.jpg",
+                "alt": "Aurora borealis blankets the Earth, seen from the ISS",
+                "credit": "NASA"},
+        update_schedule="Daily at 15:00 UTC",
+        related_datasets=[
+            "juliensimon/dst-index",
+            "juliensimon/donki-space-weather-events",
+            "juliensimon/solar-flare-events",
+            "juliensimon/space-weather-indices",
+        ],
+    ) as p:
+        df_existing = p.download_existing("solar_wind.parquet")
 
-    return f"""---
-license: cc-by-4.0
-pretty_name: "Real-Time Solar Wind (DSCOVR/ACE)"
-language:
-  - en
-description: >-
-  Real-time solar wind plasma and magnetic field measurements from the DSCOVR and ACE
-  spacecraft at the L1 Lagrange point, via NOAA SWPC. Updated daily.
-size_categories:
-  - 10K<n<100K
-task_categories:
-  - time-series-forecasting
-  - tabular-regression
-tags:
-  - open-data
-  - space
-  - space-weather
-  - solar-wind
-  - dscovr
-  - ace
-  - noaa
-  - magnetosphere
-  - bz
-  - geomagnetic
-  - tabular-data
-  - parquet
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/solar_wind.parquet
----
+        if df_existing is not None and len(df_existing) > 0:
+            df_existing["time_tag"] = pd.to_datetime(df_existing["time_tag"])
+            df = p.merge(df_existing, df_new, dedup_on="time_tag", sort_by="time_tag")
+            print(f"  Merged: {len(df):,} readings ({len(df) - len(df_existing):+,} net new)")
+        else:
+            df = df_new
 
-# Real-Time Solar Wind
-{banner_md}
-*Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
+        df = p.clean(df, numeric=["density", "speed", "temperature",
+                                   "bt", "bx_gsm", "by_gsm", "bz_gsm"])
 
-![Update Solar Wind](https://github.com/juliensimon/space-datasets/actions/workflows/update-solar-wind.yml/badge.svg)
-![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['solar-wind']&label=updated&color=brightgreen)
+        # Stats
+        n = len(df)
+        date_min = df["time_tag"].min().strftime("%Y-%m-%d")
+        date_max = df["time_tag"].max().strftime("%Y-%m-%d")
+        avg_speed = df["speed"].mean()
+        max_speed = df["speed"].max()
+        min_bz = df["bz_gsm"].min()
+        n_southward = int((df["bz_gsm"] < 0).sum())
 
-Real-time solar wind measurements from [NOAA SWPC](https://www.swpc.noaa.gov/),
-combining plasma and magnetic field data from the DSCOVR and ACE spacecraft at the
-Sun-Earth L1 Lagrange point. Currently **{n:,}** minute-resolution readings spanning
-**{date_min}** to **{date_max}**.
-
-## Dataset description
-
-The solar wind is a continuous stream of charged particles flowing from the Sun.
-Its speed, density, and magnetic field orientation (especially Bz) are the primary
-drivers of geomagnetic storms. When Bz turns strongly southward (negative), it
-couples with Earth's magnetosphere and can trigger storms that affect satellites,
-power grids, and GPS.
-
-This dataset is the **missing link** in the Sun-to-Earth causal chain:
-solar flare → CME → **solar wind** → Dst/Kp storm → orbital drag.
-
-The measurements come from the DSCOVR (Deep Space Climate Observatory) and ACE (Advanced Composition Explorer) spacecraft orbiting the Sun-Earth L1 Lagrange point, approximately 1.5 million km upstream of Earth. At this vantage point, the instruments sample the solar wind roughly 15-60 minutes before it reaches the magnetopause, providing a critical lead time for geomagnetic storm prediction. DSCOVR's Faraday Cup measures the bulk plasma properties (proton density, speed, and temperature), while its fluxgate magnetometer measures the interplanetary magnetic field (IMF) vector in Geocentric Solar Magnetospheric (GSM) coordinates.
-
-The Bz component of the IMF in GSM coordinates is the single most important parameter for geomagnetic coupling. When Bz is strongly southward (negative), the IMF opposes Earth's northward magnetic field at the dayside magnetopause, enabling magnetic reconnection that transfers solar wind energy into the magnetosphere. Sustained Bz below -10 nT typically produces moderate geomagnetic storms (Kp 6-7, Dst below -100 nT), while extreme events with Bz below -30 nT can trigger severe storms affecting power grids and satellite operations. The combination of solar wind speed, density, and southward Bz determines the rate of energy input, often parameterized by the epsilon coupling function or the Newell universal coupling function.
-
-Typical quiet-time solar wind conditions show speeds of 300-450 km/s and densities of 3-10 protons/cm^3. Coronal hole high-speed streams elevate speeds to 600-800 km/s, while interplanetary CMEs can drive transient speeds above 1,000 km/s with enhanced magnetic fields. These signatures are directly usable for real-time Dst forecasting models such as the Burton equation and its successors.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `time_tag` | datetime | Measurement timestamp from DSCOVR/ACE at the L1 Lagrange point (UTC, ~1-minute cadence) |
-| `density` | float | Solar wind proton number density in protons/cm³; typical quiet-time range 3–10 p/cm³; high density combined with high speed increases dynamic pressure, compressing the magnetosphere |
-| `speed` | float | Solar wind bulk velocity in km/s; typical 350–800 km/s; coronal hole streams reach 600–800 km/s; CME-driven shocks can exceed 1500 km/s |
-| `temperature` | float | Solar wind proton temperature in Kelvin; typical ~10⁵ K; abnormally low values (~10⁴ K) suggest passage of a magnetic cloud |
-| `bt` | float | Total IMF magnitude in nT — sqrt(Bx² + By² + Bz²); typical 2–10 nT; elevated during CME passage |
-| `bx_gsm` | float | IMF Bx component in Geocentric Solar Magnetospheric (GSM) coordinates in nT; typical range ±20 nT; sun–Earth direction component |
-| `by_gsm` | float | IMF By component in GSM coordinates in nT; typical range ±20 nT; controls asymmetric magnetospheric convection and field-aligned currents |
-| `bz_gsm` | float | IMF Bz component in GSM coordinates in nT — the primary geomagnetic storm driver; sustained southward (negative) Bz enables dayside magnetic reconnection; < −10 nT drives moderate storms, < −30 nT drives severe storms; typical range ±20 nT |
-
-## Quick stats
-
+        quick_stats = f"""\
 - **{n:,}** readings ({date_min} to {date_max})
 - Average speed: **{avg_speed:.0f} km/s**, max: **{max_speed:.0f} km/s**
-- Minimum Bz: **{min_bz:.1f} nT** ({n_southward:,} southward readings)
+- Minimum Bz: **{min_bz:.1f} nT** ({n_southward:,} southward readings)"""
 
-## Usage
-
+        usage = """\
 ```python
 from datasets import load_dataset
 
@@ -181,106 +158,37 @@ ds = load_dataset("juliensimon/solar-wind", split="train")
 df = ds.to_pandas()
 
 # Solar wind speed time series
-df.plot(x="time_tag", y="speed", title="Solar Wind Speed")
+import matplotlib.pyplot as plt
+
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 6), sharex=True)
+ax1.plot(df["time_tag"], df["speed"], linewidth=0.5)
+ax1.set_ylabel("Speed (km/s)")
+ax1.set_title("Solar Wind Speed")
+
+ax2.plot(df["time_tag"], df["bz_gsm"], linewidth=0.5, color="red")
+ax2.axhline(0, color="gray", linestyle="--", alpha=0.5)
+ax2.set_ylabel("Bz GSM (nT)")
+ax2.set_title("IMF Bz (southward = storm driver)")
+plt.tight_layout()
+plt.show()
 
 # Bz southward events (storm drivers)
 southward = df[df["bz_gsm"] < -5]
-print(f"{{len(southward)}} readings with Bz < -5 nT")
+print(f"{len(southward)} readings with Bz < -5 nT")
+```"""
 
-# Correlate with Dst index
-# Join with juliensimon/dst-index on nearest hourly timestamp
-```
-
-## Update frequency
-
-Updated **daily at 15:00 UTC** via GitHub Actions. Each run fetches the latest
-7-day rolling window from SWPC and appends new readings to the growing dataset.
-
-## Data source
-
-[NOAA Space Weather Prediction Center](https://www.swpc.noaa.gov/products/real-time-solar-wind).
-Data from DSCOVR (primary) and ACE (backup) spacecraft at the Sun-Earth L1 point,
-~1.5 million km sunward of Earth (~60 minutes ahead of arriving solar wind).
-
-## Related datasets
-
-- [dst-index](https://huggingface.co/datasets/juliensimon/dst-index) — Hourly Dst geomagnetic storm index (driven by solar wind)
-- [donki-space-weather-events](https://huggingface.co/datasets/juliensimon/donki-space-weather-events) — CMEs, storms, shocks
-- [solar-flare-events](https://huggingface.co/datasets/juliensimon/solar-flare-events) — Individual flare detections
-- [space-weather-indices](https://huggingface.co/datasets/juliensimon/space-weather-indices) — Daily Kp, Ap, F10.7
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/solar-wind) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{solar_wind,
-  author = {{Simon, Julien}},
-  title = {{Real-Time Solar Wind (DSCOVR/ACE)}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/solar-wind}},
-  note = {{Based on NOAA SWPC real-time solar wind data from DSCOVR and ACE}}
-}}
-```
-"""
-
-
-def main():
-    now = datetime.now(timezone.utc)
-    print("Fetching solar wind data from NOAA SWPC...")
-
-    df_new = fetch_solar_wind()
-
-    # Try incremental
-    with tempfile.TemporaryDirectory() as probe:
-        df_existing = load_existing(Path(probe))
-
-    if df_existing is not None and len(df_existing) > 0:
-        df = pd.concat([df_existing, df_new], ignore_index=True)
-        df = df.drop_duplicates("time_tag", keep="last")
-        df = df.sort_values("time_tag").reset_index(drop=True)
-        print(f"  Merged: {len(df):,} readings ({len(df) - len(df_existing):+,} net new)")
-    else:
-        df = df_new
-
-    check_dataset(df, "solar-wind", min_rows=5000,
-                  expected_columns=["time_tag", "density", "speed", "temperature",
-                                    "bt", "bz_gsm"],
-                  critical_columns=["time_tag", "speed"],
-            incremental=True)
-
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp_dir = Path(tmp)
-        data_dir = tmp_dir / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "solar_wind.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        print(f"  {out.stat().st_size / 1024 / 1024:.1f} MB parquet")
-
-        banner_file = download_banner("solar-wind", tmp_dir)
-        banner_md = banner_markdown("solar-wind", banner_file)
-        (tmp_dir / "README.md").write_text(generate_readme(df, banner_md))
-
-        print("Uploading to HF...")
-        commit_msg = f"Update solar wind: {len(df):,} readings"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp_dir), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+        p.publish(
+            df,
+            filename="solar_wind.parquet",
+            min_rows=5000,
+            expected_columns=["time_tag", "density", "speed", "temperature",
+                              "bt", "bz_gsm"],
+            critical_columns=["time_tag", "speed"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update solar wind: {n:,} readings",
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={len(df)}\n")
     print("Done.")
 
 

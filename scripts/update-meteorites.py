@@ -1,17 +1,13 @@
 #!/usr/bin/env python3
-"""Fetch meteorite database from Wikidata and upload to HF."""
+"""Fetch meteorite database from Wikidata and upload to HF.
 
-import os
-import subprocess
-import tempfile
-from pathlib import Path
+Source: Wikidata SPARQL endpoint — all entities of type Q60186 (meteorite).
+"""
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
-
+from hf_dataset_utils import Pipeline
 
 HF_REPO = "juliensimon/meteorite-database"
 
@@ -38,6 +34,34 @@ WHERE {
              ?coordNode wikibase:geoLongitude ?lon. }
   SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul". }
 }
+"""
+
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "wikidata_id": "Wikidata entity ID (e.g. Q1029); stable cross-reference key for linking to other Wikidata properties",
+    "name": "Official meteorite name assigned by the Meteoritical Society (e.g., 'Allende', 'NWA 7034', 'Chelyabinsk'); typically location of find plus sequence number",
+    "fall_date": "Date of observed fall or discovery/recovery in ISO format (YYYY-MM-DD); null for historical finds without a recorded date; precision often year-only (day defaults to 01)",
+    "mass_g": "Total known mass in grams; null if unknown; range from <1 g (tiny fragments) to ~60,000,000 g (Hoba, the largest known meteorite)",
+    "classification": "Meteoritical Society mineralogical/petrological class (e.g., 'L5', 'CM2', 'Iron IIIAB'); letters = chemical group, numbers = petrologic grade; null if not recorded in Wikidata",
+    "country": "Country of recovery (English label from Wikidata); null for finds without a recorded country or in international territory (e.g., Antarctica)",
+    "latitude": "Recovery location latitude in decimal degrees (positive = N, negative = S); null for historical or poorly documented finds",
+    "longitude": "Recovery location longitude in decimal degrees (positive = E, negative = W); null for historical or poorly documented finds",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Catalogue of known meteorites sourced from Wikidata, covering mass, classification, \
+fall date, country of recovery, and geographic coordinates.
+
+Meteorites are extraterrestrial rocks that survive passage through Earth's atmosphere and \
+reach the surface. They are classified by mineralogy and petrology (e.g., chondrites, \
+achondrites, iron meteorites) and recorded either as falls (witnessed descent) or \
+finds (recovered without observation).
+
+This dataset aggregates Wikidata entries for all entities of type Q60186 (meteorite), pulling \
+structured properties including mass (P2067), fall/discovery date (P585/P575), country (P17), \
+coordinates (P625), and mineralogical class (via P31 subclass hierarchy). It complements NASA \
+and Meteoritical Society databases with Wikidata's multilingual, cross-linked knowledge graph.
 """
 
 
@@ -75,7 +99,7 @@ def fetch_meteorites() -> pd.DataFrame:
 
     df = pd.DataFrame(rows)
 
-    # Deduplicate on wikidata_id — keep the most complete row
+    # Deduplicate on wikidata_id -- keep the most complete row
     df["_completeness"] = df.notna().sum(axis=1)
     df = df.sort_values("_completeness", ascending=False).drop_duplicates(
         subset=["wikidata_id"], keep="first"
@@ -90,29 +114,18 @@ def fetch_meteorites() -> pd.DataFrame:
 def main():
     df = fetch_meteorites()
 
-    # Clean string columns
-    for col in ["name", "classification", "country"]:
-        df[col] = df[col].astype(str).str.strip().replace(
-            {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
-        )
-
-    # Ensure numeric types
-    df["mass_g"] = pd.to_numeric(df["mass_g"], errors="coerce")
-    df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce")
-    df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
     df = df.sort_values("name").reset_index(drop=True)
     print(f"  {len(df):,} unique meteorites")
 
-    check_dataset(df, "meteorites", min_rows=500,
-                  expected_columns=["name"],
-                  critical_columns=["name"])
-
-    # Stats for README
+    # ── Domain-specific stats for README ─────────────────────────────
     n = len(df)
     n_with_mass = int(df["mass_g"].notna().sum())
     n_with_coords = int(df["latitude"].notna().sum())
     n_countries = int(df["country"].nunique())
+    n_classified = int(df["classification"].notna().sum())
 
     heaviest = df.loc[df["mass_g"].idxmax()] if n_with_mass > 0 else None
     heaviest_str = (
@@ -125,90 +138,12 @@ def main():
         f"{c} ({cnt:,})" for c, cnt in top_countries.items()
     )
 
-    n_classified = int(df["classification"].notna().sum())
-
     top_classes = df["classification"].value_counts().head(5)
     top_classes_str = ", ".join(
         f"{c} ({cnt:,})" for c, cnt in top_classes.items()
     )
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "meteorites.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_kb = out.stat().st_size / 1024
-        print(f"  {size_kb:.0f} KB parquet")
-
-        banner_file = download_banner("meteorites", tmp)
-        banner_md = banner_markdown("meteorites", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc0-1.0
-pretty_name: "Meteorite Database"
-language:
-  - en
-description: >-
-  Known meteorites catalogued in Wikidata, including mass, classification,
-  fall date, country of recovery, and geographic coordinates.
-  {n:,} meteorites with metadata sourced from the community-curated
-  Wikidata knowledge base.
-size_categories:
-  - 1K<n<10K
-task_categories:
-  - tabular-classification
-tags:
-  - space
-  - planetary-science
-  - meteorites
-  - wikidata
-  - open-data
-  - tabular-data
-  - parquet
-configs:
-  - config_name: default
-    default: true
-    data_files:
-      - split: train
-        path: data/meteorites.parquet
----
-
-# Meteorite Database
-{banner_md}
-*Part of the [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2) collection on Hugging Face.*
-
-Catalogue of **{n:,}** known meteorites sourced from [Wikidata](https://www.wikidata.org/),
-covering mass, classification, fall date, country of recovery, and geographic coordinates.
-
-## Dataset description
-
-Meteorites are extraterrestrial rocks that survive passage through Earth's atmosphere and
-reach the surface. They are classified by mineralogy and petrology (e.g., chondrites,
-achondrites, iron meteorites) and recorded either as *falls* (witnessed descent) or
-*finds* (recovered without observation).
-
-This dataset aggregates Wikidata entries for all entities of type Q60186 (meteorite), pulling
-structured properties including mass (P2067), fall/discovery date (P585/P575), country (P17),
-coordinates (P625), and mineralogical class (via P31 subclass hierarchy). It complements NASA and Meteoritical Society
-databases with Wikidata's multilingual, cross-linked knowledge graph.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `wikidata_id` | string | Wikidata entity ID (e.g. Q1029); stable cross-reference key for linking to other Wikidata properties |
-| `name` | string | Official meteorite name assigned by the Meteoritical Society (e.g., "Allende", "NWA 7034", "Chelyabinsk"); typically location of find plus sequence number |
-| `fall_date` | string | Date of observed fall or discovery/recovery in ISO format (YYYY-MM-DD); null for historical finds without a recorded date; precision often year-only (day defaults to 01) |
-| `mass_g` | float | Total known mass in grams; null if unknown; range from <1 g (tiny fragments) to ~60,000,000 g (Hoba, the largest known meteorite) |
-| `classification` | string | Meteoritical Society mineralogical/petrological class (e.g., "L5", "CM2", "Iron IIIAB", "Achondrite-ungrouped"); letters = chemical group, numbers = petrologic grade; null if not recorded in Wikidata |
-| `country` | string | Country of recovery (English label from Wikidata); null for finds without a recorded country or in international territory (e.g., Antarctica) |
-| `latitude` | float | Recovery location latitude in decimal degrees (positive = N, negative = S); null for historical or poorly documented finds |
-| `longitude` | float | Recovery location longitude in decimal degrees (positive = E, negative = W); null for historical or poorly documented finds |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n:,}** meteorites total
 - **{n_with_mass:,}** with recorded mass
 - **{n_with_coords:,}** with geographic coordinates
@@ -216,10 +151,9 @@ databases with Wikidata's multilingual, cross-linked knowledge graph.
 - **{n_countries:,}** countries of recovery
 - Heaviest: {heaviest_str}
 - Top countries: {top_countries_str}
-- Top classifications: {top_classes_str}
+- Top classifications: {top_classes_str}"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -230,70 +164,60 @@ df = ds.to_pandas()
 print(df.nlargest(10, "mass_g")[["name", "mass_g", "country", "classification"]])
 
 # Meteorites by country
-print(df["country"].value_counts().head(10))
+import matplotlib.pyplot as plt
+df["country"].value_counts().head(15).plot.barh()
+plt.xlabel("Count")
+plt.ylabel("Country")
+plt.title("Meteorites by Country of Recovery")
+plt.tight_layout()
+plt.show()
 
-# Meteorites with coordinates (mappable)
-mappable = df.dropna(subset=["latitude", "longitude"])
-print(f"{{len(mappable):,}} meteorites with coordinates")
+# Mass distribution (log scale)
+import numpy as np
+masses = df["mass_g"].dropna()
+plt.hist(np.log10(masses[masses > 0]), bins=50)
+plt.xlabel("log10(mass in grams)")
+plt.ylabel("Count")
+plt.title("Meteorite Mass Distribution")
+plt.show()
+```"""
 
-# Filter by classification
-chondrites = df[df["classification"].str.contains("chondrite", case=False, na=False)]
-print(f"{{len(chondrites):,}} chondrites")
-```
-
-## Data source
-
-[Wikidata](https://www.wikidata.org/) SPARQL endpoint. Meteorites identified via
-property P31 (instance of) = Q60186 (meteorite). Data is community-curated and
-cross-referenced with the [Meteoritical Bulletin Database](https://www.lpi.usra.edu/meteor/).
-
-## Update schedule
-
-Quarterly (January, April, July, October). Run manually to capture interim additions.
-
-## Related datasets
-
-- [impact-craters](https://huggingface.co/datasets/juliensimon/impact-craters) -- Earth impact crater database
-- [fireballs](https://huggingface.co/datasets/juliensimon/fireball-bolide-events) -- NASA fireball and bolide events
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/meteorite-database) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{meteorite_database,
-  author = {{Simon, Julien}},
-  title = {{Meteorite Database}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/meteorite-database}},
-  note = {{Sourced from Wikidata (CC0)}}
-}}
-```
-
-## License
-
-[CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (Wikidata content is public domain)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update meteorite database: {n:,} meteorites"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Meteorite Database",
+        description=DESCRIPTION,
+        tags=["space", "planetary-science", "meteorites", "wikidata",
+              "open-data", "tabular-data", "parquet"],
+        source_url="https://www.wikidata.org/",
+        license="cc0-1.0",
+        task_categories=["tabular-classification"],
+        collection_url="https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA17666/PIA17666~small.jpg",
+            "alt": "Rosetta spacecraft approaching Comet 67P/Churyumov-Gerasimenko",
+            "credit": "NASA/ESA",
+        },
+        related_datasets=[
+            "juliensimon/impact-craters",
+            "juliensimon/fireball-bolide-events",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=["mass_g", "latitude", "longitude"],
+            strings=["name", "classification", "country"],
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={n}\n")
+        p.publish(
+            df,
+            filename="meteorites.parquet",
+            min_rows=500,
+            expected_columns=["name", "wikidata_id"],
+            critical_columns=["name"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update meteorite database: {n:,} meteorites",
+        )
     print("Done.")
 
 

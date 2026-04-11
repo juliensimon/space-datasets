@@ -1,41 +1,30 @@
 #!/usr/bin/env python3
-"""
-Fetch active satellite constellations from CelesTrak, classify by shell, and upload to HF.
+"""Fetch active satellite constellations from CelesTrak, classify by shell, and upload to HF.
 
 Covers ~20 constellations: Starlink, OneWeb, Kuiper, Qianfan, Hulianwang, Iridium,
 Globalstar, ORBCOMM, Planet, Spire, GPS, Galileo, BeiDou, GLONASS, SBAS, SES,
 Intelsat, Eutelsat, Telesat.
+
+Source: CelesTrak GP data (NORAD/18th Space Defense Squadron)
 """
 
 import math
-import os
-import subprocess
 import sys
-import tempfile
 import time
 from datetime import datetime, timezone
-from pathlib import Path
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
-
+from hf_dataset_utils import Pipeline
+from hf_dataset_utils.upload import write_parquet
 
 HF_REPO = "juliensimon/constellation-census"
 
-MU = 398600.4418  # Earth GM (km³/s²)
+MU = 398600.4418  # Earth GM (km^3/s^2)
 R_EARTH = 6371.0  # km
 
 # ── Constellation definitions ────────────────────────────────────────────────
-
-# Each entry maps a constellation ID to its CelesTrak group, name pattern,
-# metadata, and orbital shell definitions.
-#
-# Shell classification uses inclination ranges. For constellations with a single
-# shell (most non-mega-constellations), we define one shell covering the full
-# inclination range of the group.
 
 CONSTELLATIONS = {
     "starlink": {
@@ -188,7 +177,7 @@ CONSTELLATIONS = {
     },
     "sbas": {
         "group": "sbas",
-        "pattern": None,  # Mixed names (EGNOS, WAAS, GAGAN, etc.)
+        "pattern": None,
         "operator": "Various",
         "country": "INT",
         "orbit_type": "GEO",
@@ -198,7 +187,7 @@ CONSTELLATIONS = {
     },
     "ses": {
         "group": "ses",
-        "pattern": None,  # Mixed: AMC, NSS, SES, ASTRA
+        "pattern": None,
         "operator": "SES",
         "country": "LU",
         "orbit_type": "GEO",
@@ -238,11 +227,63 @@ CONSTELLATIONS = {
     },
 }
 
-
 GP_URL = "https://celestrak.org/NORAD/elements/gp.php?GROUP={group}&FORMAT=json"
-FETCH_DELAY = 1.0  # seconds between CelesTrak requests
+FETCH_DELAY = 1.0
 MAX_RETRIES = 3
 
+# ── Column descriptions for latest_satellites ────────────────────────
+COLUMN_DESCRIPTIONS = {
+    "norad_id": "NORAD catalog number -- sequential integer assigned by the 18th Space Defense Squadron; primary key for cross-referencing with TLE databases and SATCAT",
+    "name": "Satellite common name from the NORAD catalog (e.g. 'STARLINK-1234', 'NAVSTAR 78', 'ONEWEB-0001')",
+    "constellation": "Lowercase constellation identifier (e.g. 'starlink', 'oneweb', 'gps', 'galileo'); matches the keys in the pipeline's CONSTELLATIONS config",
+    "operator": "Name of the constellation operator or agency (e.g. 'SpaceX', 'Eutelsat OneWeb', 'USSF', 'EU/ESA')",
+    "country": "ISO 3166-based two-letter country code of the operating nation (e.g. 'US', 'GB', 'CN', 'EU')",
+    "orbit_type": "Orbit regime: LEO (low Earth orbit, <2000 km), MEO (medium, 2000-35000 km), GEO (geostationary, ~35786 km)",
+    "shell_id": "Integer shell index within the constellation (0-based); for single-shell constellations always 0; for Starlink 0-4 mapping to the five inclination/altitude shells",
+    "shell_name": "Human-readable shell label encoding inclination and target altitude (e.g. 'Shell 3 (53 deg/550km)', 'GPS (55 deg/20200km)')",
+    "altitude_km": "Perigee altitude above Earth's surface in km, derived from TLE mean motion and eccentricity; for near-circular orbits this approximates the operational altitude",
+    "inclination": "Orbital inclination in degrees (0-180); angle between the orbital plane and Earth's equatorial plane; determines ground coverage latitudes",
+    "eccentricity": "Orbital eccentricity (dimensionless, 0-1); 0 = perfectly circular; operational LEO satellites typically <0.001; values >0.005 are flagged as anomalous",
+    "mean_motion": "Mean motion in revolutions per day from the TLE; LEO ~14-17 rev/day, MEO ~2 rev/day, GEO ~1 rev/day; related to semi-major axis via Kepler's third law",
+    "status": "Operational classification: operational (within shell altitude band), raising (maneuvering to target, LEO only), deorbiting (actively decaying, LEO only), decayed (below 150 km), anomalous (high eccentricity), non-operational (MEO/GEO outside band)",
+    "launch_year": "Year the satellite was launched, extracted from the COSPAR international designator; 0 if the designator was missing or malformed",
+    "epoch_utc": "Reference epoch of the TLE set (UTC); orbital elements are most accurate at this moment; position error grows roughly 1-3 km/day for LEO objects",
+}
+
+# ── Column descriptions for daily_snapshots ──────────────────────────
+COLUMN_DAILY_DESCRIPTIONS = {
+    "date": "UTC date of the daily census snapshot; one row per constellation per date",
+    "constellation": "Lowercase constellation identifier matching the latest_satellites config (e.g. 'starlink', 'gps')",
+    "operator": "Name of the constellation operator or agency (e.g. 'SpaceX', 'USSF', 'EU/ESA')",
+    "orbit_type": "Orbit regime of this constellation: LEO, MEO, or GEO",
+    "total_count": "Total number of satellites tracked in this constellation on this date, across all operational statuses",
+    "operational_count": "Number of satellites with altitude within the constellation's defined shell band(s) on this date",
+    "median_altitude_km": "Median perigee altitude in km across all satellites in this constellation; useful for detecting constellation-wide altitude drift or shell transitions",
+    "median_inclination": "Median orbital inclination in degrees across all satellites in this constellation",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Daily census of active satellite constellations with orbital shell classification. \
+Tracks satellites from CelesTrak GP data across LEO mega-constellations (Starlink, \
+OneWeb, Kuiper, Qianfan, Hulianwang), navigation systems (GPS, Galileo, BeiDou, \
+GLONASS), communications fleets (Iridium, Globalstar, ORBCOMM, SES, Intelsat, \
+Eutelsat, Telesat), and Earth observation (Planet, Spire).
+
+The satellite constellation landscape is undergoing a historic transformation. Legacy \
+GEO communications operators -- each operating dozens of spacecraft at 35,786 km altitude \
+-- are being joined by LEO mega-constellations deploying thousands of satellites at \
+altitudes below 600 km. Starlink alone now exceeds all other constellations combined in \
+satellite count. Meanwhile, China's Qianfan and Hulianwang programs are rapidly deploying \
+their own broadband mega-constellations.
+
+This census is valuable for spectrum coordination, space traffic management, competitive \
+intelligence in the satellite communications market, and as input to orbital debris \
+environment models that depend on accurate population counts by orbit regime.\
+"""
+
+
+# ── Orbital mechanics helpers ────────────────────────────────────────
 
 def altitude_from_mean_motion(n: float, ecc: float) -> float:
     """Compute perigee altitude from mean motion (rev/day) and eccentricity."""
@@ -260,7 +301,6 @@ def classify_shell(constellation_id: str, inc: float) -> tuple[int, str]:
         lo, hi = shell["inc"]
         if lo <= inc < hi:
             return shell_id, shell["name"]
-    # Default to first defined shell
     first_id = next(iter(shells))
     return first_id, shells[first_id]["name"]
 
@@ -272,18 +312,15 @@ def classify_status(alt: float, inc: float, ecc: float,
     shells = CONSTELLATIONS[constellation_id]["shells"]
     orbit_type = CONSTELLATIONS[constellation_id]["orbit_type"]
 
-    # Find the matching shell's altitude band
     shell_id, _ = classify_shell(constellation_id, inc)
     band = shells.get(shell_id, {}).get("alt", (0, 100000))
     min_alt, max_alt = band
 
-    # Decayed: very low altitude or stale epoch + low
     if alt < 150:
         return "decayed"
     if epoch_age_hours > 336 and alt < 250:
         return "decayed"
 
-    # GEO/MEO sats: simpler classification (no raising/deorbiting dynamics)
     if orbit_type in ("GEO", "MEO"):
         if ecc > 0.02:
             return "anomalous"
@@ -291,13 +328,12 @@ def classify_status(alt: float, inc: float, ecc: float,
             return "operational"
         return "non-operational"
 
-    # LEO: full classification with mm_dot
     if ecc > 0.005:
         return "anomalous"
     if min_alt <= alt <= max_alt:
         return "operational"
     if alt > max_alt:
-        return "raising"  # above band, drifting/parking
+        return "raising"
     if alt < min_alt:
         if mm_dot < -0.0001:
             return "raising"
@@ -306,7 +342,6 @@ def classify_status(alt: float, inc: float, ecc: float,
         if alt >= min_alt - 20:
             return "raising"
         return "raising"
-
     return "unknown"
 
 
@@ -382,196 +417,7 @@ def fetch_constellation_gp(constellation_id: str, cdef: dict, now: datetime) -> 
     return rows
 
 
-def generate_readme(df: pd.DataFrame, df_daily: pd.DataFrame, banner_md: str = "") -> str:
-    """Generate HF dataset README."""
-    total = len(df)
-    n_constellations = df["constellation"].nunique()
-    n_operational = int((df["status"] == "operational").sum())
-    daily_rows = len(df_daily)
-    date_range = ""
-    if daily_rows > 0:
-        d_min = df_daily["date"].min().strftime("%Y-%m-%d")
-        d_max = df_daily["date"].max().strftime("%Y-%m-%d")
-        date_range = f" spanning {d_min} to {d_max}"
-
-    # Top constellations by size
-    top = df.groupby("constellation")["norad_id"].count().sort_values(ascending=False).head(5)
-    top_str = ", ".join(f"{c} ({n:,})" for c, n in top.items())
-
-    return f"""---
-license: cc-by-4.0
-pretty_name: Constellation Census
-language:
-  - en
-description: >-
-  Daily census of {n_constellations} active satellite constellations with orbital
-  shell classification, tracking {total:,} satellites from CelesTrak GP data.
-size_categories:
-  - 10K<n<100K
-task_categories:
-  - tabular-classification
-  - time-series-forecasting
-tags:
-  - open-data
-  - space
-  - satellites
-  - constellation
-  - orbital-mechanics
-  - tle
-  - norad
-  - starlink
-  - oneweb
-  - kuiper
-  - gps
-  - galileo
-  - tabular-data
-  - parquet
-configs:
-  - config_name: latest_satellites
-    data_files:
-      - split: train
-        path: data/latest_satellites.parquet
-    default: true
-  - config_name: daily_snapshots
-    data_files:
-      - split: train
-        path: data/daily_snapshots.parquet
----
-
-# Constellation Census
-{banner_md}
-*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
-
-![Update Constellation Census](https://github.com/juliensimon/space-datasets/actions/workflows/update-constellation-census.yml/badge.svg)
-![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.constellation-census&label=updated&color=brightgreen)
-
-Daily census of **{n_constellations}** active satellite constellations, tracking
-**{total:,}** satellites (**{n_operational:,}** operational). Top constellations:
-{top_str}.
-
-## Dataset description
-
-This dataset provides a daily snapshot of all major satellite constellations in
-orbit, derived from [CelesTrak](https://celestrak.org/) GP (General Perturbations)
-data. Each satellite is classified by constellation, orbital shell, and operational
-status. Covers LEO mega-constellations (Starlink, OneWeb, Kuiper, Qianfan,
-Hulianwang), navigation systems (GPS, Galileo, BeiDou, GLONASS), communications
-fleets (Iridium, Globalstar, ORBCOMM, SES, Intelsat, Eutelsat, Telesat), and
-Earth observation (Planet, Spire).
-
-The satellite constellation landscape is undergoing a historic transformation. Legacy GEO communications operators like SES, Intelsat, and Eutelsat -- each operating dozens of spacecraft at 35,786 km altitude -- are being joined by LEO mega-constellations deploying thousands of satellites at altitudes below 600 km. Starlink alone now exceeds all other constellations combined in satellite count. Meanwhile, China's Qianfan (G60) and Hulianwang (GuoWang) programs are rapidly deploying their own broadband mega-constellations, and Amazon's Kuiper is entering the market. This dataset captures the full competitive picture across orbit regimes, operators, and nations.
-
-Navigation constellations (GPS, Galileo, BeiDou, GLONASS) operate in MEO at approximately 20,000-23,000 km altitude, where orbital periods of roughly 12 hours provide optimal geometry for positioning services. These systems require minimum satellite counts per orbital plane to guarantee continuous global coverage, making their health status operationally critical. The SBAS augmentation satellites in GEO provide differential corrections for aviation safety. Each constellation type has distinct orbital dynamics: LEO satellites experience significant drag and require periodic reboosting, while MEO and GEO satellites face radiation belt exposure and station-keeping challenges from solar radiation pressure and gravitational perturbations.
-
-This census is valuable for spectrum coordination (identifying potential radio frequency interference between overlapping constellations), space traffic management (understanding orbital density by altitude band), competitive intelligence in the satellite communications market, and as input to orbital debris environment models that depend on accurate population counts by orbit regime.
-
-## Config: `latest_satellites`
-
-One row per satellite. Currently **{total:,}** satellites across
-**{n_constellations}** constellations.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `norad_id` | int32 | NORAD catalog number — sequential integer assigned by the 18th Space Defense Squadron; primary key for cross-referencing with TLE databases and SATCAT |
-| `name` | string | Satellite common name from the NORAD catalog (e.g. "STARLINK-1234", "NAVSTAR 78", "ONEWEB-0001") |
-| `constellation` | string | Lowercase constellation identifier (e.g. "starlink", "oneweb", "gps", "galileo"); matches the keys in the pipeline's `CONSTELLATIONS` config |
-| `operator` | string | Name of the constellation operator or agency (e.g. "SpaceX", "Eutelsat OneWeb", "USSF", "EU/ESA") |
-| `country` | string | ISO 3166-based two-letter country code of the operating nation (e.g. "US", "GB", "CN", "EU") |
-| `orbit_type` | string | Orbit regime: `LEO` (low Earth orbit, <2000 km), `MEO` (medium, 2000–35000 km), `GEO` (geostationary, ~35786 km) |
-| `shell_id` | int | Integer shell index within the constellation (0-based); for single-shell constellations always 0; for Starlink 0–4 mapping to the five inclination/altitude shells |
-| `shell_name` | string | Human-readable shell label encoding inclination and target altitude (e.g. "Shell 3 (53°/550km)", "GPS (55°/20200km)") |
-| `altitude_km` | float | Perigee altitude above Earth's surface in km, derived from TLE mean motion and eccentricity; for near-circular orbits this approximates the operational altitude |
-| `inclination` | float | Orbital inclination in degrees (0–180); angle between the orbital plane and Earth's equatorial plane; determines ground coverage latitudes |
-| `eccentricity` | float | Orbital eccentricity (dimensionless, 0–1); 0 = perfectly circular; operational LEO satellites typically <0.001; values >0.005 are flagged as anomalous |
-| `mean_motion` | float | Mean motion in revolutions per day from the TLE; LEO ~14–17 rev/day, MEO ~2 rev/day, GEO ~1 rev/day; related to semi-major axis via Kepler's third law |
-| `status` | string | Operational classification: `operational` (within shell altitude band), `raising` (maneuvering to target altitude, LEO only), `deorbiting` (actively decaying, LEO only), `decayed` (below 150 km or stale epoch), `anomalous` (high eccentricity), `non-operational` (MEO/GEO outside expected band) |
-| `launch_year` | int | Year the satellite was launched, extracted from the COSPAR international designator; 0 if the designator was missing or malformed |
-| `epoch_utc` | datetime | Reference epoch of the TLE set (UTC); orbital elements are most accurate at this moment; position error grows roughly 1–3 km/day for LEO objects |
-
-## Config: `daily_snapshots`
-
-Per-constellation daily aggregates. Currently **{daily_rows:,}** rows{date_range}.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `date` | datetime | UTC date of the daily census snapshot; one row per constellation per date |
-| `constellation` | string | Lowercase constellation identifier matching the `latest_satellites` config (e.g. "starlink", "gps") |
-| `operator` | string | Name of the constellation operator or agency (e.g. "SpaceX", "USSF", "EU/ESA") |
-| `orbit_type` | string | Orbit regime of this constellation: `LEO`, `MEO`, or `GEO` |
-| `total_count` | int | Total number of satellites tracked in this constellation on this date, across all operational statuses |
-| `operational_count` | int | Number of satellites with altitude within the constellation's defined shell band(s) on this date |
-| `median_altitude_km` | float | Median perigee altitude in km across all satellites in this constellation; useful for detecting constellation-wide altitude drift or shell transitions |
-| `median_inclination` | float | Median orbital inclination in degrees across all satellites in this constellation |
-
-### Usage
-
-```python
-from datasets import load_dataset
-
-# Per-satellite data
-ds = load_dataset("juliensimon/constellation-census", "latest_satellites", split="train")
-df = ds.to_pandas()
-
-# Constellation sizes
-sizes = df.groupby("constellation")["norad_id"].count().sort_values(ascending=False)
-print(sizes)
-
-# Daily growth trends
-daily = load_dataset("juliensimon/constellation-census", "daily_snapshots", split="train")
-df_daily = daily.to_pandas()
-starlink_growth = df_daily[df_daily["constellation"] == "starlink"][["date", "total_count"]]
-```
-
-## Status classification
-
-| Status | Criteria |
-|--------|----------|
-| **operational** | Altitude within the constellation's shell band |
-| **raising** | Below or above band, orbit changing toward target (LEO only) |
-| **deorbiting** | Below band with strong orbital decay (LEO only) |
-| **decayed** | Altitude below 150 km, or stale epoch + low altitude |
-| **anomalous** | Unusually high eccentricity |
-| **non-operational** | MEO/GEO satellite outside expected altitude band |
-
-## Update frequency
-
-Updated **daily at 09:00 UTC** via GitHub Actions.
-
-## Data sources
-
-All orbital data comes from [CelesTrak](https://celestrak.org/) GP data
-(NORAD/18th Space Defense Squadron). Constellation membership is determined by
-CelesTrak's predefined satellite groups.
-
-## Related datasets
-
-- [starlink-fleet-data](https://huggingface.co/datasets/juliensimon/starlink-fleet-data) — Detailed Starlink-specific analysis with per-shell daily time series
-- [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) — Full NORAD satellite catalog
-- [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) — 232M historical TLEs (1959-present)
-- [space-launch-log](https://huggingface.co/datasets/juliensimon/space-launch-log) — Global launch history from GCAT
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/constellation-census) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{constellation_census,
-  author = {{Simon, Julien}},
-  title = {{Constellation Census: Daily Satellite Constellation Tracking}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/constellation-census}},
-  note = {{Based on NORAD/18th Space Defense Squadron GP data via CelesTrak (Dr. T.S. Kelso)}}
-}}
-```
-"""
-
+# ── Main pipeline ────────────────────────────────────────────────────
 
 def main():
     now = datetime.now(timezone.utc)
@@ -584,7 +430,6 @@ def main():
 
     for cid, cdef in CONSTELLATIONS.items():
         rows = fetch_constellation_gp(cid, cdef, now)
-        # Deduplicate: keep first occurrence (constellation ordering is priority)
         new_rows = []
         for r in rows:
             if r["norad_id"] not in seen_norad_ids:
@@ -596,13 +441,8 @@ def main():
 
     df = pd.DataFrame(all_rows)
     df["norad_id"] = df["norad_id"].astype("int32")
-    print(f"\nTotal: {len(df):,} satellites across {df['constellation'].nunique()} constellations")
-
-    check_dataset(df, "constellation-census", min_rows=5000,
-                  expected_columns=["norad_id", "name", "constellation", "altitude_km",
-                                    "inclination", "status", "shell_id"],
-                  critical_columns=["norad_id", "altitude_km", "constellation"],
-            incremental=True)
+    n_constellations = df["constellation"].nunique()
+    print(f"\nTotal: {len(df):,} satellites across {n_constellations} constellations")
 
     # Build daily_snapshots: per-constellation aggregates
     daily_rows = []
@@ -621,61 +461,105 @@ def main():
         })
     df_today = pd.DataFrame(daily_rows)
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp_dir = Path(tmp)
-        data_dir = tmp_dir / "data"
-        data_dir.mkdir()
-
-        # Save latest_satellites
-        latest_path = data_dir / "latest_satellites.parquet"
-        df.to_parquet(latest_path, index=False, engine="pyarrow", compression="zstd")
-        print(f"  latest_satellites: {len(df):,} rows ({latest_path.stat().st_size / 1024 / 1024:.1f} MB)")
-
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Constellation Census",
+        description=DESCRIPTION,
+        tags=["open-data", "space", "satellites", "constellation", "orbital-mechanics",
+              "tle", "norad", "starlink", "oneweb", "kuiper", "gps", "galileo",
+              "tabular-data", "parquet"],
+        source_url="https://celestrak.org/",
+        task_categories=["tabular-classification", "time-series-forecasting"],
+        update_schedule="Daily at 09:00 UTC via GitHub Actions",
+        collection_url="https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/iss071e439624/iss071e439624~medium.jpg",
+            "alt": "An orbital sunrise illuminates the Earth's atmosphere, seen from the ISS",
+            "credit": "NASA",
+        },
+        related_datasets=[
+            "juliensimon/starlink-fleet-data",
+            "juliensimon/space-track-satcat",
+            "juliensimon/space-track-tle-history",
+            "juliensimon/space-launch-log",
+        ],
+    ) as p:
         # Download existing daily_snapshots and append today
-        daily_path = data_dir / "daily_snapshots.parquet"
-        subprocess.run(
-            ["hf", "download", HF_REPO, "data/daily_snapshots.parquet",
-             "--repo-type", "dataset", "--local-dir", str(tmp_dir)],
-            check=True, capture_output=True, timeout=120,
-        )
-        if not daily_path.exists():
-            print("::error::daily_snapshots.parquet not found after download — aborting to protect historical data")
+        df_existing_daily = p.download_existing("daily_snapshots.parquet")
+
+        if df_existing_daily is None or len(df_existing_daily) < 10:
+            print("::error::daily_snapshots.parquet not found or too small -- aborting to protect historical data")
             sys.exit(1)
-        df_existing = pd.read_parquet(daily_path)
-        df_existing["date"] = pd.to_datetime(df_existing["date"])
-        if len(df_existing) < 10:
-            print(f"::error::daily_snapshots has only {len(df_existing)} rows — aborting to protect historical data")
-            sys.exit(1)
-        df_existing = df_existing[df_existing["date"] != today]
-        df_daily = pd.concat([df_existing, df_today], ignore_index=True)
+
+        df_existing_daily["date"] = pd.to_datetime(df_existing_daily["date"])
+        df_daily = p.append_by_date(df_existing_daily, df_today, date_col="date", min_existing=10)
         print(f"  daily_snapshots: appended {today} ({len(df_daily):,} total rows)")
 
-        df_daily.to_parquet(daily_path, index=False, engine="pyarrow", compression="zstd")
+        # Write both parquet files to data_dir
+        write_parquet(df, p.data_dir / "latest_satellites.parquet")
+        write_parquet(df_daily, p.data_dir / "daily_snapshots.parquet")
 
-        # Stats
+        # ── Stats for README ────────────────────────────────────────
+        total = len(df)
         operational = int((df["status"] == "operational").sum())
-        n_constellations = df["constellation"].nunique()
-        print(f"\n  {operational:,} operational across {n_constellations} constellations")
+        top = df.groupby("constellation")["norad_id"].count().sort_values(ascending=False).head(5)
+        top_str = ", ".join(f"{c} ({n:,})" for c, n in top.items())
+        daily_count = len(df_daily)
+        d_min = df_daily["date"].min().strftime("%Y-%m-%d")
+        d_max = df_daily["date"].max().strftime("%Y-%m-%d")
 
-        banner_file = download_banner("constellation-census", tmp_dir)
-        banner_md = banner_markdown("constellation-census", banner_file)
-        (tmp_dir / "README.md").write_text(generate_readme(df, df_daily, banner_md))
+        quick_stats = f"""\
+- **{total:,}** satellites across **{n_constellations}** constellations
+- **{operational:,}** operational
+- Top constellations: {top_str}
+- **{daily_count:,}** daily snapshot rows ({d_min} to {d_max})"""
 
-        print("Uploading to HF...")
-        commit_msg = (
-            f"Update constellation census: {len(df):,} satellites "
-            f"({operational:,} operational) across {n_constellations} constellations"
+        usage = """\
+```python
+from datasets import load_dataset
+
+# Per-satellite data
+ds = load_dataset("juliensimon/constellation-census", "latest_satellites", split="train")
+df = ds.to_pandas()
+
+# Constellation sizes
+sizes = df.groupby("constellation")["norad_id"].count().sort_values(ascending=False)
+print(sizes)
+
+# Daily growth trends
+daily = load_dataset("juliensimon/constellation-census", "daily_snapshots", split="train")
+df_daily = daily.to_pandas()
+starlink_growth = df_daily[df_daily["constellation"] == "starlink"][["date", "total_count"]]
+
+# Altitude distribution by orbit type
+import matplotlib.pyplot as plt
+for ot in ["LEO", "MEO", "GEO"]:
+    sub = df[df["orbit_type"] == ot]
+    plt.hist(sub["altitude_km"], bins=50, alpha=0.6, label=ot)
+plt.xlabel("Altitude (km)")
+plt.ylabel("Satellite Count")
+plt.title("Satellite Altitude Distribution by Orbit Type")
+plt.legend()
+plt.show()
+```"""
+
+        # Publish latest_satellites as the main config
+        # (daily_snapshots.parquet already written above, will be included in upload)
+        p.publish(
+            df,
+            filename="latest_satellites.parquet",
+            min_rows=5000,
+            expected_columns=["norad_id", "name", "constellation", "altitude_km",
+                              "inclination", "status", "shell_id"],
+            critical_columns=["norad_id", "altitude_km", "constellation"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=(
+                f"Update constellation census: {total:,} satellites "
+                f"({operational:,} operational) across {n_constellations} constellations"
+            ),
         )
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp_dir), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
-        )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={len(df)}\n")
     print("Done.")
 
 

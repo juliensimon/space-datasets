@@ -9,15 +9,9 @@ All costs are in 2024 USD unless noted. Sources for each vehicle are cited in th
 'source' column.
 """
 
-import os
-import subprocess
-import tempfile
-from pathlib import Path
-
 import pandas as pd
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
 
 HF_REPO = "juliensimon/launch-cost-to-leo"
 
@@ -108,6 +102,43 @@ RAW_DATA = [
 ]
 # fmt: on
 
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "vehicle": "Launch vehicle name and variant (e.g. 'Falcon 9 (reusable)', 'Saturn V', 'Ariane 5 ECA'); includes configuration detail where pricing differs between expendable and reusable modes",
+    "operator": "Primary operator or manufacturer (e.g. 'SpaceX', 'ULA', 'Arianespace', 'ISRO'); reflects the entity that sets launch pricing or operated the vehicle",
+    "country": "Country or region of origin (e.g. 'USA', 'Europe', 'Russia', 'China', 'India'); 'Europe' used for ESA/Arianespace vehicles with multi-nation heritage",
+    "first_flight_year": "Year the vehicle first flew; ranges from 1964 (Titan II GLV) to 2026 (vehicles in development); used to track cost evolution over decades",
+    "payload_leo_kg": "Manufacturer-stated maximum payload capacity to low Earth orbit (~400 km, 28 deg) in kilograms; for reusable configurations, reflects reduced capacity due to propellant reserved for booster recovery",
+    "cost_per_launch_usd": "Estimated or published cost per launch in 2024 USD; combines government list prices, commercial pricing sheets, and analyst estimates; historical costs inflation-adjusted using NASA/government indices",
+    "cost_per_kg_usd": "Derived cost per kilogram to LEO = cost_per_launch_usd / payload_leo_kg, rounded to nearest dollar; the primary comparison metric across vehicles and eras; ranges from ~$67/kg (Starship target) to >$100,000/kg (small launchers)",
+    "reusable": "True if the vehicle recovers and re-flies at least its first stage (e.g. Falcon 9, Space Shuttle); False for fully expendable vehicles; reusability is the key driver of recent cost reductions",
+    "status": "Current operational status: 'active' (currently flying), 'retired' (no longer operating), or 'in development' (not yet operational); reflects status as of 2024",
+    "source": "Citation for the cost estimate (e.g. 'NASA OIG reports, inflation-adjusted', 'SpaceX website (2024)', 'FAA/AST Annual Compendium'); allows traceability and inflation-adjustment context",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Historical and current launch vehicle costs per kilogram to low Earth orbit (LEO). \
+Covers vehicles from the Saturn V era to Starship, with costs normalized to 2024 USD.
+
+The cost of delivering payload to low Earth orbit is the single most important economic \
+parameter in spaceflight. It determines the viability of satellite constellations, space \
+station resupply, deep-space exploration architectures, and emerging industries like \
+orbital manufacturing and space tourism. For decades, launch costs hovered around \
+$10,000-$20,000 per kilogram, a figure that constrained space activity to government \
+agencies and large defense contractors. The advent of reusable first stages -- pioneered \
+by SpaceX's Falcon 9 -- broke this paradigm, driving costs below $3,000/kg and enabling \
+mega-constellations like Starlink that would have been economically impossible a \
+generation earlier.
+
+This dataset normalizes all costs to 2024 USD, enabling fair comparison across eras. \
+Historical costs are adjusted using NASA and government inflation indices. For vehicles \
+with both expendable and reusable configurations (Falcon 9, Falcon Heavy), separate \
+entries capture the payload penalty of propellant reserved for booster recovery. The \
+dataset spans the full range of lift capacity, from small solid-fuel rockets carrying \
+a few hundred kilograms to super-heavy-lift vehicles designed for 100+ tonnes.
+"""
+
 
 def build_dataframe():
     """Construct the launch cost DataFrame from embedded data."""
@@ -136,17 +167,8 @@ def main():
     df = build_dataframe()
     print(f"  {len(df):,} launch vehicles")
 
-    # ── Validate ──────────────────────────────────────────────────────────
-    check_dataset(
-        df, "launch-cost",
-        min_rows=30,
-        expected_columns=[
-            "vehicle", "operator", "country", "first_flight_year",
-            "payload_leo_kg", "cost_per_launch_usd", "cost_per_kg_usd",
-            "reusable", "status",
-        ],
-        critical_columns=["vehicle", "cost_per_kg_usd"],
-    )
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
     # ── Stats for README ──────────────────────────────────────────────────
     n = len(df)
@@ -158,98 +180,14 @@ def main():
     most_expensive = df.iloc[-1]
     median_cost_kg = int(df["cost_per_kg_usd"].median())
 
-    # ── Write parquet + README ────────────────────────────────────────────
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "launch-cost-to-leo.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_kb = out.stat().st_size / 1024
-        print(f"  {size_kb:.0f} KB parquet")
-
-        banner_file = download_banner("launch-cost", tmp)
-        banner_md = banner_markdown("launch-cost", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Launch Cost to LEO"
-language:
-  - en
-description: >-
-  Historical and current launch vehicle costs per kilogram to low Earth orbit (LEO).
-  {n} vehicles from {n_countries} countries/regions, including cost per launch,
-  payload capacity, cost per kg, and reusability status. All costs in 2024 USD.
-size_categories:
-  - n<1K
-task_categories:
-  - tabular-classification
-tags:
-  - space
-  - rockets
-  - launch-cost
-  - economics
-  - orbital-mechanics
-  - open-data
-  - tabular-data
-  - parquet
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/launch-cost-to-leo.parquet
----
-
-# Launch Cost to LEO
-{banner_md}
-*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
-
-How much does it cost to put one kilogram into low Earth orbit? This dataset tracks
-**{n}** launch vehicles from **{n_countries}** countries/regions, comparing historical
-and current costs per kg to LEO — from the Saturn V era to Starship.
-
-## Dataset description
-
-Each record represents one launch vehicle configuration with its payload capacity to LEO,
-cost per launch, and derived cost per kilogram. Costs are normalized to **2024 USD**.
-Both expendable and reusable configurations are included where applicable.
-
-The cheapest vehicle by cost/kg is **{cheapest["vehicle"]}** at **${cheapest["cost_per_kg_usd"]:,.0f}/kg**,
-while the most expensive is **{most_expensive["vehicle"]}** at **${most_expensive["cost_per_kg_usd"]:,.0f}/kg**.
-The median cost across all vehicles is **${median_cost_kg:,}/kg**.
-
-The cost of delivering payload to low Earth orbit is the single most important economic parameter in spaceflight. It determines the viability of satellite constellations, space station resupply, deep-space exploration architectures, and emerging industries like orbital manufacturing and space tourism. For decades, launch costs hovered around $10,000-$20,000 per kilogram, a figure that constrained space activity to government agencies and large defense contractors. The advent of reusable first stages -- pioneered by SpaceX's Falcon 9 -- broke this paradigm, driving costs below $3,000/kg and enabling mega-constellations like Starlink that would have been economically impossible a generation earlier.
-
-This dataset normalizes all costs to 2024 USD, enabling fair comparison across eras. Historical costs are adjusted using NASA and government inflation indices. For vehicles with both expendable and reusable configurations (Falcon 9, Falcon Heavy), separate entries capture the payload penalty of propellant reserved for booster recovery. The dataset spans the full range of lift capacity, from small solid-fuel rockets carrying a few hundred kilograms to super-heavy-lift vehicles designed for 100+ tonnes, reflecting the stratification of the modern launch market.
-
-Understanding launch cost trends is essential for space policy analysis, mission design trade studies, and investment decisions in the commercial space sector. The data reveals how competition, reusability, and manufacturing scale have reshaped the economics of orbital access, and provides a baseline for evaluating next-generation vehicles still in development.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `vehicle` | string | Launch vehicle name and variant (e.g. "Falcon 9 Block 5", "Saturn V", "Ariane 5 ECA") |
-| `operator` | string | Primary operator or manufacturer (e.g. "SpaceX", "ULA", "Arianespace", "ISRO") |
-| `country` | string | Country or region of origin (e.g. "USA", "Europe", "Russia", "China", "India") |
-| `first_flight_year` | int | Year the vehicle first flew; range 1957 (R-7/Sputnik) to present |
-| `payload_leo_kg` | int | Manufacturer-stated maximum payload capacity to LEO (400 km, 28°) in kg; range ~100 kg (small rideshare) to 140,000 kg (SLS Block 1) |
-| `cost_per_launch_usd` | int | Estimated or published cost per launch in 2024 USD; combines government list prices, commercial pricing, and analyst estimates |
-| `cost_per_kg_usd` | int | Derived cost per kilogram to LEO = cost_per_launch_usd / payload_leo_kg; range ~$1,500/kg (Falcon 9 reuse) to >$1,000,000/kg (early 1960s vehicles); primary comparison metric |
-| `reusable` | bool | True if the vehicle recovers and re-flies at least its first stage; False for fully expendable vehicles |
-| `status` | string | Current operational status: "active" (flying), "retired" (no longer operating), or "in development" (not yet flown) |
-| `source` | string | Citation for the cost estimate (e.g. NASA OIG report, FAA AST Compendium, published price sheet); useful for inflation-adjustment context |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n}** launch vehicles ({n_active} active, {n_retired} retired)
 - **{n_countries}** countries/regions
 - **{n_reusable}** reusable vehicles
 - Cost per kg range: **${cheapest["cost_per_kg_usd"]:,.0f}** ({cheapest["vehicle"]}) to **${most_expensive["cost_per_kg_usd"]:,.0f}** ({most_expensive["vehicle"]})
-- Median cost per kg: **${median_cost_kg:,}**
+- Median cost per kg: **${median_cost_kg:,}**"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -261,81 +199,64 @@ print(df.nsmallest(10, "cost_per_kg_usd")[["vehicle", "cost_per_kg_usd", "payloa
 
 # Active vehicles only
 active = df[df["status"] == "active"]
-print(f"{{len(active)}} active vehicles")
-print(active.sort_values("cost_per_kg_usd")[["vehicle", "operator", "cost_per_kg_usd"]])
+print(f"{len(active)} active vehicles")
 
-# Reusable vs expendable
+# Cost evolution over time
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots(figsize=(10, 6))
 for reusable, group in df.groupby("reusable"):
     label = "Reusable" if reusable else "Expendable"
-    print(f"{{label}}: median ${{group['cost_per_kg_usd'].median():,.0f}}/kg")
+    ax.scatter(group["first_flight_year"], group["cost_per_kg_usd"], label=label, alpha=0.7)
+ax.set_xlabel("First Flight Year")
+ax.set_ylabel("Cost per kg to LEO (2024 USD)")
+ax.set_yscale("log")
+ax.legend()
+ax.set_title("Launch Cost Evolution")
+plt.show()
+```"""
 
-# Cost trend over time
-print(df.groupby("first_flight_year")["cost_per_kg_usd"].median().tail(20))
-```
-
-## Data sources
-
-Costs compiled from multiple public sources including:
-- NASA historical cost data and OIG reports
-- FAA/AST Annual Compendium of Commercial Space Transportation
-- CSIS Aerospace Security: [Space Launch to LEO — How Much Does It Cost?](https://aerospace.csis.org/data/space-launch-to-low-earth-orbit-how-much-does-it-cost/)
-- SpaceX, Rocket Lab, ULA, Arianespace published pricing
-- ESA, JAXA, ISRO official cost figures
-- Bryce Tech / BryceTech reports
-- Industry analysis and press releases
-
-All costs adjusted to 2024 USD where historical.
-
-## Update schedule
-
-Static dataset — updated manually when significant new vehicles enter service
-or pricing changes materially.
-
-## Related datasets
-
-- [gcat-launch-vehicles](https://huggingface.co/datasets/juliensimon/gcat-launch-vehicles) — GCAT launch vehicle specs, engines, and stages
-- [space-launch-log](https://huggingface.co/datasets/juliensimon/space-launch-log) — Complete global launch history
-- [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) — NORAD satellite catalog
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/launch-cost-to-leo) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{launch_cost_to_leo,
-  author = {{Simon, Julien}},
-  title = {{Launch Cost to LEO}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/launch-cost-to-leo}},
-  note = {{Compiled from NASA, FAA/AST, ESA, SpaceX, and industry sources}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update launch cost to LEO: {n} vehicles"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Launch Cost to LEO",
+        description=DESCRIPTION,
+        tags=["space", "rockets", "launch-cost", "economics",
+              "orbital-mechanics", "open-data", "tabular-data", "parquet"],
+        source_url="https://aerospace.csis.org/data/space-launch-to-low-earth-orbit-how-much-does-it-cost/",
+        task_categories=["tabular-classification"],
+        collection_url="https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/iss071e439624/iss071e439624~medium.jpg",
+            "alt": "An orbital sunrise illuminates the Earth's atmosphere, seen from the ISS",
+            "credit": "NASA",
+        },
+        related_datasets=[
+            "juliensimon/gcat-launch-vehicles",
+            "juliensimon/space-launch-log",
+            "juliensimon/space-track-satcat",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=["first_flight_year", "payload_leo_kg",
+                     "cost_per_launch_usd", "cost_per_kg_usd"],
+            drop_mostly_null_threshold=0.95,
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={n}\n")
-    print(f"Done. {n} vehicles.")
+        p.publish(
+            df,
+            filename="launch_cost_to_leo.parquet",
+            min_rows=30,
+            expected_columns=[
+                "vehicle", "operator", "country", "first_flight_year",
+                "payload_leo_kg", "cost_per_launch_usd", "cost_per_kg_usd",
+                "reusable", "status",
+            ],
+            critical_columns=["vehicle", "cost_per_kg_usd"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update launch cost to LEO: {n} vehicles",
+        )
+    print("Done.")
 
 
 if __name__ == "__main__":

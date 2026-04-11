@@ -1,51 +1,48 @@
 #!/usr/bin/env python3
-"""Fetch CelesTrak consolidated space weather data and upload to HF."""
+"""Fetch CelesTrak consolidated space weather data and upload to HF.
+
+Source: CelesTrak Space Data (Dr. T.S. Kelso)
+Consolidates NOAA SWPC, USAF, and other agencies' data into the de facto
+standard input file for SGP4/SDP4 orbit propagation.
+"""
 
 import io
-import os
-import re
-import subprocess
-import tempfile
-from pathlib import Path
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
-
+from hf_dataset_utils import Pipeline
 
 HF_REPO = "juliensimon/celestrak-space-weather"
-
 SW_URL = "https://celestrak.org/SpaceData/SW-All.csv"
 
-# Descriptions for CelesTrak consolidated space weather columns
+# ── Column descriptions ────────────────────────────────────────────────
 COLUMN_DESCRIPTIONS = {
     "date": "Observation date (UTC). Records begin 1957-10-01 and are updated daily.",
     "bsrn": "Bartels Solar Rotation Number: sequential count of 27-day solar rotation periods since 8 Feb 1832 (epoch chosen by Julius Bartels). Used to align geomagnetic records with the solar rotation cycle.",
-    "nd": "Day number within the 27-day Bartels rotation (1–27). Together with `bsrn`, provides a compact solar-rotation-relative timestamp.",
-    "kp1": "Kp index for the 00–03 UT window. Quasi-logarithmic scale (0.0–9.0) measuring global geomagnetic disturbance; derived from up to 13 mid-latitude magnetometer stations. Values ≥5 indicate a geomagnetic storm.",
-    "kp2": "Kp index for the 03–06 UT window. See `kp1` for scale description.",
-    "kp3": "Kp index for the 06–09 UT window. See `kp1` for scale description.",
-    "kp4": "Kp index for the 09–12 UT window. See `kp1` for scale description.",
-    "kp5": "Kp index for the 12–15 UT window. See `kp1` for scale description.",
-    "kp6": "Kp index for the 15–18 UT window. See `kp1` for scale description.",
-    "kp7": "Kp index for the 18–21 UT window. See `kp1` for scale description.",
-    "kp8": "Kp index for the 21–24 UT window. See `kp1` for scale description.",
-    "kpsum": "Sum of the eight 3-hourly Kp values for the day (range 0–72). A convenient single-number summary of daily geomagnetic activity used in satellite drag studies.",
-    "ap1": "ap index for the 00–03 UT window. Linear-scale equivalent of Kp (range 0–400 nT); more suitable than Kp for numerical averaging and atmospheric drag models such as NRLMSISE-00.",
-    "ap2": "ap index for the 03–06 UT window. See `ap1` for scale description.",
-    "ap3": "ap index for the 06–09 UT window. See `ap1` for scale description.",
-    "ap4": "ap index for the 09–12 UT window. See `ap1` for scale description.",
-    "ap5": "ap index for the 12–15 UT window. See `ap1` for scale description.",
-    "ap6": "ap index for the 15–18 UT window. See `ap1` for scale description.",
-    "ap7": "ap index for the 18–21 UT window. See `ap1` for scale description.",
-    "ap8": "ap index for the 21–24 UT window. See `ap1` for scale description.",
-    "apavg": "Daily mean of the eight 3-hourly ap values (range 0–400 nT). Standard daily geomagnetic activity indicator; required input to the JB2008 atmospheric density model.",
-    "cp": "Daily planetary character figure Cp (0.0–2.5, step 0.1). Legacy precursor to the Ap index: 0.0 = extremely quiet, 2.5 = extremely disturbed. Maintained for historical continuity.",
-    "c9": "Nine-level conversion of the Cp figure (0–9). Maps the 0.0–2.5 Cp scale to a compact single-digit integer for older data formats.",
+    "nd": "Day number within the 27-day Bartels rotation (1-27). Together with `bsrn`, provides a compact solar-rotation-relative timestamp.",
+    "kp1": "Kp index for the 00-03 UT window. Quasi-logarithmic scale (0.0-9.0) measuring global geomagnetic disturbance; derived from up to 13 mid-latitude magnetometer stations. Values >=5 indicate a geomagnetic storm.",
+    "kp2": "Kp index for the 03-06 UT window. See `kp1` for scale description.",
+    "kp3": "Kp index for the 06-09 UT window. See `kp1` for scale description.",
+    "kp4": "Kp index for the 09-12 UT window. See `kp1` for scale description.",
+    "kp5": "Kp index for the 12-15 UT window. See `kp1` for scale description.",
+    "kp6": "Kp index for the 15-18 UT window. See `kp1` for scale description.",
+    "kp7": "Kp index for the 18-21 UT window. See `kp1` for scale description.",
+    "kp8": "Kp index for the 21-24 UT window. See `kp1` for scale description.",
+    "kpsum": "Sum of the eight 3-hourly Kp values for the day (range 0-72). A convenient single-number summary of daily geomagnetic activity used in satellite drag studies.",
+    "ap1": "ap index for the 00-03 UT window. Linear-scale equivalent of Kp (range 0-400 nT); more suitable than Kp for numerical averaging and atmospheric drag models such as NRLMSISE-00.",
+    "ap2": "ap index for the 03-06 UT window. See `ap1` for scale description.",
+    "ap3": "ap index for the 06-09 UT window. See `ap1` for scale description.",
+    "ap4": "ap index for the 09-12 UT window. See `ap1` for scale description.",
+    "ap5": "ap index for the 12-15 UT window. See `ap1` for scale description.",
+    "ap6": "ap index for the 15-18 UT window. See `ap1` for scale description.",
+    "ap7": "ap index for the 18-21 UT window. See `ap1` for scale description.",
+    "ap8": "ap index for the 21-24 UT window. See `ap1` for scale description.",
+    "apavg": "Daily mean of the eight 3-hourly ap values (range 0-400 nT). Standard daily geomagnetic activity indicator; required input to the JB2008 atmospheric density model.",
+    "cp": "Daily planetary character figure Cp (0.0-2.5, step 0.1). Legacy precursor to the Ap index: 0.0 = extremely quiet, 2.5 = extremely disturbed. Maintained for historical continuity.",
+    "c9": "Nine-level conversion of the Cp figure (0-9). Maps the 0.0-2.5 Cp scale to a compact single-digit integer for older data formats.",
     "isn": "International Sunspot Number (daily). Count of sunspots visible on the solar disk; a proxy for solar activity level and the phase of the ~11-year solar cycle. Provided by the Royal Observatory of Belgium.",
-    "f10_7_obs": "Observed daily solar radio flux at 10.7 cm wavelength (2800 MHz), in Solar Flux Units (1 SFU = 10⁻²² W m⁻² Hz⁻¹). Measured at the Dominion Radio Astrophysical Observatory, Penticton, Canada. Typical range: 65–300 SFU. Key proxy for solar EUV radiation and required input to atmospheric drag models.",
+    "f10_7_obs": "Observed daily solar radio flux at 10.7 cm wavelength (2800 MHz), in Solar Flux Units (1 SFU = 10^-22 W m^-2 Hz^-1). Measured at the Dominion Radio Astrophysical Observatory, Penticton, Canada. Typical range: 65-300 SFU. Key proxy for solar EUV radiation and required input to atmospheric drag models.",
     "f10_7_adj": "F10.7 flux adjusted to a standard Earth-Sun distance of 1 AU, removing the effect of Earth's elliptical orbit. Use this column for solar cycle studies and model inputs that assume constant Earth-Sun distance.",
     "f10_7_data_type": "Data source qualifier: 'OBS' = direct observatory measurement, 'INT' = interpolated, 'PRE' = predicted. Check this column when using recent values that may not yet be final.",
     "f10_7_obs_center81": "81-day centered average of the observed F10.7 flux (40 days before and after). Smooths short-term variability to reveal the solar cycle trend. Used as the long-term solar activity input in atmospheric models.",
@@ -53,6 +50,36 @@ COLUMN_DESCRIPTIONS = {
     "f10_7_adj_center81": "81-day centered average of the 1-AU adjusted F10.7 flux. Use for solar cycle analysis independent of orbital geometry.",
     "f10_7_adj_last81": "81-day trailing average of the 1-AU adjusted F10.7 flux. Causal (no future data) version of `f10_7_adj_center81`.",
 }
+
+# ── Dataset description ─────────────────────────────────────────────────
+DESCRIPTION = """\
+CelesTrak consolidated space weather data -- THE file every orbit propagator needs. \
+Daily Kp, Ap, F10.7, and solar/geomagnetic indices used by SGP4/SDP4 propagators, \
+atmospheric models (JB2008, NRLMSISE), and conjunction screening.
+
+The CelesTrak space weather file, maintained by Dr. T.S. Kelso, is the de facto standard \
+input file for operational orbit determination and propagation in the space surveillance \
+community. It consolidates data from multiple agencies -- NOAA SWPC for Kp/Ap indices and \
+solar flux, GFZ Potsdam for definitive geomagnetic indices, and the NRC Herzberg Institute \
+for F10.7 measurements -- into a single, consistently formatted daily time series. The file \
+includes both historical observations and near-term predictions (typically 45 days ahead), \
+using the same format conventions expected by legacy Fortran propagators and modern Python/C++ \
+SGP4 implementations alike.
+
+For orbit propagation, the key parameters are the daily and 3-hourly Ap indices (which drive \
+geomagnetic heating in thermospheric density models) and the F10.7 solar radio flux with its \
+81-day running averages (which drive solar EUV heating). The NRLMSISE-00 model, for example, \
+requires daily Ap, the 3-hourly Ap for the current and preceding 33 hours, daily F10.7, and \
+the 81-day centered average F10.7bar. JB2008 uses additional solar indices (S10.7, M10.7, \
+Y10.7) that are available in extended versions of this file. Errors in these space weather \
+inputs propagate directly into drag coefficient estimates, making the quality and timeliness \
+of this data critical for conjunction assessment and collision avoidance maneuvers.
+
+The dataset spans the full modern era of satellite operations, with the historical record \
+reaching back to 1957 (International Geophysical Year). This long baseline captures multiple \
+complete solar cycles (cycles 19 through 25), enabling statistical studies of solar cycle \
+variability and its impact on the orbital environment.
+"""
 
 
 def main():
@@ -71,6 +98,7 @@ def main():
 
     # Rename columns to snake_case
     df.columns = [c.lower().replace(".", "_") for c in df.columns]
+
     # Ensure date column exists
     if "date" not in df.columns:
         for col in df.columns:
@@ -84,117 +112,31 @@ def main():
 
     # Convert numeric columns
     for col in df.columns:
-        if col == "date":
+        if col in ("date", "f10_7_data_type"):
             continue
         if df[col].dtype == object:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
+
     df = df.sort_values("date").reset_index(drop=True)
 
-    check_dataset(df, "celestrak-sw", min_rows=20000,
-                  expected_columns=["date"],
-                  critical_columns=["date"])
-
-    # Stats for README
+    # ── Domain-specific stats ────────────────────────────────────────
     n = len(df)
     n_cols = len(df.columns)
-    date_min = df["date"].min().strftime("%Y-%m-%d") if "date" in df.columns else "N/A"
-    date_max = df["date"].max().strftime("%Y-%m-%d") if "date" in df.columns else "N/A"
+    date_min = df["date"].min().strftime("%Y-%m-%d")
+    date_max = df["date"].max().strftime("%Y-%m-%d")
+    mean_f107 = df["f10_7_obs"].mean() if "f10_7_obs" in df.columns else 0
+    max_kpsum = df["kpsum"].max() if "kpsum" in df.columns else 0
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
+    quick_stats = f"""\
+- **{n:,}** daily records ({date_min} to {date_max})
+- **{n_cols}** columns of solar and geomagnetic indices
+- Mean F10.7 flux: **{mean_f107:.1f}** SFU
+- Max daily Kp sum: **{max_kpsum:.0f}** (scale 0-72)"""
 
-        out = data_dir / "celestrak_space_weather.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        # Build column table for README
-        col_rows = []
-        for col in df.columns:
-            dtype = str(df[col].dtype)
-            desc = COLUMN_DESCRIPTIONS.get(col, "")
-            col_rows.append(f"| `{col}` | {dtype} | {desc} |")
-        col_table = "\n".join(col_rows)
-
-        banner_file = download_banner("celestrak-sw", tmp)
-        banner_md = banner_markdown("celestrak-sw", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "CelesTrak Consolidated Space Weather"
-language:
-  - en
-description: >-
-  CelesTrak consolidated space weather data — daily Kp, Ap, F10.7, and solar/geomagnetic
-  indices used by SGP4/SDP4 propagators, atmospheric models (JB2008, NRLMSISE), and
-  conjunction screening. {n:,} daily records from {date_min} to {date_max}.
-size_categories:
-  - 10K<n<100K
-task_categories:
-  - tabular-regression
-  - time-series-forecasting
-tags:
-  - space
-  - space-weather
-  - celestrak
-  - sgp4
-  - atmospheric-drag
-  - orbit-propagation
-  - open-data
-  - tabular-data
-  - parquet
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/celestrak_space_weather.parquet
----
-
-# CelesTrak Consolidated Space Weather
-{banner_md}
-*Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
-
-![Update CelesTrak SW](https://github.com/juliensimon/space-datasets/actions/workflows/update-celestrak-sw.yml/badge.svg)
-![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$["celestrak-sw"]&label=updated&color=brightgreen)
-
-CelesTrak consolidated space weather data — **THE** file every orbit propagator needs.
-**{n:,}** daily records from **{date_min}** to **{date_max}**, with {n_cols} columns of
-solar and geomagnetic indices.
-
-## Dataset description
-
-This dataset contains the consolidated space weather data file maintained by CelesTrak
-(Dr. T.S. Kelso). It includes daily values of Kp indices (8 three-hour values per day),
-Ap indices, F10.7 solar radio flux, and other solar/geomagnetic parameters essential for:
-
-- **SGP4/SDP4 orbit propagation** — atmospheric drag modeling
-- **Atmospheric density models** — JB2008, NRLMSISE-00, DTM
-- **Conjunction screening** — collision avoidance maneuver planning
-- **Space weather research** — solar cycle analysis, geomagnetic storm studies
-
-The CelesTrak space weather file, maintained by Dr. T.S. Kelso, is the de facto standard input file for operational orbit determination and propagation in the space surveillance community. It consolidates data from multiple agencies -- NOAA SWPC for Kp/Ap indices and solar flux, GFZ Potsdam for definitive geomagnetic indices, and the NRC Herzberg Institute for F10.7 measurements -- into a single, consistently formatted daily time series. The file includes both historical observations and near-term predictions (typically 45 days ahead), using the same format conventions expected by legacy Fortran propagators and modern Python/C++ SGP4 implementations alike.
-
-For orbit propagation, the key parameters are the daily and 3-hourly Ap indices (which drive geomagnetic heating in thermospheric density models) and the F10.7 solar radio flux with its 81-day running averages (which drive solar EUV heating). The NRLMSISE-00 model, for example, requires daily Ap, the 3-hourly Ap for the current and preceding 33 hours, daily F10.7, and the 81-day centered average F10.7bar. JB2008 uses additional solar indices (S10.7, M10.7, Y10.7) that are available in extended versions of this file. Errors in these space weather inputs propagate directly into drag coefficient estimates, making the quality and timeliness of this data critical for conjunction assessment and collision avoidance maneuvers.
-
-The dataset spans the full modern era of satellite operations, with the historical record reaching back to 1957 (International Geophysical Year). This long baseline captures multiple complete solar cycles (cycles 19 through 25), enabling statistical studies of solar cycle variability and its impact on the orbital environment. The inclusion of predicted values supports operational planning for satellite constellation managers who need to anticipate drag conditions for orbit maintenance scheduling.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-{col_table}
-
-## Quick stats
-
-- **{n:,}** daily records
-- Date range: **{date_min}** to **{date_max}**
-- **{n_cols}** columns
-
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -207,66 +149,54 @@ print(df.tail(10))
 # Plot F10.7 solar flux over time
 import matplotlib.pyplot as plt
 fig, ax = plt.subplots(figsize=(14, 4))
-ax.plot(df["date"], df.get("f10_7_obs", df.iloc[:, -1]), linewidth=0.5)
+ax.plot(df["date"], df["f10_7_obs"], linewidth=0.5)
 ax.set_xlabel("Date")
 ax.set_ylabel("F10.7 (SFU)")
 ax.set_title("Solar Radio Flux (F10.7)")
-```
+plt.show()
+```"""
 
-## Update frequency
+    # Identify numeric columns for clean()
+    numeric_cols = [c for c in df.columns
+                    if c not in ("date", "f10_7_data_type") and c in COLUMN_DESCRIPTIONS]
 
-Updated **daily at 12:00 UTC** via GitHub Actions.
-
-## Data source
-
-[CelesTrak Space Data](https://celestrak.org/SpaceData/) (Dr. T.S. Kelso).
-Original data from NOAA SWPC, USAF, and other agencies.
-
-## Related datasets
-
-- [kp-index](https://huggingface.co/datasets/juliensimon/geomagnetic-kp-index) -- GFZ Potsdam Kp geomagnetic index
-- [dst-index](https://huggingface.co/datasets/juliensimon/dst-index) -- WDC Kyoto Dst geomagnetic index
-- [solar-wind](https://huggingface.co/datasets/juliensimon/solar-wind) -- DSCOVR real-time solar wind
-- [f107-index](https://huggingface.co/datasets/juliensimon/f107-solar-flux) -- NRCan F10.7 solar radio flux
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/celestrak-space-weather) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{celestrak_space_weather,
-  author = {{Simon, Julien}},
-  title = {{CelesTrak Consolidated Space Weather}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/celestrak-space-weather}},
-  note = {{Based on CelesTrak Space Data (Dr. T.S. Kelso)}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update CelesTrak space weather: {n:,} records"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="CelesTrak Consolidated Space Weather",
+        description=DESCRIPTION,
+        tags=["space", "space-weather", "celestrak", "sgp4", "atmospheric-drag",
+              "orbit-propagation", "open-data", "tabular-data", "parquet"],
+        source_url="https://celestrak.org/SpaceData/",
+        task_categories=["tabular-regression", "time-series-forecasting"],
+        collection_url="https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/iss072e159172/iss072e159172~medium.jpg",
+            "alt": "Aurora borealis blankets the Earth, seen from the ISS",
+            "credit": "NASA",
+        },
+        related_datasets=[
+            "juliensimon/geomagnetic-kp-index",
+            "juliensimon/dst-index",
+            "juliensimon/solar-wind",
+            "juliensimon/f107-solar-flux",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=numeric_cols,
+            drop_mostly_null_threshold=0.95,
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={n}\n")
+        p.publish(
+            df,
+            filename="celestrak_space_weather.parquet",
+            min_rows=20_000,
+            expected_columns=["date", "kp1", "apavg", "f10_7_obs"],
+            critical_columns=["date"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update CelesTrak space weather: {n:,} records",
+        )
     print("Done.")
 
 

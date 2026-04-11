@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Fetch solar flare events from GOES-16 (NCEI) + SWPC daily report and upload to HF."""
+"""Fetch solar flare events from GOES-16 (NCEI) + SWPC daily report and upload to HF.
+
+Incremental: downloads existing data from HF. In normal mode, reuses NCEI bulk data
+and appends SWPC daily flares. Set FULL_REBUILD=1 to re-download the NCEI NetCDF.
+"""
 
 import os
 import re
-import subprocess
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -12,20 +15,56 @@ import numpy as np
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
 
 try:
     import netCDF4 as nc
 except ImportError:
     nc = None
 
-
 NCEI_BASE = "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/data/xrsf-l2-flsum_science/"
 SWPC_EVENTS = "https://services.swpc.noaa.gov/text/solar-geophysical-event-reports.txt"
 HF_REPO = "juliensimon/solar-flare-events"
 
 EPOCH = datetime(2000, 1, 1, 12, 0, 0)
+
+# ── Column descriptions ─────────────────────────────────────────────
+COLUMN_DESCRIPTIONS = {
+    "start_time": "UTC time when GOES X-ray flux first rises above background threshold; marks onset of the impulsive phase",
+    "peak_time": "UTC time of maximum X-ray flux in the 1-8 A band; the reference instant used to assign the flare class",
+    "end_time": "UTC time when X-ray flux returns to pre-flare background; duration from start to end is typically minutes for impulsive events, hours for long-duration events (LDEs) associated with CMEs",
+    "goes_class": "Full NOAA flare classification (e.g. 'B3.7', 'C1.6', 'M5.1', 'X1.0'); letter sets the decade, number is the multiplier (M5.2 = 5.2 x 10^-5 W/m2)",
+    "goes_class_letter": "NOAA flare class letter: 'A' (background, 10^-8 W/m2), 'B' (10^-7), 'C' (10^-6, minor), 'M' (10^-5, moderate, may cause radio blackouts at HF), 'X' (>= 10^-4, major, can cause HF blackouts, radiation storms, CMEs)",
+    "peak_flux_wm2": "Peak GOES X-ray flux in the 1-8 A band in W/m2; ranges from ~10^-8 (quiet sun) to ~10^-3 (extreme X-class); the numeric value that defines the full goes_class",
+    "active_region": "NOAA Active Region number of the source sunspot group (e.g. 12673); null when no source region is identified (e.g. behind-the-limb or spotless events)",
+    "satellite": "GOES satellite that recorded the event: 'GOES-16' (primary since 2017) or 'GOES-18' (primary from 2022)",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Individual solar flare detections from GOES X-ray sensors (2017-present) with class, \
+peak flux, and timing. Updated daily.
+
+Solar flares are sudden bursts of electromagnetic radiation from the Sun. They are \
+classified by peak X-ray flux in the 1-8 Angstrom band: B (< 10^-6 W/m2), \
+C (10^-6), M (10^-5), and X (10^-4 W/m2). M and X-class flares can cause radio \
+blackouts, GPS errors, satellite anomalies, and geomagnetic storms that increase \
+atmospheric drag on LEO satellites.
+
+Solar flares originate in magnetically complex active regions where stressed field \
+lines reconnect explosively, converting stored magnetic energy into thermal radiation, \
+accelerated particles, and bulk plasma motion in a matter of minutes. The GOES X-Ray \
+Sensor (XRS) measures the Sun-integrated soft X-ray flux in two broadband channels \
+(0.5-4 A and 1-8 A), with the 1-8 A band used for the standard classification system. \
+The classification is logarithmic: an X1.0 flare has 10 times the peak flux of an M1.0 \
+flare. Within each letter class, the numeric suffix scales linearly.
+
+The timing profile of a flare -- start, peak, and end -- encodes physically meaningful \
+information. The impulsive phase (start to peak) typically lasts 5-20 minutes and \
+corresponds to the primary energy release via magnetic reconnection. The gradual phase \
+(peak to end) can extend for hours as post-flare loops cool. Short-duration impulsive \
+flares tend to be confined events, while long-duration events (LDEs) are more often \
+associated with coronal mass ejections and solar energetic particle events."""
 
 
 def fetch_ncei_flares():
@@ -93,20 +132,12 @@ def fetch_ncei_flares():
 
 def parse_swpc_xra_line(line, date_str):
     """Parse a single XRA line from SWPC event report."""
-    # Format: Event# +/-  Begin  Max   End  Obs Q Type Loc/Frq  Particulars  Reg#
-    # Example: 2260 +     0024   0029  0035  G18  5   XRA  1-8A  C3.2  2.5E-03  4392
     parts = line.split()
     if len(parts) < 11:
         return None
 
     try:
-        # Find XRA position to anchor parsing
-        xra_idx = parts.index("XRA")
-        # Begin/Max/End are 3 fields before the observatory
-        # Work backwards from XRA: parts[xra_idx-3] = Obs, parts[xra_idx-4] = End, etc.
-        # Actually, the fields before XRA are: Begin Max End Obs Quality XRA
-        # So: Obs = parts[xra_idx-2], Quality = parts[xra_idx-1]... no.
-        # Format is fixed-width. Let's use column positions instead.
+        parts.index("XRA")
     except ValueError:
         return None
 
@@ -116,9 +147,7 @@ def parse_swpc_xra_line(line, date_str):
         max_t = line[21:25].strip()
         end = line[30:34].strip()
 
-        # Particulars: class and flux after the Loc/Frq column
         after_xra = line[line.index("XRA") + 3:].strip()
-        # Format: "1-8A      C3.2    2.5E-03   4392"
         match = re.search(r"([ABCMX]\d+\.?\d*)\s+([\d.E+-]+)", after_xra)
         if not match:
             return None
@@ -126,7 +155,6 @@ def parse_swpc_xra_line(line, date_str):
         goes_class = match.group(1)
         peak_flux = float(match.group(2))
 
-        # Parse times
         year = int(date_str[:4])
         month = int(date_str[4:6])
         day = int(date_str[6:8])
@@ -138,7 +166,6 @@ def parse_swpc_xra_line(line, date_str):
             m = int(hhmm[-2:])
             return datetime(year, month, day, h, m)
 
-        # Extract region number (last numeric field)
         reg_match = re.search(r"(\d{4})\s*$", after_xra)
         active_region = int(reg_match.group(1)) if reg_match else None
 
@@ -163,7 +190,6 @@ def fetch_swpc_daily_flares():
     resp.raise_for_status()
     lines = resp.text.splitlines()
 
-    # Extract date from header
     date_str = None
     for line in lines:
         match = re.search(r":Date:\s+(\d{4})\s+(\d{2})\s+(\d{2})", line)
@@ -187,220 +213,118 @@ def fetch_swpc_daily_flares():
     return df
 
 
-def load_existing_flares(tmp_dir):
-    """Download existing flare parquet from HF. Returns DataFrame or None."""
-    parquet_path = tmp_dir / "data" / "solar_flare_events.parquet"
-    try:
-        subprocess.run(
-            ["hf", "download", HF_REPO, "data/solar_flare_events.parquet",
-             "--repo-type", "dataset", "--local-dir", str(tmp_dir)],
-            check=True, capture_output=True, timeout=30,
-        )
-        if parquet_path.exists():
-            df = pd.read_parquet(parquet_path)
-            print(f"  Loaded existing: {len(df):,} flares")
-            return df
-    except Exception as e:
-        print(f"  Could not load existing ({e}), doing full rebuild")
-    return None
-
-
-def ncei_file_changed():
-    """Check if the NCEI NetCDF file has been updated (HEAD request)."""
-    print("  Checking if NCEI file has changed...")
-    resp = requests.get(NCEI_BASE, timeout=30)
-    resp.raise_for_status()
-    match = re.search(r'href="(sci_xrsf-l2-flsum_g16_[^"]+\.nc)"', resp.text)
-    if not match:
-        return True, None  # Can't determine, assume changed
-    filename = match.group(1)
-    url = NCEI_BASE + filename
-
-    head = requests.head(url, timeout=15)
-    content_length = head.headers.get("Content-Length", "")
-    last_modified = head.headers.get("Last-Modified", "")
-    print(f"  NCEI file: {filename} ({content_length} bytes, modified: {last_modified})")
-    return True, filename  # We return the filename; caller decides via size check
-
-
 def main():
     print("Fetching solar flare events...")
 
-    # Try incremental: load existing, skip NCEI if unchanged
-    with tempfile.TemporaryDirectory() as probe:
-        df_existing = load_existing_flares(Path(probe))
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Solar Flare Events (GOES X-ray)",
+        description=DESCRIPTION,
+        tags=["space", "solar-flare", "goes", "space-weather", "noaa",
+              "goes-16", "x-ray", "ncei", "solar-activity",
+              "open-data", "tabular-data", "parquet"],
+        source_url="https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/data/xrsf-l2-flsum_science/",
+        task_categories=["tabular-classification", "time-series-forecasting"],
+        collection_url="https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70",
+        banner={"url": "https://images-assets.nasa.gov/image/brief-outburst_16760026566_o/brief-outburst_16760026566_o~medium.jpg",
+                "alt": "A solar eruption captured by NASA's Solar Dynamics Observatory",
+                "credit": "NASA/SDO"},
+        update_schedule="Daily at 12:00 UTC",
+        related_datasets=[
+            "juliensimon/space-weather-indices",
+            "juliensimon/donki-space-weather-events",
+            "juliensimon/solar-wind",
+        ],
+    ) as p:
+        df_existing = p.download_existing("solar_flare_events.parquet")
 
-    if df_existing is not None and len(df_existing) > 0:
-        # Incremental: skip NCEI download, just append SWPC daily
-        print("  Incremental mode: reusing existing NCEI data, appending SWPC daily")
-        swpc_df = fetch_swpc_daily_flares()
+        if df_existing is not None and len(df_existing) > 0:
+            # Incremental: skip NCEI download, just append SWPC daily
+            print("  Incremental mode: reusing existing NCEI data, appending SWPC daily")
+            swpc_df = fetch_swpc_daily_flares()
 
-        ncei_end = df_existing["peak_time"].max()
-        # Remove any previous SWPC-sourced flares (satellite == GOES-18) to replace with fresh
-        df_ncei_only = df_existing[df_existing["satellite"] != "GOES-18"]
+            # Remove any previous SWPC-sourced flares to replace with fresh
+            df_ncei_only = df_existing[df_existing["satellite"] != "GOES-18"]
 
-        if not swpc_df.empty:
-            new_flares = swpc_df[swpc_df["peak_time"] > df_ncei_only["peak_time"].max()]
-            if not new_flares.empty:
-                print(f"  Adding {len(new_flares)} recent flares from SWPC")
-                df = pd.concat([df_ncei_only, new_flares], ignore_index=True)
+            if not swpc_df.empty:
+                new_flares = swpc_df[swpc_df["peak_time"] > df_ncei_only["peak_time"].max()]
+                if not new_flares.empty:
+                    print(f"  Adding {len(new_flares)} recent flares from SWPC")
+                    df = pd.concat([df_ncei_only, new_flares], ignore_index=True)
+                else:
+                    df = df_ncei_only
+                    print("  No new SWPC flares")
             else:
                 df = df_ncei_only
-                print("  No new SWPC flares")
-        else:
-            df = df_ncei_only
 
-        # Periodically do a full NCEI refresh (every 7 days, or if FULL_REBUILD env var set)
-        if os.environ.get("FULL_REBUILD"):
-            print("  FULL_REBUILD requested, fetching NCEI...")
+            # Periodically do a full NCEI refresh if requested
+            if os.environ.get("FULL_REBUILD"):
+                print("  FULL_REBUILD requested, fetching NCEI...")
+                ncei_df = fetch_ncei_flares()
+                swpc_df2 = fetch_swpc_daily_flares()
+                if not swpc_df2.empty and not ncei_df.empty:
+                    new_flares = swpc_df2[swpc_df2["peak_time"] > ncei_df["peak_time"].max()]
+                    if not new_flares.empty:
+                        df = pd.concat([ncei_df, new_flares], ignore_index=True)
+                    else:
+                        df = ncei_df
+                else:
+                    df = ncei_df
+        else:
+            # Full rebuild
+            print("  Full rebuild: downloading NCEI NetCDF...")
             ncei_df = fetch_ncei_flares()
-            swpc_df2 = fetch_swpc_daily_flares()
-            if not swpc_df2.empty and not ncei_df.empty:
-                new_flares = swpc_df2[swpc_df2["peak_time"] > ncei_df["peak_time"].max()]
+            swpc_df = fetch_swpc_daily_flares()
+
+            if not swpc_df.empty and not ncei_df.empty:
+                ncei_end = ncei_df["peak_time"].max()
+                new_flares = swpc_df[swpc_df["peak_time"] > ncei_end]
                 if not new_flares.empty:
+                    print(f"  Adding {len(new_flares)} recent flares from SWPC")
                     df = pd.concat([ncei_df, new_flares], ignore_index=True)
                 else:
                     df = ncei_df
             else:
                 df = ncei_df
-    else:
-        # Full rebuild
-        print("  Full rebuild: downloading NCEI NetCDF...")
-        ncei_df = fetch_ncei_flares()
-        swpc_df = fetch_swpc_daily_flares()
 
-        if not swpc_df.empty and not ncei_df.empty:
-            ncei_end = ncei_df["peak_time"].max()
-            new_flares = swpc_df[swpc_df["peak_time"] > ncei_end]
-            if not new_flares.empty:
-                print(f"  Adding {len(new_flares)} recent flares from SWPC")
-                df = pd.concat([ncei_df, new_flares], ignore_index=True)
-            else:
-                df = ncei_df
+        # Clean up
+        df = df.sort_values("start_time").reset_index(drop=True)
+        df = df.drop(columns=["flare_id"], errors="ignore")
+
+        # Ensure proper types
+        for col in ["start_time", "peak_time", "end_time"]:
+            df[col] = pd.to_datetime(df[col], errors="coerce")
+        df["peak_flux_wm2"] = pd.to_numeric(df["peak_flux_wm2"], errors="coerce")
+        if "active_region" in df.columns:
+            df["active_region"] = pd.to_numeric(df["active_region"], errors="coerce").astype("Int64")
         else:
-            df = ncei_df
+            df["active_region"] = pd.array([pd.NA] * len(df), dtype="Int64")
 
-    # Clean up
-    df = df.sort_values("start_time").reset_index(drop=True)
-    df = df.drop(columns=["flare_id"], errors="ignore")
+        # Keep only described columns
+        df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
-    # Ensure proper types
-    for col in ["start_time", "peak_time", "end_time"]:
-        df[col] = pd.to_datetime(df[col], errors="coerce")
-    df["peak_flux_wm2"] = pd.to_numeric(df["peak_flux_wm2"], errors="coerce")
-    if "active_region" in df.columns:
-        df["active_region"] = pd.to_numeric(df["active_region"], errors="coerce").astype("Int64")
-    else:
-        df["active_region"] = pd.array([pd.NA] * len(df), dtype="Int64")
+        df = p.clean(df, numeric=["peak_flux_wm2"],
+                     integer=["active_region"],
+                     strings=["goes_class", "goes_class_letter", "satellite"])
 
-    # Stats
-    n_total = len(df)
-    n_c = int((df["goes_class_letter"] == "C").sum())
-    n_m = int((df["goes_class_letter"] == "M").sum())
-    n_x = int((df["goes_class_letter"] == "X").sum())
-    date_min = df["start_time"].min().strftime("%Y-%m-%d")
-    date_max = df["start_time"].max().strftime("%Y-%m-%d")
+        # Stats
+        n_total = len(df)
+        n_c = int((df["goes_class_letter"] == "C").sum())
+        n_m = int((df["goes_class_letter"] == "M").sum())
+        n_x = int((df["goes_class_letter"] == "X").sum())
+        date_min = df["start_time"].min().strftime("%Y-%m-%d")
+        date_max = df["start_time"].max().strftime("%Y-%m-%d")
 
-    strongest = df.loc[df["peak_flux_wm2"].idxmax()]
-    strongest_class = strongest["goes_class"]
-    strongest_date = strongest["peak_time"].strftime("%Y-%m-%d %H:%M")
+        strongest = df.loc[df["peak_flux_wm2"].idxmax()]
+        strongest_class = strongest["goes_class"]
+        strongest_date = strongest["peak_time"].strftime("%Y-%m-%d %H:%M")
 
-    check_dataset(df, "solar-flares", min_rows=5000,
-                  expected_columns=["start_time", "peak_time", "goes_class"],
-                  critical_columns=["start_time", "goes_class"],
-                  incremental=True)
-
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "solar_flare_events.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("solar-flares", tmp)
-        banner_md = banner_markdown("solar-flares", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Solar Flare Events (GOES X-ray)"
-language:
-  - en
-description: "Individual solar flare detections from NOAA GOES-16 X-ray sensors (2017-present) with class, peak flux, and timing."
-task_categories:
-  - tabular-classification
-  - time-series-forecasting
-tags:
-  - space
-  - solar-flare
-  - goes
-  - space-weather
-  - noaa
-  - open-data
-  - goes-16
-  - x-ray
-  - ncei
-  - solar-activity
-  - tabular-data
-  - parquet
-size_categories:
-  - 10K<n<100K
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/solar_flare_events.parquet
-    default: true
----
-
-# Solar Flare Events
-{banner_md}
-*Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
-
-![Update Solar Flares](https://github.com/juliensimon/space-datasets/actions/workflows/update-solar-flares.yml/badge.svg)
-![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['solar-flares']&label=updated&color=brightgreen)
-
-Individual solar flare detections from GOES X-ray sensors, spanning **{date_min}** to
-**{date_max}**. Currently **{n_total:,}** flare events from GOES-16, supplemented with
-near-real-time detections from NOAA SWPC.
-
-## Dataset description
-
-Solar flares are sudden bursts of electromagnetic radiation from the Sun. They are
-classified by peak X-ray flux in the 1-8 Angstrom band: **B** (< 10⁻⁶ W/m²),
-**C** (10⁻⁶), **M** (10⁻⁵), and **X** (10⁻⁴ W/m²). M and X-class flares can
-cause radio blackouts, GPS errors, satellite anomalies, and geomagnetic storms
-that increase atmospheric drag on LEO satellites.
-
-Solar flares originate in magnetically complex active regions where stressed field lines reconnect explosively, converting stored magnetic energy into thermal radiation, accelerated particles, and bulk plasma motion in a matter of minutes. The GOES X-Ray Sensor (XRS) measures the Sun-integrated soft X-ray flux in two broadband channels (0.5-4 A and 1-8 A), with the 1-8 A band used for the standard classification system. The classification is logarithmic: an X1.0 flare has 10 times the peak flux of an M1.0 flare. Within each letter class, the numeric suffix scales linearly, so an X10 event (historically rare, roughly once per solar cycle) delivers 100 times the flux of an M1.0. The most powerful flares on record have exceeded X20, though the detectors saturate at X17.1 on older GOES satellites.
-
-The timing profile of a flare -- start, peak, and end -- encodes physically meaningful information. The impulsive phase (start to peak) typically lasts 5-20 minutes and corresponds to the primary energy release via magnetic reconnection. The gradual phase (peak to end) can extend for hours as post-flare loops cool and the arcade of reconnected field lines grows. Short-duration impulsive flares tend to be confined events, while long-duration events (LDEs) are more often associated with coronal mass ejections and solar energetic particle events, making flare duration a useful predictor of downstream space weather impacts.
-
-This dataset supports research in flare prediction, solar cycle statistics, and space weather impact assessment. Active region productivity analysis (which regions produce the most M/X-class flares) is a key input to operational forecasting. The GOES-16 era (2017-present) benefits from improved XRS sensitivity and 1-second cadence, enabling detection of smaller B-class microflares that were below the noise floor of earlier GOES instruments.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `start_time` | datetime | UTC time when GOES X-ray flux first rises above background threshold; marks onset of the impulsive phase |
-| `peak_time` | datetime | UTC time of maximum X-ray flux in the 1–8 Å band; the reference instant used to assign the flare class |
-| `end_time` | datetime | UTC time when X-ray flux returns to pre-flare background; duration from start to end is typically minutes for impulsive events, hours for long-duration events (LDEs) associated with CMEs |
-| `goes_class` | string | Full NOAA flare classification (e.g. "B3.7", "C1.6", "M5.1", "X1.0"); letter sets the decade, number is the multiplier (M5.2 = 5.2 × 10⁻⁵ W/m²) |
-| `goes_class_letter` | string | NOAA flare class letter: "A" (background, 10⁻⁸ W/m²), "B" (10⁻⁷), "C" (10⁻⁶, minor), "M" (10⁻⁵, moderate, may cause radio blackouts at HF), "X" (≥ 10⁻⁴, major, can cause HF blackouts, radiation storms, CMEs) |
-| `peak_flux_wm2` | float64 | Peak GOES X-ray flux in the 1–8 Å band in W/m²; ranges from ~10⁻⁸ (quiet sun) to ~10⁻³ (extreme X-class); the numeric value that defines the full goes_class |
-| `active_region` | int | NOAA Active Region number of the source sunspot group (e.g. 12673); null when no source region is identified (e.g. behind-the-limb or spotless events) |
-| `satellite` | string | GOES satellite that recorded the event: "GOES-16" (primary since 2017) or "GOES-18" (primary from 2022) |
-
-## Quick stats
-
+        quick_stats = f"""\
 - **{n_total:,}** flare events ({date_min} to {date_max})
 - **{n_c:,}** C-class, **{n_m:,}** M-class, **{n_x:,}** X-class flares
-- Strongest flare: **{strongest_class}** on {strongest_date}
+- Strongest flare: **{strongest_class}** on {strongest_date}"""
 
-## Usage
-
+        usage = """\
 ```python
 from datasets import load_dataset
 
@@ -411,72 +335,38 @@ df = ds.to_pandas()
 major = df[df["goes_class_letter"].isin(["M", "X"])]
 
 # Flare frequency over time
+import matplotlib.pyplot as plt
+
 df["month"] = df["start_time"].dt.to_period("M")
 monthly = df.groupby("month").size()
+monthly.plot(figsize=(12, 4), title="Monthly Flare Count")
+plt.ylabel("Flares")
+plt.tight_layout()
+plt.show()
 
 # X-class flares by active region
 x_flares = df[df["goes_class_letter"] == "X"]
 x_flares["active_region"].value_counts().head(10)
 
-# Flare duration
+# Flare duration distribution
 df["duration_min"] = (df["end_time"] - df["start_time"]).dt.total_seconds() / 60
-```
+df["duration_min"].hist(bins=50)
+plt.xlabel("Duration (minutes)")
+plt.title("Flare Duration Distribution")
+plt.show()
+```"""
 
-## Data sources
-
-- **Bulk data**: [NCEI GOES-16 XRS Flare Summary](https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l2/data/xrsf-l2-flsum_science/) (science-quality, 2017-present)
-- **Daily supplement**: [NOAA SWPC Event Reports](https://www.swpc.noaa.gov/products/solar-and-geophysical-event-reports) (near-real-time)
-
-Pre-2017 backfill from earlier GOES satellites is planned for a future update.
-
-## Update schedule
-
-Daily at 12:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-datasets).
-
-## Related datasets
-
-- [space-weather-indices](https://huggingface.co/datasets/juliensimon/space-weather-indices) — Daily Kp, Ap, F10.7 indices
-- [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) — Full NORAD satellite catalog
-- [neo-close-approaches](https://huggingface.co/datasets/juliensimon/neo-close-approaches) — Near-Earth object approaches
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/solar-flare-events) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{solar_flares,
-  author = {{Simon, Julien}},
-  title = {{Solar Flares}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/solar-flare-events}},
-  note = {{Based on NOAA/SWPC GOES X-ray flux data}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update solar flare events: {n_total:,} flares"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+        p.publish(
+            df,
+            filename="solar_flare_events.parquet",
+            min_rows=5000,
+            expected_columns=["start_time", "peak_time", "goes_class"],
+            critical_columns=["start_time", "goes_class"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update solar flare events: {n_total:,} flares",
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={n_total}\n")
     print("Done.")
 
 

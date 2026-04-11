@@ -1,19 +1,14 @@
 #!/usr/bin/env python3
 """Fetch Pantheon+ Type Ia supernovae dataset and upload to HF."""
 
-import os
-import subprocess
-import tempfile
-from pathlib import Path
-
 import pandas as pd
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
 
 DATA_URL = "https://raw.githubusercontent.com/PantheonPlusSH0ES/DataRelease/main/Pantheon%2B_Data/4_DISTANCES_AND_COVAR/Pantheon%2BSH0ES.dat"
 HF_REPO = "juliensimon/pantheon-plus-sne-ia"
 
+# ── Column mapping ───────────────────────────────────────────────────
 KEEP_COLS = {
     "CID": "sn_name",
     "IDSURVEY": "survey_id",
@@ -36,13 +31,49 @@ KEEP_COLS = {
     "MU_SH0ES_ERR_DIAG": "distance_modulus_err",
 }
 
-NUMERIC_COLS = [
-    "survey_id", "redshift_hd", "redshift_hd_err", "redshift_cmb", "redshift_cmb_err",
-    "redshift_helio", "redshift_helio_err", "apparent_mag_b", "apparent_mag_b_err",
-    "stretch_x1", "stretch_x1_err", "color_c", "color_c_err",
-    "host_log_mass", "host_log_mass_err", "fit_probability",
-    "distance_modulus", "distance_modulus_err",
-]
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "sn_name": "Supernova identifier (CID field from Pantheon+); typically survey-specific designations such as '2001el' or 'SN2011fe'",
+    "survey_id": "Integer code identifying the discovery survey; Pantheon+ combines 18 surveys including CfA (1-4), CSP, SDSS, SNLS, PS1, DES, and HST programs; links each SN to its photometric calibration system",
+    "redshift_hd": "Hubble-diagram redshift: the CMB-frame redshift further corrected for coherent large-scale peculiar velocity flows; the most cosmologically clean redshift for Hubble diagram fitting; range ~0.001-2.3",
+    "redshift_hd_err": "1-sigma uncertainty on the Hubble-diagram redshift, including peculiar velocity uncertainty (~150 km/s = 0.0005 in z at low redshift)",
+    "redshift_cmb": "CMB-frame redshift: observed redshift corrected for Earth's motion relative to the CMB dipole (~369 km/s); the cosmologically meaningful redshift for Hubble constant measurements",
+    "redshift_cmb_err": "1-sigma uncertainty on the CMB-frame redshift",
+    "redshift_helio": "Heliocentric redshift: the raw observed Doppler shift from Earth's rest frame, uncorrected for solar motion; used internally in SALT2 for K-corrections",
+    "redshift_helio_err": "1-sigma uncertainty on the heliocentric redshift",
+    "apparent_mag_b": "Apparent peak B-band magnitude at maximum light from the SALT2 light-curve fit; the directly observed brightness before standardization; typical range 12-26 mag",
+    "apparent_mag_b_err": "1-sigma uncertainty on the SALT2 peak B-band magnitude (mag); includes photon noise and calibration uncertainty",
+    "stretch_x1": "SALT2 light-curve stretch parameter: positive x1 = broader/slower/brighter light curve, negative x1 = narrower/faster/dimmer (Phillips relation); typical range x1 in [-3, +3]",
+    "stretch_x1_err": "1-sigma uncertainty on the SALT2 stretch parameter x1",
+    "color_c": "SALT2 color parameter: B-V color excess at peak relative to fiducial template; positive c = redder (more dust or intrinsically red), negative = bluer; typical range c in [-0.3, +0.5]",
+    "color_c_err": "1-sigma uncertainty on the SALT2 color parameter c",
+    "host_log_mass": "Log10 host galaxy stellar mass (M_sun) from SED fitting; used for the 'mass step' correction: SNe Ia in hosts with log M > 10 are ~0.06 mag brighter after standardization; null for SNe without host measurements",
+    "host_log_mass_err": "1-sigma uncertainty on host galaxy log stellar mass; null when host mass is unavailable",
+    "fit_probability": "Probability (0-1) that the SALT2 light-curve fit is acceptable; low values (<0.001) may indicate non-Ia contamination or poor coverage; used as a quality cut",
+    "distance_modulus": "Distance modulus mu (mag) from SH0ES/Pantheon+: mu = m_B - M_B + alpha*x1 - beta*c - delta_bias; mu = 5*log10(d/10 pc); typical range 33-46 mag",
+    "distance_modulus_err": "Diagonal (statistical) 1-sigma uncertainty on distance modulus (mag); does not include off-diagonal covariance terms; typical ~0.15 mag",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+The gold standard cosmological dataset -- spectroscopically confirmed Type Ia supernovae \
+from the Pantheon+ analysis, used to measure the Hubble constant (H0) and constrain the \
+dark energy equation of state. This is the dataset behind the "Hubble tension" debate.
+
+Type Ia supernovae are thermonuclear explosions of carbon-oxygen white dwarfs that have \
+accreted matter from a companion star until they approach the Chandrasekhar mass limit. \
+The resulting detonation produces a characteristic light curve whose peak luminosity, \
+after correction for the width-luminosity relation (Phillips relation), is remarkably \
+uniform -- making SNe Ia the premier "standardizable candles" for measuring cosmological \
+distances. This technique led to the 1998 discovery of the accelerating expansion of \
+the universe and the inference of dark energy, earning the 2011 Nobel Prize in Physics.
+
+Pantheon+ combines light curves from 18 different surveys spanning the full history of \
+SN Ia observations. The SALT2 light-curve fitter parameterizes each supernova by its \
+stretch (x1) and color (c). The Hubble diagram constructed from this dataset -- distance \
+modulus versus redshift -- is the most direct observational evidence for the accelerating \
+expansion of the universe.
+"""
 
 
 def main():
@@ -54,12 +85,7 @@ def main():
     available = {c: v for c, v in KEEP_COLS.items() if c in df.columns}
     df = df[list(available.keys())].rename(columns=available)
 
-    # Type conversions
-    for col in NUMERIC_COLS:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    # Stats
+    # ── Domain-specific stats for README ─────────────────────────────
     n_total = len(df)
     z_min = df["redshift_cmb"].min()
     z_max = df["redshift_cmb"].max()
@@ -68,110 +94,12 @@ def main():
     mu_min = df["distance_modulus"].min()
     mu_max = df["distance_modulus"].max()
 
-    # Validate
-    check_dataset(
-        df,
-        "pantheon-plus",
-        min_rows=1_000,
-        expected_columns=["sn_name", "redshift_cmb", "apparent_mag_b", "distance_modulus"],
-        critical_columns=["sn_name", "redshift_cmb", "apparent_mag_b", "distance_modulus"],
-    )
-
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "pantheon_plus_sne.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("pantheon", tmp)
-        banner_md = banner_markdown("pantheon", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Pantheon+ Type Ia Supernovae"
-language:
-  - en
-description: "Gold standard cosmological dataset: {n_total:,} spectroscopically confirmed Type Ia supernovae from Pantheon+ used to measure H0 and dark energy."
-task_categories:
-  - tabular-regression
-tags:
-  - space
-  - supernova
-  - cosmology
-  - hubble-constant
-  - dark-energy
-  - pantheon
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 1K<n<10K
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/pantheon_plus_sne.parquet
-    default: true
----
-
-# Pantheon+ Type Ia Supernovae
-{banner_md}
-*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
-
-The gold standard cosmological dataset -- **{n_total:,}** spectroscopically confirmed Type Ia supernovae
-from the Pantheon+ analysis, used to measure the Hubble constant (H0) and constrain the dark energy
-equation of state. This is the dataset behind the "Hubble tension" debate.
-
-## Dataset description
-
-Pantheon+ combines supernova light curves from {n_surveys} surveys spanning redshifts
-{z_min:.4f} to {z_max:.3f}. Each SN Ia is standardized using the SALT2 light-curve fitter,
-providing stretch (x1) and color (c) parameters that transform raw apparent magnitudes into
-calibrated distance moduli. Combined with Cepheid-calibrated distances from SH0ES, this
-dataset yields the most precise local measurement of the Hubble constant.
-
-Type Ia supernovae are thermonuclear explosions of carbon-oxygen white dwarfs that have accreted matter from a companion star until they approach the Chandrasekhar mass limit of approximately 1.4 solar masses. The resulting detonation produces a characteristic light curve whose peak luminosity, after correction for the width-luminosity relation (the "Phillips relation"), is remarkably uniform -- making SNe Ia the premier "standardizable candles" for measuring cosmological distances. It was precisely this technique, applied to distant SNe Ia, that led to the 1998 discovery of the accelerating expansion of the universe and the inference of dark energy, earning Saul Perlmutter, Brian Schmidt, and Adam Riess the 2011 Nobel Prize in Physics.
-
-Pantheon+ builds on two decades of supernova cosmology by combining light curves from 18 different surveys spanning the full history of SN Ia observations, from nearby surveys like CfA and CSP to high-redshift programs on the Hubble Space Telescope. The SALT2 light-curve fitter parameterizes each supernova by its stretch (x1, related to the width of the light curve) and color (c, measuring reddening from dust and intrinsic color variation). The "mass step" correction accounts for the empirical finding that SNe Ia in more massive host galaxies are systematically brighter after standardization, a correlation whose physical origin remains debated but which must be included for accurate cosmological inference.
-
-The Hubble diagram constructed from this dataset -- distance modulus versus redshift -- is the most direct observational evidence for the accelerating expansion of the universe. At low redshifts, the relationship is nearly linear (Hubble's law), but at z > 0.5, the data deviate from a decelerating universe and are consistent with a cosmological constant (Lambda) comprising approximately 70% of the total energy density. Combined with CMB and BAO measurements, the Pantheon+ constraints on the dark energy equation of state parameter w are consistent with w = -1 (a cosmological constant) to within a few percent.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `sn_name` | string | Supernova identifier (CID field from Pantheon+); typically survey-specific designations such as "2001el" or "SN2011fe" |
-| `survey_id` | int64 | Integer code identifying the discovery survey; Pantheon+ combines 18 surveys including CfA (1--4), CSP, SDSS, SNLS, PS1, DES, and HST programs; links each SN to its photometric calibration system |
-| `redshift_hd` | float64 | Hubble-diagram redshift: the CMB-frame redshift further corrected for coherent large-scale peculiar velocity flows using a model; the most cosmologically clean redshift estimate for Hubble diagram fitting; range ~0.001--2.3 |
-| `redshift_hd_err` | float64 | 1-sigma uncertainty on the Hubble-diagram redshift, including peculiar velocity uncertainty (typically ~150 km/s = 0.0005 in z at low redshift) |
-| `redshift_cmb` | float64 | CMB-frame redshift: the observed redshift corrected for Earth's motion relative to the CMB dipole (~369 km/s); the cosmologically meaningful redshift used for Hubble constant measurements; differs from heliocentric z by ~0.001 at low redshift |
-| `redshift_cmb_err` | float64 | 1-sigma uncertainty on the CMB-frame redshift |
-| `redshift_helio` | float64 | Heliocentric redshift: the raw observed Doppler shift from Earth's rest frame, uncorrected for the Sun's motion relative to the CMB; used internally in the SALT2 light-curve fit for K-corrections |
-| `redshift_helio_err` | float64 | 1-sigma uncertainty on the heliocentric redshift |
-| `apparent_mag_b` | float64 | Apparent peak B-band magnitude m_B at maximum light from the SALT2 light-curve fit; the directly observed brightness before standardization corrections; brighter SNe have smaller (more negative) values; typical range 12--26 mag |
-| `apparent_mag_b_err` | float64 | 1-sigma uncertainty on the SALT2 peak B-band magnitude (mag); includes photon noise and calibration uncertainty |
-| `stretch_x1` | float64 | SALT2 light-curve stretch parameter: positive x1 means a broader, slower light curve, which is intrinsically brighter (Phillips relation); negative x1 means a narrower, faster light curve; standardized SNe Ia span roughly x1 \u2208 [-3, +3] |
-| `stretch_x1_err` | float64 | 1-sigma uncertainty on the SALT2 stretch parameter x1 |
-| `color_c` | float64 | SALT2 color parameter: the B-V color excess at peak relative to a fiducial SN Ia template; positive c means redder (more dust or intrinsically red); negative c means bluer; redder SNe are dimmer and must be corrected; typical range c \u2208 [-0.3, +0.5] |
-| `color_c_err` | float64 | 1-sigma uncertainty on the SALT2 color parameter c |
-| `host_log_mass` | float64 | Log\u2081\u2080 of the host galaxy stellar mass (M\u2609), derived from SED fitting to photometry; used to apply the "mass step" correction: SNe Ia in more massive hosts (log M > 10) are ~0.06 mag brighter after SALT2 standardization; null for SNe without host galaxy measurements |
-| `host_log_mass_err` | float64 | 1-sigma uncertainty on the host galaxy log stellar mass; null when host mass is unavailable |
-| `fit_probability` | float64 | Probability (0--1) that the SALT2 light-curve fit is acceptable given the photometric data; low values (<0.001) may indicate non-Ia contamination or poor photometric coverage; used as a quality cut in cosmological analyses |
-| `distance_modulus` | float64 | Distance modulus \u03bc (mag) from the SH0ES/Pantheon+ analysis: \u03bc = m_B - M_B + \u03b1 x1 - \u03b2 c - \u0394_bias, where \u03b1 and \u03b2 are population-level nuisance parameters; \u03bc = 5 log\u2081\u2080(d/10 pc); used to place each SN on the Hubble diagram; typical range 33--46 mag |
-| `distance_modulus_err` | float64 | Diagonal (statistical) 1-sigma uncertainty on the distance modulus (mag), propagated from the SALT2 fit parameter uncertainties; does not include the off-diagonal covariance terms needed for rigorous cosmological fits (see the full covariance matrix in the data release); typical ~0.15 mag |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n_total:,}** Type Ia supernovae from **{n_surveys}** surveys
 - Redshift range: {z_min:.4f} to {z_max:.3f} (median {z_median:.3f})
-- Distance modulus range: {mu_min:.2f} to {mu_max:.2f} mag
+- Distance modulus range: {mu_min:.2f} to {mu_max:.2f} mag"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -198,63 +126,55 @@ plt.xlabel("Stretch x1")
 plt.ylabel("Color c")
 plt.title("SALT2 Parameter Distribution")
 plt.show()
+```"""
 
-# Redshift distribution
-df["redshift_cmb"].hist(bins=50)
-plt.xlabel("Redshift")
-plt.ylabel("Count")
-plt.title("Pantheon+ Redshift Distribution")
-plt.show()
-```
-
-## Data source
-
-Scolnic, D., et al. (2022), *The Pantheon+ Analysis: The Full Dataset and Light-curve Release.*
-Astrophysical Journal, 938, 113.
-
-Brout, D., et al. (2022), *The Pantheon+ Analysis: Cosmological Constraints.*
-Astrophysical Journal, 938, 110.
-
-Data release: [PantheonPlusSH0ES/DataRelease](https://github.com/PantheonPlusSH0ES/DataRelease)
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/pantheon-plus-sne-ia) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{pantheon_plus_sne,
-  author = {{Simon, Julien}},
-  title = {{Pantheon+ Type Ia Supernovae}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/pantheon-plus-sne-ia}},
-  note = {{Based on Scolnic et al. (2022) and Brout et al. (2022) Pantheon+ data release}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update Pantheon+ SNe Ia: {n_total:,} supernovae"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Pantheon+ Type Ia Supernovae",
+        description=DESCRIPTION,
+        tags=["space", "supernova", "cosmology", "hubble-constant",
+              "dark-energy", "pantheon", "open-data", "tabular-data", "parquet"],
+        source_url="https://github.com/PantheonPlusSH0ES/DataRelease",
+        task_categories=["tabular-regression"],
+        collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA12110/PIA12110~small.jpg",
+            "alt": "Hubble Deep Field revealing myriad galaxies across cosmic time",
+            "credit": "NASA/ESA/STScI",
+        },
+        related_datasets=[
+            "juliensimon/open-supernova-catalog",
+            "juliensimon/cosmicflows-galaxy-distances",
+            "juliensimon/desi-dr1-redshifts",
+        ],
+    ) as p:
+        numeric_cols = [
+            "survey_id", "redshift_hd", "redshift_hd_err",
+            "redshift_cmb", "redshift_cmb_err",
+            "redshift_helio", "redshift_helio_err",
+            "apparent_mag_b", "apparent_mag_b_err",
+            "stretch_x1", "stretch_x1_err",
+            "color_c", "color_c_err",
+            "host_log_mass", "host_log_mass_err",
+            "fit_probability",
+            "distance_modulus", "distance_modulus_err",
+        ]
+        df = p.clean(
+            df,
+            numeric=[c for c in numeric_cols if c in df.columns],
+            drop_mostly_null_threshold=0.95,
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={len(df)}\n")
+        p.publish(
+            df,
+            filename="pantheon_plus_sne.parquet",
+            min_rows=1_000,
+            expected_columns=["sn_name", "redshift_cmb", "apparent_mag_b", "distance_modulus"],
+            critical_columns=["sn_name", "redshift_cmb", "apparent_mag_b", "distance_modulus"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update Pantheon+ SNe Ia: {n_total:,} supernovae",
+        )
     print("Done.")
 
 

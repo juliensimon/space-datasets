@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
-"""Fetch impact crater database from Wikidata and upload to HF."""
+"""Fetch impact crater database from Wikidata and upload to HF.
 
-import os
-import subprocess
-import tempfile
-from pathlib import Path
+Source: Wikidata SPARQL endpoint (class Q55818: impact crater).
+Community-curated by WikiProject Astronomy and WikiProject Solar System.
+"""
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
-
+from hf_dataset_utils import Pipeline
 
 HF_REPO = "juliensimon/impact-craters"
 
@@ -34,6 +31,37 @@ WHERE {
              ?coordNode wikibase:geoLongitude ?lon. }
   SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul". }
 }
+"""
+
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "wikidata_id": "Wikidata entity ID (e.g. Q12345); used for cross-referencing with other Wikidata-linked datasets",
+    "name": "IAU or locally recognised crater name; unnamed craters filtered out during processing",
+    "diameter_km": "Crater rim-to-rim diameter in km; range 0.001 km (microcraters) to ~2,500 km (South Pole-Aitken Basin); null for craters without measured diameter in Wikidata",
+    "age_mya": "Estimated formation age in millions of years ago; null for the majority of craters where age is unconstrained; highly uncertain for many entries",
+    "location": "Administrative or geographic region label from Wikidata (e.g., 'Ontario', 'Sahara'); null for bodies without administrative subdivisions or when not recorded",
+    "body": "Planetary body hosting the crater (e.g., 'Earth', 'Moon', 'Mars', 'Vesta'); null for a small number of entries with missing body data",
+    "latitude": "Crater center latitude in decimal degrees; coordinate system is body-centric for each object; null for craters without coordinates in Wikidata",
+    "longitude": "Crater center longitude in decimal degrees; East-positive convention; null for craters without coordinates in Wikidata",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Comprehensive database of impact craters across the solar system, sourced from Wikidata.
+
+Impact craters are among the most widespread geological features in the solar system, \
+formed when asteroids, comets, or meteoroids collide with a planetary surface. They are \
+critical windows into a body's geological history: crater size-frequency distributions \
+reveal relative ages of surfaces, and large craters like Chicxulub on Earth have been \
+linked to mass extinction events.
+
+This dataset aggregates crater records for bodies ranging from Mercury and the Moon to \
+Mars, Ceres, Vesta, and outer-planet moons. Each record includes the crater name, \
+diameter (where known), estimated age in millions of years, the parent body, and \
+geographic coordinates for bodies with established coordinate systems.
+
+Sourced from Wikidata's structured knowledge base (class Q55818: impact crater), \
+maintained by the WikiProject Astronomy and WikiProject Solar System communities.
 """
 
 
@@ -69,8 +97,7 @@ def fetch_craters() -> pd.DataFrame:
 
     df = pd.DataFrame(rows)
 
-    # Deduplicate on wikidata_id — multiple location/body matches can create duplicates
-    # Keep the row with the most filled-in fields
+    # Deduplicate on wikidata_id -- multiple location/body matches can create duplicates
     df["_filled"] = df.notna().sum(axis=1)
     df = df.sort_values("_filled", ascending=False).drop_duplicates(
         subset=["wikidata_id"], keep="first"
@@ -85,30 +112,15 @@ def fetch_craters() -> pd.DataFrame:
 def main():
     df = fetch_craters()
 
-    # Clean string columns
-    for col in ["name", "location", "body"]:
-        df[col] = df[col].astype(str).str.strip().replace(
-            {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
-        )
-
-    # Numeric coercions (guard against any stray non-numeric values)
-    df["diameter_km"] = pd.to_numeric(df["diameter_km"], errors="coerce").astype("Float64")
-    df["age_mya"] = pd.to_numeric(df["age_mya"], errors="coerce").astype("Float64")
-    df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce").astype("Float64")
-    df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce").astype("Float64")
-
     df = df.sort_values("name").reset_index(drop=True)
     print(f"  {len(df):,} unique craters")
 
-    check_dataset(df, "impact-craters", min_rows=1000,
-                  expected_columns=["name", "body"],
-                  critical_columns=["name"])
-
-    # Stats for README
+    # ── Domain-specific stats for README ─────────────────────────────
     n = len(df)
     n_with_diameter = int(df["diameter_km"].notna().sum())
     n_with_age = int(df["age_mya"].notna().sum())
     n_with_coords = int(df["latitude"].notna().sum())
+    n_bodies = int(df["body"].nunique())
 
     largest_idx = df["diameter_km"].idxmax() if n_with_diameter > 0 else None
     largest_name = df.loc[largest_idx, "name"] if largest_idx is not None else "N/A"
@@ -124,99 +136,17 @@ def main():
         f"{body} ({cnt:,})" for body, cnt in top_bodies.items()
         if pd.notna(body) and str(body) not in ("nan", "None", "")
     )
-    n_bodies = int(df["body"].nunique())
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "impact_craters.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_kb = out.stat().st_size / 1024
-        print(f"  {size_kb:.0f} KB parquet")
-
-        banner_file = download_banner("impact-craters", tmp)
-        banner_md = banner_markdown("impact-craters", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc0-1.0
-pretty_name: "Impact Craters"
-language:
-  - en
-description: >-
-  Impact craters across the solar system sourced from Wikidata.
-  {n:,} craters spanning {n_bodies} planetary bodies, with diameter,
-  age, and coordinates where available.
-size_categories:
-  - 1K<n<10K
-task_categories:
-  - tabular-classification
-tags:
-  - space
-  - planetary-science
-  - craters
-  - impact
-  - wikidata
-  - open-data
-  - tabular-data
-  - parquet
-configs:
-  - config_name: default
-    default: true
-    data_files:
-      - split: train
-        path: data/impact_craters.parquet
----
-
-# Impact Craters
-{banner_md}
-*Part of the [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2) collection on Hugging Face.*
-
-Comprehensive database of impact craters across the solar system — **{n:,}** craters
-on **{n_bodies}** planetary bodies, sourced from [Wikidata](https://www.wikidata.org/).
-
-## Dataset description
-
-Impact craters are among the most widespread geological features in the solar system,
-formed when asteroids, comets, or meteoroids collide with a planetary surface. They are
-critical windows into a body's geological history: crater size-frequency distributions
-reveal relative ages of surfaces, and large craters like Chicxulub on Earth have been
-linked to mass extinction events.
-
-This dataset aggregates crater records for bodies ranging from Mercury and the Moon to
-Mars, Ceres, Vesta, and outer-planet moons. Each record includes the crater name,
-diameter (where known), estimated age in millions of years, the parent body, and
-geographic coordinates for bodies with established coordinate systems.
-
-Sourced from Wikidata's structured knowledge base (class Q55818: impact crater),
-maintained by the WikiProject Astronomy and WikiProject Solar System communities.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `wikidata_id` | string | Wikidata entity ID (e.g. Q55818-linked entity like Q12345); used for cross-referencing |
-| `name` | string | IAU or locally recognised crater name; unnamed craters appear as Wikidata entity IDs and are filtered out |
-| `diameter_km` | float | Crater rim-to-rim diameter in km; range 0.001 km (microcraters) to ~2,500 km (South Pole–Aitken Basin); null for craters without measured diameter in Wikidata |
-| `age_mya` | float | Estimated formation age in millions of years ago; null for the majority of craters where age is unconstrained; highly uncertain for many entries (Wikidata does not include error bars) |
-| `location` | string | Administrative or geographic region label from Wikidata (e.g., "Ontario", "Sahara"); null for bodies without administrative subdivisions or when not recorded |
-| `body` | string | Planetary body hosting the crater (e.g., "Earth", "Moon", "Mars", "Vesta"); null for a small number of entries with missing body data |
-| `latitude` | float | Crater center latitude in decimal degrees; coordinate system is body-centric for each object (e.g., selenocentric for Moon, areocentric for Mars); null for craters without coordinates in Wikidata |
-| `longitude` | float | Crater center longitude in decimal degrees; East-positive convention; null for craters without coordinates in Wikidata |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n:,}** craters on **{n_bodies}** planetary bodies
 - **{n_with_diameter:,}** craters with known diameter
 - **{n_with_age:,}** craters with estimated age
 - **{n_with_coords:,}** craters with coordinates
 - Largest crater: {largest_name} ({largest_km:,.0f} km)
 - Oldest crater: {oldest_name} ({oldest_mya:,.0f} Ma)
-- Craters per body: {top_bodies_str}
+- Craters per body: {top_bodies_str}"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -231,71 +161,56 @@ largest = df.nlargest(10, "diameter_km")[["name", "body", "diameter_km", "age_my
 print(largest)
 
 # Earth craters with coordinates
+import matplotlib.pyplot as plt
 earth = df[(df["body"] == "Earth") & df["latitude"].notna()]
-print(f"{{len(earth):,}} Earth craters with coordinates")
+plt.scatter(earth["longitude"], earth["latitude"], s=earth["diameter_km"] / 5, alpha=0.6)
+plt.xlabel("Longitude")
+plt.ylabel("Latitude")
+plt.title(f"Earth Impact Craters ({len(earth)} with coordinates)")
+plt.show()
 
 # Ancient craters (> 2 Ga)
 ancient = df[df["age_mya"] > 2000].sort_values("age_mya", ascending=False)
 print(ancient[["name", "body", "diameter_km", "age_mya"]].head(10))
-```
+```"""
 
-## Data source
-
-[Wikidata](https://www.wikidata.org/) SPARQL endpoint. Craters identified via
-instance-of (P31) / subclass-of (P279) chain anchored at Q55818 (impact crater).
-Data is community-curated by
-[WikiProject Astronomy](https://www.wikidata.org/wiki/Wikidata:WikiProject_Astronomy)
-and [WikiProject Solar System](https://www.wikidata.org/wiki/Wikidata:WikiProject_Solar_System).
-
-## Update schedule
-
-Quarterly (January, April, July, October). Re-run manually at any time to pick up
-newly catalogued craters.
-
-## Related datasets
-
-- [ceres-craters](https://huggingface.co/datasets/juliensimon/ceres-craters-dawn) — Ceres crater catalog
-- [meteorite-database](https://huggingface.co/datasets/juliensimon/meteorite-database) — Meteorite landings
-- [planetary-nomenclature](https://huggingface.co/datasets/juliensimon/planetary-nomenclature) — IAU planetary feature names
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/impact-craters) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{impact_craters,
-  author = {{Simon, Julien}},
-  title = {{Impact Craters}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/impact-craters}},
-  note = {{Sourced from Wikidata (CC0)}}
-}}
-```
-
-## License
-
-[CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (Wikidata content is public domain)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update impact craters: {n:,} craters"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Impact Craters",
+        description=DESCRIPTION,
+        license="cc0-1.0",
+        tags=["space", "planetary-science", "craters", "impact",
+              "wikidata", "open-data", "tabular-data", "parquet"],
+        source_url="https://www.wikidata.org/wiki/Q55818",
+        task_categories=["tabular-classification"],
+        collection_url="https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/as08-14-2506/as08-14-2506~small.jpg",
+            "alt": "The Moon seen from Apollo 8, showing craters and surface detail",
+            "credit": "NASA/Apollo 8",
+        },
+        related_datasets=[
+            "juliensimon/ceres-craters-dawn",
+            "juliensimon/lunar-craters-robbins",
+            "juliensimon/planetary-nomenclature",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=["diameter_km", "age_mya", "latitude", "longitude"],
+            strings=["name", "location", "body"],
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={n}\n")
+        p.publish(
+            df,
+            filename="impact_craters.parquet",
+            min_rows=1000,
+            expected_columns=["name", "body"],
+            critical_columns=["name"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update impact craters: {n:,} craters",
+        )
     print("Done.")
 
 

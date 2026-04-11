@@ -1,17 +1,10 @@
 #!/usr/bin/env python3
 """Fetch launch vehicle database from Wikidata and upload to HF."""
 
-import os
-import subprocess
-import tempfile
-from pathlib import Path
-
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
-
+from hf_dataset_utils import Pipeline
 
 HF_REPO = "juliensimon/launch-vehicles"
 
@@ -39,6 +32,39 @@ WHERE {
   OPTIONAL { ?vehicle wdt:P5765 ?status. }
   SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul". }
 }
+"""
+
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "wikidata_id": "Wikidata entity ID (e.g. 'Q14522') linking to https://www.wikidata.org/wiki/Q14522; use for enrichment joins with other Wikidata-sourced datasets",
+    "name": "Primary name of the launch vehicle (e.g. 'Saturn V', 'Falcon 9'); canonical English form as recorded in Wikidata",
+    "manufacturer": "Organization that designed and built the vehicle (e.g. 'Boeing', 'SpaceX', 'Roscosmos'); null if manufacturer information is absent from Wikidata",
+    "country": "Country of origin using full English name (e.g. 'United States of America', 'Russia', 'China'); reflects the operating nation at time of primary use",
+    "height_m": "Total vehicle height from base to payload fairing tip, in metres; null when not recorded in Wikidata; tallest vehicles exceed 100 m (Saturn V: 110.6 m)",
+    "diameter_m": "Maximum body diameter in metres; null when not recorded; typically 2-10 m for orbital-class vehicles",
+    "mass_kg": "Gross liftoff mass (fully fueled with payload) in kilograms; null when not recorded; ranges from ~10,000 kg (small launchers) to ~3,000,000 kg (Saturn V)",
+    "payload_leo_kg": "Maximum payload mass deliverable to low Earth orbit (approx 200-2000 km altitude) in kilograms; null for vehicles whose LEO capacity is unrecorded or not applicable",
+    "payload_gto_kg": "Maximum payload mass deliverable to geostationary transfer orbit in kilograms; null for vehicles without GTO capability or where data is unrecorded",
+    "first_flight": "Date of maiden flight in ISO 8601 format (YYYY-MM-DD); null for vehicles that never flew or where the date is unrecorded in Wikidata",
+    "last_flight": "Date of final flight in ISO 8601 format; null for active vehicles or where last flight date is unrecorded",
+    "num_stages": "Number of propulsive stages in the vehicle stack; typically 2-4 for orbital launchers; null when not recorded",
+    "status": "Current operational status as recorded in Wikidata (e.g. 'retired', 'active service'); null if Wikidata has no status property set",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Orbital and suborbital launch vehicles from around the world, sourced from Wikidata. \
+Covers every space launch vehicle recorded in Wikidata's structured knowledge base, \
+including historical rockets, active workhorses, and vehicles under development.
+
+From the German V-2 through the Saturn V to the Falcon 9 and Starship, launch vehicles \
+have defined humanity's access to space. This dataset draws from Wikidata's community-curated \
+records (class Q697175: space launch vehicle), maintained by the WikiProject Spaceflight \
+community. It includes physical dimensions, payload capacities, flight history dates, and \
+operational status.
+
+Wikidata coverage varies -- some vehicles lack physical specs or payload data. Columns \
+with less than 5% data coverage are automatically dropped during pipeline processing.
 """
 
 
@@ -89,7 +115,7 @@ def fetch_launch_vehicles() -> pd.DataFrame:
 
     df = pd.DataFrame(rows)
 
-    # Deduplicate on wikidata_id — keep row with most non-null fields
+    # Deduplicate on wikidata_id -- keep row with most non-null fields
     df["_non_null"] = df.notna().sum(axis=1)
     df = df.sort_values("_non_null", ascending=False).drop_duplicates(
         subset=["wikidata_id"], keep="first"
@@ -106,34 +132,18 @@ def main():
 
     # Clean string columns
     for col in ["name", "manufacturer", "country", "first_flight", "last_flight", "status"]:
-        df[col] = df[col].astype(str).str.strip().replace(
-            {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
-        )
-
-    # Ensure numeric types
-    for col in ["height_m", "diameter_m", "mass_kg", "payload_leo_kg", "payload_gto_kg"]:
-        df[col] = pd.to_numeric(df[col], errors="coerce").astype("Float64")
-
-    for col in ["num_stages"]:
-        df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
+        if col in df.columns:
+            df[col] = df[col].astype(str).str.strip().replace(
+                {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
+            )
 
     df = df.sort_values("name").reset_index(drop=True)
     print(f"  {len(df):,} unique launch vehicles")
 
-    # Drop columns that are >95% null (Wikidata fields with no coverage)
-    before_cols = len(df.columns)
-    for col in list(df.columns):
-        if df[col].isna().mean() > 0.95:
-            df = df.drop(columns=[col])
-    dropped = before_cols - len(df.columns)
-    if dropped:
-        print(f"  Dropped {dropped} columns (>95% null)")
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
-    check_dataset(df, "launch-vehicles", min_rows=100,
-                  expected_columns=["name"],
-                  critical_columns=["name"])
-
-    # Stats for README
+    # ── Stats for README ──────────────────────────────────────────────────
     n = len(df)
     n_countries = int(df["country"].nunique()) if "country" in df.columns else 0
     if "country" in df.columns:
@@ -142,13 +152,11 @@ def main():
     else:
         top_countries_str = "N/A"
 
-    # Tallest vehicle
     tallest_str = "N/A"
     if "height_m" in df.columns and df["height_m"].notna().any():
         tallest_idx = df["height_m"].dropna().idxmax()
         tallest_str = f"{df.loc[tallest_idx, 'name']} ({df.loc[tallest_idx, 'height_m']:.1f} m)"
 
-    # Heaviest LEO payload
     heaviest_leo_str = "N/A"
     if "payload_leo_kg" in df.columns and df["payload_leo_kg"].notna().any():
         heaviest_leo_idx = df["payload_leo_kg"].dropna().idxmax()
@@ -157,92 +165,14 @@ def main():
     n_active = int((df["status"].str.lower() == "active").sum()) if "status" in df.columns else 0
     n_retired = int((df["status"].str.lower() == "retired").sum()) if "status" in df.columns else 0
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "launch-vehicles.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_kb = out.stat().st_size / 1024
-        print(f"  {size_kb:.0f} KB parquet")
-
-        banner_file = download_banner("launch-vehicles", tmp)
-        banner_md = banner_markdown("launch-vehicles", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc0-1.0
-pretty_name: "Launch Vehicles Database"
-language:
-  - en
-description: >-
-  Orbital and suborbital launch vehicles from around the world, sourced from Wikidata.
-  {n:,} vehicles from {n_countries} countries with dimensions, payload capacity,
-  flight history, and operational status.
-size_categories:
-  - n<1K
-task_categories:
-  - tabular-classification
-tags:
-  - space
-  - rockets
-  - launch-vehicles
-  - orbital-mechanics
-  - wikidata
-  - open-data
-  - tabular-data
-  - parquet
-configs:
-  - config_name: default
-    default: true
-    data_files:
-      - split: train
-        path: data/launch-vehicles.parquet
----
-
-# Launch Vehicles Database
-{banner_md}
-*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
-
-Complete database of orbital and suborbital launch vehicles — **{n:,}** rockets and boosters
-from **{n_countries}** countries, sourced from [Wikidata](https://www.wikidata.org/).
-
-## Dataset description
-
-From the German V-2 through the Saturn V to the Falcon 9 and Starship, launch vehicles have
-defined humanity's access to space. This dataset covers every orbital and suborbital launch
-vehicle recorded in Wikidata, including historical rockets, active workhorses, and vehicles
-under development.
-
-Sourced from Wikidata's structured knowledge base (class Q697175: space launch vehicle),
-maintained by the WikiProject Spaceflight community.
-
-> **Note:** Wikidata coverage varies — some vehicles lack physical specs or payload data.
-> Columns with <5% data coverage are automatically dropped during pipeline processing.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `wikidata_id` | string | Wikidata entity ID (e.g. "Q697175"); resolves to https://www.wikidata.org/wiki/Q697175 — use for enrichment joins with other Wikidata-sourced datasets |
-| `name` | string | Primary name of the launch vehicle (e.g. "Saturn V", "Falcon 9"); canonical form as used in Wikipedia/Wikidata |
-| `manufacturer` | string | Organization that designed and built the vehicle (e.g. "Boeing", "SpaceX"); null if manufacturer information is absent from Wikidata |
-| `country` | string | Country of origin using full English name (e.g. "United States", "Russia"); reflects the operating nation at time of primary use |
-| `height_m` | float | Total vehicle height from base to payload fairing tip, in metres; null when not recorded in Wikidata |
-| `payload_leo_kg` | float | Maximum payload mass deliverable to low Earth orbit (≈200–2000 km altitude) in kilograms; null for vehicles whose LEO capacity is unrecorded or not applicable |
-
-Additional columns (diameter, mass, first_flight, etc.) appear when Wikidata coverage exceeds 5%.
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n:,}** launch vehicles from **{n_countries}** countries
 - **{n_active:,}** active, **{n_retired:,}** retired
 - Tallest vehicle: {tallest_str}
 - Heaviest LEO payload: {heaviest_leo_str}
-- Top countries: {top_countries_str}
+- Top countries: {top_countries_str}"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -256,62 +186,55 @@ print(df[["name", "country", "manufacturer"]].head(20))
 if "height_m" in df.columns:
     tall = df.dropna(subset=["height_m"]).nlargest(10, "height_m")
     print(tall[["name", "country", "height_m"]])
-```
 
-## Data source
+# Payload capacity distribution
+import matplotlib.pyplot as plt
+leo = df.dropna(subset=["payload_leo_kg"])
+plt.hist(leo["payload_leo_kg"], bins=30, edgecolor="black", alpha=0.7)
+plt.xlabel("Payload to LEO (kg)")
+plt.ylabel("Number of Vehicles")
+plt.title("Launch Vehicle LEO Payload Distribution")
+plt.show()
+```"""
 
-[Wikidata](https://www.wikidata.org/) SPARQL endpoint. Launch vehicles identified as
-instances of Q697175 (space launch vehicle) and its subclasses. Data is community-curated
-by [WikiProject Spaceflight](https://www.wikidata.org/wiki/Wikidata:WikiProject_Spaceflight).
-
-## Update schedule
-
-Quarterly (January, April, July, October). Re-run manually to pick up newly added vehicles.
-
-## Related datasets
-
-- [space-missions](https://huggingface.co/datasets/juliensimon/space-missions) — Crewed and robotic space missions
-- [launch-log](https://huggingface.co/datasets/juliensimon/space-launch-log) — McDowell orbital launch log
-- [spacecraft-database](https://huggingface.co/datasets/juliensimon/spacecraft-database) — Spacecraft catalogue
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/launch-vehicles) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{launch_vehicles,
-  author = {{Simon, Julien}},
-  title = {{Launch Vehicles Database}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/launch-vehicles}},
-  note = {{Sourced from Wikidata (CC0)}}
-}}
-```
-
-## License
-
-[CC0-1.0](https://creativecommons.org/publicdomain/zero/1.0/) (Wikidata content is public domain)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update launch vehicles database: {n:,} vehicles"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Launch Vehicles Database",
+        description=DESCRIPTION,
+        license="cc0-1.0",
+        tags=["space", "rockets", "launch-vehicles", "orbital-mechanics",
+              "wikidata", "open-data", "tabular-data", "parquet"],
+        source_url="https://www.wikidata.org/wiki/Q697175",
+        task_categories=["tabular-classification"],
+        collection_url="https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/iss071e439624/iss071e439624~medium.jpg",
+            "alt": "An orbital sunrise illuminates the Earth's atmosphere, seen from the ISS",
+            "credit": "NASA",
+        },
+        related_datasets=[
+            "juliensimon/space-missions",
+            "juliensimon/space-launch-log",
+            "juliensimon/spacecraft-database",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=["height_m", "diameter_m", "mass_kg",
+                     "payload_leo_kg", "payload_gto_kg", "num_stages"],
+            drop_mostly_null_threshold=0.95,
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={n}\n")
+        p.publish(
+            df,
+            filename="launch_vehicles.parquet",
+            min_rows=100,
+            expected_columns=["name"],
+            critical_columns=["name"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update launch vehicles database: {n:,} vehicles",
+        )
     print("Done.")
 
 

@@ -1,26 +1,23 @@
 #!/usr/bin/env python3
 """Fetch SPECFIND v3 unified radio catalog from VizieR and upload to HF.
 
-SPECFIND v3 (Stein, Vollmer et al. 2024) cross-matches radio sources across
-50+ surveys including NVSS, FIRST, SUMSS, TGSS, GLEAM, and others. Each row
-is a source measurement at a specific frequency with fitted spectral parameters.
+Source: Stein, Vollmer et al. (2024) — SPECFIND v3 cross-matches radio sources
+across 50+ surveys including NVSS, FIRST, SUMSS, TGSS, GLEAM, and others.
+Each row is a source measurement at a specific frequency with fitted spectral
+parameters. VizieR catalog: VIII/104
 """
-
-import os
-import subprocess
-import tempfile
-from pathlib import Path
 
 import pandas as pd
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
-from vizier_tap import vizier_query
+from hf_dataset_utils import Pipeline
+from hf_dataset_utils.tap import vizier_query
 
 HF_REPO = "juliensimon/unified-radio-catalog"
 
+# ── Source query ────────────────────────────────────────────────────
 ADQL = """SELECT * FROM "VIII/104/spectra" """
 
+# ── Column mapping ──────────────────────────────────────────────────
 RENAME = {
     "Seq": "source_id",
     "Name": "source_name",
@@ -38,24 +35,52 @@ RENAME = {
     "beam": "beam_arcsec",
 }
 
-NUMERIC_COLS = [
-    "spectral_index",
-    "spectral_intercept",
-    "frequency_mhz",
-    "flux_density_mjy",
-    "flux_density_error_mjy",
-    "ra_deg",
-    "dec_deg",
-    "flux_residual_pct",
-    "ra_offset_arcsec",
-    "dec_offset_arcsec",
-    "beam_arcsec",
-]
+# ── Column descriptions for README schema table ────────────────────
+COLUMN_DESCRIPTIONS = {
+    "source_id": "Unique integer identifier grouping cross-matched detections of the same physical radio source across multiple surveys; all rows sharing a source_id are positionally associated",
+    "source_name": "Survey-specific source designation (e.g. 'NVSS J123456+654321'); the prefix encodes which survey contributed this particular measurement",
+    "n_frequencies": "Number of distinct frequency measurements available for this source; higher counts yield more reliable spectral fits; sources with n >= 3 have well-constrained power-law spectra",
+    "spectral_index": "Fitted power-law spectral index (a) where S(nu) ~ nu^a; typical synchrotron sources have a ~ -0.7; flat-spectrum AGN cores have a ~ 0; same value for all rows of a given source_id",
+    "spectral_intercept": "Fitted spectral intercept (b) in log S = a*log(nu) + b; encodes the overall flux normalization of the power-law fit; same value for all rows of a given source_id",
+    "frequency_mhz": "Observation frequency of this particular measurement in MHz; ranges from ~10 MHz to ~31 GHz across all contributing surveys",
+    "flux_density_mjy": "Flux density at this frequency in mJy; the measured brightness of the source in the contributing survey",
+    "flux_density_error_mjy": "1-sigma uncertainty on flux density in mJy; propagated from the original survey catalog",
+    "ra_deg": "Right ascension J2000 in degrees (0-360) from the contributing survey; may differ slightly between surveys due to resolution and astrometric calibration differences",
+    "dec_deg": "Declination J2000 in degrees (-90 to +90) from the contributing survey",
+    "flux_residual_pct": "Residual of this measurement from the fitted power-law spectrum as a percentage; large residuals indicate spectral curvature or variability not captured by a simple power law",
+    "ra_offset_arcsec": "Offset in right ascension from the mean source position in arcseconds; reflects positional scatter across surveys with different angular resolutions",
+    "dec_offset_arcsec": "Offset in declination from the mean source position in arcseconds",
+    "beam_arcsec": "Angular resolution (beam FWHM) of the contributing survey in arcseconds; ranges from ~5 arcsec (FIRST) to ~300 arcsec (low-frequency surveys)",
+    "survey": "Survey name extracted from the source designation prefix; identifies which radio survey contributed this measurement (e.g. NVSS, FIRST, SUMSS, TGSS, GLEAM)",
+    "frequency_band": "Frequency band classification: VLF (<100 MHz), low (100-500 MHz), mid (500-2000 MHz), high (2-8 GHz), SHF (>8 GHz); derived from frequency_mhz",
+}
 
-INT_COLS = [
-    "source_id",
-    "n_frequencies",
-]
+# ── Dataset description ─────────────────────────────────────────────
+DESCRIPTION = """\
+The SPECFIND v3 unified radio source catalog, cross-matching radio source \
+measurements from 50+ surveys spanning ~10 MHz to ~31 GHz. SPECFIND positionally \
+cross-identifies radio sources across major surveys including NVSS, FIRST, SUMSS, \
+TGSS, GLEAM, and dozens of others, then fits power-law radio spectra.
+
+SPECFIND (Vollmer et al. 2005, updated Stein et al. 2024) is the largest positional \
+cross-identification of radio continuum catalogs. Each row represents a source \
+detection at a specific frequency, grouped by a unique source identifier. For sources \
+detected in multiple surveys, SPECFIND fits a power-law spectrum S(nu) = 10^b * nu^a, \
+where a is the spectral index and b is the intercept.
+
+The radio spectrum of a source encodes fundamental information about its emission \
+mechanism. Synchrotron radiation from relativistic electrons in magnetic fields \
+produces a power-law spectrum S(nu) proportional to nu^alpha, where alpha is the \
+spectral index. Typical values range from alpha ~ -0.7 for optically thin synchrotron \
+(radio lobes, supernova remnants) to alpha ~ 0 or positive for self-absorbed compact \
+sources (AGN cores, young radio sources). By fitting spectra across multiple \
+frequencies, SPECFIND enables systematic classification of radio source populations \
+and identification of unusual spectral shapes.
+
+This unified catalog is a natural starting point for multi-frequency radio population \
+studies, spectral index mapping of extended sources, and identification of sources \
+with anomalous radio spectra.
+"""
 
 
 def main():
@@ -64,15 +89,10 @@ def main():
     print(f"  {len(df):,} raw rows")
 
     # Rename columns
-    df = df.rename(columns=RENAME)
+    df = df.rename(columns={k: v for k, v in RENAME.items() if k in df.columns})
 
-    # Type conversions — numeric
-    for col in NUMERIC_COLS:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    # Type conversions — integer
-    for col in INT_COLS:
+    # Integer columns
+    for col in ["source_id", "n_frequencies"]:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int32")
 
@@ -83,7 +103,7 @@ def main():
     # Derive frequency band label
     if "frequency_mhz" in df.columns:
         df["frequency_band"] = pd.cut(
-            df["frequency_mhz"],
+            pd.to_numeric(df["frequency_mhz"], errors="coerce"),
             bins=[0, 100, 500, 2000, 8000, 1e9],
             labels=["VLF", "low", "mid", "high", "SHF"],
             right=False,
@@ -98,11 +118,15 @@ def main():
     if sort_cols:
         df = df.sort_values(sort_cols).reset_index(drop=True)
 
-    # Drop recno (VizieR internal)
-    if "recno" in df.columns:
-        df = df.drop(columns=["recno"])
+    # Drop VizieR internal columns
+    for col in ["recno"]:
+        if col in df.columns:
+            df = df.drop(columns=[col])
 
-    # Stats
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
+
+    # ── Domain-specific stats for README ─────────────────────────────
     n_total = len(df)
     n_sources = df["source_id"].nunique() if "source_id" in df.columns else 0
     n_surveys = df["survey"].nunique() if "survey" in df.columns else 0
@@ -111,117 +135,15 @@ def main():
     median_flux = df["flux_density_mjy"].median() if "flux_density_mjy" in df.columns else 0
     median_si = df["spectral_index"].median() if "spectral_index" in df.columns else 0
 
-    # Validate
-    check_dataset(
-        df,
-        "unified-radio",
-        min_rows=1_500_000,
-        expected_columns=["source_name", "ra_deg", "dec_deg", "frequency_mhz", "flux_density_mjy"],
-        critical_columns=["source_name", "ra_deg", "dec_deg", "flux_density_mjy"],
-    )
-
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "unified_radio_catalog.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("unified-radio", tmp)
-        banner_md = banner_markdown("unified-radio", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Unified Radio Catalog (SPECFIND v3)"
-language:
-  - en
-description: "SPECFIND v3 unified radio source catalog with {n_total:,} cross-matched measurements across {n_surveys} radio surveys including NVSS, FIRST, SUMSS, TGSS, and GLEAM."
-task_categories:
-  - tabular-classification
-  - tabular-regression
-tags:
-  - space
-  - radio
-  - nvss
-  - first
-  - sumss
-  - astronomy
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 1M<n<10M
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/unified_radio_catalog.parquet
-    default: true
----
-
-# Unified Radio Catalog (SPECFIND v3)
-{banner_md}
-*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
-
-The SPECFIND v3 unified radio source catalog, containing **{n_total:,}** cross-matched radio
-source measurements from **{n_surveys}** surveys spanning {freq_min:.0f} to {freq_max:.0f} MHz.
-SPECFIND positionally cross-identifies radio sources across major surveys including NVSS, FIRST,
-SUMSS, TGSS, GLEAM, and dozens of others, then fits power-law radio spectra.
-
-## Dataset description
-
-SPECFIND (Vollmer et al. 2005, updated Stein et al. 2024) is the largest positional cross-identification
-of radio continuum catalogs. Version 3 matches sources across 50+ radio surveys at frequencies from
-{freq_min:.0f} to {freq_max:.0f} MHz, covering the entire sky. Each row represents a source detection at a
-specific frequency, grouped by a unique source identifier (`source_id`). For sources detected in
-multiple surveys, SPECFIND fits a power-law spectrum S(nu) = 10^b * nu^a, where `a` is the spectral
-index and `b` is the intercept.
-
-The catalog contains **{n_sources:,}** unique radio sources with measurements from surveys
-including NVSS (1.4 GHz), FIRST (1.4 GHz), SUMSS (843 MHz), TGSS (150 MHz), GLEAM (200 MHz),
-and many others.
-
-The radio spectrum of a source encodes fundamental information about its emission mechanism. Synchrotron radiation from relativistic electrons in magnetic fields produces a power-law spectrum S(nu) proportional to nu^alpha, where alpha is the spectral index. Typical values range from alpha ~ -0.7 for optically thin synchrotron (radio lobes, supernova remnants) to alpha ~ 0 or positive for self-absorbed compact sources (AGN cores, young radio sources). By fitting spectra across multiple frequencies, SPECFIND enables systematic classification of radio source populations and identification of unusual spectral shapes that signal physical transitions such as spectral aging, restarted AGN activity, or free-free absorption.
-
-SPECFIND's cross-identification algorithm matches sources across catalogs with very different angular resolutions, from the 25-arcsecond beam of TGSS to the 45-arcsecond beam of NVSS and the arcminute-scale beams of older low-frequency surveys. This positional matching accounts for resolution-dependent blending, where a single source in a low-resolution survey may correspond to multiple components in a higher-resolution catalog. The fitted spectral parameters are most reliable for sources detected at three or more frequencies, where the power-law fit is well constrained.
-
-This unified catalog is a natural starting point for multi-frequency radio population studies, spectral index mapping of extended sources, and identification of sources with anomalous radio spectra. It complements the individual survey catalogs (NVSS, FIRST, SUMSS, TGSS, VLASS) by providing the cross-matched associations and fitted spectral parameters that would otherwise require significant effort to compute independently.
-
-## Key columns
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `source_id` | Int32 | Unique source identifier (groups cross-matched detections) |
-| `source_name` | string | Survey-specific source designation |
-| `ra_deg` | float64 | Right ascension J2000 (degrees) |
-| `dec_deg` | float64 | Declination J2000 (degrees) |
-| `frequency_mhz` | float64 | Observation frequency (MHz) |
-| `flux_density_mjy` | float64 | Flux density at this frequency (mJy) |
-| `flux_density_error_mjy` | float64 | Flux density uncertainty (mJy) |
-| `spectral_index` | float64 | Fitted spectral index (a in S ~ nu^a) |
-| `spectral_intercept` | float64 | Fitted spectral intercept (b in log S = a*log(nu) + b) |
-| `n_frequencies` | Int32 | Number of frequency measurements for this source |
-| `flux_residual_pct` | float64 | Flux residual from spectral fit (%) |
-| `beam_arcsec` | float64 | Survey beam size (arcsec) |
-| `survey` | string | Survey name extracted from source designation |
-| `frequency_band` | category | Frequency band: VLF (<100), low (100-500), mid (500-2000), high (2-8 GHz), SHF (>8 GHz) |
-
-Full schema includes {len(df.columns)} columns with positional offsets and uncertainties.
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n_total:,}** total source measurements
 - **{n_sources:,}** unique radio sources
 - **{n_surveys}** contributing surveys
 - Frequency range: {freq_min:.0f} to {freq_max:.0f} MHz
 - Median flux density: {median_flux:.1f} mJy
-- Median spectral index: {median_si:.2f}
+- Median spectral index: {median_si:.2f}"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -230,7 +152,7 @@ df = ds.to_pandas()
 
 # Group by source to see multi-frequency data
 source = df[df["source_id"] == df["source_id"].iloc[0]]
-print(f"Source {{source['source_name'].iloc[0]}}: {{len(source)}} frequencies")
+print(f"Source {source['source_name'].iloc[0]}: {len(source)} frequencies")
 
 # Spectral index distribution
 import matplotlib.pyplot as plt
@@ -243,68 +165,54 @@ plt.axvline(-0.7, color="red", linestyle="--", label="Typical synchrotron")
 plt.legend()
 plt.show()
 
-# Sky coverage map
-plt.hexbin(df["ra_deg"], df["dec_deg"], gridsize=100, mincnt=1)
-plt.colorbar(label="Measurement count")
-plt.xlabel("RA (deg)")
-plt.ylabel("Dec (deg)")
-plt.title("SPECFIND v3 Sky Coverage")
-plt.show()
-
 # Survey contribution
 print(df["survey"].value_counts().head(10))
-```
+```"""
 
-## Data source
-
-Stein, Y., Vollmer, B., Boch, T., et al. (2024), *SPECFIND v3.0 — A catalog of radio
-continuum cross-identifications and spectra.* VizieR catalog VIII/104.
-Based on Vollmer, B. et al. (2005, 2010). Via VizieR CDS.
-
-## Related datasets
-
-- [NVSS Radio Source Catalog](https://huggingface.co/datasets/juliensimon/nvss-radio-catalog) — NVSS 1.4 GHz survey, 1.8M sources
-- [FIRST Radio Survey Catalog](https://huggingface.co/datasets/juliensimon/first-radio-catalog) — FIRST 1.4 GHz survey
-- [VLASS Radio Sources](https://huggingface.co/datasets/juliensimon/vlass-radio-sources) — VLA Sky Survey 2-4 GHz
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/unified-radio-catalog) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{unified_radio_catalog,
-  author = {{Simon, Julien}},
-  title = {{Unified Radio Catalog (SPECFIND v3)}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/unified-radio-catalog}},
-  note = {{Based on Stein, Vollmer et al. (2024) SPECFIND v3 via VizieR CDS}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update unified radio catalog: {n_total:,} measurements, {n_sources:,} sources"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Unified Radio Catalog (SPECFIND v3)",
+        description=DESCRIPTION,
+        tags=["space", "radio", "nvss", "first", "sumss", "astronomy",
+              "open-data", "tabular-data", "parquet"],
+        source_url="https://vizier.cds.unistra.fr/viz-bin/VizieR-3?-source=VIII/104",
+        task_categories=["tabular-classification"],
+        collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA13277/PIA13277~small.jpg",
+            "alt": "Deep Space Network antenna at Goldstone",
+            "credit": "NASA/JPL-Caltech",
+        },
+        related_datasets=[
+            "juliensimon/nvss-radio-catalog",
+            "juliensimon/first-radio-catalog",
+            "juliensimon/vlass-radio-sources",
+            "juliensimon/sumss-radio-catalog",
+            "juliensimon/tgss-radio-catalog",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=[
+                "spectral_index", "spectral_intercept",
+                "frequency_mhz", "flux_density_mjy", "flux_density_error_mjy",
+                "ra_deg", "dec_deg",
+                "flux_residual_pct", "ra_offset_arcsec", "dec_offset_arcsec",
+                "beam_arcsec",
+            ],
+            drop_mostly_null_threshold=0.95,
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={len(df)}\n")
+        p.publish(
+            df,
+            filename="unified_radio_catalog.parquet",
+            min_rows=1_500_000,
+            expected_columns=["source_name", "ra_deg", "dec_deg", "frequency_mhz", "flux_density_mjy"],
+            critical_columns=["source_name", "ra_deg", "dec_deg", "flux_density_mjy"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update unified radio catalog: {n_total:,} measurements, {n_sources:,} sources",
+        )
     print("Done.")
 
 

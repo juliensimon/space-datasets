@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
-"""Fetch SUMSS 843 MHz radio catalog from VizieR and upload to HF."""
+"""Fetch SUMSS 843 MHz radio catalog from VizieR and upload to HF.
 
-import os
-import subprocess
-import tempfile
-from pathlib import Path
+Source: Mauch et al. (2003, MNRAS 342, 1117) — Sydney University Molonglo
+Sky Survey at 843 MHz, covering the southern sky (Dec < -30 deg).
+VizieR catalog: VIII/81B
+"""
 
 import pandas as pd
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
-from vizier_tap import vizier_query
+from hf_dataset_utils import Pipeline
+from hf_dataset_utils.tap import vizier_query
 
 HF_REPO = "juliensimon/sumss-radio-catalog"
 
+# ── Source query ────────────────────────────────────────────────────
 ADQL = """SELECT * FROM "VIII/81B/sumss212" """
 
+# ── Column mapping ──────────────────────────────────────────────────
 RENAME = {
     "RA_ICRS": "ra_deg",
     "RAJ2000": "ra_deg",
@@ -35,12 +36,50 @@ RENAME = {
     "Mosaic": "mosaic_name",
 }
 
-NUMERIC_COLS = [
-    "ra_deg", "dec_deg", "peak_flux_mjy", "integrated_flux_mjy",
-    "e_integrated_flux_mjy",
-    "major_axis_arcsec", "minor_axis_arcsec", "position_angle_deg",
-    "deconv_major_arcsec", "deconv_minor_arcsec", "deconv_pa_deg",
-]
+# ── Column descriptions for README schema table ────────────────────
+COLUMN_DESCRIPTIONS = {
+    "ra_deg": "ICRS J2000.0 right ascension in degrees (0-360); survey covers the southern sky (declination < -30 deg); astrometric accuracy ~1-2 arcsec for bright sources",
+    "dec_deg": "ICRS J2000.0 declination in degrees; survey lower limit is -90 deg, upper limit -30 deg; the elliptical beam is elongated at lower elevations",
+    "peak_flux_mjy": "Peak surface brightness at 843 MHz in mJy/beam; beam size is 45x45 arcsec^2 x sec|dec|, so the effective beam area increases toward the south; equals total flux for compact sources",
+    "integrated_flux_mjy": "Total integrated flux density in mJy at 843 MHz; exceeds peak flux for resolved sources such as nearby galaxies or supernova remnants",
+    "e_integrated_flux_mjy": "1-sigma uncertainty on integrated flux density in mJy; increases for resolved sources due to deconvolution errors",
+    "major_axis_arcsec": "Fitted (beam-convolved) major axis FWHM in arcseconds; includes the synthesized beam contribution; use deconvolved axes for intrinsic source size",
+    "minor_axis_arcsec": "Fitted (beam-convolved) minor axis FWHM in arcseconds; always >= the effective beam minor axis",
+    "position_angle_deg": "Fitted position angle of the major axis in degrees east from north (0-180); reflects the beam orientation for unresolved sources",
+    "deconv_major_arcsec": "Deconvolved major axis FWHM in arcseconds after removing the synthesized beam; null or zero for unresolved point sources where only an upper limit applies",
+    "deconv_minor_arcsec": "Deconvolved minor axis FWHM in arcseconds; null or zero for point sources; nonzero confirms the source is spatially resolved at 45 arcsec resolution",
+    "deconv_pa_deg": "Deconvolved position angle of the major axis in degrees east from north; null for circular or unresolved sources",
+    "mosaic_name": "Identifier of the SUMSS survey mosaic tile containing this source; maps to a specific observed field and can be used to retrieve the parent image",
+    "is_resolved": "True if the deconvolved major axis is > 0, indicating the source is spatially resolved; False for point sources; derived flag not present in the original catalog",
+}
+
+# ── Dataset description ─────────────────────────────────────────────
+DESCRIPTION = """\
+The Sydney University Molonglo Sky Survey (SUMSS) at 843 MHz, the southern-sky \
+complement to NVSS. Observed with the Molonglo Observatory Synthesis Telescope \
+(MOST), covering declinations south of -30 deg.
+
+SUMSS is a deep radio survey at 843 MHz covering 8,100 square degrees of the \
+southern sky (declination < -30 deg) with 45 x 45 cosec|dec| arcsecond resolution. \
+It fills the gap left by northern-hemisphere surveys like NVSS and FIRST, providing \
+a matched-sensitivity southern radio catalog essential for all-sky studies.
+
+The Molonglo Observatory Synthesis Telescope (MOST) is a large east-west Earth-rotation \
+aperture synthesis telescope located near Canberra, Australia. Originally built for \
+pulsar research, it was reconfigured for continuum survey work at 843 MHz, a frequency \
+chosen to complement the 1.4 GHz NVSS in the north. SUMSS achieves a limiting peak \
+brightness of approximately 6 mJy/beam at declination -50 degrees, with sensitivity \
+scaling as the cosecant of declination due to the telescope's cylindrical geometry. \
+The catalog reaches roughly the same source density as NVSS, enabling seamless all-sky \
+radio source studies when the two surveys are combined.
+
+SUMSS is particularly important for studying radio sources in the Magellanic Clouds, \
+the Galactic bulge at southern latitudes, and southern galaxy clusters that are \
+inaccessible to VLA-based surveys. The 843 MHz observing frequency also provides a \
+longer lever arm for spectral index measurements when combined with 1.4 GHz (NVSS/FIRST) \
+or 150 MHz (TGSS) data, improving constraints on the emission mechanisms of individual \
+sources.
+"""
 
 
 def main():
@@ -49,18 +88,7 @@ def main():
     print(f"  {len(df):,} raw rows")
 
     # Rename columns
-    df = df.rename(columns=RENAME)
-
-    # Type conversions
-    for col in NUMERIC_COLS:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    # Derived column
-    if "deconv_major_arcsec" in df.columns:
-        df["is_resolved"] = df["deconv_major_arcsec"] > 0
-    else:
-        df["is_resolved"] = False
+    df = df.rename(columns={k: v for k, v in RENAME.items() if k in df.columns})
 
     # Clean string columns
     for col in ["mosaic_name"]:
@@ -69,112 +97,29 @@ def main():
                 {"": pd.NA, "None": pd.NA, "nan": pd.NA, "null": pd.NA}
             )
 
-    # Stats
+    # Derived column
+    if "deconv_major_arcsec" in df.columns:
+        df["is_resolved"] = df["deconv_major_arcsec"] > 0
+    else:
+        df["is_resolved"] = False
+
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
+
+    # ── Domain-specific stats for README ─────────────────────────────
     n_total = len(df)
     n_resolved = int(df["is_resolved"].sum())
     flux_median = df["peak_flux_mjy"].median() if "peak_flux_mjy" in df.columns else 0
     ra_min, ra_max = df["ra_deg"].min(), df["ra_deg"].max()
     dec_min, dec_max = df["dec_deg"].min(), df["dec_deg"].max()
 
-    # Validate
-    check_dataset(
-        df,
-        "sumss",
-        min_rows=200_000,
-        expected_columns=["ra_deg", "dec_deg"],
-        critical_columns=["ra_deg", "dec_deg"],
-    )
-
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "sumss_radio_sources.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("sumss", tmp)
-        banner_md = banner_markdown("sumss", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Sydney University Molonglo Sky Survey (SUMSS)"
-language:
-  - en
-description: "SUMSS catalog of {n_total:,} radio sources at 843 MHz from the Molonglo Observatory Synthesis Telescope."
-task_categories:
-  - tabular-classification
-  - tabular-regression
-tags:
-  - space
-  - radio
-  - sumss
-  - molonglo
-  - 843mhz
-  - astronomy
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 100K<n<1M
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/sumss_radio_sources.parquet
-    default: true
----
-
-# Sydney University Molonglo Sky Survey (SUMSS)
-{banner_md}
-*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
-
-The Sydney University Molonglo Sky Survey (SUMSS) at 843 MHz, the southern-sky complement to
-NVSS. Observed with the Molonglo Observatory Synthesis Telescope (MOST), covering declinations
-south of -30 deg. Contains **{n_total:,}** discrete radio sources.
-
-## Dataset description
-
-SUMSS is a deep radio survey at 843 MHz covering 8,100 square degrees of the southern sky
-(declination < -30 deg) with 45 x 45 cosec|dec| arcsecond resolution. It fills the gap left
-by northern-hemisphere surveys like NVSS and FIRST, providing a matched-sensitivity southern
-radio catalog essential for all-sky studies.
-
-The Molonglo Observatory Synthesis Telescope (MOST) is a large east-west Earth-rotation aperture synthesis telescope located near Canberra, Australia. Originally built for pulsar research, it was reconfigured for continuum survey work at 843 MHz, a frequency chosen to complement the 1.4 GHz NVSS in the north. SUMSS achieves a limiting peak brightness of approximately 6 mJy/beam at declination -50 degrees, with sensitivity scaling as the cosecant of declination due to the telescope's cylindrical geometry. The catalog reaches roughly the same source density as NVSS, enabling seamless all-sky radio source studies when the two surveys are combined.
-
-SUMSS is particularly important for studying radio sources in the Magellanic Clouds, the Galactic bulge at southern latitudes, and southern galaxy clusters that are inaccessible to VLA-based surveys. The 843 MHz observing frequency also provides a longer lever arm for spectral index measurements when combined with 1.4 GHz (NVSS/FIRST) or 150 MHz (TGSS) data, improving constraints on the emission mechanisms of individual sources. Steep-spectrum sources identified through SUMSS-NVSS spectral indices have been used to discover high-redshift radio galaxies and dying radio AGN.
-
-The survey has been cross-matched extensively with X-ray catalogs (ROSAT, eROSITA), infrared surveys (2MASS, WISE), and optical redshift surveys to build multi-wavelength samples of AGN, star-forming galaxies, and galaxy clusters across the southern sky.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `ra_deg` | float64 | ICRS J2000.0 right ascension in degrees (0–360); survey covers the southern sky (declination < −30°); astrometric accuracy ~1–2 arcsec for bright sources |
-| `dec_deg` | float64 | ICRS J2000.0 declination in degrees; survey lower limit is −90°, upper limit −30°; the elliptical beam is elongated at lower elevations |
-| `peak_flux_mjy` | float64 | Peak surface brightness at 843 MHz in mJy/beam; beam size is 45×45 arcsec² × sec|dec|, so the effective beam area increases toward the south; equals total flux for compact sources |
-| `integrated_flux_mjy` | float64 | Total integrated flux density in mJy at 843 MHz; exceeds peak flux for resolved sources such as nearby galaxies or supernova remnants |
-| `e_integrated_flux_mjy` | float64 | 1-sigma uncertainty on integrated flux density in mJy; increases for resolved sources due to deconvolution errors |
-| `major_axis_arcsec` | float64 | Fitted (beam-convolved) major axis FWHM in arcseconds; includes the synthesized beam contribution; use deconvolved axes for intrinsic source size |
-| `minor_axis_arcsec` | float64 | Fitted (beam-convolved) minor axis FWHM in arcseconds; always ≥ the effective beam minor axis |
-| `position_angle_deg` | float64 | Fitted position angle of the major axis in degrees east from north (0–180); reflects the beam orientation for unresolved sources |
-| `deconv_major_arcsec` | float64 | Deconvolved major axis FWHM in arcseconds after removing the synthesized beam; null or zero for unresolved point sources where only an upper limit applies |
-| `deconv_minor_arcsec` | float64 | Deconvolved minor axis FWHM in arcseconds; null or zero for point sources; nonzero confirms the source is spatially resolved at 45 arcsec resolution |
-| `deconv_pa_deg` | float64 | Deconvolved position angle of the major axis in degrees east from north; null for circular or unresolved sources |
-| `mosaic_name` | string | Identifier of the SUMSS survey mosaic tile containing this source; maps to a specific observed field and can be used to retrieve the parent image |
-| `is_resolved` | bool | True if the deconvolved major axis is > 0, indicating the source is spatially resolved; False for point sources; derived flag not present in the original catalog |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n_total:,}** radio sources at 843 MHz
 - **{n_resolved:,}** resolved sources ({n_resolved / n_total * 100:.1f}%)
 - Median peak flux: {flux_median:.2f} mJy/beam
-- Sky coverage: RA {ra_min:.1f}--{ra_max:.1f} deg, Dec {dec_min:.1f}--{dec_max:.1f} deg
+- Sky coverage: RA {ra_min:.1f}--{ra_max:.1f} deg, Dec {dec_min:.1f}--{dec_max:.1f} deg"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -197,56 +142,52 @@ plt.title("SUMSS Sky Coverage (843 MHz, Dec < -30)")
 plt.show()
 
 # Resolved vs unresolved
-print(f"Resolved: {{df['is_resolved'].sum():,}}")
-print(f"Unresolved: {{(~df['is_resolved']).sum():,}}")
-```
+print(f"Resolved: {df['is_resolved'].sum():,}")
+print(f"Unresolved: {(~df['is_resolved']).sum():,}")
+```"""
 
-## Data source
-
-Mauch, T., Murphy, T., Buttery, H.J., Curran, J., Hunstead, R.W., Piestrzynski, B.,
-Robertson, J.G., and Sadler, E.M. (2003),
-*SUMSS: A wide-field radio imaging survey of the southern sky. II. The source catalogue.*
-Monthly Notices of the Royal Astronomical Society, 342, 1117.
-Via [VizieR](https://vizier.cds.unistra.fr/) CDS Strasbourg (VIII/81B).
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/sumss-radio-catalog) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{sumss_radio_catalog,
-  author = {{Simon, Julien}},
-  title = {{Sydney University Molonglo Sky Survey (SUMSS)}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/sumss-radio-catalog}},
-  note = {{Based on Mauch et al. (2003) via VizieR CDS Strasbourg}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update SUMSS radio catalog: {n_total:,} sources"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Sydney University Molonglo Sky Survey (SUMSS)",
+        description=DESCRIPTION,
+        tags=["space", "radio", "sumss", "molonglo", "843mhz", "astronomy",
+              "open-data", "tabular-data", "parquet"],
+        source_url="https://vizier.cds.unistra.fr/viz-bin/VizieR-3?-source=VIII/81B",
+        task_categories=["tabular-classification"],
+        collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA13277/PIA13277~small.jpg",
+            "alt": "Deep Space Network antenna at Goldstone",
+            "credit": "NASA/JPL-Caltech",
+        },
+        related_datasets=[
+            "juliensimon/nvss-radio-catalog",
+            "juliensimon/first-radio-catalog",
+            "juliensimon/tgss-radio-catalog",
+            "juliensimon/unified-radio-catalog",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=[
+                "ra_deg", "dec_deg", "peak_flux_mjy", "integrated_flux_mjy",
+                "e_integrated_flux_mjy",
+                "major_axis_arcsec", "minor_axis_arcsec", "position_angle_deg",
+                "deconv_major_arcsec", "deconv_minor_arcsec", "deconv_pa_deg",
+            ],
+            drop_mostly_null_threshold=0.95,
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={len(df)}\n")
+        p.publish(
+            df,
+            filename="sumss_radio_sources.parquet",
+            min_rows=200_000,
+            expected_columns=["ra_deg", "dec_deg"],
+            critical_columns=["ra_deg", "dec_deg"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update SUMSS radio catalog: {n_total:,} sources",
+        )
     print("Done.")
 
 

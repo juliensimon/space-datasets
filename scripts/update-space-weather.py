@@ -1,21 +1,97 @@
 #!/usr/bin/env python3
 """Fetch space weather indices from CelesTrak and upload to HF."""
 
-import os
-import subprocess
-import tempfile
-from pathlib import Path
-
 import pandas as pd
-from dataset_images import banner_markdown, download_banner
 
+from hf_dataset_utils import Pipeline
 
 SW_URL = "https://celestrak.org/SpaceData/SW-All.csv"
 HF_REPO = "juliensimon/space-weather-indices"
 
 # NOAA Kp-based storm scale thresholds (max 3-hourly Kp in a day)
-
 STORM_THRESHOLDS = [(9, "G5"), (8, "G4"), (7, "G3"), (6, "G2"), (5, "G1")]
+
+# ── Column mapping ───────────────────────────────────────────────────
+KP_MAP = {f"KP{i}": f"kp_{h:02d}00" for i, h in enumerate([0, 3, 6, 9, 12, 15, 18, 21], 1)}
+AP_MAP = {f"AP{i}": f"ap_{h:02d}00" for i, h in enumerate([0, 3, 6, 9, 12, 15, 18, 21], 1)}
+
+RENAME = {
+    "DATE": "date",
+    "BSRN": "bartels_rotation",
+    "ND": "bartels_day",
+    **KP_MAP,
+    "KP_SUM": "kp_sum",
+    **AP_MAP,
+    "AP_AVG": "ap_avg",
+    "CP": "cp",
+    "C9": "c9",
+    "ISN": "sunspot_number",
+    "F10.7_OBS": "f107_obs",
+    "F10.7_ADJ": "f107_adj",
+    "F10.7_DATA_TYPE": "f107_data_type",
+    "F10.7_OBS_CENTER81": "f107_obs_center81",
+    "F10.7_OBS_LAST81": "f107_obs_last81",
+    "F10.7_ADJ_CENTER81": "f107_adj_center81",
+    "F10.7_ADJ_LAST81": "f107_adj_last81",
+}
+
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "date": "Observation date in UTC",
+    "bartels_rotation": "Bartels Solar Rotation Number -- a 27-day cycle count since 1832, used to align solar data with the Sun's synodic rotation period as seen from Earth",
+    "bartels_day": "Day within the current Bartels rotation cycle (1-27)",
+    "kp_0000": "3-hourly Kp geomagnetic index for the 00:00-03:00 UT interval (quasi-logarithmic, 0-9 scale); measures planetary-scale magnetic field disturbances",
+    "kp_0300": "3-hourly Kp geomagnetic index for the 03:00-06:00 UT interval",
+    "kp_0600": "3-hourly Kp geomagnetic index for the 06:00-09:00 UT interval",
+    "kp_0900": "3-hourly Kp geomagnetic index for the 09:00-12:00 UT interval",
+    "kp_1200": "3-hourly Kp geomagnetic index for the 12:00-15:00 UT interval",
+    "kp_1500": "3-hourly Kp geomagnetic index for the 15:00-18:00 UT interval",
+    "kp_1800": "3-hourly Kp geomagnetic index for the 18:00-21:00 UT interval",
+    "kp_2100": "3-hourly Kp geomagnetic index for the 21:00-24:00 UT interval",
+    "kp_sum": "Sum of the eight daily 3-hourly Kp values (0-72); daily aggregate measure of geomagnetic activity",
+    "ap_0000": "3-hourly Ap index for the 00:00-03:00 UT interval -- linearized equivalent of Kp in nanotesla units; used as input to atmospheric density models (NRLMSISE-00, JB2008)",
+    "ap_0300": "3-hourly Ap index for the 03:00-06:00 UT interval",
+    "ap_0600": "3-hourly Ap index for the 06:00-09:00 UT interval",
+    "ap_0900": "3-hourly Ap index for the 09:00-12:00 UT interval",
+    "ap_1200": "3-hourly Ap index for the 12:00-15:00 UT interval",
+    "ap_1500": "3-hourly Ap index for the 15:00-18:00 UT interval",
+    "ap_1800": "3-hourly Ap index for the 18:00-21:00 UT interval",
+    "ap_2100": "3-hourly Ap index for the 21:00-24:00 UT interval",
+    "ap_avg": "Daily average Ap index; geomagnetic storm threshold at Ap >= 50; key input for satellite drag models",
+    "cp": "Daily Character Figure Cp (0.0-2.5) -- a qualitative measure of the overall level of geomagnetic disturbance for the day",
+    "c9": "Converted Cp on a 0-9 integer scale; derived from Cp for easier comparison with Kp",
+    "sunspot_number": "International Sunspot Number (ISN) -- daily count of sunspot groups and individual spots; primary indicator of the ~11-year solar activity cycle",
+    "f107_obs": "Observed 10.7 cm (2800 MHz) solar radio flux in solar flux units (SFU, 1 SFU = 10^-22 W/m2/Hz); measured at Penticton, Canada; primary proxy for solar EUV radiation that heats the thermosphere",
+    "f107_adj": "F10.7 solar radio flux adjusted to 1 AU distance; removes the effect of Earth's orbital eccentricity for physical comparisons",
+    "f107_data_type": "Data source flag: OBS (observed), INT (interpolated from observations), PRD (predicted), PRM (predicted monthly mean)",
+    "f107_obs_center81": "81-day centered running average of observed F10.7; smooths the 27-day solar rotation modulation to represent background EUV irradiance level",
+    "f107_obs_last81": "81-day trailing (last 81 days) running average of observed F10.7; available in near-real-time unlike the centered average",
+    "f107_adj_center81": "81-day centered running average of 1-AU-adjusted F10.7",
+    "f107_adj_last81": "81-day trailing running average of 1-AU-adjusted F10.7",
+    "is_storm": "True when daily average Ap >= 50, indicating a geomagnetic storm day; storms cause elevated satellite drag, GPS errors, and power grid disturbances",
+    "storm_level": "NOAA G-scale classification based on maximum 3-hourly Kp: G1 (Kp=5, minor), G2 (Kp=6, moderate), G3 (Kp=7, strong), G4 (Kp=8, severe), G5 (Kp=9, extreme); null for non-storm days",
+    "data_type": "Simplified data type: 'observed' (OBS/INT -- based on measurements) or 'predicted' (PRD/PRM -- forecast values)",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Daily geomagnetic and solar activity indices since 1957 from NOAA SWPC via CelesTrak. \
+Includes Kp/Ap geomagnetic indices, F10.7 solar radio flux, and international sunspot numbers.
+
+These indices together form the essential parameter set for characterizing the state of the \
+heliosphere and its coupling to the terrestrial environment. The Kp index (quasi-logarithmic, \
+0-9 scale, 3-hourly) captures planetary-scale geomagnetic disturbances driven by solar \
+wind-magnetosphere interactions, while the Ap index (its linearized daily equivalent in \
+nanotesla) serves as the standard geomagnetic input to atmospheric density models. The F10.7 \
+solar radio flux (measured daily at 2800 MHz in Penticton, Canada) is the primary proxy for \
+solar extreme ultraviolet (EUV) radiation that heats the thermosphere -- the atmospheric \
+layer where most satellites experience drag.
+
+For operational space weather applications, this dataset provides the complete set of inputs \
+required by the major atmospheric density models: NRLMSISE-00 (F10.7, F10.7bar, Ap), \
+JB2008 (F10.7 plus supplementary indices), and DTM (F10.7, Kp). The storm classification \
+(G1-G5) derived from Kp thresholds is the same scale used in NOAA space weather alerts.
+"""
 
 
 def classify_storm(row):
@@ -42,30 +118,7 @@ def main():
     for col in numeric_cols:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # Rename columns
-    kp_map = {f"KP{i}": f"kp_{h:02d}00" for i, h in enumerate([0, 3, 6, 9, 12, 15, 18, 21], 1)}
-    ap_map = {f"AP{i}": f"ap_{h:02d}00" for i, h in enumerate([0, 3, 6, 9, 12, 15, 18, 21], 1)}
-
-    rename = {
-        "DATE": "date",
-        "BSRN": "bartels_rotation",
-        "ND": "bartels_day",
-        **kp_map,
-        "KP_SUM": "kp_sum",
-        **ap_map,
-        "AP_AVG": "ap_avg",
-        "CP": "cp",
-        "C9": "c9",
-        "ISN": "sunspot_number",
-        "F10.7_OBS": "f107_obs",
-        "F10.7_ADJ": "f107_adj",
-        "F10.7_DATA_TYPE": "f107_data_type",
-        "F10.7_OBS_CENTER81": "f107_obs_center81",
-        "F10.7_OBS_LAST81": "f107_obs_last81",
-        "F10.7_ADJ_CENTER81": "f107_adj_center81",
-        "F10.7_ADJ_LAST81": "f107_adj_last81",
-    }
-    df = df.rename(columns=rename)
+    df = df.rename(columns=RENAME)
 
     # Derived columns
     df["is_storm"] = df["ap_avg"] >= 50
@@ -75,7 +128,10 @@ def main():
         "PRD": "predicted", "PRM": "predicted",
     })
 
-    # Stats
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
+
+    # ── Domain-specific stats for README ─────────────────────────────
     observed = df[df["data_type"] == "observed"]
     n_observed = len(observed)
     n_predicted = len(df) - n_observed
@@ -86,114 +142,13 @@ def main():
     max_ap = observed["ap_avg"].max()
     max_ap_date = observed.loc[observed["ap_avg"].idxmax(), "date"].strftime("%Y-%m-%d")
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "space_weather_indices.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("space-weather", tmp)
-        banner_md = banner_markdown("space-weather", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Space Weather Indices (Kp, Ap, F10.7)"
-language:
-  - en
-description: "Daily geomagnetic and solar activity indices since 1957 from NOAA SWPC via CelesTrak — Kp, Ap, F10.7 flux, sunspot numbers."
-task_categories:
-  - tabular-regression
-  - time-series-forecasting
-tags:
-  - space
-  - space-weather
-  - geomagnetic
-  - solar
-  - noaa
-  - celestrak
-  - open-data
-  - kp-index
-  - f10.7
-  - sunspot
-  - solar-cycle
-  - swpc
-  - tabular-data
-  - parquet
-size_categories:
-  - 10K<n<100K
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/space_weather_indices.parquet
-    default: true
----
-
-# Space Weather Indices
-{banner_md}
-*Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
-
-![Update Space Weather](https://github.com/juliensimon/space-datasets/actions/workflows/update-space-weather.yml/badge.svg)
-![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['space-weather']&label=updated&color=brightgreen)
-
-Daily geomagnetic and solar indices from [CelesTrak](https://celestrak.org/SpaceData/),
-which mirrors NOAA Space Weather Prediction Center data. Covers **{date_min}** to present
-with **{n_observed:,}** observed days plus **{n_predicted:,}** days of predictions/forecasts.
-
-## Dataset description
-
-This dataset contains the fundamental indices used to characterize space weather conditions:
-
-- **Kp/Ap indices** — Planetary geomagnetic activity (3-hourly and daily). Higher values indicate
-  stronger geomagnetic storms that cause satellite drag, GPS errors, and power grid disturbances.
-- **F10.7 solar radio flux** — Proxy for solar EUV radiation that heats the upper atmosphere,
-  directly affecting satellite drag and orbital decay rates.
-- **International Sunspot Number** — Long-running indicator of solar activity cycle.
-
-These indices together form the essential parameter set for characterizing the state of the heliosphere and its coupling to the terrestrial environment. The Kp index (quasi-logarithmic, 0-9 scale, 3-hourly) captures planetary-scale geomagnetic disturbances driven by solar wind-magnetosphere interactions, while the Ap index (its linearized daily equivalent in nanotesla) serves as the standard geomagnetic input to atmospheric density models. The F10.7 solar radio flux (measured daily at 2800 MHz in Penticton, Canada) is the primary proxy for solar extreme ultraviolet (EUV) radiation that heats the thermosphere -- the atmospheric layer where most satellites experience drag. The international sunspot number, recorded since 1749, provides the longest available record of solar activity and is used for solar cycle phase identification and long-term trend analysis.
-
-The physical connections between these indices reflect the chain of solar-terrestrial coupling. Solar active regions produce both elevated F10.7 emission (from coronal gyroresonance above sunspot magnetic fields) and eruptive events (flares, CMEs) that ultimately drive Kp/Ap disturbances days later. During solar maximum, F10.7 values typically range from 150-250 SFU and Kp regularly reaches 5-7 during CME-driven storms; during solar minimum, F10.7 drops to 65-70 SFU and Kp rarely exceeds 3. The 81-day running averages of F10.7 (provided as centered and trailing variants) smooth out the 27-day solar rotation modulation and represent the background EUV irradiance level that determines the baseline thermospheric density.
-
-For operational space weather applications, this dataset provides the complete set of inputs required by the major atmospheric density models: NRLMSISE-00 (F10.7, F10.7bar, Ap), JB2008 (F10.7 plus supplementary indices), and DTM (F10.7, Kp). These models are embedded in every operational orbit determination system worldwide, from the 18th Space Defense Squadron's high-accuracy catalog to commercial conjunction screening services. The storm classification (G1-G5) derived from Kp thresholds is the same scale used in NOAA space weather alerts that trigger operational responses by satellite operators, power utilities, and airlines.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `date` | datetime | Observation date |
-| `bartels_rotation` | int | Bartels Solar Rotation Number (27-day cycle since 1832) |
-| `bartels_day` | int | Day within Bartels cycle (1-27) |
-| `kp_0000`–`kp_2100` | float | 3-hourly Kp index for each UT interval |
-| `kp_sum` | float | Sum of eight daily Kp values |
-| `ap_0000`–`ap_2100` | int | 3-hourly Ap index for each UT interval |
-| `ap_avg` | float | Daily average Ap index |
-| `cp` | float | Daily Character Figure (0-2.5) |
-| `c9` | int | Converted Cp (0-9 scale) |
-| `sunspot_number` | int | International Sunspot Number |
-| `f107_obs` | float | Observed 10.7cm solar radio flux (sfu) |
-| `f107_adj` | float | F10.7 adjusted to 1 AU |
-| `f107_data_type` | string | Source: OBS (observed), INT (interpolated), PRD/PRM (predicted) |
-| `f107_obs_center81` | float | 81-day centered average (observed) |
-| `f107_obs_last81` | float | 81-day trailing average (observed) |
-| `f107_adj_center81` | float | 81-day centered average (adjusted) |
-| `f107_adj_last81` | float | 81-day trailing average (adjusted) |
-| `is_storm` | bool | Geomagnetic storm flag (daily Ap >= 50) |
-| `storm_level` | string | NOAA G-scale: G1 (minor) to G5 (extreme), based on max Kp |
-| `data_type` | string | "observed" or "predicted" |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n_observed:,}** observed days ({date_min} to {date_max_obs})
 - **{n_storms:,}** geomagnetic storm days (Ap >= 50)
 - **{n_g3_plus:,}** severe storms (G3+)
-- Strongest storm: Ap={max_ap:.0f} on {max_ap_date}
+- Strongest storm: Ap={max_ap:.0f} on {max_ap_date}"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -207,71 +162,56 @@ observed = df[df["data_type"] == "observed"]
 storms = df[df["is_storm"] == True].sort_values("ap_avg", ascending=False)
 
 # Solar cycle visualization
+import matplotlib.pyplot as plt
 df["year"] = df["date"].dt.year
 yearly_ssn = df.groupby("year")["sunspot_number"].mean()
+yearly_ssn.plot(figsize=(12, 4))
+plt.ylabel("Mean Sunspot Number")
+plt.title("Solar Cycle from Daily Sunspot Numbers")
+plt.show()
 
 # F10.7 flux trend (drives atmospheric drag)
 df.set_index("date")[["f107_adj"]].rolling(81).mean().plot()
+plt.ylabel("F10.7 (SFU)")
+plt.title("81-day Running Mean F10.7 Solar Flux")
+plt.show()
+```"""
 
-# Storm frequency by solar cycle phase
-df["cycle_phase"] = df["sunspot_number"].rolling(365).mean()
-```
-
-## Data source
-
-[CelesTrak Space Weather Data](https://celestrak.org/SpaceData/), maintained by Dr. T.S. Kelso,
-mirroring NOAA SWPC and GFZ Potsdam geomagnetic indices. The original indices are produced by the
-International Service of Geomagnetic Indices (ISGI) and NOAA Space Weather Prediction Center.
-
-## Update schedule
-
-Daily at 11:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-datasets).
-
-## Related datasets
-
-- [solar-flare-events](https://huggingface.co/datasets/juliensimon/solar-flare-events) — Individual solar flare detections from GOES
-- [space-track-satcat](https://huggingface.co/datasets/juliensimon/space-track-satcat) — Full NORAD satellite catalog
-- [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) — 232M historical TLE records
-- [neo-close-approaches](https://huggingface.co/datasets/juliensimon/neo-close-approaches) — Near-Earth object approaches
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/space-weather-indices) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{space_weather,
-  author = {{Simon, Julien}},
-  title = {{Space Weather Indices}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/space-weather-indices}},
-  note = {{Based on NOAA/SWPC space weather data}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update space weather indices: {n_observed:,} observed days"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Space Weather Indices (Kp, Ap, F10.7)",
+        description=DESCRIPTION,
+        tags=["space", "space-weather", "geomagnetic", "solar", "noaa",
+              "celestrak", "open-data", "kp-index", "f10.7", "sunspot",
+              "solar-cycle", "swpc", "tabular-data", "parquet"],
+        source_url="https://celestrak.org/SpaceData/",
+        update_schedule="Daily at 11:00 UTC via GitHub Actions",
+        task_categories=["tabular-regression", "time-series-forecasting"],
+        collection_url="https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/iss072e159172/iss072e159172~medium.jpg",
+            "alt": "Aurora borealis blankets the Earth, seen from the ISS",
+            "credit": "NASA",
+        },
+        related_datasets=[
+            "juliensimon/solar-flare-events",
+            "juliensimon/space-track-satcat",
+            "juliensimon/space-track-tle-history",
+            "juliensimon/neo-close-approaches",
+        ],
+    ) as p:
+        df = p.clean(df)
+        p.publish(
+            df,
+            filename="space_weather_indices.parquet",
+            min_rows=20000,
+            expected_columns=["date", "kp_sum", "ap_avg", "f107_obs", "sunspot_number"],
+            critical_columns=["date", "ap_avg"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update space weather indices: {n_observed:,} observed days",
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={len(df)}\n")
     print("Done.")
 
 

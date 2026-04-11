@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
-"""Fetch VLASS Epoch 1 Quick Look component catalog from VizieR and upload to HF."""
+"""Fetch VLASS Epoch 1 Quick Look component catalog from VizieR and upload to HF.
 
-import os
-import subprocess
-import tempfile
-from pathlib import Path
+Source: Gordon et al. (2021, ApJS 255, 30) — VLASS Epoch 1 Quick Look
+component catalog processed by CIRADA, S-band (2-4 GHz).
+VizieR catalog: J/ApJS/255/30
+"""
 
 import pandas as pd
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
-from vizier_tap import vizier_query
+from hf_dataset_utils import Pipeline
+from hf_dataset_utils.tap import vizier_query
 
 HF_REPO = "juliensimon/vlass-radio-sources"
 
+# ── Source query ────────────────────────────────────────────────────
 ADQL = """SELECT * FROM "J/ApJS/255/30/comp" """
 
+# ── Column mapping ──────────────────────────────────────────────────
 RENAME = {
     "CompName": "component_name",
     "CompId": "component_id",
@@ -88,29 +89,102 @@ RENAME = {
     "QLcutout": "ql_cutout_url",
 }
 
-NUMERIC_COLS = [
-    "ra_deg", "dec_deg", "ra_error_deg", "dec_error_deg",
-    "total_flux_mjy", "total_flux_error_mjy",
-    "peak_flux_mjy_beam", "peak_flux_error_mjy_beam",
-    "major_axis_arcsec", "major_axis_error_arcsec",
-    "minor_axis_arcsec", "minor_axis_error_arcsec",
-    "position_angle_deg", "position_angle_error_deg",
-    "island_total_flux_mjy", "island_total_flux_error_mjy",
-    "island_rms_mjy_beam", "island_mean_mjy_beam",
-    "residual_island_rms_mjy_beam", "residual_island_mean_mjy_beam",
-    "peak_ra_deg", "peak_dec_deg", "peak_ra_error_deg", "peak_dec_error_deg",
-    "subtile_ra_deg", "subtile_dec_deg",
-    "nvss_distance_arcsec", "first_distance_arcsec",
-    "peak_to_ring_ratio", "nearest_neighbor_arcsec",
-    "beam_major_arcsec", "beam_minor_arcsec", "beam_pa_deg",
-    "deconv_major_arcsec", "deconv_major_error_arcsec",
-    "deconv_minor_arcsec", "deconv_minor_error_arcsec",
-    "deconv_pa_deg", "deconv_pa_error_deg",
-]
+# ── Column descriptions for README schema table ────────────────────
+COLUMN_DESCRIPTIONS = {
+    "component_name": "IAU component name in the format 'VLASS1QLCIR JHHMMSS.ss+DDMMSS.s'; encodes J2000 position and survey epoch",
+    "component_id": "Unique integer identifier for this Gaussian component within the CIRADA catalog",
+    "island_id": "Identifier of the emission island this component belongs to; multiple components may share an island for complex sources",
+    "ra_deg": "Right ascension J2000 in degrees (0-360) from the Gaussian component fit; typical astrometric accuracy ~0.5 arcsec for bright sources",
+    "dec_deg": "Declination J2000 in degrees (-90 to +90); survey covers declination > -40 deg (~33,885 sq deg)",
+    "ra_error_deg": "1-sigma uncertainty on right ascension in degrees from the Gaussian fit",
+    "dec_error_deg": "1-sigma uncertainty on declination in degrees from the Gaussian fit",
+    "total_flux_mjy": "Integrated flux density at S-band (2-4 GHz, central ~3 GHz) in mJy; sum of the fitted Gaussian component",
+    "total_flux_error_mjy": "1-sigma uncertainty on integrated flux density in mJy",
+    "peak_flux_mjy_beam": "Peak surface brightness at S-band in mJy/beam; best flux estimator for unresolved point sources at ~2.5 arcsec resolution",
+    "peak_flux_error_mjy_beam": "1-sigma uncertainty on peak flux density in mJy/beam",
+    "major_axis_arcsec": "Fitted (beam-convolved) major axis FWHM in arcseconds; includes the ~2.5 arcsec synthesized beam",
+    "major_axis_error_arcsec": "1-sigma uncertainty on the fitted major axis in arcseconds",
+    "minor_axis_arcsec": "Fitted (beam-convolved) minor axis FWHM in arcseconds",
+    "minor_axis_error_arcsec": "1-sigma uncertainty on the fitted minor axis in arcseconds",
+    "position_angle_deg": "Fitted position angle of the major axis in degrees east from north",
+    "position_angle_error_deg": "1-sigma uncertainty on the fitted position angle in degrees",
+    "island_total_flux_mjy": "Total integrated flux of the parent emission island in mJy; equals total_flux_mjy for single-component islands",
+    "island_total_flux_error_mjy": "1-sigma uncertainty on the island total flux in mJy",
+    "island_rms_mjy_beam": "Local rms noise in mJy/beam measured in the island region; indicates detection sensitivity at this sky position",
+    "island_mean_mjy_beam": "Mean background level in the island region in mJy/beam; should be near zero for well-calibrated images",
+    "residual_island_rms_mjy_beam": "Rms of the residual image after component subtraction in mJy/beam; high values indicate poor fit",
+    "residual_island_mean_mjy_beam": "Mean of the residual image after component subtraction in mJy/beam",
+    "peak_ra_deg": "Right ascension of the peak pixel in degrees; may differ from Gaussian center for asymmetric sources",
+    "peak_dec_deg": "Declination of the peak pixel in degrees",
+    "peak_ra_error_deg": "1-sigma uncertainty on peak pixel right ascension in degrees",
+    "peak_dec_error_deg": "1-sigma uncertainty on peak pixel declination in degrees",
+    "source_code": "PyBDSF source structure code: S (single isolated component), C (component of a complex source), M (multiple-Gaussian island), E (extended emission)",
+    "x_pixel": "X pixel coordinate of the Gaussian center in the image plane",
+    "x_pixel_error": "1-sigma uncertainty on x pixel coordinate",
+    "y_pixel": "Y pixel coordinate of the Gaussian center in the image plane",
+    "y_pixel_error": "1-sigma uncertainty on y pixel coordinate",
+    "peak_x_pixel": "X pixel coordinate of the peak brightness pixel",
+    "peak_x_pixel_error": "1-sigma uncertainty on peak x pixel coordinate",
+    "peak_y_pixel": "Y pixel coordinate of the peak brightness pixel",
+    "peak_y_pixel_error": "1-sigma uncertainty on peak y pixel coordinate",
+    "major_axis_imgplane_arcsec": "Major axis FWHM in arcseconds measured in the image plane before deconvolution",
+    "major_axis_imgplane_error_arcsec": "1-sigma uncertainty on image-plane major axis in arcseconds",
+    "minor_axis_imgplane_arcsec": "Minor axis FWHM in arcseconds measured in the image plane before deconvolution",
+    "minor_axis_imgplane_error_arcsec": "1-sigma uncertainty on image-plane minor axis in arcseconds",
+    "pa_imgplane_deg": "Position angle in degrees measured in the image plane",
+    "pa_imgplane_error_deg": "1-sigma uncertainty on image-plane position angle in degrees",
+    "deconv_major_arcsec": "Deconvolved major axis FWHM in arcseconds after removing the synthesized beam; null or zero for unresolved sources",
+    "deconv_major_error_arcsec": "1-sigma uncertainty on deconvolved major axis in arcseconds",
+    "deconv_minor_arcsec": "Deconvolved minor axis FWHM in arcseconds; nonzero confirms the source is spatially resolved",
+    "deconv_minor_error_arcsec": "1-sigma uncertainty on deconvolved minor axis in arcseconds",
+    "deconv_pa_deg": "Deconvolved position angle of the major axis in degrees east from north",
+    "deconv_pa_error_deg": "1-sigma uncertainty on deconvolved position angle in degrees",
+    "deconv_major_imgplane_arcsec": "Deconvolved major axis in arcseconds from image-plane fitting",
+    "deconv_major_imgplane_error_arcsec": "1-sigma uncertainty on image-plane deconvolved major axis in arcseconds",
+    "deconv_minor_imgplane_arcsec": "Deconvolved minor axis in arcseconds from image-plane fitting",
+    "deconv_minor_imgplane_error_arcsec": "1-sigma uncertainty on image-plane deconvolved minor axis in arcseconds",
+    "deconv_pa_imgplane_deg": "Deconvolved position angle in degrees from image-plane fitting",
+    "deconv_pa_imgplane_error_deg": "1-sigma uncertainty on image-plane deconvolved position angle in degrees",
+    "tile": "VLASS survey tile identifier; maps to a specific sky region in the observing grid",
+    "subtile": "Subtile identifier within the parent tile; finer spatial subdivision for image processing",
+    "subtile_ra_deg": "Right ascension of the subtile center in degrees",
+    "subtile_dec_deg": "Declination of the subtile center in degrees",
+    "nvss_distance_arcsec": "Angular separation from the nearest NVSS (1.4 GHz) source in arcseconds; useful for cross-matching and variability studies",
+    "first_distance_arcsec": "Angular separation from the nearest FIRST (1.4 GHz) source in arcseconds; useful for high-resolution cross-matching",
+    "peak_to_ring_ratio": "Ratio of peak flux to median flux in a surrounding ring; high values indicate reliable detections, low values may flag artifacts",
+    "duplicate_flag": "Duplicate detection flag: 0 = unique detection, nonzero = overlapping tile duplicate that should be excluded from main analyses",
+    "quality_flag": "Quality flag: 0 = good quality, nonzero = potential issues with calibration or imaging artifacts",
+    "nearest_neighbor_arcsec": "Angular distance to the nearest catalog neighbor in arcseconds; useful for source density and confusion studies",
+    "beam_major_arcsec": "Synthesized beam major axis FWHM in arcseconds at this sky position; typically ~2.5 arcsec in B-configuration",
+    "beam_minor_arcsec": "Synthesized beam minor axis FWHM in arcseconds; varies with declination and hour angle coverage",
+    "beam_pa_deg": "Synthesized beam position angle in degrees east from north",
+    "main_sample": "Main sample membership flag: 1 = curated quality-filtered duplicate-free subset recommended for most analyses; 0 = excluded",
+    "ql_cutout_url": "URL to the Quick Look image cutout centered on this source; provides visual context for source morphology and environment",
+    "is_resolved": "True if the deconvolved major axis > 0, indicating the source is spatially resolved at ~2.5 arcsec resolution; derived flag",
+}
 
-INT_COLS = [
-    "component_id", "island_id", "duplicate_flag", "quality_flag", "main_sample",
-]
+# ── Dataset description ─────────────────────────────────────────────
+DESCRIPTION = """\
+The Very Large Array Sky Survey (VLASS) Epoch 1 Quick Look component catalog from \
+CIRADA, containing radio source detections at S-band (2-4 GHz) with ~2.5 arcsecond \
+resolution, covering the sky north of declination -40 degrees. VLASS is the modern \
+successor to NVSS and FIRST, offering higher resolution and multi-epoch coverage.
+
+VLASS is a synoptic all-sky radio survey using the Karl G. Jansky Very Large Array \
+(VLA) in its B-configuration at S-band (2-4 GHz). The survey covers the entire sky \
+visible to the VLA (declination > -40 deg, ~33,885 sq. deg.) in three epochs. This \
+catalog contains Quick Look component detections from Epoch 1, processed by the \
+Canadian Initiative for Radio Astronomy Data Analysis (CIRADA). Each row is a \
+Gaussian component fitted to a radio detection using PyBDSF.
+
+VLASS represents a generational leap over its predecessors NVSS and FIRST, combining \
+NVSS-like sky coverage with FIRST-like angular resolution at a higher frequency \
+(3 GHz vs. 1.4 GHz). The survey's three-epoch design, with observations spanning \
+2017 to 2024, enables systematic studies of radio variability and transient phenomena \
+on timescales of months to years. The S-band frequency coverage (2-4 GHz) provides \
+sensitivity to flat-spectrum and inverted-spectrum sources such as compact AGN cores, \
+while still detecting the steep-spectrum synchrotron emission from radio lobes and jets.
+"""
 
 
 def main():
@@ -119,149 +193,44 @@ def main():
     print(f"  {len(df):,} raw rows")
 
     # Rename columns
-    df = df.rename(columns=RENAME)
+    df = df.rename(columns={k: v for k, v in RENAME.items() if k in df.columns})
 
-    # Type conversions — numeric
-    for col in NUMERIC_COLS:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    # Type conversions — integer
-    for col in INT_COLS:
+    # Integer columns
+    for col in ["component_id", "island_id", "duplicate_flag", "quality_flag", "main_sample"]:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int32")
 
-    # Derived column: resolved flag (deconvolved major axis > 0)
+    # Derived column: resolved flag
     if "deconv_major_arcsec" in df.columns:
         df["is_resolved"] = df["deconv_major_arcsec"] > 0
 
     # Sort by RA
     df = df.sort_values("ra_deg").reset_index(drop=True)
 
-    # Drop recno (VizieR internal)
-    if "recno" in df.columns:
-        df = df.drop(columns=["recno"])
+    # Drop VizieR internal columns
+    for col in ["recno"]:
+        if col in df.columns:
+            df = df.drop(columns=[col])
 
-    # Stats
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
+
+    # ── Domain-specific stats for README ─────────────────────────────
     n_total = len(df)
     n_main = int(df["main_sample"].sum()) if "main_sample" in df.columns else 0
     n_resolved = int(df["is_resolved"].sum()) if "is_resolved" in df.columns else 0
     flux_median = df["peak_flux_mjy_beam"].median()
     dec_min, dec_max = df["dec_deg"].min(), df["dec_deg"].max()
 
-    # Validate
-    check_dataset(
-        df,
-        "vlass-radio",
-        min_rows=500_000,
-        expected_columns=["component_name", "ra_deg", "dec_deg", "total_flux_mjy", "peak_flux_mjy_beam"],
-        critical_columns=["component_name", "ra_deg", "dec_deg", "peak_flux_mjy_beam"],
-    )
-
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "vlass_radio_sources.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("vlass", tmp)
-        banner_md = banner_markdown("vlass", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "VLASS Radio Sources (Epoch 1)"
-language:
-  - en
-description: "Very Large Array Sky Survey (VLASS) Epoch 1 Quick Look component catalog with {n_total:,} radio source detections at 2-4 GHz (S-band)."
-task_categories:
-  - tabular-classification
-  - tabular-regression
-tags:
-  - space
-  - radio
-  - vlass
-  - vla
-  - nrao
-  - astronomy
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 1M<n<10M
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/vlass_radio_sources.parquet
-    default: true
----
-
-# VLASS Radio Sources (Epoch 1)
-{banner_md}
-*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
-
-The Very Large Array Sky Survey (VLASS) Epoch 1 Quick Look component catalog from CIRADA,
-containing **{n_total:,}** radio source detections at S-band (2-4 GHz) with ~2.5 arcsecond
-resolution, covering the sky north of declination -40 degrees. VLASS is the modern successor
-to NVSS and FIRST, offering higher resolution and multi-epoch coverage.
-
-## Dataset description
-
-VLASS is a synoptic all-sky radio survey using the Karl G. Jansky Very Large Array (VLA) in
-its B-configuration at S-band (2-4 GHz). The survey covers the entire sky visible to the VLA
-(declination > -40 deg, ~33,885 sq. deg.) in three epochs. This catalog contains Quick Look
-component detections from Epoch 1, processed by the Canadian Initiative for Radio Astronomy
-Data Analysis (CIRADA). Each row is a Gaussian component fitted to a radio detection using PyBDSF.
-
-VLASS represents a generational leap over its predecessors NVSS and FIRST, combining NVSS-like sky coverage with FIRST-like angular resolution at a higher frequency (3 GHz vs. 1.4 GHz). The survey's three-epoch design, with observations spanning 2017 to 2024, enables systematic studies of radio variability and transient phenomena on timescales of months to years. This makes VLASS uniquely powerful for discovering tidal disruption events, newborn radio AGN, and orphan gamma-ray burst afterglows that would be missed by single-epoch surveys.
-
-The S-band frequency coverage (2-4 GHz) provides sensitivity to flat-spectrum and inverted-spectrum sources such as compact AGN cores, while still detecting the steep-spectrum synchrotron emission from radio lobes and jets. The 2.5-arcsecond resolution enables morphological classification of radio sources and reliable cross-identification with optical and infrared counterparts from surveys like the Legacy Survey (DECaLS), Pan-STARRS, and WISE. The CIRADA component catalog used here includes pre-computed cross-match distances to NVSS and FIRST, facilitating multi-epoch and multi-frequency radio studies.
-
-The Quick Look images from which this catalog is derived have somewhat higher noise and poorer calibration than the final Single Epoch images, but they cover the full survey footprint and provide the most complete source inventory available from Epoch 1. The main sample flag identifies the curated subset of unique, quality-filtered detections recommended for most scientific analyses, while the full catalog retains all detections for completeness-sensitive studies.
-
-Of the {n_total:,} total detections, **{n_main:,}** are in the curated main sample
-(duplicate-free, quality-filtered) and **{n_resolved:,}** are resolved sources.
-
-## Key columns
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `component_name` | string | IAU component name (VLASS1QLCIR JHHMMSS.ss+DDMMSS.s) |
-| `ra_deg` | float64 | Right ascension J2000 (degrees) |
-| `dec_deg` | float64 | Declination J2000 (degrees) |
-| `total_flux_mjy` | float64 | Integrated flux density at S-band (mJy) |
-| `peak_flux_mjy_beam` | float64 | Peak brightness at S-band (mJy/beam) |
-| `major_axis_arcsec` | float64 | Fitted major axis FWHM (arcsec) |
-| `minor_axis_arcsec` | float64 | Fitted minor axis FWHM (arcsec) |
-| `position_angle_deg` | float64 | Fitted position angle (degrees) |
-| `deconv_major_arcsec` | float64 | Deconvolved major axis (arcsec) |
-| `deconv_minor_arcsec` | float64 | Deconvolved minor axis (arcsec) |
-| `island_rms_mjy_beam` | float64 | Local rms noise (mJy/beam) |
-| `source_code` | string | Component type: S(ingle), C(omplex), M(ultiple), E(xtended) |
-| `nvss_distance_arcsec` | float64 | Angular separation from nearest NVSS source (arcsec) |
-| `first_distance_arcsec` | float64 | Angular separation from nearest FIRST source (arcsec) |
-| `duplicate_flag` | Int32 | Duplicate detection flag (0=unique) |
-| `quality_flag` | Int32 | Quality flag (0=good) |
-| `main_sample` | Int32 | Main sample membership (1=curated subset) |
-| `is_resolved` | bool | True if deconvolved major axis > 0 |
-
-Full schema includes {len(df.columns)} columns with uncertainties, beam properties, and image-plane measurements.
-
-## Quick stats
-
-- **{n_total:,}** total component detections
+    quick_stats = f"""\
+- **{n_total:,}** total component detections at S-band (2-4 GHz)
 - **{n_main:,}** main sample sources (quality-filtered, duplicate-free)
 - **{n_resolved:,}** resolved sources ({n_resolved / n_total * 100:.1f}%)
 - Median peak flux: {flux_median:.2f} mJy/beam
 - Declination range: {dec_min:.1f} to {dec_max:.1f} degrees
-- Frequency: S-band (2-4 GHz), ~2.5 arcsec resolution
+- Frequency: S-band (2-4 GHz), ~2.5 arcsec resolution"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -270,7 +239,7 @@ df = ds.to_pandas()
 
 # Main sample only (quality-filtered)
 main = df[df["main_sample"] == 1]
-print(f"Main sample: {{len(main):,}} sources")
+print(f"Main sample: {len(main):,} sources")
 
 # Flux distribution
 import matplotlib.pyplot as plt
@@ -290,58 +259,71 @@ plt.show()
 
 # Cross-match proximity to NVSS/FIRST
 has_nvss = df["nvss_distance_arcsec"] < 10
-print(f"Within 10 arcsec of NVSS source: {{has_nvss.sum():,}}")
-```
+print(f"Within 10 arcsec of NVSS source: {has_nvss.sum():,}")
+```"""
 
-## Data source
-
-Gordon, Y.A., et al. (2021), *A Catalog of Very Large Array Sky Survey (VLASS) Epoch 1
-Quick Look Components, Version 2.* Astrophysical Journal Supplement Series, 255, 30.
-Processed by CIRADA. Via VizieR CDS (J/ApJS/255/30).
-
-## Related datasets
-
-- [NVSS Radio Source Catalog](https://huggingface.co/datasets/juliensimon/nvss-radio-catalog) — predecessor 1.4 GHz survey, 1.8M sources
-- [FIRST Radio Survey Catalog](https://huggingface.co/datasets/juliensimon/first-radio-catalog) — predecessor high-resolution 1.4 GHz survey
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/vlass-radio-sources) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{vlass_radio_sources,
-  author = {{Simon, Julien}},
-  title = {{VLASS Radio Sources (Epoch 1)}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/vlass-radio-sources}},
-  note = {{Based on Gordon et al. (2021) via VizieR CDS}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update VLASS radio sources: {n_total:,} components"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="VLASS Radio Sources (Epoch 1)",
+        description=DESCRIPTION,
+        tags=["space", "radio", "vlass", "vla", "nrao", "astronomy",
+              "open-data", "tabular-data", "parquet"],
+        source_url="https://vizier.cds.unistra.fr/viz-bin/VizieR-3?-source=J/ApJS/255/30",
+        task_categories=["tabular-classification"],
+        collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA13277/PIA13277~small.jpg",
+            "alt": "Deep Space Network antenna at Goldstone",
+            "credit": "NASA/JPL-Caltech",
+        },
+        related_datasets=[
+            "juliensimon/nvss-radio-catalog",
+            "juliensimon/first-radio-catalog",
+            "juliensimon/unified-radio-catalog",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=[
+                "ra_deg", "dec_deg", "ra_error_deg", "dec_error_deg",
+                "total_flux_mjy", "total_flux_error_mjy",
+                "peak_flux_mjy_beam", "peak_flux_error_mjy_beam",
+                "major_axis_arcsec", "major_axis_error_arcsec",
+                "minor_axis_arcsec", "minor_axis_error_arcsec",
+                "position_angle_deg", "position_angle_error_deg",
+                "island_total_flux_mjy", "island_total_flux_error_mjy",
+                "island_rms_mjy_beam", "island_mean_mjy_beam",
+                "residual_island_rms_mjy_beam", "residual_island_mean_mjy_beam",
+                "peak_ra_deg", "peak_dec_deg", "peak_ra_error_deg", "peak_dec_error_deg",
+                "subtile_ra_deg", "subtile_dec_deg",
+                "nvss_distance_arcsec", "first_distance_arcsec",
+                "peak_to_ring_ratio", "nearest_neighbor_arcsec",
+                "beam_major_arcsec", "beam_minor_arcsec", "beam_pa_deg",
+                "deconv_major_arcsec", "deconv_major_error_arcsec",
+                "deconv_minor_arcsec", "deconv_minor_error_arcsec",
+                "deconv_pa_deg", "deconv_pa_error_deg",
+                "x_pixel", "x_pixel_error", "y_pixel", "y_pixel_error",
+                "peak_x_pixel", "peak_x_pixel_error", "peak_y_pixel", "peak_y_pixel_error",
+                "major_axis_imgplane_arcsec", "major_axis_imgplane_error_arcsec",
+                "minor_axis_imgplane_arcsec", "minor_axis_imgplane_error_arcsec",
+                "pa_imgplane_deg", "pa_imgplane_error_deg",
+                "deconv_major_imgplane_arcsec", "deconv_major_imgplane_error_arcsec",
+                "deconv_minor_imgplane_arcsec", "deconv_minor_imgplane_error_arcsec",
+                "deconv_pa_imgplane_deg", "deconv_pa_imgplane_error_deg",
+            ],
+            drop_mostly_null_threshold=0.95,
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={len(df)}\n")
+        p.publish(
+            df,
+            filename="vlass_radio_sources.parquet",
+            min_rows=500_000,
+            expected_columns=["component_name", "ra_deg", "dec_deg", "total_flux_mjy", "peak_flux_mjy_beam"],
+            critical_columns=["component_name", "ra_deg", "dec_deg", "peak_flux_mjy_beam"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update VLASS radio sources: {n_total:,} components",
+        )
     print("Done.")
 
 

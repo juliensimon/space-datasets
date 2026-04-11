@@ -1,21 +1,79 @@
 #!/usr/bin/env python3
-"""Fetch IERS Earth Orientation Parameters and upload to HF."""
+"""Fetch IERS Earth Orientation Parameters and upload to HF.
+
+Source: IERS finals2000A series from the Earth Orientation Centre.
+Includes polar motion, UT1-UTC, length of day, and nutation offsets.
+"""
 
 import io
-import os
-import subprocess
-import tempfile
-from pathlib import Path
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
-
+from hf_dataset_utils import Pipeline
 
 IERS_URL = "https://datacenter.iers.org/data/csv/finals2000A.data.csv"
 HF_REPO = "juliensimon/iers-earth-orientation"
+
+# ── Column mapping ───────────────────────────────────────────────────
+RENAME_RULES = {
+    "mjd": "mjd",
+    "x_pole": "x_pole_arcsec", "x": "x_pole_arcsec", "x_arcsec": "x_pole_arcsec",
+    "y_pole": "y_pole_arcsec", "y": "y_pole_arcsec", "y_arcsec": "y_pole_arcsec",
+    "sigma_x_pole": "sigma_x_pole_arcsec",
+    "sigma_y_pole": "sigma_y_pole_arcsec",
+    "ut1-utc": "ut1_utc_sec", "ut1_utc": "ut1_utc_sec",
+    "sigma_ut1-utc": "sigma_ut1_utc_sec",
+    "lod": "lod_ms",
+    "dx": "dx_mas",
+    "dy": "dy_mas",
+}
+
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "date": "Calendar date in UTC of the EOP measurement; daily cadence from 1962-01-01 to present; values after the last bulletin date are IERS short-term predictions, not observations",
+    "mjd": "Modified Julian Date = Julian Date - 2400000.5; a compact decimal day count used throughout astronomy and geodesy; J2000.0 corresponds to MJD 51544.5; enables direct arithmetic on time differences without calendar conversions",
+    "x_pole_arcsec": "x-component of polar motion in arcseconds; eastward offset of Earth's instantaneous rotation pole from the IERS Reference Pole along the Greenwich meridian; typical range +/-0.5 arcsec; a 1 mas error causes ~3 cm surface positioning error",
+    "y_pole_arcsec": "y-component of polar motion in arcseconds; offset of Earth's rotation pole along the 90 deg W meridian; required together with x_pole_arcsec to transform between celestial (ICRF) and terrestrial (ITRF) coordinate frames",
+    "sigma_x_pole_arcsec": "1-sigma formal uncertainty on x_pole_arcsec; reflects quality of the combined VLBI/SLR/GPS solution; typically 0.01-0.1 mas for modern observations",
+    "sigma_y_pole_arcsec": "1-sigma formal uncertainty on y_pole_arcsec; same origin and magnitude as sigma_x_pole_arcsec",
+    "ut1_utc_sec": "Difference UT1 - UTC in seconds; UT1 tracks Earth's actual rotational angle while UTC uses fixed SI seconds; bounded to +/-0.9 s by periodic leap-second insertions; essential for sidereal time and spacecraft antenna pointing calculations",
+    "sigma_ut1_utc_sec": "1-sigma formal uncertainty on ut1_utc_sec; typically sub-millisecond for recent observations",
+    "lod_ms": "Excess length of day above 86400 SI seconds, in milliseconds; positive = Earth rotating slower than nominal; reflects the instantaneous time derivative of UT1-UTC; driven mainly by atmospheric angular momentum exchange on sub-annual timescales",
+    "dx_mas": "Celestial pole offset dX in milliarcseconds; observed deviation of the celestial intermediate pole from the IAU 2000/2006 precession-nutation model along the X axis; corrects for unpredictable fluid-core free nutation with ~430-day period",
+    "dy_mas": "Celestial pole offset dY in milliarcseconds; observed deviation along the Y axis complementing dX; together dX and dY provide the residual nutation corrections needed for the highest-precision celestial mechanics and VLBI analysis",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Earth Orientation Parameters (EOP) from the IERS finals2000A series. Includes \
+polar motion, UT1-UTC, length of day, and nutation offsets. Updated daily.
+
+Earth Orientation Parameters describe the irregularities in Earth's rotation and \
+the motion of its poles. These parameters are essential for transforming between \
+celestial and terrestrial reference frames, which is critical for satellite operations, \
+GPS/GNSS positioning, telescope and antenna tracking, deep-space navigation, and geodesy.
+
+The IERS finals2000A series combines observed values (from VLBI, SLR, GPS) with \
+predictions extending ~1 year into the future.
+
+Earth's rotation is not uniform. The planet's spin axis wanders relative to both the \
+crust (polar motion) and the celestial reference frame (precession and nutation), while \
+the rotation rate itself fluctuates on timescales from hours to millennia. Polar motion \
+consists of two main components: the Chandler wobble (a free oscillation with a period \
+of approximately 433 days and amplitude of 0.1-0.2 arcseconds, equivalent to 3-6 meters \
+at the pole) and an annual oscillation driven by seasonal redistribution of atmospheric \
+and oceanic mass. Superimposed on these is a secular drift of the pole toward roughly \
+80 degrees W longitude at about 10 cm/year, driven by post-glacial rebound of the mantle.
+
+The UT1-UTC difference tracks the accumulated departure of Earth's rotational angle from \
+atomic time. Earth's rotation is gradually slowing due to tidal dissipation (primarily \
+lunar tides in the oceans), causing UT1 to drift behind UTC at an average rate of roughly \
+2 milliseconds per day. This secular trend is punctuated by irregular decadal fluctuations \
+attributed to core-mantle coupling, and by shorter-period variations from atmospheric \
+angular momentum exchange. When |UT1-UTC| approaches 0.9 seconds, the IERS directs the \
+insertion of a leap second.
+"""
 
 
 def main():
@@ -48,147 +106,32 @@ def main():
     rename_map = {}
     for col in df.columns:
         cl = col.strip().lower()
-        if cl == "mjd":
-            rename_map[col] = "mjd"
-        elif cl in ("x_pole", "x", "x_arcsec"):
-            rename_map[col] = "x_pole_arcsec"
-        elif cl in ("y_pole", "y", "y_arcsec"):
-            rename_map[col] = "y_pole_arcsec"
-        elif cl in ("sigma_x_pole",):
-            rename_map[col] = "sigma_x_pole_arcsec"
-        elif cl in ("sigma_y_pole",):
-            rename_map[col] = "sigma_y_pole_arcsec"
-        elif cl in ("ut1-utc", "ut1_utc"):
-            rename_map[col] = "ut1_utc_sec"
-        elif cl in ("sigma_ut1-utc",):
-            rename_map[col] = "sigma_ut1_utc_sec"
-        elif cl in ("lod",):
-            rename_map[col] = "lod_ms"
-        elif cl in ("dx",):
-            rename_map[col] = "dx_mas"
-        elif cl in ("dy",):
-            rename_map[col] = "dy_mas"
+        if cl in RENAME_RULES:
+            rename_map[col] = RENAME_RULES[cl]
 
     if rename_map:
         df = df.rename(columns=rename_map)
 
-    # Convert numeric columns
-    for col in ["mjd", "x_pole_arcsec", "y_pole_arcsec", "ut1_utc_sec",
-                "lod_ms", "dx_mas", "dy_mas"]:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    # Drop columns that are >95% null (old nutation params not in finals2000A)
-    before_cols = len(df.columns)
-    for col in list(df.columns):
-        if df[col].isna().mean() > 0.95:
-            df = df.drop(columns=[col])
-    dropped = before_cols - len(df.columns)
-    if dropped:
-        print(f"  Dropped {dropped} columns (>95% null)")
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
     df = df.sort_values("date").reset_index(drop=True) if "date" in df.columns else df
 
-    check_dataset(df, "iers-eop", min_rows=10000,
-                  expected_columns=["date", "x_pole_arcsec", "y_pole_arcsec", "ut1_utc_sec"],
-                  critical_columns=["date", "x_pole_arcsec", "y_pole_arcsec"])
-
-    # Stats for README
+    # ── Domain-specific stats for README ─────────────────────────────
     n = len(df)
     date_min = df["date"].min().strftime("%Y-%m-%d") if "date" in df.columns else "N/A"
     date_max = df["date"].max().strftime("%Y-%m-%d") if "date" in df.columns else "N/A"
+    ut1_range = ""
+    if "ut1_utc_sec" in df.columns:
+        recent = df[df["date"] > "2020-01-01"] if "date" in df.columns else df
+        ut1_min = recent["ut1_utc_sec"].min()
+        ut1_max = recent["ut1_utc_sec"].max()
+        ut1_range = f"\n- UT1-UTC range (since 2020): {ut1_min:.4f} to {ut1_max:.4f} s"
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
+    quick_stats = f"""\
+- **{n:,}** daily records ({date_min} to {date_max}){ut1_range}"""
 
-        out = data_dir / "iers_earth_orientation.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("iers-eop", tmp)
-        banner_md = banner_markdown("iers-eop", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "IERS Earth Orientation Parameters"
-language:
-  - en
-description: >-
-  Earth Orientation Parameters (EOP) from the IERS finals2000A series.
-  Includes polar motion, UT1-UTC, and nutation offsets. Updated daily.
-size_categories:
-  - 10K<n<100K
-task_categories:
-  - tabular-regression
-tags:
-  - space
-  - earth-orientation
-  - iers
-  - geodesy
-  - ut1
-  - polar-motion
-  - open-data
-  - tabular-data
-  - parquet
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/iers_earth_orientation.parquet
----
-
-# IERS Earth Orientation Parameters
-{banner_md}
-*Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
-
-![Update IERS EOP](https://github.com/juliensimon/space-datasets/actions/workflows/update-iers-eop.yml/badge.svg)
-![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.iers-eop&label=updated&color=brightgreen)
-
-Earth Orientation Parameters from the IERS finals2000A series, spanning **{date_min}** to
-**{date_max}**. Currently **{n:,}** daily records.
-
-## Dataset description
-
-Earth Orientation Parameters (EOP) describe the irregularities in Earth's rotation and
-the motion of its poles. These parameters are essential for transforming between
-celestial and terrestrial reference frames, which is critical for:
-
-- **Satellite operations**: precise orbit determination and manoeuvre planning
-- **GPS/GNSS**: sub-centimetre positioning requires accurate UT1-UTC and polar motion
-- **Precise pointing**: telescope and antenna tracking, deep-space navigation
-- **Geodesy**: monitoring Earth's rotation rate, polar wander, and length of day
-
-The IERS finals2000A series combines observed values (from VLBI, SLR, GPS) with
-predictions extending ~1 year into the future.
-
-Earth's rotation is not uniform. The planet's spin axis wanders relative to both the crust (polar motion) and the celestial reference frame (precession and nutation), while the rotation rate itself fluctuates on timescales from hours to millennia. Polar motion consists of two main components: the Chandler wobble (a free oscillation with a period of approximately 433 days and amplitude of 0.1-0.2 arcseconds, equivalent to 3-6 meters at the pole) and an annual oscillation driven by seasonal redistribution of atmospheric and oceanic mass. Superimposed on these is a secular drift of the pole toward roughly 80 degrees W longitude at about 10 cm/year, driven by post-glacial rebound of the mantle.
-
-The UT1-UTC difference tracks the accumulated departure of Earth's rotational angle from atomic time. Earth's rotation is gradually slowing due to tidal dissipation (primarily lunar tides in the oceans), causing UT1 to drift behind UTC at an average rate of roughly 2 milliseconds per day. This secular trend is punctuated by irregular decadal fluctuations attributed to core-mantle coupling, and by shorter-period variations from atmospheric angular momentum exchange. When |UT1-UTC| approaches 0.9 seconds, the IERS directs the insertion of a leap second. The length-of-day (LOD) excess, also provided in this dataset, is the time derivative of UT1-UTC and directly reflects these torques.
-
-These parameters are not merely of academic interest -- they are operationally critical. A 1-milliarcsecond error in polar motion corresponds to roughly 3 cm of positioning error on Earth's surface, which propagates directly into satellite orbit determination, GNSS navigation solutions, and synthetic aperture radar interferometry. Deep-space missions require UT1-UTC to millimetre-equivalent accuracy for precise antenna pointing and Doppler tracking. The nutation offsets (dX, dY) correct the IAU 2000A precession-nutation model for the unpredictable influence of the fluid core's free core nutation, with a period near 430 days and amplitudes of order 0.1-0.3 milliarcseconds.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `date` | datetime | Calendar date in UTC of the EOP measurement; daily cadence from 1962-01-01 to present; values after the last bulletin date are IERS short-term predictions, not observations |
-| `mjd` | float64 | Modified Julian Date = Julian Date − 2400000.5; a compact decimal day count used throughout astronomy and geodesy; J2000.0 corresponds to MJD 51544.5; enables direct arithmetic on time differences without calendar conversions |
-| `x_pole_arcsec` | float64 | x-component of polar motion in arcseconds — eastward offset of Earth's instantaneous rotation pole from the IERS Reference Pole along the Greenwich meridian; typical range ±0.5 arcsec; driven by atmospheric and oceanic angular momentum exchanges and solid Earth effects; a 1 mas error causes ~3 cm surface positioning error |
-| `y_pole_arcsec` | float64 | y-component of polar motion in arcseconds — offset of Earth's rotation pole along the 90°W meridian; typical range ±0.5 arcsec; required together with x_pole_arcsec to transform between celestial (ICRF) and terrestrial (ITRF) coordinate frames |
-| `ut1_utc_sec` | float64 | Difference UT1 − UTC in seconds; UT1 tracks Earth's actual rotational angle while UTC uses fixed SI seconds; Earth's irregular rotation causes this value to drift; bounded to ±0.9 s by periodic leap-second insertions; essential for sidereal time and spacecraft antenna pointing calculations |
-| `lod_ms` | float64 | Excess length of day above 86400 SI seconds, in milliseconds; positive = Earth rotating slower than nominal; reflects the instantaneous time derivative of UT1-UTC; driven mainly by atmospheric angular momentum exchange on sub-annual timescales |
-| `dx_mas` | float64 | Celestial pole offset dX in milliarcseconds — observed deviation of the celestial intermediate pole from the IAU 2000/2006 precession-nutation model along the X axis; typically a few hundred microarcseconds; corrects for unpredictable fluid-core free nutation with ~430-day period |
-| `dy_mas` | float64 | Celestial pole offset dY in milliarcseconds — observed deviation along the Y axis complementing dX; together dX and dY provide the residual nutation corrections needed for the highest-precision celestial mechanics and VLBI analysis |
-
-## Quick stats
-
-- **{n:,}** daily records ({date_min} to {date_max})
-
-## Usage
-
+    usage = f"""\
 ```python
 from datasets import load_dataset
 
@@ -207,55 +150,45 @@ ax.set_xlabel("x pole (arcsec)")
 ax.set_ylabel("y pole (arcsec)")
 ax.set_title("Polar Motion")
 plt.show()
-```
+```"""
 
-## Data source
-
-[International Earth Rotation and Reference Systems Service (IERS)](https://www.iers.org/)
-finals2000A data series from the IERS Earth Orientation Centre.
-
-## Update schedule
-
-Daily at 13:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-datasets).
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/iers-earth-orientation) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{iers_earth_orientation,
-  author = {{Simon, Julien}},
-  title = {{IERS Earth Orientation Parameters}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/iers-earth-orientation}},
-  note = {{Based on IERS finals2000A Earth Orientation Parameters}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update IERS EOP: {n:,} records"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="IERS Earth Orientation Parameters",
+        description=DESCRIPTION,
+        tags=["space", "earth-orientation", "iers", "geodesy", "ut1",
+              "polar-motion", "open-data", "tabular-data", "parquet"],
+        source_url="https://www.iers.org/",
+        update_schedule="Daily at 13:00 UTC via [GitHub Actions](https://github.com/juliensimon/space-datasets).",
+        task_categories=["tabular-regression"],
+        collection_url="https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/iss072e159172/iss072e159172~medium.jpg",
+            "alt": "Aurora borealis blankets the Earth, seen from the ISS",
+            "credit": "NASA",
+        },
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=[
+                "mjd", "x_pole_arcsec", "y_pole_arcsec",
+                "sigma_x_pole_arcsec", "sigma_y_pole_arcsec",
+                "ut1_utc_sec", "sigma_ut1_utc_sec",
+                "lod_ms", "dx_mas", "dy_mas",
+            ],
+            drop_mostly_null_threshold=0.95,
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={n}\n")
+        p.publish(
+            df,
+            filename="iers_earth_orientation.parquet",
+            min_rows=10000,
+            expected_columns=["date", "x_pole_arcsec", "y_pole_arcsec", "ut1_utc_sec"],
+            critical_columns=["date", "x_pole_arcsec", "y_pole_arcsec"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update IERS EOP: {n:,} records",
+        )
     print("Done.")
 
 

@@ -7,16 +7,12 @@ UV+optical+IR SED fitting (Salim et al. 2016, 2018).
 """
 
 import io
-import subprocess
-import tempfile
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
 
 SOURCE_URL = "https://salims.pages.iu.edu/gswlc/GSWLC-X2.dat.gz"
 HF_REPO = "juliensimon/gswlc-galaxy-properties"
@@ -49,20 +45,71 @@ COLUMNS = [
     "flag_mgs",        # 24 SDSS Main Galaxy Sample flag
 ]
 
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "objid": "SDSS photometric object ID (18-digit integer from the SDSS imaging pipeline); primary cross-match key",
+    "glxid": "GALEX photometric object ID for UV cross-match; null (originally -99) if no GALEX source within matching radius",
+    "plate": "SDSS spectroscopic plate number; combined with mjd and fiber_id uniquely identifies the spectrum",
+    "mjd": "Modified Julian Date of the SDSS spectroscopic observation; integer days since 1858-11-17",
+    "fiber_id": "SDSS spectroscopic fiber number on the plate (1-1000); combined with plate+mjd locates the spectrum",
+    "ra": "ICRS J2000.0 right ascension in degrees (0-360)",
+    "dec": "ICRS J2000.0 declination in degrees (-90 to +90)",
+    "redshift": "Spectroscopic redshift from SDSS; catalog range 0.01 < z < 0.30",
+    "chi2_r": "Reduced chi-squared of the best-fit SED model; values > 5 indicate a poor fit; null for failed fits",
+    "log_mstar": "Log10 stellar mass in solar masses from SED fitting; range ~8 to ~12 (i.e., 10^8-10^12 M_sun); null if SED fit failed",
+    "log_mstar_err": "1-sigma uncertainty on log_mstar in dex; typically 0.05-0.15 dex; null if log_mstar is null",
+    "log_sfr_sed": "Log10 star formation rate from UV+optical SED fit in M_sun/yr; quiescent: < -1, main sequence: 0-3; null if SED fit failed",
+    "log_sfr_sed_err": "1-sigma uncertainty on log_sfr_sed in dex; typically 0.1-0.3 dex; null if log_sfr_sed is null",
+    "a_fuv": "Dust attenuation in the rest-frame far-UV (FUV ~1528 A) in magnitudes; 0 = transparent, ~5 for heavily obscured starbursts; null if SED fit failed",
+    "a_fuv_err": "1-sigma uncertainty on a_fuv in magnitudes; null if a_fuv is null",
+    "a_b": "Dust attenuation in the rest-frame B band (~4400 A) in magnitudes; typically 0-2 mag; null if SED fit failed",
+    "a_b_err": "1-sigma uncertainty on a_b in magnitudes; null if a_b is null",
+    "a_v": "Dust attenuation in the rest-frame V band (~5500 A) in magnitudes; 0 = transparent, 2+ = heavily obscured; null if SED fit failed",
+    "a_v_err": "1-sigma uncertainty on a_v in magnitudes; null if a_v is null",
+    "flag_sed": "SED fitting quality flag: 0 = good fit; 1 = broad-line AGN (UV contaminated); 2 = poor fit (chi2_r > 30); 5 = missing photometry",
+    "uv_survey": "GALEX UV survey depth used: 1 = shallow (AIS, ~100 s), 2 = medium (MIS, ~1500 s), 3 = deep (DIS, ~30000 s)",
+    "flag_uv": "UV detection status: 0 = no UV detection, 1 = FUV only detected, 2 = NUV only detected, 3 = both FUV and NUV detected",
+    "flag_midir": "WISE mid-IR photometry flag: 0 = no WISE detection, 1 = W3 (12 um) only, 2 = W4 (22 um) only, 5 = AGN contribution corrected",
+    "flag_mgs": "SDSS Main Galaxy Sample membership: 1 = in the MGS (r < 17.77, complete flux-limited sample), 0 = outside MGS selection",
+    "log_ssfr": "Derived: log10 specific star formation rate = log_sfr_sed - log_mstar in yr^-1; quiescent galaxies: < -11, main-sequence: -9.5 to -10.5; null if either parent column is null",
+    "is_star_forming": "Derived: True if log_ssfr > -11 (above the quenching threshold); False for quiescent/passive galaxies",
+    "uv_survey_name": "Derived: human-readable UV survey label ('GSWLC-A', 'GSWLC-M', or 'GSWLC-D') mapped from uv_survey",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Physical properties for ~659,000 galaxies derived from UV-to-infrared spectral energy \
+distribution (SED) fitting. GSWLC-2 (GALEX-SDSS-WISE Legacy Catalog 2) combines ultraviolet \
+photometry from GALEX, optical photometry from SDSS, and mid-infrared photometry from WISE to \
+estimate stellar masses, star formation rates, and dust attenuation for galaxies at redshifts \
+0.01 < z < 0.30.
+
+The GSWLC is the definitive catalog for physical properties of low-redshift galaxies, covering \
+~90% of the SDSS spectroscopic footprint. Version 2 (Salim et al. 2018) incorporates WISE \
+mid-IR photometry to better constrain dust-obscured star formation. Physical properties are \
+derived using the CIGALE SED fitting code with Bayesian estimation.
+
+Understanding how galaxies form stars and build up their stellar mass is one of the central \
+questions in extragalactic astronomy. The star formation rate and stellar mass are linked \
+through the star formation main sequence. GSWLC provides the definitive measurement of these \
+quantities for the low-redshift galaxy population, with the critical advantage that mid-infrared \
+photometry from WISE captures dust-reprocessed emission missed by UV and optical observations.
+
+This catalog is the standard reference for calibrating star formation rate indicators, studying \
+the quenching of star formation in massive galaxies, and constructing volume-limited galaxy \
+samples. The specific star formation rate (sSFR) cleanly separates the star-forming blue cloud \
+from the quiescent red sequence, making GSWLC a natural training set for galaxy classification.
+"""
+
 
 def main():
     print("Fetching GSWLC-X2 catalog...")
     resp = requests.get(SOURCE_URL, timeout=300)
     resp.raise_for_status()
 
-    # The server sets Content-Encoding: x-gzip, so `requests` auto-decompresses
-    # the response. resp.content is already plain text, not gzip bytes.
-    # Detect which case we're in by checking the gzip magic number.
+    # The server may auto-decompress gzip; detect which case we're in
     raw = resp.content
-    if raw[:2] == b"\x1f\x8b":
-        compression = "gzip"
-    else:
-        compression = None
+    compression = "gzip" if raw[:2] == b"\x1f\x8b" else None
 
     df = pd.read_csv(
         io.BytesIO(raw),
@@ -72,16 +119,12 @@ def main():
         names=COLUMNS,
         dtype=str,  # read all as string first, coerce below
     )
-
     print(f"  {len(df):,} galaxies, {len(df.columns)} columns")
 
     # ── Type coercion ─────────────────────────────────────────────────
     # IDs
-    df["objid"] = pd.to_numeric(df["objid"], errors="coerce").astype("Int64")
-    df["glxid"] = pd.to_numeric(df["glxid"], errors="coerce").astype("Int64")
-    df["plate"] = pd.to_numeric(df["plate"], errors="coerce").astype("Int64")
-    df["mjd"] = pd.to_numeric(df["mjd"], errors="coerce").astype("Int64")
-    df["fiber_id"] = pd.to_numeric(df["fiber_id"], errors="coerce").astype("Int64")
+    for col in ["objid", "glxid", "plate", "mjd", "fiber_id"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
 
     # Coordinates and redshift
     for col in ["ra", "dec", "redshift"]:
@@ -103,8 +146,7 @@ def main():
     for col in ["flag_sed", "uv_survey", "flag_uv", "flag_midir", "flag_mgs"]:
         df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
 
-    # ── Handle missing values (-99 → NaN) ────────────────────────────
-    # Per documentation: missing values are listed as -99
+    # ── Handle missing values (-99 -> NaN) ────────────────────────────
     sentinel_cols = [
         "log_mstar", "log_mstar_err",
         "log_sfr_sed", "log_sfr_sed_err",
@@ -132,7 +174,10 @@ def main():
     uv_survey_map = {1: "GSWLC-A", 2: "GSWLC-M", 3: "GSWLC-D"}
     df["uv_survey_name"] = df["uv_survey"].map(uv_survey_map)
 
-    # ── Stats for README ──────────────────────────────────────────────
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
+
+    # ── Domain-specific stats for README ──────────────────────────────
     valid_mass = df["log_mstar"].notna()
     valid_sfr = df["log_sfr_sed"].notna()
     n_star_forming = int(df["is_star_forming"].sum())
@@ -140,128 +185,16 @@ def main():
     median_mass = df.loc[valid_mass, "log_mstar"].median()
     median_z = df["redshift"].median()
 
-    # ── Validate ──────────────────────────────────────────────────────
-    check_dataset(
-        df,
-        dataset_name="gswlc-galaxy-properties",
-        min_rows=500_000,
-        expected_columns=[
-            "objid", "ra", "dec", "redshift",
-            "log_mstar", "log_sfr_sed", "log_ssfr",
-            "a_fuv", "a_v",
-            "flag_sed", "uv_survey", "flag_uv",
-            "is_star_forming",
-        ],
-        critical_columns=["ra", "dec", "redshift", "objid"],
-    )
-
-    # ── Write and upload ──────────────────────────────────────────────
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "gswlc_galaxy_properties.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("gswlc", tmp)
-        banner_md = banner_markdown("gswlc", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "GSWLC-2 Galaxy Properties"
-language:
-  - en
-description: "659K galaxies with stellar masses, star formation rates, and dust attenuation from UV+optical+IR SED fitting of GALEX, SDSS, and WISE photometry."
-task_categories:
-  - tabular-classification
-  - tabular-regression
-tags:
-  - space
-  - galaxies
-  - stellar-mass
-  - star-formation
-  - sdss
-  - galex
-  - wise
-  - astronomy
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 100K<n<1M
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/gswlc_galaxy_properties.parquet
-    default: true
----
-
-# GSWLC-2 Galaxy Properties
-{banner_md}
-*Part of the [Astronomy Datasets](https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743) collection on Hugging Face.*
-
-**{len(df):,}** galaxies with physical properties derived from UV-to-infrared spectral energy distribution (SED) fitting. GSWLC-2 (GALEX-SDSS-WISE Legacy Catalog 2) combines ultraviolet photometry from GALEX, optical photometry from SDSS, and mid-infrared photometry from WISE to estimate stellar masses, star formation rates, and dust attenuation for galaxies at redshifts 0.01 < z < 0.30.
-
-## Dataset description
-
-The GSWLC is the definitive catalog for physical properties of low-redshift galaxies, covering ~90% of the SDSS spectroscopic footprint. Version 2 (Salim et al. 2018) incorporates WISE mid-IR photometry to better constrain dust-obscured star formation. The "X" variant (GSWLC-X2) is the master catalog that selects the deepest available UV observation for each galaxy from the A (shallow), M (medium), and D (deep) sub-catalogs.
-
-Physical properties are derived using the CIGALE SED fitting code with Bayesian estimation of stellar mass, star formation rate, and dust attenuation.
-
-Understanding how galaxies form stars and build up their stellar mass is one of the central questions in extragalactic astronomy. The star formation rate and stellar mass of a galaxy are linked through a remarkably tight correlation known as the star formation main sequence, whose slope, normalization, and scatter encode the physics of gas accretion, feedback, and quenching. GSWLC provides the definitive measurement of these quantities for the low-redshift galaxy population, with the critical advantage that mid-infrared photometry from WISE captures dust-reprocessed emission that would otherwise be missed by UV and optical observations alone.
-
-Dust attenuation is one of the largest systematic uncertainties in galaxy SED modeling. Dust grains absorb ultraviolet and optical photons from young stars and re-emit the energy in the far-infrared, meaning that purely optical surveys systematically underestimate star formation rates in dusty galaxies. By jointly fitting the UV (GALEX), optical (SDSS), and mid-IR (WISE) photometry, GSWLC-2 breaks the age-dust-metallicity degeneracy that plagues single-band analyses and delivers attenuation curves alongside physical properties. The A_FUV values in this catalog directly quantify how much UV light each galaxy has lost to dust.
-
-This catalog is the standard reference for calibrating star formation rate indicators, studying the quenching of star formation in massive galaxies, and constructing volume-limited galaxy samples for environmental studies. The specific star formation rate (sSFR) cleanly separates the star-forming blue cloud from the quiescent red sequence, making GSWLC a natural training set for galaxy classification problems in machine learning.
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{len(df):,}** galaxies in the catalog
 - **{valid_mass.sum():,}** with valid stellar mass estimates
 - **{valid_sfr.sum():,}** with valid SFR estimates
 - **{n_star_forming:,}** classified as star-forming (log sSFR > -11)
 - **{n_quiescent:,}** classified as quiescent
-- Median stellar mass: **10^{{{median_mass:.2f}}}** solar masses
-- Median redshift: **{median_z:.4f}**
+- Median stellar mass: **10^{median_mass:.2f}** solar masses
+- Median redshift: **{median_z:.4f}**"""
 
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `objid` | int64 | SDSS photometric object ID (18-digit integer from the SDSS imaging pipeline); primary cross-match key |
-| `glxid` | int64 | GALEX photometric object ID for UV cross-match; null (originally -99) if no GALEX source within matching radius |
-| `plate` | int64 | SDSS spectroscopic plate number; combined with mjd and fiber_id uniquely identifies the spectrum |
-| `mjd` | int64 | Modified Julian Date of the SDSS spectroscopic observation; integer days since 1858-11-17 |
-| `fiber_id` | int64 | SDSS spectroscopic fiber number on the plate (1–1000); combined with plate+mjd locates the spectrum |
-| `ra` | float64 | ICRS J2000.0 right ascension in degrees (0–360) |
-| `dec` | float64 | ICRS J2000.0 declination in degrees (-90–+90) |
-| `redshift` | float64 | Spectroscopic redshift from SDSS; catalog range 0.01 < z < 0.30 |
-| `chi2_r` | float64 | Reduced chi-squared of the best-fit SED model; values > 5 indicate a poor fit; null for failed fits |
-| `log_mstar` | float64 | Log10 stellar mass in solar masses from SED fitting; range ~8 to ~12 (i.e., 10^8–10^12 M_sun); null if SED fit failed |
-| `log_mstar_err` | float64 | 1-sigma uncertainty on log_mstar in dex; typically 0.05–0.15 dex; null if log_mstar is null |
-| `log_sfr_sed` | float64 | Log10 star formation rate from UV+optical SED fit in M_sun/yr; quiescent: < -1, main sequence star-forming: 0–3; null if SED fit failed |
-| `log_sfr_sed_err` | float64 | 1-sigma uncertainty on log_sfr_sed in dex; typically 0.1–0.3 dex; null if log_sfr_sed is null |
-| `a_fuv` | float64 | Dust attenuation in the rest-frame far-UV (FUV ~1528 Å) in magnitudes; 0 = transparent, ~5 for heavily obscured starbursts; null if SED fit failed |
-| `a_fuv_err` | float64 | 1-sigma uncertainty on a_fuv in magnitudes; null if a_fuv is null |
-| `a_b` | float64 | Dust attenuation in the rest-frame B band (~4400 Å) in magnitudes; typically 0–2 mag; null if SED fit failed |
-| `a_b_err` | float64 | 1-sigma uncertainty on a_b in magnitudes; null if a_b is null |
-| `a_v` | float64 | Dust attenuation in the rest-frame V band (~5500 Å) in magnitudes; 0 = transparent, 2+ = heavily obscured; null if SED fit failed |
-| `a_v_err` | float64 | 1-sigma uncertainty on a_v in magnitudes; null if a_v is null |
-| `flag_sed` | int64 | SED fitting quality flag: 0 = good fit; 1 = broad-line AGN (UV contaminated); 2 = poor fit (chi2_r > 30); 5 = missing photometry |
-| `uv_survey` | int64 | GALEX UV survey depth used: 1 = shallow (AIS, ~100 s), 2 = medium (MIS, ~1500 s), 3 = deep (DIS, ~30000 s) |
-| `flag_uv` | int64 | UV detection status: 0 = no UV detection, 1 = FUV only detected, 2 = NUV only detected, 3 = both FUV and NUV detected |
-| `flag_midir` | int64 | WISE mid-IR photometry flag: 0 = no WISE detection, 1 = W3 (12 um) only, 2 = W4 (22 um) only, 5 = AGN contribution corrected |
-| `flag_mgs` | int64 | SDSS Main Galaxy Sample membership: 1 = in the MGS (r < 17.77, complete flux-limited sample), 0 = outside MGS selection |
-| `log_ssfr` | float64 | Derived: log10 specific star formation rate = log_sfr_sed - log_mstar in yr^-1; quiescent galaxies: < -11, main-sequence: -9.5 to -10.5; null if either parent column is null |
-| `is_star_forming` | bool | Derived: True if log_ssfr > -11 (above the quenching threshold); False for quiescent/passive galaxies |
-| `uv_survey_name` | string | Derived: human-readable UV survey label ("GSWLC-A", "GSWLC-M", or "GSWLC-D") mapped from uv_survey |
-
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -281,57 +214,55 @@ plt.hexbin(valid["log_mstar"], valid["log_sfr_sed"], gridsize=100, mincnt=1)
 plt.xlabel("log M* (Msun)")
 plt.ylabel("log SFR (Msun/yr)")
 plt.title("Star Formation Main Sequence")
+plt.colorbar(label="Count")
+plt.show()
+```"""
 
-# Dusty galaxies (high FUV attenuation)
-dusty = df[df["a_fuv"] > 3.0]
-
-# Cross-match with SDSS using objid
-```
-
-## Data source
-
-[GSWLC-2](https://salims.pages.iu.edu/gswlc/) — Salim et al. (2016, 2018).
-
-- Salim et al. (2016), "GALEX-SDSS-WISE Legacy Catalog (GSWLC): Star Formation Rates, Stellar Masses, and Dust Attenuations of 700,000 Low-Redshift Galaxies", *ApJS*, 227, 2. [arXiv:1610.00712](https://arxiv.org/abs/1610.00712)
-- Salim et al. (2018), "Dust Attenuation Curves in the Local Universe: Demographics and New Laws for Star-forming Galaxies and High-redshift Analogs", *ApJ*, 859, 11. [arXiv:1804.05850](https://arxiv.org/abs/1804.05850)
-
-## Related datasets
-
-- [galaxy-zoo-2-morphology](https://huggingface.co/datasets/juliensimon/galaxy-zoo-2-morphology) — Galaxy Zoo 2 visual morphological classifications
-- [open-ngc](https://huggingface.co/datasets/juliensimon/ngc-ic-catalog) — NGC/IC galaxy and nebula catalog
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Citation
-
-```bibtex
-@dataset{{gswlc_galaxy_properties,
-  author = {{Simon, Julien}},
-  title = {{GSWLC-2 Galaxy Properties}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/gswlc-galaxy-properties}},
-  note = {{Based on GSWLC-2 data (Salim et al. 2016, ApJS 227, 2; Salim et al. 2018, ApJ 859, 11)}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Upload GSWLC-2 galaxy properties: {len(df):,} galaxies"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="GSWLC-2 Galaxy Properties",
+        description=DESCRIPTION,
+        tags=["space", "galaxies", "stellar-mass", "star-formation",
+              "sdss", "galex", "wise", "astronomy",
+              "open-data", "tabular-data", "parquet"],
+        source_url="https://salims.pages.iu.edu/gswlc/",
+        task_categories=["tabular-classification", "tabular-regression"],
+        collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA12110/PIA12110~small.jpg",
+            "alt": "Hubble Deep Field revealing myriad galaxies across cosmic time",
+            "credit": "NASA/ESA/STScI",
+        },
+        related_datasets=[
+            "juliensimon/galaxy-zoo-2-morphology",
+            "juliensimon/ngc-ic-catalog",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=["ra", "dec", "redshift", "chi2_r",
+                      "log_mstar", "log_mstar_err",
+                      "log_sfr_sed", "log_sfr_sed_err",
+                      "a_fuv", "a_fuv_err", "a_b", "a_b_err",
+                      "a_v", "a_v_err", "log_ssfr"],
+            drop_mostly_null_threshold=0.95,
         )
-
-    print(f"rows={len(df)}")
+        p.publish(
+            df,
+            filename="gswlc_galaxy_properties.parquet",
+            min_rows=500_000,
+            expected_columns=[
+                "objid", "ra", "dec", "redshift",
+                "log_mstar", "log_sfr_sed", "log_ssfr",
+                "a_fuv", "a_v", "flag_sed", "uv_survey",
+                "flag_uv", "is_star_forming",
+            ],
+            critical_columns=["ra", "dec", "redshift", "objid"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Upload GSWLC-2 galaxy properties: {len(df):,} galaxies",
+        )
     print("Done.")
 
 

@@ -15,23 +15,16 @@ table are merged in via asteroid number.
 
 import gc
 import io
-import subprocess
-import tempfile
-from pathlib import Path
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
 
 BASE_URL = "https://sbnarchive.psi.edu/pds3/non_mission/EAR_A_I0035_5_SDSSTAX_V1_1/data"
 HF_REPO = "juliensimon/sdss-asteroid-taxonomy"
-MIN_ROWS = 50_000
 
 # ── PDS3 fixed-width column specs (from .lbl files) ─────────────────────────
-# (name, start_0based, width)
-
 OBS_COLSPECS = [
     ("ast_number",              0,   6),
     ("ast_name",                7,  17),
@@ -72,6 +65,65 @@ AST_COLSPECS = [
     ("osc_inclination_deg",   110,   7),
 ]
 
+COLUMN_DESCRIPTIONS = {
+    "object_id": "Primary identifier (asteroid number or provisional designation)",
+    "ast_number": "IAU asteroid catalog number (null for unnumbered)",
+    "ast_name": "IAU asteroid name (null if unnamed)",
+    "prov_desig": "Provisional designation at discovery",
+    "tax_class": "Taxonomic class for this observation (C/S/V/Q/D/L/X/A/O or compound e.g. SQ/CX)",
+    "score": "Probability score for assigned class (0-100)",
+    "moid": "Unique SDSS moving-object observation ID",
+    "bad_flag": "1 if any magnitude uncertainty exceeds 3rd quartile",
+    "log_refl_u": "Log reflectance, SDSS u' band",
+    "log_refl_err_u": "Uncertainty of u' log reflectance",
+    "log_refl_g": "Log reflectance, SDSS g' band (reference = 1.0)",
+    "log_refl_err_g": "Uncertainty of g' log reflectance",
+    "log_refl_r": "Log reflectance, SDSS r' band",
+    "log_refl_err_r": "Uncertainty of r' log reflectance",
+    "log_refl_i": "Log reflectance, SDSS i' band",
+    "log_refl_err_i": "Uncertainty of i' log reflectance",
+    "log_refl_z": "Log reflectance, SDSS z' band",
+    "log_refl_err_z": "Uncertainty of z' log reflectance",
+    "classification": "Best overall class for this asteroid (most frequent or highest score)",
+    "score_best": "Probability score for best classification",
+    "n_class": "Number of classified SDSS observations for this asteroid",
+    "method": "1 = most frequent class chosen, 0 = highest score chosen",
+    "sequence": "Sequence of per-observation class assignments",
+    "abs_mag_h": "Absolute magnitude H from SDSS MOC",
+    "proper_semimajor_au": "Proper semi-major axis (AU), null if unavailable",
+    "proper_eccentricity": "Proper eccentricity, null if unavailable",
+    "sin_proper_inclination": "Sine of proper inclination, null if unavailable",
+    "osc_semimajor_au": "Osculating semi-major axis (AU)",
+    "osc_eccentricity": "Osculating eccentricity",
+    "osc_inclination_deg": "Osculating inclination (degrees)",
+}
+
+DESCRIPTION = """\
+Compositional taxonomy for over 100,000 SDSS photometric observations of ~63,000 \
+asteroids, classified using the scheme of Carvano et al. (2010). Each observation includes \
+SDSS u'g'r'i'z' log-reflectances, a taxonomic class assignment, and a probability score. \
+Orbital elements from the asteroid catalog are merged in for asteroids with known orbits.
+
+The Sloan Digital Sky Survey (SDSS) Moving Object Catalog observed over 100,000 asteroids \
+in five photometric bands (u', g', r', i', z') between 1998 and 2007. Carvano et al. (2010) \
+developed a probabilistic taxonomic classification scheme based on SDSS colors, assigning \
+each observation to one of nine primary compositional classes inspired by the Bus taxonomy: \
+V (basaltic), O (olivine-rich), Q (ordinary chondrite-like), S (silicaceous), A (strongly \
+reddened), L (moderately reddened), D (very red, organic-rich), X (degenerate featureless), \
+and C (carbon-rich, featureless).
+
+When an observation falls near a class boundary, a two-letter compound class is assigned \
+(e.g., SQ, CX, LS) indicating ambiguity between the two types. Each observation receives \
+a probability score (0--100) for the assigned class.
+
+The SDSS taxonomy dramatically expanded the number of compositionally characterized asteroids \
+from a few thousand (spectroscopic surveys) to over 60,000 unique objects, making it the \
+largest photometric taxonomy ever produced. This dataset is particularly valuable for studying \
+compositional gradients across the main asteroid belt -- silicate-rich S-types dominate the \
+warm inner belt, carbonaceous C-types prevail in the cooler outer belt, and the transition \
+zone near 2.7 AU marks the approximate location of the primordial snow line.
+"""
+
 
 def _read_pds_table(url: str, colspecs: list[tuple]) -> pd.DataFrame:
     """Download a PDS3 fixed-width table and parse it."""
@@ -81,7 +133,7 @@ def _read_pds_table(url: str, colspecs: list[tuple]) -> pd.DataFrame:
     print(f"    {len(resp.content) / 1024 / 1024:.1f} MB")
 
     names = [c[0] for c in colspecs]
-    specs = [(c[1], c[1] + c[2]) for c in colspecs]  # (start, end) 0-based
+    specs = [(c[1], c[1] + c[2]) for c in colspecs]
 
     text = resp.text
     del resp
@@ -96,7 +148,6 @@ def _read_pds_table(url: str, colspecs: list[tuple]) -> pd.DataFrame:
     del text
     gc.collect()
 
-    # Strip whitespace from all string columns
     for col in df.columns:
         df[col] = df[col].astype(str).str.strip()
         df[col] = df[col].replace({"nan": None, "": None, "-": None})
@@ -127,7 +178,7 @@ def main():
     for col in float_cols_obs:
         obs_df[col] = pd.to_numeric(obs_df[col], errors="coerce")
 
-    # ── Type coercion — asteroid table (orbital elements to merge) ───────
+    # ── Type coercion — asteroid table ───────────────────────────────────
     ast_df["ast_number"] = pd.to_numeric(ast_df["ast_number"], errors="coerce").astype("Int64")
     ast_df["score_best"] = pd.to_numeric(ast_df["score_best"], errors="coerce").astype("Int64")
     ast_df["n_class"] = pd.to_numeric(ast_df["n_class"], errors="coerce").astype("Int64")
@@ -142,7 +193,7 @@ def main():
     for col in float_cols_ast:
         ast_df[col] = pd.to_numeric(ast_df[col], errors="coerce")
 
-    # Replace PDS sentinel: proper elements = 0.0 means no proper elements available
+    # Replace PDS sentinel: proper elements = 0.0 means unavailable
     for col in ["proper_semimajor_au", "proper_eccentricity", "sin_proper_inclination"]:
         ast_df.loc[ast_df[col] == 0.0, col] = None
 
@@ -157,20 +208,16 @@ def main():
     del ast_df
     gc.collect()
 
-    # Exclude ast_number == 0 or null from merge to avoid cartesian product
-    # (many unnumbered observations would cross-join with many unnumbered asteroids)
     obs_numbered = obs_df[obs_df["ast_number"].notna() & (obs_df["ast_number"] != 0)]
     obs_unnumbered = obs_df[obs_df["ast_number"].isna() | (obs_df["ast_number"] == 0)]
     ast_merge_valid = ast_merge[ast_merge["ast_number"].notna() & (ast_merge["ast_number"] != 0)]
     del obs_df
     gc.collect()
 
-    # Merge only numbered asteroids
     merged_numbered = obs_numbered.merge(ast_merge_valid, on="ast_number", how="left")
     del obs_numbered, ast_merge_valid, ast_merge
     gc.collect()
 
-    # For unnumbered observations, add empty merge columns
     for col in merge_cols:
         if col != "ast_number" and col not in obs_unnumbered.columns:
             obs_unnumbered[col] = None
@@ -194,22 +241,8 @@ def main():
 
     df["object_id"] = df.apply(_make_object_id, axis=1)
 
-    # ── Final column ordering ────────────────────────────────────────────
-    final_cols = [
-        "object_id", "ast_number", "ast_name", "prov_desig",
-        "tax_class", "score", "moid", "bad_flag",
-        "log_refl_u", "log_refl_err_u",
-        "log_refl_g", "log_refl_err_g",
-        "log_refl_r", "log_refl_err_r",
-        "log_refl_i", "log_refl_err_i",
-        "log_refl_z", "log_refl_err_z",
-        # From asteroid table merge:
-        "classification", "score_best", "n_class", "method", "sequence",
-        "abs_mag_h",
-        "proper_semimajor_au", "proper_eccentricity", "sin_proper_inclination",
-        "osc_semimajor_au", "osc_eccentricity", "osc_inclination_deg",
-    ]
-    df = df[final_cols]
+    # ── Final column ordering (keep only described columns) ──────────────
+    df = df[[c for c in COLUMN_DESCRIPTIONS if c in df.columns]]
 
     # ── Stats ────────────────────────────────────────────────────────────
     n_total = len(df)
@@ -225,144 +258,13 @@ def main():
         print(f"    {cls}: {cnt:,}")
     print(f"  {n_with_orbit:,} observations with orbital elements")
 
-    # ── Validate ─────────────────────────────────────────────────────────
-    check_dataset(
-        df,
-        dataset_name="sdss-taxonomy",
-        min_rows=MIN_ROWS,
-        expected_columns=[
-            "object_id", "tax_class", "score", "moid",
-            "log_refl_u", "log_refl_g", "log_refl_r", "log_refl_i", "log_refl_z",
-        ],
-        critical_columns=["object_id", "tax_class", "log_refl_r"],
-        max_null_pct=0.10,
-    )
-
-    # ── Write parquet + README ───────────────────────────────────────────
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "sdss_asteroid_taxonomy.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("sdss-taxonomy", tmp)
-        banner_md = banner_markdown("sdss-taxonomy", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "SDSS-based Asteroid Taxonomy"
-language:
-  - en
-description: "Compositional taxonomy for {n_total:,} SDSS observations of {n_asteroids:,} asteroids, with ugriz reflectances and orbital elements."
-task_categories:
-  - tabular-classification
-  - tabular-regression
-tags:
-  - space
-  - asteroids
-  - taxonomy
-  - composition
-  - sdss
-  - orbital-mechanics
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 100K<n<1M
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/sdss_asteroid_taxonomy.parquet
-    default: true
----
-
-# SDSS-based Asteroid Taxonomy
-{banner_md}
-*Part of the [Orbital Mechanics Datasets](https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994) collection on Hugging Face.*
-
-Compositional taxonomy for **{n_total:,}** SDSS photometric observations of **{n_asteroids:,}**
-asteroids, classified using the scheme of Carvano et al. (2010). Each observation includes
-SDSS u'g'r'i'z' log-reflectances, a taxonomic class assignment, and a probability score.
-Orbital elements from the asteroid catalog are merged in for asteroids with known orbits.
-
-## Dataset description
-
-The Sloan Digital Sky Survey (SDSS) Moving Object Catalog observed over 100,000 asteroids
-in five photometric bands (u', g', r', i', z') between 1998 and 2007. Carvano et al. (2010)
-developed a probabilistic taxonomic classification scheme based on SDSS colors, assigning
-each observation to one of nine primary compositional classes inspired by the Bus taxonomy:
-
-- **V** — Basaltic (V-type)
-- **O** — Olivine-rich (O-type)
-- **Q** — Ordinary chondrite-like (Q-type)
-- **S** — Silicaceous (S-complex)
-- **A** — Strongly reddened (A-type)
-- **L** — Moderately reddened (L-type)
-- **D** — Very red, organic-rich (D-type)
-- **X** — Degenerate featureless (X-complex)
-- **C** — Carbon-rich, featureless (C-complex)
-
-When an observation falls near a class boundary, a two-letter compound class is assigned
-(e.g., SQ, CX, LS) indicating ambiguity between the two types. Each observation receives
-a probability score (0--100) for the assigned class.
-
-The `classification` column gives the best overall class per asteroid (from the asteroid
-summary table), chosen as either the most frequent or highest-scoring class across all
-SDSS observations of that object.
-
-The SDSS taxonomy dramatically expanded the number of compositionally characterized asteroids from a few thousand (spectroscopic surveys) to over 60,000 unique objects, making it the largest photometric taxonomy ever produced. While broadband photometry cannot resolve the fine spectral features visible in spectroscopy, the five SDSS filters span a wavelength range (0.35--0.91 microns) that captures the key diagnostic features: the UV absorption shortward of 0.5 microns that separates C- and X-types, the 1-micron silicate band wing that identifies S- and V-types, and the overall spectral slope. The probabilistic classification approach assigns a confidence score to each observation, enabling users to filter for high-confidence assignments or study objects near taxonomic boundaries.
-
-This dataset is particularly valuable for studying compositional gradients across the main asteroid belt. The heliocentric distribution of taxonomic types records the thermal and chemical conditions of the protoplanetary disk at the time of planetesimal formation: silicate-rich S-types dominate the warm inner belt, carbonaceous C-types prevail in the cooler outer belt, and the transition zone near 2.7 AU marks the approximate location of the primordial snow line. Orbital elements merged from the asteroid summary table enable direct analysis of taxonomy as a function of semi-major axis, eccentricity, and inclination, as well as identification of dynamical family members sharing a common collisional origin.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `object_id` | string | Primary identifier (asteroid number or provisional designation) |
-| `ast_number` | Int64 | IAU asteroid catalog number (null for unnumbered) |
-| `ast_name` | string | IAU asteroid name (null if unnamed) |
-| `prov_desig` | string | Provisional designation at discovery |
-| `tax_class` | string | Taxonomic class for this observation (C/S/V/Q/D/L/X/A/O or compound e.g. SQ/CX) |
-| `score` | Int64 | Probability score for assigned class (0-100) |
-| `moid` | string | Unique SDSS moving-object observation ID |
-| `bad_flag` | Int64 | 1 if any magnitude uncertainty exceeds 3rd quartile |
-| `log_refl_u` | float64 | Log reflectance, SDSS u' band |
-| `log_refl_err_u` | float64 | Uncertainty of u' log reflectance |
-| `log_refl_g` | float64 | Log reflectance, SDSS g' band (reference = 1.0) |
-| `log_refl_err_g` | float64 | Uncertainty of g' log reflectance |
-| `log_refl_r` | float64 | Log reflectance, SDSS r' band |
-| `log_refl_err_r` | float64 | Uncertainty of r' log reflectance |
-| `log_refl_i` | float64 | Log reflectance, SDSS i' band |
-| `log_refl_err_i` | float64 | Uncertainty of i' log reflectance |
-| `log_refl_z` | float64 | Log reflectance, SDSS z' band |
-| `log_refl_err_z` | float64 | Uncertainty of z' log reflectance |
-| `classification` | string | Best overall class for this asteroid (most frequent or highest score) |
-| `score_best` | Int64 | Probability score for best classification |
-| `n_class` | Int64 | Number of classified SDSS observations for this asteroid |
-| `method` | Int64 | 1 = most frequent class chosen, 0 = highest score chosen |
-| `sequence` | string | Sequence of per-observation class assignments |
-| `abs_mag_h` | float64 | Absolute magnitude H from SDSS MOC |
-| `proper_semimajor_au` | float64 | Proper semi-major axis (AU), null if unavailable |
-| `proper_eccentricity` | float64 | Proper eccentricity, null if unavailable |
-| `sin_proper_inclination` | float64 | Sine of proper inclination, null if unavailable |
-| `osc_semimajor_au` | float64 | Osculating semi-major axis (AU) |
-| `osc_eccentricity` | float64 | Osculating eccentricity |
-| `osc_inclination_deg` | float64 | Osculating inclination (degrees) |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n_total:,}** observations of **{n_asteroids:,}** unique asteroids
 - **{n_classes}** taxonomic classes
 - Top classes: {', '.join(f'**{cls}** ({cnt:,})' for cls, cnt in top_classes.items())}
-- **{n_with_orbit:,}** observations with orbital elements
+- **{n_with_orbit:,}** observations with orbital elements"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -380,59 +282,50 @@ for cls in ["S", "C", "X", "V"]:
     plt.hist(subset["osc_semimajor_au"], bins=100, alpha=0.5, label=cls, density=True)
 plt.xlabel("Semi-major axis (AU)")
 plt.legend()
+plt.title("Taxonomic Distribution Across the Main Belt")
+plt.show()
+```"""
 
-# High-confidence V-type (basaltic) asteroids
-vesta_family = df[(df["tax_class"] == "V") & (df["score"] > 80)]
-
-# SDSS color-color diagram
-plt.scatter(df["log_refl_r"] - df["log_refl_i"],
-            df["log_refl_g"] - df["log_refl_r"],
-            c=df["tax_class"].astype("category").cat.codes, s=0.2, alpha=0.3)
-```
-
-## Data source
-
-[PDS Small Bodies Node — SDSS-based Asteroid Taxonomy V1.1](https://sbn.psi.edu/pds/resource/sdsstax.html)
-
-Based on SDSS Moving Object Catalog observations (1998-2007).
-See Carvano et al. (2010) and Ivezic et al. (2010).
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/sdss-asteroid-taxonomy) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{sdss_asteroid_taxonomy,
-  author = {{Simon, Julien}},
-  title = {{SDSS-based Asteroid Taxonomy}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/sdss-asteroid-taxonomy}},
-  note = {{Based on Carvano et al. (2010) SDSS taxonomy from the PDS Small Bodies Node}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Upload SDSS asteroid taxonomy: {n_total:,} observations of {n_asteroids:,} asteroids"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="SDSS-based Asteroid Taxonomy",
+        description=DESCRIPTION,
+        tags=["space", "asteroids", "taxonomy", "composition", "sdss",
+              "orbital-mechanics", "open-data", "tabular-data", "parquet"],
+        source_url="https://sbn.psi.edu/pds/resource/sdsstax.html",
+        task_categories=["tabular-classification", "tabular-regression"],
+        collection_url="https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA17666/PIA17666~small.jpg",
+            "alt": "Rosetta spacecraft approaching Comet 67P/Churyumov-Gerasimenko",
+            "credit": "NASA/ESA",
+        },
+        related_datasets=[
+            "juliensimon/neo-close-approaches",
+            "juliensimon/jpl-small-body-database",
+            "juliensimon/bus-demeo-asteroid-taxonomy",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=float_cols_obs + float_cols_ast,
+            drop_mostly_null_threshold=0.95,
         )
-
-    print(f"rows={n_total}")
+        p.publish(
+            df,
+            filename="sdss_asteroid_taxonomy.parquet",
+            min_rows=50_000,
+            expected_columns=[
+                "object_id", "tax_class", "score", "moid",
+                "log_refl_u", "log_refl_g", "log_refl_r", "log_refl_i", "log_refl_z",
+            ],
+            critical_columns=["object_id", "tax_class", "log_refl_r"],
+            max_null_pct=0.10,
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Upload SDSS asteroid taxonomy: {n_total:,} observations of {n_asteroids:,} asteroids",
+        )
     print("Done.")
 
 

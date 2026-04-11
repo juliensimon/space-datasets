@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Fetch Mars ChemCam MOC oxide compositions from PDS and upload to HF."""
+"""Fetch Mars ChemCam MOC oxide compositions from PDS and upload to HF.
+
+Source: PDS Geosciences Node — MSL ChemCam LIBS RDR
+Major Oxide Compositions (MOC) derived using PLS+ICA multivariate model.
+"""
 
 import io
 import re
-import subprocess
-import tempfile
 import time
-from pathlib import Path
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
 
 BASE_URL = (
     "https://pds-geosciences.wustl.edu"
@@ -40,18 +40,87 @@ CSV_FILES = [
 
 OXIDES = ["SiO2", "TiO2", "Al2O3", "FeOT", "MgO", "CaO", "Na2O", "K2O", "MnO"]
 
-# Columns we want from each CSV (after de-duplicating the +/- columns)
-# Raw header: File, Target, SiO2, +/-, SiO2 RMSEP, SiO2_shots_stdev, TiO2, +/-, ...
-#             ... Sum of Oxides, Distance (m), Laser Power, Spectrum Total
-# Raw CSV columns: File, Target, SiO2, +/-, SiO2 RMSEP, SiO2_shots_stdev, ...
-# The "+/-" columns are literal separators — we assign names then drop them.
+# Raw header: File, Target, SiO2, +/-, SiO2 RMSEP, SiO2_shots_stdev, ...
 _RAW_NAMES = ["file", "target"]
 for _ox in OXIDES:
     _lo = _ox.lower()
     _RAW_NAMES += [_lo, f"{_lo}_sep", f"{_lo}_rmsep", f"{_lo}_shots_stdev"]
 _RAW_NAMES += ["sum_of_oxides", "distance_m", "laser_power", "spectrum_total"]
 
-_SEP_COLS = [f"{ox.lower()}_sep" for ox in OXIDES]  # columns to drop
+_SEP_COLS = [f"{ox.lower()}_sep" for ox in OXIDES]
+
+# ── Column descriptions ─────────────────────────────────────────────
+COLUMN_DESCRIPTIONS = {
+    "file": "PDS spectrum filename (encodes sol, sequence, shot number)",
+    "target": "Rock or soil target name assigned by the mission team (e.g. 'Jake_M', 'Bathurst_Inlet'); each target receives ~30 laser shots",
+    "sio2": "Silicon dioxide weight percent (wt%); Martian basalt typically 45-55 wt%, felsic outliers >60 wt%",
+    "sio2_rmsep": "SiO2 root-mean-square error of prediction (wt%) from the PLS+ICA calibration model",
+    "sio2_shots_stdev": "SiO2 standard deviation across individual laser shots within this analysis point",
+    "tio2": "Titanium dioxide weight percent (wt%); typically 0.5-2 wt% in Martian basalts",
+    "tio2_rmsep": "TiO2 RMSEP from calibration model (wt%)",
+    "tio2_shots_stdev": "TiO2 shot-to-shot standard deviation (wt%)",
+    "al2o3": "Aluminum oxide weight percent (wt%); typically 8-15 wt%, higher in evolved/felsic rocks",
+    "al2o3_rmsep": "Al2O3 RMSEP from calibration model (wt%)",
+    "al2o3_shots_stdev": "Al2O3 shot-to-shot standard deviation (wt%)",
+    "feot": "Total iron reported as FeO weight percent (wt%); typically 15-25 wt% in Martian basalts",
+    "feot_rmsep": "FeOT RMSEP from calibration model (wt%)",
+    "feot_shots_stdev": "FeOT shot-to-shot standard deviation (wt%)",
+    "mgo": "Magnesium oxide weight percent (wt%); typically 5-15 wt% in mafic compositions",
+    "mgo_rmsep": "MgO RMSEP from calibration model (wt%)",
+    "mgo_shots_stdev": "MgO shot-to-shot standard deviation (wt%)",
+    "cao": "Calcium oxide weight percent (wt%); typically 5-12 wt%; high values indicate calcium-rich minerals",
+    "cao_rmsep": "CaO RMSEP from calibration model (wt%)",
+    "cao_shots_stdev": "CaO shot-to-shot standard deviation (wt%)",
+    "na2o": "Sodium oxide weight percent (wt%); typically 1-4 wt%; high values indicate alkali-rich rocks",
+    "na2o_rmsep": "Na2O RMSEP from calibration model (wt%)",
+    "na2o_shots_stdev": "Na2O shot-to-shot standard deviation (wt%)",
+    "k2o": "Potassium oxide weight percent (wt%); typically 0.2-1.5 wt%; enriched in some evolved rocks",
+    "k2o_rmsep": "K2O RMSEP from calibration model (wt%)",
+    "k2o_shots_stdev": "K2O shot-to-shot standard deviation (wt%)",
+    "mno": "Manganese oxide weight percent (wt%); typically <0.5 wt%; high values indicate oxidizing aqueous conditions",
+    "mno_rmsep": "MnO RMSEP from calibration model (wt%)",
+    "mno_shots_stdev": "MnO shot-to-shot standard deviation (wt%)",
+    "sum_of_oxides": "Sum of all nine major oxide weight percents; should total ~100 wt% for unaltered rock",
+    "distance_m": "Distance from ChemCam to target in meters; range 1.5-7 m",
+    "laser_power": "Laser pulse energy setting used for this analysis point (mJ)",
+    "spectrum_total": "Sum of all spectral channel intensities (arbitrary units); quality indicator for the LIBS plasma",
+    "sol_range_min": "Minimum sol number in the source MOC data file; Curiosity sol 0 = Aug 6 2012",
+    "sol_range_max": "Maximum sol number in the source MOC data file; each ~1.0275 Earth days",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Major oxide compositions of Mars surface rock and soil targets analyzed by the \
+ChemCam LIBS instrument on the Curiosity rover, from the PDS Geosciences Node.
+
+ChemCam fires a focused laser pulse at rock and soil targets up to ~7 meters \
+away, creating a plasma whose emission spectrum reveals elemental composition. \
+The Major Oxide Compositions (MOC) data product provides predicted weight \
+percentages for nine major oxides (SiO2, TiO2, Al2O3, FeOT, MgO, CaO, \
+Na2O, K2O, MnO) derived from the LIBS spectra using a combined PLS+ICA \
+multivariate model.
+
+Each row represents a single LIBS analysis point. Multiple points are \
+typically measured per target to characterize compositional variability. \
+Uncertainty estimates (RMSEP and shot-to-shot standard deviation) are \
+provided for each oxide.
+
+Laser-Induced Breakdown Spectroscopy (LIBS) is a technique where a focused pulsed \
+laser ablates a small amount of material from a target surface, generating a \
+high-temperature plasma whose optical emission lines reveal the elemental composition. \
+ChemCam was the first LIBS instrument deployed on another planet and has been operating \
+on Curiosity since its landing in Gale Crater in August 2012. The ability to analyze \
+rocks and soils remotely has dramatically increased the pace of geochemical exploration, \
+enabling thousands of analyses across Curiosity's multi-kilometer traverse from the \
+crater floor up through the sedimentary strata of Mount Sharp (Aeolis Mons).
+
+The major oxide compositions provide a window into the igneous, sedimentary, and \
+alteration history of the Martian crust. The mean SiO2 content of typical Martian \
+basaltic targets falls near 45-50 wt%, consistent with tholeiitic basalt. However, \
+ChemCam has also identified unexpected lithologies including high-silica compositions \
+(>60 wt% SiO2), high-manganese-oxide coatings suggesting oxidizing aqueous conditions, \
+and alkali-rich compositions with no direct terrestrial analog.
+"""
 
 
 def parse_sol_range(filename: str) -> tuple[int, int]:
@@ -68,7 +137,6 @@ def download_csv(filename: str) -> pd.DataFrame:
     resp = requests.get(url, timeout=60)
     resp.raise_for_status()
 
-    # Find the header row (starts with "File,Target,SiO2")
     lines = resp.text.splitlines()
     header_idx = None
     for i, line in enumerate(lines):
@@ -78,7 +146,6 @@ def download_csv(filename: str) -> pd.DataFrame:
     if header_idx is None:
         raise ValueError(f"Could not find header row in {filename}")
 
-    # Read from the data rows (skip header row, use our own column names)
     data_text = "\n".join(lines[header_idx + 1:])
     if not data_text.strip():
         return pd.DataFrame(columns=[c for c in _RAW_NAMES if c not in _SEP_COLS])
@@ -89,10 +156,8 @@ def download_csv(filename: str) -> pd.DataFrame:
         names=_RAW_NAMES,
         na_values=["", " "],
     )
-    # Drop the literal "+/-" separator columns
     df = df.drop(columns=_SEP_COLS, errors="ignore")
 
-    # Add sol range info from the source filename
     sol_min, sol_max = parse_sol_range(filename)
     df["sol_range_min"] = sol_min
     df["sol_range_max"] = sol_max
@@ -111,7 +176,7 @@ def main():
         print(f"{len(df)} rows")
         frames.append(df)
         if i < len(CSV_FILES) - 1:
-            time.sleep(0.5)  # Be polite to the PDS server
+            time.sleep(0.5)
 
     df = pd.concat(frames, ignore_index=True)
     print(f"  Total: {len(df):,} rows")
@@ -119,162 +184,25 @@ def main():
     # Drop completely empty rows
     df = df.dropna(subset=["target"], how="all").reset_index(drop=True)
 
-    # Coerce oxide columns to float
-    float_cols = []
-    for oxide in OXIDES:
-        o = oxide.lower()
-        float_cols += [o, f"{o}_rmsep", f"{o}_shots_stdev"]
-    float_cols += ["sum_of_oxides", "distance_m"]
-
-    for col in float_cols:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-
     # Sort by sol range then target name
     df = df.sort_values(["sol_range_min", "target", "file"]).reset_index(drop=True)
 
-    # Compute some stats for the README
+    # Keep only described columns
+    df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
+
+    # ── Domain-specific stats ────────────────────────────────────────
     n_targets = df["target"].nunique()
     sol_min = int(df["sol_range_min"].min())
     sol_max = int(df["sol_range_max"].max())
     sio2_mean = df["sio2"].mean()
     feot_mean = df["feot"].mean()
 
-    # Expected columns for validation (oxide value columns + key metadata)
-    expected = ["file", "target", "sol_range_min", "sol_range_max",
-                "sum_of_oxides", "distance_m"]
-    for oxide in OXIDES:
-        expected.append(oxide.lower())
-
-    check_dataset(
-        df,
-        dataset_name="chemcam",
-        min_rows=3_000,
-        expected_columns=expected,
-        critical_columns=[o.lower() for o in OXIDES],
-        max_null_pct=0.05,
-    )
-
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "mars_chemcam_compositions.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        banner_file = download_banner("chemcam", tmp)
-        banner_md = banner_markdown("chemcam", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Mars ChemCam LIBS Oxide Compositions"
-language:
-  - en
-description: "Major oxide compositions of Mars surface targets analyzed by the ChemCam LIBS instrument on the Curiosity rover, from the PDS Geosciences Node."
-task_categories:
-  - tabular-classification
-  - tabular-regression
-tags:
-  - space
-  - mars
-  - curiosity
-  - chemcam
-  - geochemistry
-  - nasa
-  - planetary-science
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 1K<n<10K
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/mars_chemcam_compositions.parquet
-    default: true
----
-
-# Mars ChemCam LIBS Oxide Compositions
-{banner_md}
-*Part of the [Planetary Science Datasets](https://huggingface.co/collections/juliensimon/planetary-science-datasets-68228b04b65e1f3b9e57a76b) collection on Hugging Face.*
-
-Major oxide compositions of Mars surface rock and soil targets analyzed by the
-Chemistry and Camera (ChemCam) Laser-Induced Breakdown Spectroscopy (LIBS)
-instrument aboard the Curiosity rover. Currently **{len(df):,}** individual
-point analyses across **{n_targets:,}** named targets, spanning sols
-**{sol_min}** to **{sol_max}**.
-
-## Dataset description
-
-ChemCam fires a focused laser pulse at rock and soil targets up to ~7 meters
-away, creating a plasma whose emission spectrum reveals elemental composition.
-The Major Oxide Compositions (MOC) data product provides predicted weight
-percentages for nine major oxides (SiO2, TiO2, Al2O3, FeOT, MgO, CaO,
-Na2O, K2O, MnO) derived from the LIBS spectra using a combined PLS+ICA
-multivariate model.
-
-Each row represents a single LIBS analysis point. Multiple points are
-typically measured per target to characterize compositional variability.
-Uncertainty estimates (RMSEP and shot-to-shot standard deviation) are
-provided for each oxide.
-
-Laser-Induced Breakdown Spectroscopy (LIBS) is a technique where a focused pulsed laser ablates a small amount of material from a target surface, generating a high-temperature plasma whose optical emission lines reveal the elemental composition. ChemCam was the first LIBS instrument deployed on another planet and has been operating on Curiosity since its landing in Gale Crater in August 2012. The ability to analyze rocks and soils remotely — without requiring the rover to drive to and physically contact each target — has dramatically increased the pace of geochemical exploration, enabling thousands of analyses across Curiosity's multi-kilometer traverse from the crater floor up through the sedimentary strata of Mount Sharp (Aeolis Mons).
-
-The major oxide compositions in this dataset provide a window into the igneous, sedimentary, and alteration history of the Martian crust. The mean SiO2 content of typical Martian basaltic targets falls near 45-50 wt%, consistent with the tholeiitic basalt composition expected for Mars. However, ChemCam has also identified several unexpected lithologies along the traverse, including high-silica compositions (>60 wt% SiO2) interpreted as evolved igneous rocks or silica-enriched diagenetic features, high-manganese-oxide coatings suggesting oxidizing aqueous conditions, and alkali-rich compositions that have no direct terrestrial analog. The iron content (reported as total FeO) is a key discriminant between mafic and felsic compositions and varies substantially across different geological units.
-
-The stratigraphic context of these measurements is central to understanding the habitability history of Gale Crater. As Curiosity ascends Mount Sharp, it traverses a sequence of sedimentary layers deposited in lacustrine, fluvial, and aeolian environments — the geochemical record preserved in this dataset tracks the evolving chemistry of those environments over geological time. Variations in MgO, CaO, and alkali element ratios across stratigraphic boundaries constrain changes in sediment provenance, water-rock interaction intensity, and diagenetic overprinting. This makes the ChemCam MOC dataset one of the most detailed geochemical transects ever measured on another planet.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `file` | string | PDS spectrum filename (encodes sol, sequence, shot number) |
-| `target` | string | Rock or soil target name assigned by the mission team (e.g. "Jake_M", "Bathurst_Inlet"); each target receives ~30 laser shots |
-| `sio2` | float64 | Silicon dioxide weight percent (wt%); Martian basalt typically 45–55 wt%, felsic outliers >60 wt% |
-| `sio2_rmsep` | float64 | SiO2 root-mean-square error of prediction (wt%) from the PLS+ICA calibration model |
-| `sio2_shots_stdev` | float64 | SiO2 standard deviation across individual laser shots within this analysis point |
-| `tio2` | float64 | Titanium dioxide weight percent (wt%); typically 0.5–2 wt% in Martian basalts |
-| `tio2_rmsep` | float64 | TiO2 RMSEP from calibration model (wt%) |
-| `tio2_shots_stdev` | float64 | TiO2 shot-to-shot standard deviation (wt%) |
-| `al2o3` | float64 | Aluminum oxide weight percent (wt%); typically 8–15 wt%, higher in evolved/felsic rocks |
-| `al2o3_rmsep` | float64 | Al2O3 RMSEP from calibration model (wt%) |
-| `al2o3_shots_stdev` | float64 | Al2O3 shot-to-shot standard deviation (wt%) |
-| `feot` | float64 | Total iron reported as FeO weight percent (wt%); typically 15–25 wt% in Martian basalts |
-| `feot_rmsep` | float64 | FeOT RMSEP from calibration model (wt%) |
-| `feot_shots_stdev` | float64 | FeOT shot-to-shot standard deviation (wt%) |
-| `mgo` | float64 | Magnesium oxide weight percent (wt%); typically 5–15 wt% in mafic compositions |
-| `mgo_rmsep` | float64 | MgO RMSEP from calibration model (wt%) |
-| `mgo_shots_stdev` | float64 | MgO shot-to-shot standard deviation (wt%) |
-| `cao` | float64 | Calcium oxide weight percent (wt%); typically 5–12 wt%; high values indicate calcium-rich minerals |
-| `cao_rmsep` | float64 | CaO RMSEP from calibration model (wt%) |
-| `cao_shots_stdev` | float64 | CaO shot-to-shot standard deviation (wt%) |
-| `na2o` | float64 | Sodium oxide weight percent (wt%); typically 1–4 wt%; high values indicate alkali-rich rocks |
-| `na2o_rmsep` | float64 | Na2O RMSEP from calibration model (wt%) |
-| `na2o_shots_stdev` | float64 | Na2O shot-to-shot standard deviation (wt%) |
-| `k2o` | float64 | Potassium oxide weight percent (wt%); typically 0.2–1.5 wt%; enriched in some evolved rocks |
-| `k2o_rmsep` | float64 | K2O RMSEP from calibration model (wt%) |
-| `k2o_shots_stdev` | float64 | K2O shot-to-shot standard deviation (wt%) |
-| `mno` | float64 | Manganese oxide weight percent (wt%); typically <0.5 wt%; high values indicate oxidizing aqueous conditions |
-| `mno_rmsep` | float64 | MnO RMSEP from calibration model (wt%) |
-| `mno_shots_stdev` | float64 | MnO shot-to-shot standard deviation (wt%) |
-| `sum_of_oxides` | float64 | Sum of all nine major oxide weight percents; should total ~100 wt% for unaltered rock |
-| `distance_m` | float64 | Distance from ChemCam to target in meters; range 1.5–7 m |
-| `laser_power` | string | Laser pulse energy setting used for this analysis point (mJ) |
-| `spectrum_total` | string | Sum of all spectral channel intensities (arbitrary units); quality indicator for the LIBS plasma |
-| `sol_range_min` | int64 | Minimum sol number in the source MOC data file; Curiosity sol 0 = Aug 6 2012 |
-| `sol_range_max` | int64 | Maximum sol number in the source MOC data file; each ~1.0275 Earth days |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{len(df):,}** LIBS point analyses across **{n_targets:,}** targets
 - Sols **{sol_min}** to **{sol_max}** of Curiosity's traverse
-- Mean SiO2: **{sio2_mean:.1f} wt%** | Mean FeOT: **{feot_mean:.1f} wt%**
+- Mean SiO2: **{sio2_mean:.1f} wt%** | Mean FeOT: **{feot_mean:.1f} wt%**"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -289,61 +217,61 @@ target_avg = df.groupby("target")[
 # High-silica targets (possible felsic rocks)
 felsic = target_avg[target_avg["sio2"] > 60].sort_values("sio2", ascending=False)
 
-# Iron-rich targets
-iron_rich = df[df["feot"] > 25].sort_values("feot", ascending=False)
-
 # Composition variability within a single target
-target_std = df.groupby("target")[["sio2", "feot", "mgo"]].std()
-```
+import matplotlib.pyplot as plt
+for oxide in ["sio2", "feot", "mgo"]:
+    plt.hist(df[oxide].dropna(), bins=50, alpha=0.6, label=oxide.upper())
+plt.xlabel("Weight %")
+plt.ylabel("Count")
+plt.legend()
+plt.title("ChemCam Oxide Distributions")
+plt.show()
+```"""
 
-## Data source
+    # Build float columns list for cleaning
+    float_cols = []
+    for oxide in OXIDES:
+        o = oxide.lower()
+        float_cols += [o, f"{o}_rmsep", f"{o}_shots_stdev"]
+    float_cols += ["sum_of_oxides", "distance_m"]
 
-[PDS Geosciences Node — MSL ChemCam LIBS RDR](https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/moc/),
-Washington University in St. Louis. Major Oxide Compositions (MOC) derived
-using the combined PLS+ICA multivariate model (sPDL Tool v2.5).
-
-## Related datasets
-
-- [mars-craters](https://huggingface.co/datasets/juliensimon/mars-craters-robbins) — Robbins Mars crater catalog
-- [neo-close-approaches](https://huggingface.co/datasets/juliensimon/neo-close-approaches) — Near-Earth object approaches
-- [small-body-database](https://huggingface.co/datasets/juliensimon/jpl-small-body-database) — JPL small body orbital parameters
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/mars-chemcam-compositions) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{mars_chemcam_compositions,
-  author = {{Simon, Julien}},
-  title = {{Mars ChemCam LIBS Oxide Compositions}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/mars-chemcam-compositions}},
-  note = {{Based on MSL ChemCam LIBS MOC data from the PDS Geosciences Node}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update Mars ChemCam compositions: {len(df):,} records"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Mars ChemCam LIBS Oxide Compositions",
+        description=DESCRIPTION,
+        tags=["space", "mars", "curiosity", "chemcam", "geochemistry", "nasa",
+              "planetary-science", "open-data", "tabular-data", "parquet"],
+        source_url="https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/moc/",
+        task_categories=["tabular-classification", "tabular-regression"],
+        collection_url="https://huggingface.co/collections/juliensimon/space-probe-and-mission-datasets-69c3fe82d410a42b1e313167",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA19808/PIA19808~small.jpg",
+            "alt": "NASA's Curiosity rover on the surface of Mars",
+            "credit": "NASA/JPL-Caltech/MSSS",
+        },
+        related_datasets=[
+            "juliensimon/mars-craters-robbins",
+            "juliensimon/neo-close-approaches",
+            "juliensimon/jpl-small-body-database",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=float_cols,
         )
-
-    print(f"rows={len(df)}")
+        p.publish(
+            df,
+            filename="mars_chemcam_compositions.parquet",
+            min_rows=3_000,
+            expected_columns=["file", "target", "sol_range_min", "sol_range_max",
+                              "sum_of_oxides", "distance_m"] + [o.lower() for o in OXIDES],
+            critical_columns=[o.lower() for o in OXIDES],
+            max_null_pct=0.05,
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update Mars ChemCam compositions: {len(df):,} records",
+        )
     print("Done.")
 
 

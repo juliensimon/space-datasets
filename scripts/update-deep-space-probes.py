@@ -1,19 +1,17 @@
 #!/usr/bin/env python3
-"""Fetch merged hourly data for Voyager 1/2 and Pioneer 10/11 from NASA SPDF and upload to HF."""
+"""Fetch merged hourly data for Voyager 1/2 and Pioneer 10/11 from NASA SPDF and upload to HF.
+
+Source: NASA Space Physics Data Facility (SPDF) — COHO merged hourly data files.
+"""
 
 import datetime
-import os
-import subprocess
-import tempfile
 import time
 from io import StringIO
-from pathlib import Path
 
 import pandas as pd
 import requests
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
 
 CURRENT_YEAR = datetime.date.today().year
 
@@ -169,6 +167,52 @@ COMMON_COLUMNS = [
     "proton_density_cm3", "proton_temperature_k",
 ]
 
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "spacecraft": "Spacecraft identifier: voyager_1, voyager_2, pioneer_10, or pioneer_11",
+    "datetime": "Observation timestamp (UTC, hourly cadence) derived from year, day-of-year, and hour in the source data",
+    "heliocentric_distance_au": "Distance from the Sun in astronomical units (AU); ranges from ~1 AU at launch to 160+ AU for Voyager 1 in interstellar space",
+    "hgi_latitude_deg": "Heliographic Inertial (HGI) latitude in degrees; measures angular position above/below the solar equatorial plane",
+    "hgi_longitude_deg": "Heliographic Inertial (HGI) longitude in degrees; measures angular position in the solar equatorial plane relative to the ascending node of the solar equator on the ecliptic",
+    "b_magnitude_avg_nt": "Average magnetic field magnitude in nT, computed as 1/N SUM |B| over the hour; Voyager only, null for Pioneer",
+    "b_magnitude_nt": "Magnetic field magnitude in nT, computed as sqrt(Br^2 + Bt^2 + Bn^2); falls off approximately as 1/r^2 (radial) to 1/r (tangential) with distance",
+    "br_rtn_nt": "Radial component of the interplanetary magnetic field in RTN coordinates (nT); positive outward from the Sun along the Parker spiral",
+    "bt_rtn_nt": "Tangential component of the magnetic field in RTN coordinates (nT); positive in the direction of planetary motion; dominates at large heliocentric distances",
+    "bn_rtn_nt": "Normal component of the magnetic field in RTN coordinates (nT); positive northward; typically small compared to Br and Bt",
+    "flow_speed_kms": "Proton bulk flow speed in km/s; typically 300-800 km/s in the inner heliosphere, decelerating in the outer heliosheath; null beyond the heliopause where solar wind is absent",
+    "flow_elevation_deg": "Flow velocity elevation angle in degrees relative to the RTN radial direction; non-radial flows indicate stream interactions or shock deflections",
+    "flow_azimuth_deg": "Flow velocity azimuth angle in degrees in the RTN tangential-normal plane; deviations from purely radial flow",
+    "proton_density_cm3": "Proton number density in particles/cm^3; decreases roughly as 1/r^2 with heliocentric distance; typical values: ~5 at 1 AU, ~0.001 at 100 AU",
+    "proton_temperature_k": "Proton temperature in Kelvin; decreases with distance but more slowly than adiabatic due to pickup ion heating in the outer heliosphere",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Merged hourly magnetic field, solar wind plasma, and energetic particle \
+measurements from humanity's four most distant spacecraft: Voyager 1, \
+Voyager 2, Pioneer 10, and Pioneer 11.
+
+Each record includes spacecraft position (heliocentric distance, HGI \
+latitude/longitude), interplanetary magnetic field components (RTN \
+coordinates), solar wind plasma parameters (flow speed, proton density, \
+temperature), and energetic particle fluxes at multiple energy channels \
+from the LECP, CRS, and CRT instruments.
+
+Voyager 1 crossed the heliopause (~121 AU) in August 2012 and Voyager 2 \
+(~119 AU) in November 2018, making this dataset unique in spanning the \
+transition from the heliosphere to interstellar space. Pioneer 10 and 11, \
+launched in 1972-1973, were the first spacecraft to traverse the asteroid \
+belt and encounter Jupiter and Saturn.
+
+The interplanetary magnetic field measurements trace the structure of the \
+Parker spiral carried outward by the solar wind. Solar wind speed, density, \
+and temperature document how the wind decelerates and heats through \
+interactions with pickup ions in the outer heliosphere. The energetic \
+particle fluxes record galactic cosmic rays modulated by the solar cycle, \
+anomalous cosmic rays accelerated at the termination shock, and transient \
+particle events from solar energetic particle events and interplanetary shocks.
+"""
+
 
 def fetch_spacecraft(name, cfg):
     """Download and parse yearly files for one spacecraft."""
@@ -179,7 +223,7 @@ def fetch_spacecraft(name, cfg):
         try:
             resp = session.get(url, timeout=60)
             resp.raise_for_status()
-        except requests.HTTPError as e:
+        except requests.HTTPError:
             if resp.status_code == 404:
                 print(f"    {name} {year}: not found, skipping")
                 continue
@@ -188,15 +232,14 @@ def fetch_spacecraft(name, cfg):
             print(f"    {name} {year}: error {e}, skipping")
             continue
 
-        # Parse fixed-width whitespace-delimited ASCII
         df = pd.read_csv(
             StringIO(resp.text),
             sep=r"\s+",
             header=None,
-            names=cfg["columns"][:],  # use as many names as columns present
+            names=cfg["columns"][:],
         )
         frames.append(df)
-        time.sleep(0.3)  # polite delay
+        time.sleep(0.3)
 
     if not frames:
         print(f"  WARNING: no data for {name}")
@@ -219,20 +262,18 @@ def fetch_spacecraft(name, cfg):
         if col in df.columns:
             df.loc[df[col] >= fill, col] = pd.NA
 
-    # Replace fill values for flux columns (any column starting with "flux_")
+    # Replace fill values for flux columns
     flux_cols = [c for c in df.columns if c.startswith("flux_")]
     threshold = cfg["flux_fill_threshold"]
     for col in flux_cols:
         df[col] = pd.to_numeric(df[col], errors="coerce")
         df.loc[df[col] >= threshold, col] = pd.NA
 
-    # Voyager has b_magnitude_avg_nt; Pioneer does not — add if missing
+    # Voyager has b_magnitude_avg_nt; Pioneer does not
     if "b_magnitude_avg_nt" not in df.columns:
         df["b_magnitude_avg_nt"] = pd.NA
 
     df["spacecraft"] = name
-
-    # Drop raw time columns
     df = df.drop(columns=["year", "day_of_year", "hour"], errors="ignore")
 
     return df
@@ -252,31 +293,16 @@ def main():
     df = pd.concat(all_frames, ignore_index=True)
     print(f"  {len(df):,} total rows before cleanup")
 
-    # Drop rows with no datetime (bad parse)
+    # Drop rows with no datetime
     df = df.dropna(subset=["datetime"])
 
-    # Ensure numeric types on common columns
-    numeric_cols = [
-        "heliocentric_distance_au", "hgi_latitude_deg", "hgi_longitude_deg",
-        "b_magnitude_avg_nt", "b_magnitude_nt",
-        "br_rtn_nt", "bt_rtn_nt", "bn_rtn_nt",
-        "flow_speed_kms", "flow_elevation_deg", "flow_azimuth_deg",
-        "proton_density_cm3", "proton_temperature_k",
-    ]
-    for col in numeric_cols:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    # Keep only common columns + all flux columns + spacecraft + datetime
+    # Keep only common columns + b_magnitude_avg_nt + all flux columns
     flux_cols = sorted([c for c in df.columns if c.startswith("flux_")])
     keep_cols = COMMON_COLUMNS + ["b_magnitude_avg_nt"] + flux_cols
-    # Only keep columns that exist
     keep_cols = [c for c in keep_cols if c in df.columns]
     df = df[keep_cols]
 
-    # Sort by spacecraft, datetime
     df = df.sort_values(["spacecraft", "datetime"]).reset_index(drop=True)
-
     print(f"  {len(df):,} rows after cleanup")
 
     # Stats per spacecraft
@@ -287,19 +313,7 @@ def main():
         dist_max = sub["heliocentric_distance_au"].max()
         print(f"  {sc}: {len(sub):,} rows, {date_min} to {date_max}, max {dist_max:.1f} AU")
 
-    # Validation
-    check_dataset(
-        df, "deep-space-probes",
-        min_rows=1_000_000,
-        expected_columns=[
-            "spacecraft", "datetime", "heliocentric_distance_au",
-            "b_magnitude_nt", "br_rtn_nt", "bt_rtn_nt", "bn_rtn_nt",
-            "flow_speed_kms", "proton_density_cm3", "proton_temperature_k",
-        ],
-        critical_columns=["spacecraft", "datetime", "heliocentric_distance_au"],
-    )
-
-    # Stats for README
+    # ── Stats for README ────────────────────────────────────────────
     n_total = len(df)
     sc_counts = df["spacecraft"].value_counts().to_dict()
     date_min = df["datetime"].min().strftime("%Y-%m-%d")
@@ -308,123 +322,19 @@ def main():
     max_dist = max_dist_row["heliocentric_distance_au"]
     max_dist_sc = max_dist_row["spacecraft"]
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
+    sc_bullets = "\n".join(
+        f"- **{sc.replace('_', ' ').title()}**: {sc_counts.get(sc, 0):,} hourly records"
+        for sc in ["voyager_1", "voyager_2", "pioneer_10", "pioneer_11"]
+    )
 
-        out = data_dir / "deep_space_probes.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_mb = out.stat().st_size / 1024 / 1024
-        print(f"  {size_mb:.1f} MB parquet")
-
-        sc_bullets = "\n".join(
-            f"- **{sc.replace('_', ' ').title()}**: {sc_counts.get(sc, 0):,} hourly records"
-            for sc in ["voyager_1", "voyager_2", "pioneer_10", "pioneer_11"]
-        )
-
-        banner_file = download_banner("deep-space-probes", tmp)
-        banner_md = banner_markdown("deep-space-probes", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Deep Space Probes — Merged Hourly Data"
-language:
-  - en
-description: "Merged hourly magnetic field, solar wind plasma, and energetic particle data from Voyager 1, Voyager 2, Pioneer 10, and Pioneer 11. Spans 1972 to present, from 1 AU to 160+ AU."
-task_categories:
-  - tabular-regression
-  - time-series-forecasting
-tags:
-  - space
-  - heliophysics
-  - voyager
-  - pioneer
-  - solar-wind
-  - magnetic-field
-  - deep-space
-  - nasa
-  - spdf
-  - interstellar
-  - open-data
-  - tabular-data
-  - parquet
-size_categories:
-  - 1M<n<10M
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/deep_space_probes.parquet
-    default: true
----
-
-# Deep Space Probes — Merged Hourly Data
-{banner_md}
-*Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
-
-![Update Deep Space Probes](https://github.com/juliensimon/space-datasets/actions/workflows/update-deep-space-probes.yml/badge.svg)
-![Updated](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.deep-space-probes&label=updated&color=brightgreen)
-
-Merged hourly magnetic field, solar wind plasma, and energetic particle measurements from humanity's
-four most distant spacecraft: **Voyager 1**, **Voyager 2**, **Pioneer 10**, and **Pioneer 11**.
-Currently **{n_total:,}** hourly records spanning **{date_min}** to **{date_max}**, reaching
-**{max_dist:.1f} AU** from the Sun ({max_dist_sc.replace('_', ' ').title()}).
-
-## Dataset description
-
-This dataset combines the COHO (COordinated Heliospheric Observations) merged hourly data files
-from NASA's Space Physics Data Facility (SPDF) for the four deep-space probes that have traveled
-beyond the outer planets. The data covers the entire mission durations:
-
-{sc_bullets}
-
-Each record includes spacecraft position (heliocentric distance, HGI latitude/longitude),
-interplanetary magnetic field components (RTN coordinates), solar wind plasma parameters
-(flow speed, proton density, temperature), and energetic particle fluxes at multiple
-energy channels from the LECP, CRS, and CRT instruments.
-
-Voyager 1 crossed the heliopause (~121 AU) in August 2012 and Voyager 2 (~119 AU) in November 2018,
-making this dataset unique in spanning the transition from the heliosphere to interstellar space.
-
-These four spacecraft represent humanity's farthest reach into space and have collectively transformed our understanding of the heliosphere — the vast bubble of solar wind plasma that surrounds the Sun and extends well beyond the orbit of Pluto. Pioneer 10 and 11, launched in 1972-1973, were the first spacecraft to traverse the asteroid belt, encounter Jupiter and Saturn, and measure the outer heliospheric environment. Voyager 1 and 2, launched in 1977, exploited a rare planetary alignment to conduct the "Grand Tour" of the outer planets, returning the first detailed images of Jupiter, Saturn, Uranus, and Neptune along with their ring systems and satellites.
-
-The interplanetary magnetic field (IMF) measurements in this dataset trace the structure of the Parker spiral — the Archimedean spiral pattern of the solar magnetic field carried outward by the solar wind. At increasing heliocentric distances, the radial component of the field falls off approximately as 1/r2, while the tangential component drops as 1/r, causing the field to become increasingly transverse at large distances. Solar wind speed, density, and temperature measurements document how the wind decelerates and heats through interactions with pickup ions (interstellar neutrals ionized by solar UV or charge exchange) in the outer heliosphere. The energetic particle fluxes from LECP, CRS, and CRT instruments record galactic cosmic rays modulated by the 11-year solar cycle, anomalous cosmic rays accelerated at the termination shock, and transient particle events from solar energetic particle events and interplanetary shocks.
-
-The most scientifically profound measurements in this dataset come from the boundary regions of the heliosphere. Voyager 1 crossed the termination shock at approximately 94 AU in December 2004 and the heliopause at roughly 121 AU in August 2012, while Voyager 2 crossed the termination shock at about 84 AU in August 2007 and the heliopause at approximately 119 AU in November 2018. The different crossing distances reflect the asymmetry of the heliosphere compressed by the interstellar medium. In interstellar space, Voyager measurements have revealed a surprisingly strong and steady magnetic field, a denser-than-expected plasma environment, and ongoing cosmic ray anisotropies that continue to challenge theoretical models of the local interstellar medium.
-
-## Schema (common columns)
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `spacecraft` | string | Spacecraft identifier (voyager_1, voyager_2, pioneer_10, pioneer_11) |
-| `datetime` | datetime | Observation timestamp (UTC, hourly cadence) |
-| `heliocentric_distance_au` | float64 | Distance from the Sun (AU) |
-| `hgi_latitude_deg` | float64 | Heliographic Inertial latitude (degrees) |
-| `hgi_longitude_deg` | float64 | Heliographic Inertial longitude (degrees) |
-| `b_magnitude_avg_nt` | float64 | Average magnetic field magnitude 1/N SUM |B| (nT) — Voyager only |
-| `b_magnitude_nt` | float64 | Magnetic field magnitude sqrt(Br^2+Bt^2+Bn^2) (nT) |
-| `br_rtn_nt` | float64 | Radial magnetic field component, RTN (nT) |
-| `bt_rtn_nt` | float64 | Tangential magnetic field component, RTN (nT) |
-| `bn_rtn_nt` | float64 | Normal magnetic field component, RTN (nT) |
-| `flow_speed_kms` | float64 | Proton bulk flow speed (km/s) |
-| `flow_elevation_deg` | float64 | Flow velocity elevation angle (degrees) |
-| `flow_azimuth_deg` | float64 | Flow velocity azimuth angle (degrees) |
-| `proton_density_cm3` | float64 | Proton number density (particles/cm^3) |
-| `proton_temperature_k` | float64 | Proton temperature (Kelvin) |
-
-Additional spacecraft-specific flux columns (energetic particle differential flux in 1/(cm^2 s sr MeV))
-are included with names like `flux_h_lecp_*_mev`, `flux_h_crs_*_mev`, and `flux_h_crt_*_mev`.
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n_total:,}** hourly records ({date_min} to {date_max})
 - **4 spacecraft**: Voyager 1 & 2, Pioneer 10 & 11
 - Maximum heliocentric distance: **{max_dist:.1f} AU** ({max_dist_sc.replace('_', ' ').title()})
 - Covers heliosphere, heliosheath, and interstellar space
+{sc_bullets}"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -440,7 +350,7 @@ v1_interstellar = df[
 # Compare solar wind speed across all probes
 for sc in df["spacecraft"].unique():
     sub = df[df["spacecraft"] == sc].dropna(subset=["flow_speed_kms"])
-    print(f"{{sc}}: mean flow speed = {{sub['flow_speed_kms'].mean():.0f}} km/s")
+    print(f"{sc}: mean flow speed = {sub['flow_speed_kms'].mean():.0f} km/s")
 
 # Magnetic field decay with distance
 import matplotlib.pyplot as plt
@@ -451,72 +361,71 @@ plt.ylabel("|B| (nT)")
 plt.yscale("log")
 plt.title("Voyager 1: Magnetic Field vs Distance")
 plt.show()
+```"""
 
-# Pioneer 10 complete mission timeline
-p10 = df[df["spacecraft"] == "pioneer_10"]
-print(f"Pioneer 10: {{p10['datetime'].min()}} to {{p10['datetime'].max()}}")
-print(f"  Distance range: {{p10['heliocentric_distance_au'].min():.1f}} - {{p10['heliocentric_distance_au'].max():.1f}} AU")
-```
-
-## Data source
-
-[NASA Space Physics Data Facility (SPDF)](https://spdf.gsfc.nasa.gov/) — COordinated Heliospheric
-Observations (COHO) merged hourly data files:
-
-- Voyager 1: `spdf.gsfc.nasa.gov/pub/data/voyager/voyager1/merged/`
-- Voyager 2: `spdf.gsfc.nasa.gov/pub/data/voyager/voyager2/merged/`
-- Pioneer 10: `spdf.gsfc.nasa.gov/pub/data/pioneer/pioneer10/merged/coho1hr_magplasma_ascii/`
-- Pioneer 11: `spdf.gsfc.nasa.gov/pub/data/pioneer/pioneer11/merged/coho1hr_magplasma_ascii/`
-
-## Update schedule
-
-Monthly (1st at 07:00 UTC) via [GitHub Actions](https://github.com/juliensimon/space-datasets).
-Voyager data is still being collected; Pioneer missions ended in the 1990s.
-
-## Related datasets
-
-- [solar-wind-plasma](https://huggingface.co/datasets/juliensimon/solar-wind) — Near-Earth solar wind from DSCOVR/ACE
-- [dst-index](https://huggingface.co/datasets/juliensimon/dst-index) — Geomagnetic Dst index
-- [kp-index](https://huggingface.co/datasets/juliensimon/geomagnetic-kp-index) — Geomagnetic Kp index
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/deep-space-probes) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{deep_space_probes,
-  author = {{Simon, Julien}},
-  title = {{Deep Space Probes — Merged Hourly Data}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/deep-space-probes}},
-  note = {{Based on NASA/SPDF COHO merged hourly data for Voyager 1, Voyager 2, Pioneer 10, and Pioneer 11}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Update deep space probes: {n_total:,} records"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    # Build column descriptions including flux columns dynamically
+    col_descs = dict(COLUMN_DESCRIPTIONS)
+    for col in flux_cols:
+        # flux_h_lecp_0p57_1p78_mev -> "LECP proton flux 0.57-1.78 MeV ..."
+        parts = col.replace("flux_h_", "").split("_")
+        instrument = parts[0].upper()
+        energy_range = "_".join(parts[1:]).replace("p", ".").replace("_mev", "").replace("_", "-")
+        col_descs[col] = (
+            f"Differential proton flux from {instrument} instrument in the "
+            f"{energy_range} MeV energy channel, in units of 1/(cm^2 s sr MeV); "
+            f"null when fill values indicate no valid measurement"
         )
 
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={n_total}\n")
+    # Drop any columns not in col_descs
+    df = df[[c for c in df.columns if c in col_descs]]
+
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Deep Space Probes -- Merged Hourly Data",
+        description=DESCRIPTION,
+        tags=["space", "heliophysics", "voyager", "pioneer", "solar-wind",
+              "magnetic-field", "deep-space", "nasa", "spdf", "interstellar",
+              "open-data", "tabular-data", "parquet"],
+        source_url="https://spdf.gsfc.nasa.gov/",
+        task_categories=["tabular-regression", "time-series-forecasting"],
+        update_schedule="Monthly (1st at 07:00 UTC). Voyager data is still being collected; Pioneer missions ended in the 1990s.",
+        collection_url="https://huggingface.co/collections/juliensimon/space-probe-and-mission-datasets-69c3fe82d410a42b1e313167",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/PIA14111/PIA14111~small.jpg",
+            "alt": "Voyager spacecraft artist concept",
+            "credit": "NASA/JPL-Caltech",
+        },
+        related_datasets=[
+            "juliensimon/solar-wind",
+            "juliensimon/dst-index",
+            "juliensimon/geomagnetic-kp-index",
+        ],
+    ) as p:
+        df = p.clean(
+            df,
+            numeric=[
+                "heliocentric_distance_au", "hgi_latitude_deg", "hgi_longitude_deg",
+                "b_magnitude_avg_nt", "b_magnitude_nt",
+                "br_rtn_nt", "bt_rtn_nt", "bn_rtn_nt",
+                "flow_speed_kms", "flow_elevation_deg", "flow_azimuth_deg",
+                "proton_density_cm3", "proton_temperature_k",
+            ],
+        )
+        p.publish(
+            df,
+            filename="deep_space_probes.parquet",
+            min_rows=1_000_000,
+            expected_columns=[
+                "spacecraft", "datetime", "heliocentric_distance_au",
+                "b_magnitude_nt", "br_rtn_nt", "bt_rtn_nt", "bn_rtn_nt",
+                "flow_speed_kms", "proton_density_cm3", "proton_temperature_k",
+            ],
+            critical_columns=["spacecraft", "datetime", "heliocentric_distance_au"],
+            column_descriptions=col_descs,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Update deep space probes: {n_total:,} records",
+        )
     print("Done.")
 
 

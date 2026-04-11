@@ -6,24 +6,58 @@ https://www.ngdc.noaa.gov/stp/space-weather/interplanetary-data/solar-proton-eve
 Static dataset (no workflow).
 """
 
-import os
 import re
-import subprocess
-import tempfile
-from pathlib import Path
 
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
-from dataset_images import banner_markdown, download_banner
-from validate import check_dataset
+from hf_dataset_utils import Pipeline
 
 SOURCE_URL = (
     "https://www.ngdc.noaa.gov/stp/space-weather/interplanetary-data/"
     "solar-proton-events/SEP%20page%20code.html"
 )
 HF_REPO = "juliensimon/solar-proton-events"
+
+# ── Column descriptions for README schema table ─────────────────────
+COLUMN_DESCRIPTIONS = {
+    "start_datetime": "UTC time when the >10 MeV proton flux first exceeded 10 pfu (NOAA S1 storm threshold)",
+    "peak_datetime": "UTC time of maximum >10 MeV proton flux during the event",
+    "peak_flux_pfu": "Peak proton flux at energies >10 MeV in Particle Flux Units (1 PFU = 1 proton/cm2/s/sr); NOAA storm scale: S1 >= 10, S2 >= 100, S3 >= 1,000, S4 >= 10,000, S5 >= 100,000 PFU",
+    "region_number": "NOAA active region number of the source sunspot group (e.g., '2673'); null if no associated active region was identified",
+    "location": "Heliographic coordinates of the associated flare in Stonyhurst format (e.g., 'N05W88'); W = western hemisphere events have better magnetic connectivity to Earth",
+    "flare_class": "GOES X-ray flare classification of the associated flare (e.g., 'X9.3', 'M5.8'); most large SPEs follow M5+ or X-class flares; null if no associated flare was identified",
+    "flare_optical": "Optical (H-alpha) flare importance class (e.g., '2B', '3B', 'SF'); digit = area class (1-4), letter = brightness (F=faint, N=normal, B=bright); null if not observed optically",
+    "type_ii_radio": "True if a Type II radio burst (metric wavelength, indicative of a CME-driven coronal shock) was observed during the event; strong predictor of energetic SEP events",
+    "type_iv_radio": "True if a Type IV radio burst (post-flare broadband continuum from trapped electrons) was observed; associated with the most intense and prolonged SPEs",
+    "cme_speed_km_s": "Linear plane-of-sky speed of the associated coronal mass ejection in km/s from LASCO coronagraph data; null if no CME was observed or measured; fast CMEs (>1000 km/s) are strongly correlated with major SPEs",
+}
+
+# ── Dataset description ──────────────────────────────────────────────
+DESCRIPTION = """\
+Solar proton events (SPEs) affecting the Earth environment from 1976 to present, \
+compiled by NOAA's Space Weather Prediction Center. Includes peak proton flux, \
+associated flare class, location, and CME data.
+
+Solar proton events occur when protons are accelerated to high energies by solar \
+flares or coronal mass ejections (CMEs). When these energetic particles reach Earth, \
+they can disrupt satellite electronics, increase radiation doses for astronauts and \
+high-altitude aviation, degrade HF radio communications, and affect GPS accuracy.
+
+Solar energetic particles are accelerated by two distinct mechanisms. Impulsive SEP \
+events are associated with solar flares, where magnetic reconnection accelerates \
+electrons and ions over seconds to minutes. Gradual SEP events -- which account for \
+most entries in this dataset -- are accelerated by CME-driven coronal and interplanetary \
+shocks via diffusive shock acceleration. The largest gradual events (>10,000 pfu) are \
+associated with fast, wide CMEs and western-hemisphere flares, where the magnetic \
+connection along the Parker spiral provides early particle access to Earth.
+
+The >10 MeV proton flux threshold of 10 pfu used to define SPEs corresponds to the \
+NOAA S1 (minor) solar radiation storm level. At S3-S5 (>1,000 to >100,000 pfu), \
+single-event upsets become a serious concern for satellite electronics, astronaut EVA \
+activities must be curtailed, and HF radio is blacked out on the sunlit hemisphere.
+"""
 
 
 def parse_datetime(s):
@@ -33,7 +67,6 @@ def parse_datetime(s):
     s = s.strip()
     if not s or s.lower() in ("n/a", "", "-"):
         return pd.NaT
-    # Expected format: YYYY MM/DD HHMM
     m = re.match(r"(\d{4})\s+(\d{1,2})/(\d{1,2})\s+(\d{3,4})", s)
     if not m:
         return pd.NaT
@@ -63,7 +96,7 @@ def parse_flux(s):
 
 
 def parse_flare_info(s):
-    """Parse flare maximum field like 'X2/2B 4/30 2114' or 'X1.2/2B 11/10 0919'.
+    """Parse flare maximum field like 'X2/2B 4/30 2114'.
 
     Returns (flare_class, flare_optical).
     """
@@ -72,11 +105,9 @@ def parse_flare_info(s):
     s = s.strip()
     if not s or s.lower() in ("n/a", "-", ""):
         return None, None
-    # Extract flare class (e.g. X2, M5, X1.2) and optical class (e.g. 2B, 3B)
     m = re.match(r"([XMCB]\d+\.?\d*)\s*/\s*(\S+)", s)
     if m:
         return m.group(1), m.group(2)
-    # Just flare class, no optical
     m = re.match(r"([XMCB]\d+\.?\d*)", s)
     if m:
         return m.group(1), None
@@ -101,7 +132,6 @@ def main():
     soup = BeautifulSoup(resp.text, "html.parser")
     table = soup.find("table", id="myTable")
     if table is None:
-        # Fallback: first table
         table = soup.find("table")
     if table is None:
         raise RuntimeError("No table found on the page")
@@ -124,13 +154,11 @@ def main():
         flux = parse_flux(cells[2])
         region = clean_str(cells[3])
         location = clean_str(cells[4])
-        flare_raw = clean_str(cells[5])
         flare_class, flare_optical = parse_flare_info(cells[5])
         type_ii = clean_str(cells[6]) if len(cells) > 6 else None
         type_iv = clean_str(cells[7]) if len(cells) > 7 else None
         cme_speed = clean_str(cells[8]) if len(cells) > 8 else None
 
-        # Parse CME speed as integer where possible
         cme_speed_val = None
         if cme_speed:
             m = re.search(r"(\d+)", cme_speed.replace(",", ""))
@@ -158,22 +186,13 @@ def main():
     df["start_datetime"] = pd.to_datetime(df["start_datetime"], errors="coerce")
     df["peak_datetime"] = pd.to_datetime(df["peak_datetime"], errors="coerce")
 
-    # Drop rows with no start datetime (garbage rows)
+    # Drop rows with no start datetime
     df = df.dropna(subset=["start_datetime"]).reset_index(drop=True)
     df = df.sort_values("start_datetime").reset_index(drop=True)
 
     print(f"  {len(df):,} events after cleaning")
 
-    check_dataset(
-        df, "solar-proton-events", min_rows=200,
-        expected_columns=[
-            "start_datetime", "peak_datetime", "peak_flux_pfu",
-            "flare_class", "location",
-        ],
-        critical_columns=["start_datetime", "peak_flux_pfu"],
-    )
-
-    # Stats for README
+    # ── Domain-specific stats for README ─────────────────────────────
     n = len(df)
     date_min = df["start_datetime"].min().strftime("%Y-%m-%d")
     date_max = df["start_datetime"].max().strftime("%Y-%m-%d")
@@ -184,102 +203,13 @@ def main():
         f"  - {k}-class: **{v:,}**" for k, v in sorted(flare_counts.items())
     )
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
-        data_dir = tmp / "data"
-        data_dir.mkdir()
-
-        out = data_dir / "solar_proton_events.parquet"
-        df.to_parquet(out, index=False, engine="pyarrow", compression="zstd")
-        size_kb = out.stat().st_size / 1024
-        print(f"  {size_kb:.0f} KB parquet")
-
-        banner_file = download_banner("solar-proton-events", tmp)
-        banner_md = banner_markdown("solar-proton-events", banner_file)
-
-        (tmp / "README.md").write_text(f"""---
-license: cc-by-4.0
-pretty_name: "Solar Proton Events"
-language:
-  - en
-description: >-
-  Solar proton events (SPEs) affecting the Earth environment from 1976 to present,
-  compiled by NOAA's Space Weather Prediction Center. Includes peak proton flux,
-  associated flare class, location, and CME data.
-size_categories:
-  - n<1K
-task_categories:
-  - tabular-classification
-tags:
-  - space
-  - solar
-  - protons
-  - radiation
-  - space-weather
-  - noaa
-  - open-data
-  - tabular-data
-  - parquet
-configs:
-  - config_name: default
-    data_files:
-      - split: train
-        path: data/solar_proton_events.parquet
----
-
-# Solar Proton Events
-{banner_md}
-*Part of the [Space Weather Datasets](https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70) collection on Hugging Face.*
-
-Solar proton events (SPEs) affecting the Earth environment from **{date_min}** to
-**{date_max}**. Currently **{n:,}** events where the >10 MeV proton flux exceeded
-10 particle flux units (pfu) as measured by GOES spacecraft at geosynchronous orbit.
-
-## Dataset description
-
-Solar proton events occur when protons are accelerated to high energies by solar
-flares or coronal mass ejections (CMEs). When these energetic particles reach Earth,
-they can disrupt satellite electronics, increase radiation doses for astronauts and
-high-altitude aviation, degrade HF radio communications, and affect GPS accuracy.
-
-This dataset covers the complete NOAA record from 1976 onward, including:
-
-- **Proton flux**: peak >10 MeV flux in particle flux units (pfu)
-- **Associated flares**: X-ray class (X, M, C, B) and optical classification
-- **Source location**: heliographic coordinates of the associated flare
-- **Radio emissions**: Type II and Type IV radio burst associations
-- **CME speed**: linear speed of associated coronal mass ejection (km/s)
-
-Solar energetic particles are accelerated by two distinct mechanisms. Impulsive SEP events are associated with solar flares, where magnetic reconnection accelerates electrons and ions (enriched in 3He and heavy ions) over seconds to minutes. These events are typically small, brief, and originate from compact source regions. Gradual SEP events -- which account for most entries in this dataset -- are accelerated by CME-driven coronal and interplanetary shocks via diffusive shock acceleration (first-order Fermi process). These events can last for days, produce vastly higher proton fluxes, and have a broad longitudinal extent because the shock front subtends a wide angle as it propagates outward. The largest gradual events (>10,000 pfu) are associated with fast, wide CMEs and western-hemisphere flares, where the magnetic connection along the Parker spiral provides early particle access to Earth.
-
-The >10 MeV proton flux threshold of 10 pfu used to define SPEs in this catalog corresponds to the NOAA S1 (minor) solar radiation storm level. At S1, elevated radiation doses affect high-latitude aircraft passengers and unshielded satellite components. At S3-S5 (>1,000 to >100,000 pfu), single-event upsets and latchups become a serious concern for satellite electronics, astronaut EVA activities must be curtailed, HF radio is degraded or blacked out on the entire sunlit hemisphere, and GPS accuracy is significantly reduced. The October 2003 event (>29,000 pfu) and the January 2005 event (>5,000 pfu) caused documented satellite anomalies and forced ISS crew members to shelter in the more heavily shielded Russian segment.
-
-The associations with Type II and Type IV radio bursts recorded in this dataset are physically significant. Type II bursts are produced by electrons accelerated at CME-driven shocks and serve as independent confirmation that a shock is present. Type IV bursts indicate trapped energetic electrons in post-eruption magnetic structures. The presence of both burst types strongly correlates with the most energetic and prolonged SPE events, making these radio associations useful as early predictors of event severity before the proton flux has peaked at Earth.
-
-## Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `start_datetime` | datetime | UTC time when the >10 MeV proton flux first exceeded 10 pfu (NOAA S1 storm threshold) |
-| `peak_datetime` | datetime | UTC time of maximum >10 MeV proton flux during the event |
-| `peak_flux_pfu` | int | Peak proton flux at energies >10 MeV in Particle Flux Units (1 PFU = 1 proton/cm²/s/sr); NOAA storm scale: S1 ≥ 10, S2 ≥ 100, S3 ≥ 1,000, S4 ≥ 10,000, S5 ≥ 100,000 PFU |
-| `region_number` | string | NOAA active region number of the source sunspot group (e.g., "2673"); null if no associated active region was identified |
-| `location` | string | Heliographic coordinates of the associated flare in Stonyhurst format (e.g., "N05W88"); W = western hemisphere events have better magnetic connectivity to Earth |
-| `flare_class` | string | GOES X-ray flare classification of the associated flare (e.g., "X9.3", "M5.8", "C7.2"); most large SPEs follow M5+ or X-class flares; null if no associated flare was identified |
-| `flare_optical` | string | Optical (Hα) flare importance class (e.g., "2B", "3B", "SF"); digit = area class (1–4), letter = brightness (F=faint, N=normal, B=bright); null if not observed optically |
-| `type_ii_radio` | bool | True if a Type II radio burst (metric wavelength, indicative of a CME-driven coronal shock) was observed during the event; strong predictor of energetic SEP events |
-| `type_iv_radio` | bool | True if a Type IV radio burst (post-flare broadband continuum from trapped electrons) was observed; associated with the most intense and prolonged SPEs |
-| `cme_speed_km_s` | int | Linear plane-of-sky speed of the associated coronal mass ejection in km/s from LASCO coronagraph data; null if no CME was observed or measured; fast CMEs (>1000 km/s) are strongly correlated with major SPEs |
-
-## Quick stats
-
+    quick_stats = f"""\
 - **{n:,}** events ({date_min} to {date_max})
 - Peak flux range: 10 to **{flux_max:,}** pfu (median: {flux_median:,.0f} pfu)
 - Associated flares by X-ray class:
-{flare_lines}
+{flare_lines}"""
 
-## Usage
-
+    usage = """\
 ```python
 from datasets import load_dataset
 
@@ -292,52 +222,55 @@ print(top[["start_datetime", "peak_flux_pfu", "flare_class", "location"]])
 
 # Events with X-class flares
 x_class = df[df["flare_class"].str.startswith("X", na=False)]
-print(f"X-class associated events: {{len(x_class)}}")
-```
+print(f"X-class associated events: {len(x_class)}")
 
-## Data source
+# Peak flux distribution by flare class
+import matplotlib.pyplot as plt
+for cls in ["X", "M", "C"]:
+    sub = df[df["flare_class"].str.startswith(cls, na=False)]
+    if len(sub) > 0:
+        plt.hist(sub["peak_flux_pfu"].dropna(), bins=30, alpha=0.6, label=f"{cls}-class")
+plt.xscale("log")
+plt.xlabel("Peak Flux (PFU)")
+plt.ylabel("Count")
+plt.legend()
+plt.title("Solar Proton Event Flux by Flare Class")
+plt.show()
+```"""
 
-[NOAA NCEI Solar Proton Events](https://www.ngdc.noaa.gov/stp/space-weather/interplanetary-data/solar-proton-events/)
-compiled by the Space Weather Prediction Center.
-
-## Pipeline
-
-Source code: [juliensimon/space-datasets](https://github.com/juliensimon/space-datasets)
-
-## Support
-
-If you find this dataset useful, please give it a ❤️ on the [dataset page](https://huggingface.co/datasets/juliensimon/solar-proton-events) and share feedback in the Community tab! Also consider giving a ⭐️ to the [space-datasets](https://github.com/juliensimon/space-datasets) repo.
-
-## Citation
-
-```bibtex
-@dataset{{solar_proton_events,
-  author = {{Simon, Julien}},
-  title = {{Solar Proton Events}},
-  year = {{2026}},
-  publisher = {{Hugging Face}},
-  url = {{https://huggingface.co/datasets/juliensimon/solar-proton-events}},
-  note = {{Based on NOAA NCEI Solar Proton Events data}}
-}}
-```
-
-## License
-
-[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
-""")
-
-        print("Uploading to HF...")
-        commit_msg = f"Upload solar proton events: {n:,} records"
-        subprocess.run(
-            ["hf", "upload", HF_REPO, str(tmp), ".",
-             "--repo-type", "dataset",
-             "--commit-message", commit_msg],
-            check=True,
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Solar Proton Events",
+        description=DESCRIPTION,
+        tags=["space", "solar", "protons", "radiation", "space-weather",
+              "noaa", "open-data", "tabular-data", "parquet"],
+        source_url="https://www.ngdc.noaa.gov/stp/space-weather/interplanetary-data/solar-proton-events/",
+        task_categories=["tabular-classification"],
+        collection_url="https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/iss072e159172/iss072e159172~medium.jpg",
+            "alt": "Aurora borealis blankets the Earth, seen from the ISS",
+            "credit": "NASA",
+        },
+        related_datasets=[
+            "juliensimon/solar-flare-events",
+            "juliensimon/donki-space-weather-events",
+            "juliensimon/space-weather-indices",
+        ],
+    ) as p:
+        df = p.clean(df)
+        p.publish(
+            df,
+            filename="solar_proton_events.parquet",
+            min_rows=200,
+            expected_columns=["start_datetime", "peak_datetime", "peak_flux_pfu",
+                              "flare_class", "location"],
+            critical_columns=["start_datetime", "peak_flux_pfu"],
+            column_descriptions=COLUMN_DESCRIPTIONS,
+            quick_stats=quick_stats,
+            usage=usage,
+            commit_message=f"Upload solar proton events: {n:,} records",
         )
-
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={n}\n")
     print("Done.")
 
 

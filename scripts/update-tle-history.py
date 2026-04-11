@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Daily incremental update for Space-Track TLE History.
+"""Daily incremental update for Space-Track TLE History.
 
 Fetches yesterday's GP history (one API call), appends to the current year's
 parquet file on HF. Handles year boundaries by creating a new file on Jan 1.
@@ -13,12 +12,14 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
+import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+import requests
+
+from hf_dataset_utils import Pipeline
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
@@ -51,8 +52,35 @@ SCHEMA = pa.schema([
     ("altitude_km", pa.float32()),
 ])
 
+# ── Column descriptions ────────────────────────────────────────────────
+COLUMN_DESCRIPTIONS = {
+    "norad_id": "NORAD catalog number — unique integer ID assigned to each tracked object by the US Space Surveillance Network; used worldwide as the primary satellite identifier",
+    "epoch": "UTC timestamp of the TLE's reference epoch — the moment at which the orbital elements are valid; propagation accuracy degrades with time from epoch",
+    "inclination": "Orbital inclination in degrees (0-180); angle between the orbital plane and Earth's equatorial plane; 0=equatorial, 90=polar, >90=retrograde",
+    "raan": "Right ascension of the ascending node in degrees (0-360); longitude where the orbit crosses the equatorial plane northward; precesses due to Earth's oblateness",
+    "eccentricity": "Orbital eccentricity (0-1); 0=circular, values near 1=highly elliptical; most LEO objects have eccentricity < 0.01",
+    "arg_perigee": "Argument of perigee in degrees (0-360); angle from ascending node to perigee measured in the orbital plane; defines the orientation of the ellipse",
+    "mean_anomaly": "Mean anomaly in degrees (0-360); fraction of the orbital period elapsed since perigee, linearized; gives the satellite's position along its orbit at epoch",
+    "mean_motion": "Mean motion in revolutions per day; related to semi-major axis via Kepler's third law; LEO objects typically 14-16 rev/day, GEO ~1.0 rev/day",
+    "mean_motion_dot": "First derivative of mean motion (rev/day^2); indicates orbital decay rate; negative values suggest boosting maneuvers, positive indicates atmospheric drag",
+    "bstar": "BSTAR drag coefficient (1/Earth radii); models atmospheric drag in the SGP4 propagator; higher values indicate greater drag area-to-mass ratio or lower altitude",
+    "intl_designator": "International designator (COSPAR ID) in format YYNNNPPP — launch year, launch number, and piece letter; identifies the launch and specific object from that launch",
+    "altitude_km": "Approximate perigee altitude in km, derived from mean motion and eccentricity via Kepler's third law; negative values indicate decayed objects or parsing errors",
+}
 
-# ── TLE parsing ──────────────────────────────────────────────────────────────
+DESCRIPTION = """\
+Daily archive of Two-Line Element sets (TLEs) from Space-Track.org, providing \
+the orbital state of every tracked object in Earth orbit. TLEs are the standard \
+format used by the US Space Surveillance Network to distribute orbital elements \
+for satellites, rocket bodies, and debris. Each record contains the classical \
+orbital elements (inclination, eccentricity, RAAN, argument of perigee, mean \
+anomaly, mean motion) plus drag parameters needed by the SGP4/SDP4 propagator. \
+This dataset captures the full GP history — one TLE per object per day — enabling \
+studies of orbital evolution, atmospheric drag effects, conjunction analysis, and \
+space debris tracking over time. Data is partitioned by year for efficient access."""
+
+
+# ── TLE parsing (domain-specific) ──────────────────────────────────────
 
 def altitude_from_mean_motion(n: float, ecc: float) -> float:
     if n <= 0:
@@ -138,8 +166,6 @@ def parse_tle_text(text: str) -> list[dict]:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 def main():
-    import requests
-
     user = os.environ.get("SPACETRACK_USER")
     pw = os.environ.get("SPACETRACK_PASS")
     if not user or not pw:
@@ -167,55 +193,64 @@ def main():
     print(f"  {len(records):,} TLEs")
 
     if len(records) == 0:
-        print("::warning::No TLEs returned for yesterday — Space-Track may be delayed. Skipping.")
+        print("::warning::No TLEs returned for yesterday -- Space-Track may be delayed. Skipping.")
         sys.exit(0)
 
     new_table = pa.Table.from_pylist(records, schema=SCHEMA)
 
     # Download existing year parquet from HF and append
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp_dir = Path(tmp)
-        data_dir = tmp_dir / "data"
-        data_dir.mkdir()
-        parquet_path = data_dir / parquet_name
+    with Pipeline(
+        repo=HF_REPO,
+        pretty_name="Space-Track TLE History",
+        description=DESCRIPTION,
+        tags=["space", "satellites", "tle", "orbits", "space-track",
+              "orbital-mechanics", "open-data", "tabular-data", "parquet"],
+        source_url="https://www.space-track.org/",
+        task_categories=["time-series-forecasting"],
+        update_schedule="Daily via [GitHub Actions](https://github.com/juliensimon/space-datasets). Fetches yesterday's GP history from Space-Track.",
+        collection_url="https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994",
+        banner={
+            "url": "https://images-assets.nasa.gov/image/iss071e439624/iss071e439624~medium.jpg",
+            "alt": "An orbital sunrise illuminates the Earth's atmosphere, seen from the ISS",
+            "credit": "NASA",
+        },
+        related_datasets=[
+            "juliensimon/space-track-satcat",
+            "juliensimon/starlink-fleet-data",
+            "juliensimon/space-launch-log",
+        ],
+    ) as p:
+        # Download existing year parquet
+        df_existing = p.download_existing(parquet_name)
 
-        try:
-            subprocess.run(
-                ["hf", "download", HF_REPO, f"data/{parquet_name}",
-                 "--repo-type", "dataset", "--local-dir", str(tmp_dir)],
-                check=True, capture_output=True, timeout=600,
-            )
-        except subprocess.CalledProcessError:
-            # New year — no existing file yet, that's OK
-            print(f"  No existing {parquet_name} on HF — creating new file")
-
-        if parquet_path.exists():
-            existing = pq.read_table(parquet_path)
-            print(f"  Existing: {existing.num_rows:,} TLEs")
-
-            # Deduplicate: remove any TLEs from yesterday that might already exist
-            # (idempotent re-runs)
-            import pandas as pd
-            df_existing = existing.to_pandas()
-            df_new = new_table.to_pandas()
+        if df_existing is not None:
             df_existing["epoch"] = pd.to_datetime(df_existing["epoch"], utc=True)
+            print(f"  Existing: {len(df_existing):,} TLEs")
+
+            df_new = new_table.to_pandas()
             df_new["epoch"] = pd.to_datetime(df_new["epoch"], utc=True)
 
-            # Remove existing rows for yesterday's date
+            # Remove existing rows for yesterday's date (idempotent re-runs)
             yesterday_date = yesterday.date()
             df_existing = df_existing[df_existing["epoch"].dt.date != yesterday_date]
 
-            df_merged = pd.concat([df_existing, df_new], ignore_index=True)
-            df_merged = df_merged.sort_values(["norad_id", "epoch"]).reset_index(drop=True)
-            merged = pa.Table.from_pandas(df_merged, schema=SCHEMA, preserve_index=False)
+            df_merged = p.merge(df_existing, df_new,
+                                dedup_on=["norad_id", "epoch"],
+                                sort_by=["norad_id", "epoch"])
         else:
-            merged = new_table
+            df_merged = new_table.to_pandas()
 
-        print(f"  Total: {merged.num_rows:,} TLEs")
-        pq.write_table(merged, parquet_path, compression="zstd")
+        n_total = len(df_merged)
+        print(f"  Total: {n_total:,} TLEs")
+
+        # Write using PyArrow for schema enforcement
+        parquet_path = p.data_dir / parquet_name
+        merged_table = pa.Table.from_pandas(df_merged, schema=SCHEMA, preserve_index=False)
+        pq.write_table(merged_table, parquet_path, compression="zstd")
         size_mb = parquet_path.stat().st_size / 1024 / 1024
         print(f"  Written: {parquet_name} ({size_mb:.1f} MB)")
 
+        # Single-file upload (year-partitioned, no README regen)
         print("Uploading to HF...")
         subprocess.run(
             ["hf", "upload", HF_REPO,
@@ -228,7 +263,7 @@ def main():
     # Output row count for status tracking
     if os.environ.get("GITHUB_OUTPUT"):
         with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"rows={merged.num_rows}\n")
+            f.write(f"rows={n_total}\n")
     print("Done.")
 
 
