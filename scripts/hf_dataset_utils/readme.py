@@ -87,6 +87,21 @@ def _quick_stats(df: pd.DataFrame) -> str:
     return "\n".join(lines)
 
 
+def _ml_task_hint(task_categories: list[str]) -> str:
+    """Generate ML task framing from HF task categories."""
+    hints = {
+        "time-series-forecasting": "time-series forecasting",
+        "tabular-regression": "tabular regression",
+        "tabular-classification": "tabular classification",
+        "text-classification": "text classification",
+    }
+    tasks = [hints[t] for t in task_categories if t in hints]
+    if not tasks:
+        return ""
+    joined = ", ".join(tasks)
+    return f"This dataset is suitable for **{joined}** tasks."
+
+
 def _citation_bibtex(repo: str, pretty_name: str) -> str:
     """Generate a BibTeX citation block."""
     year = datetime.now(timezone.utc).year
@@ -185,6 +200,9 @@ configs:
         sections.append(f"*Part of a [dataset collection]({collection_url}) on Hugging Face.*")
     sections.append("## Dataset description")
     sections.append(description)
+    ml_hint = _ml_task_hint(task_categories)
+    if ml_hint:
+        sections.append(ml_hint)
     if extra_sections:
         for heading, content in extra_sections.items():
             sections.append(heading)
@@ -194,10 +212,14 @@ configs:
     sections.append("## Quick stats")
     sections.append(quick_stats if quick_stats else _quick_stats(df))
     sections.append("## Usage")
+    load_snippet = (
+        f'```python\nfrom datasets import load_dataset\n\n'
+        f'ds = load_dataset("{repo}", split="train")\n'
+        f'df = ds.to_pandas()\n```'
+    )
+    sections.append(load_snippet)
     if usage:
         sections.append(usage)
-    else:
-        sections.append(f'```python\nfrom datasets import load_dataset\n\nds = load_dataset("{repo}", split="train")\ndf = ds.to_pandas()\n```')
     sections.append("## Data source")
     sections.append(source_url)
     if update_schedule:
@@ -207,6 +229,17 @@ configs:
         sections.append("## Related datasets")
         for ds_repo in related_datasets:
             sections.append(f"- [{ds_repo}](https://huggingface.co/datasets/{ds_repo})")
+    sections.append(
+        "> If you find this dataset useful, please consider "
+        "[giving it a like](https://huggingface.co/datasets/"
+        f"{repo}) on Hugging Face. It helps others discover it."
+    )
+    sections.append("## About the author")
+    sections.append(
+        "Created by [Julien Simon](https://julien.org) "
+        "— AI Operating Partner at Fortino Capital. "
+        "Part of the [Space Datasets](https://julien.org/datasets) collection."
+    )
     sections.append("## Citation")
     sections.append(_citation_bibtex(repo, pretty_name))
     sections.append("## License")

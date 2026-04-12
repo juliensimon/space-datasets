@@ -9,6 +9,7 @@ import pandas as pd
 
 from hf_dataset_utils.banner import banner_markdown as render_banner
 from hf_dataset_utils.banner import download_banner
+from hf_dataset_utils.crosslinks import get_domain_crosslinks
 from hf_dataset_utils.cleaning import clean_strings, coerce_int, coerce_numeric, drop_mostly_null
 from hf_dataset_utils.github import emit_output
 from hf_dataset_utils.incremental import append_by_date as inc_append_by_date
@@ -121,7 +122,15 @@ class Pipeline:
                     filename=banner_file,
                 )
 
-        # 4. Generate README
+        # 4. Auto-merge domain-based cross-links
+        related = list(self.related_datasets) if self.related_datasets else []
+        domain_links = get_domain_crosslinks(dataset_name)
+        for link in domain_links:
+            if link not in related:
+                related.append(link)
+        merged_related = related or None
+
+        # 5. Generate README
         readme_text = generate_readme(
             repo=self.repo, pretty_name=self.pretty_name,
             description=self.description, tags=self.tags,
@@ -129,7 +138,7 @@ class Pipeline:
             license=self.license, language=self.language,
             task_categories=self.task_categories,
             update_schedule=self.update_schedule,
-            related_datasets=self.related_datasets,
+            related_datasets=merged_related,
             collection_url=self.collection_url,
             banner_markdown=banner_md,
             column_descriptions=column_descriptions,
