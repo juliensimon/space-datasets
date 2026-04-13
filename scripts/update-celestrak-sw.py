@@ -29,7 +29,7 @@ COLUMN_DESCRIPTIONS = {
     "kp6": "Kp index for the 15-18 UT window. See `kp1` for scale description.",
     "kp7": "Kp index for the 18-21 UT window. See `kp1` for scale description.",
     "kp8": "Kp index for the 21-24 UT window. See `kp1` for scale description.",
-    "kpsum": "Sum of the eight 3-hourly Kp values for the day (range 0-72). A convenient single-number summary of daily geomagnetic activity used in satellite drag studies.",
+    "kp_sum": "Sum of the eight 3-hourly Kp values for the day (range 0-72). A convenient single-number summary of daily geomagnetic activity used in satellite drag studies.",
     "ap1": "ap index for the 00-03 UT window. Linear-scale equivalent of Kp (range 0-400 nT); more suitable than Kp for numerical averaging and atmospheric drag models such as NRLMSISE-00.",
     "ap2": "ap index for the 03-06 UT window. See `ap1` for scale description.",
     "ap3": "ap index for the 06-09 UT window. See `ap1` for scale description.",
@@ -38,7 +38,7 @@ COLUMN_DESCRIPTIONS = {
     "ap6": "ap index for the 15-18 UT window. See `ap1` for scale description.",
     "ap7": "ap index for the 18-21 UT window. See `ap1` for scale description.",
     "ap8": "ap index for the 21-24 UT window. See `ap1` for scale description.",
-    "apavg": "Daily mean of the eight 3-hourly ap values (range 0-400 nT). Standard daily geomagnetic activity indicator; required input to the JB2008 atmospheric density model.",
+    "ap_avg": "Daily mean of the eight 3-hourly ap values (range 0-400 nT). Standard daily geomagnetic activity indicator; required input to the JB2008 atmospheric density model.",
     "cp": "Daily planetary character figure Cp (0.0-2.5, step 0.1). Legacy precursor to the Ap index: 0.0 = extremely quiet, 2.5 = extremely disturbed. Maintained for historical continuity.",
     "c9": "Nine-level conversion of the Cp figure (0-9). Maps the 0.0-2.5 Cp scale to a compact single-digit integer for older data formats.",
     "isn": "International Sunspot Number (daily). Count of sunspots visible on the solar disk; a proxy for solar activity level and the phase of the ~11-year solar cycle. Provided by the Royal Observatory of Belgium.",
@@ -128,7 +128,7 @@ def main():
     date_min = df["date"].min().strftime("%Y-%m-%d")
     date_max = df["date"].max().strftime("%Y-%m-%d")
     mean_f107 = df["f10_7_obs"].mean() if "f10_7_obs" in df.columns else 0
-    max_kpsum = df["kpsum"].max() if "kpsum" in df.columns else 0
+    max_kpsum = df["kp_sum"].max() if "kp_sum" in df.columns else 0
 
     quick_stats = f"""\
 - **{n:,}** daily records ({date_min} to {date_max})
@@ -190,7 +190,7 @@ plt.show()
             df,
             filename="celestrak_space_weather.parquet",
             min_rows=20_000,
-            expected_columns=["date", "kp1", "apavg", "f10_7_obs"],
+            expected_columns=["date", "kp1", "ap_avg", "f10_7_obs"],
             critical_columns=["date"],
             column_descriptions=COLUMN_DESCRIPTIONS,
             quick_stats=quick_stats,

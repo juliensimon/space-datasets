@@ -106,6 +106,13 @@ def main():
 
     df = df.reset_index(drop=True)
 
+    # JPL API returns numeric values as strings — coerce before computing stats
+    for col in ["min_delta_v_kms", "min_mission_duration_days",
+                "n_viable_trajectories", "observation_magnitude",
+                "orbit_condition_code", "max_diameter_m", "min_diameter_m"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
     # ── Domain-specific stats for README ─────────────────────────────
     n = len(df)
     mean_dv = df["min_delta_v_kms"].mean() if "min_delta_v_kms" in df.columns else 0

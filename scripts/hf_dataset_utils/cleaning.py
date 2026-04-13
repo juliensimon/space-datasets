@@ -76,6 +76,9 @@ def clean_strings(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
         The same DataFrame (for chaining).
     """
     for col in columns:
+        if col not in df.columns:
+            print(f"  Warning: column '{col}' not in DataFrame, skipping clean_strings")
+            continue
         if pd.api.types.is_numeric_dtype(df[col]):
             print(f"  Warning: skipping clean_strings on numeric column '{col}'")
             continue
