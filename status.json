@@ -108,7 +108,8 @@
     "blue-origin-launches": 45,
     "oneweb": 3,
     "ast-spacemobile": 1,
-    "ula-launches": 211
+    "ula-launches": 211,
+    "fcc-ngso-filings": 5
   },
   "ae-index": "2026-04-12",
   "artemis-ii": "2026-04-13",
@@ -216,5 +217,6 @@
   "blue-origin-launches": "2026-04-15",
   "oneweb": "2026-04-15",
   "ast-spacemobile": "2026-04-15",
-  "ula-launches": "2026-04-15"
+  "ula-launches": "2026-04-15",
+  "fcc-ngso-filings": "2026-04-15"
 }

@@ -431,6 +431,7 @@ DATASET_DOMAIN = {
     "spacex-launches": "satellites",
     "ast-spacemobile": "satellites",
     "blue-origin-launches": "satellites",
+    "fcc-ngso-filings": "satellites",
     "globalstar": "satellites",
     "kuiper": "satellites",
     "oneweb": "satellites",

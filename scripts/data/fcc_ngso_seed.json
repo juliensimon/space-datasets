@@ -1,0 +1,62 @@
+{
+  "_comment": "Curated FCC IBFS NGSO satellite filings. Hand-maintained values (system_name, requested_satellites, orbital_shells) come from filing attachments and FCC Space Bureau press releases. Extend as new major filings are announced.",
+  "filings": [
+    {
+      "file_number": "SAT-LOA-20161115-00118",
+      "operator_family": "spacex",
+      "system_name": "Starlink Gen1",
+      "requested_satellites": 4425,
+      "orbital_shells": [
+        {"altitude_km": 1150, "inclination_deg": 53.0, "satellite_count": 1584},
+        {"altitude_km": 1110, "inclination_deg": 53.8, "satellite_count": 1600},
+        {"altitude_km": 1130, "inclination_deg": 74.0, "satellite_count": 400},
+        {"altitude_km": 1275, "inclination_deg": 81.0, "satellite_count": 375},
+        {"altitude_km": 1325, "inclination_deg": 70.0, "satellite_count": 450}
+      ]
+    },
+    {
+      "file_number": "SAT-LOA-20200526-00055",
+      "operator_family": "spacex",
+      "system_name": "Starlink Gen2",
+      "requested_satellites": 29988,
+      "orbital_shells": [
+        {"altitude_km": 340, "inclination_deg": 53.0, "satellite_count": 7178},
+        {"altitude_km": 345, "inclination_deg": 46.0, "satellite_count": 7178},
+        {"altitude_km": 350, "inclination_deg": 38.0, "satellite_count": 7178},
+        {"altitude_km": 360, "inclination_deg": 96.9, "satellite_count": 2000},
+        {"altitude_km": 525, "inclination_deg": 53.0, "satellite_count": 4000},
+        {"altitude_km": 530, "inclination_deg": 43.0, "satellite_count": 2454}
+      ]
+    },
+    {
+      "file_number": "SAT-LOA-20190704-00057",
+      "operator_family": "amazon",
+      "system_name": "Project Kuiper",
+      "requested_satellites": 3236,
+      "orbital_shells": [
+        {"altitude_km": 590, "inclination_deg": 33.0, "satellite_count": 784},
+        {"altitude_km": 610, "inclination_deg": 42.0, "satellite_count": 1296},
+        {"altitude_km": 630, "inclination_deg": 51.9, "satellite_count": 1156}
+      ]
+    },
+    {
+      "file_number": "SAT-LOI-20160428-00041",
+      "operator_family": "oneweb",
+      "system_name": "OneWeb Gen1",
+      "requested_satellites": 720,
+      "orbital_shells": [
+        {"altitude_km": 1200, "inclination_deg": 87.9, "satellite_count": 720}
+      ]
+    },
+    {
+      "file_number": "SAT-PDR-20200526-00053",
+      "operator_family": "telesat",
+      "system_name": "Telesat Lightspeed",
+      "requested_satellites": 1671,
+      "orbital_shells": [
+        {"altitude_km": 1015, "inclination_deg": 98.98, "satellite_count": 351},
+        {"altitude_km": 1325, "inclination_deg": 50.88, "satellite_count": 1320}
+      ]
+    }
+  ]
+}

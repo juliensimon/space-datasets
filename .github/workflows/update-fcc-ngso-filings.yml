@@ -1,0 +1,25 @@
+name: Update FCC NGSO Filings
+on:
+  schedule:
+    - cron: '0 10 * * 1'  # weekly on Monday at 10:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    environment: HF
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pandas pyarrow requests beautifulsoup4 lxml huggingface_hub[hf_xet]
+      - id: update
+        run: python scripts/update-fcc-ngso-filings.py
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      - name: Update and push status
+        run: bash scripts/push-status.sh fcc-ngso-filings --rows ${{ steps.update.outputs.rows }}
