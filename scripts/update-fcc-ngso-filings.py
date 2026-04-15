@@ -42,7 +42,7 @@ COLUMN_DESCRIPTIONS = {
     "applicant": "Filing applicant legal entity (e.g. Kuiper Systems LLC, Space Exploration Holdings, LLC)",
     "operator_family": "Normalized operator group (spacex, amazon, oneweb, blue_origin, telesat, ast, boeing, viasat, globalstar, iridium, other)",
     "system_name": "Human-readable constellation name (Starlink Gen2, Project Kuiper, OneWeb Gen1, etc.)",
-    "filing_type": "IBFS filing type extracted from the file number: LOA (Launch and Operate), MOD (Modification), PDR (Petition for Declaratory Ruling), AMD (Amendment), LOI (Letter of Intent)",
+    "filing_type": "IBFS filing type extracted from the file number: LOA (Launch and Operate), MOD (Modification), MPL (Market-Access Petition), AMD (Amendment), LOI (Letter of Intent), PDR (Petition for Declaratory Ruling)",
     "nature_of_service": "FCC service classification (Fixed Satellite Service, Mobile Satellite Service, etc.)",
     "status": "Current processing status (Action Complete, Pending, Dismissed, etc.)",
     "last_action": "Most recent action taken (Grant of Authority, Application Filed, etc.)",
@@ -115,6 +115,11 @@ def fetch_filing(session, file_number):
     title = _clean(soup.title.string if soup.title else "")
     m = re.search(r"by (.+?) \[" + re.escape(file_number) + r"\]", title)
     applicant_from_title = m.group(1) if m else ""
+    if not applicant_from_title:
+        raise RuntimeError(
+            f"No applicant found on fcc.report page for {file_number} — "
+            f"the page is empty or the file number does not exist"
+        )
 
     # Description meta
     meta_desc = soup.find("meta", {"name": "Description"})
@@ -243,6 +248,31 @@ def main():
     df["last_action_date"] = pd.to_datetime(df["last_action_date"], errors="coerce")
     df["requested_satellites"] = pd.to_numeric(df["requested_satellites"], errors="coerce").astype("Int64")
     df = df.sort_values("date_filed", na_position="last").reset_index(drop=True)
+
+    # Fail fast on empty rows (beyond what check_dataset does): every row must have a
+    # non-empty applicant, nature_of_service, status, and date_filed.
+    required_non_empty = ["applicant", "nature_of_service", "status"]
+    for col in required_non_empty:
+        bad = df[df[col].fillna("").str.strip() == ""]
+        if len(bad):
+            raise RuntimeError(
+                f"Empty {col!r} in {len(bad)} row(s): {bad['file_number'].tolist()}"
+            )
+    if df["date_filed"].isna().any():
+        bad = df[df["date_filed"].isna()]["file_number"].tolist()
+        raise RuntimeError(f"Missing date_filed in rows: {bad}")
+
+    # Shell-sum invariant: orbital_shells_json counts must equal requested_satellites
+    for _, row in df.iterrows():
+        if pd.isna(row["requested_satellites"]):
+            continue
+        shells = json.loads(row["orbital_shells_json"])
+        shell_sum = sum(int(s.get("satellite_count", 0)) for s in shells)
+        if shell_sum != int(row["requested_satellites"]):
+            raise RuntimeError(
+                f"Shell sum mismatch in {row['file_number']}: "
+                f"shells sum to {shell_sum} but requested_satellites={row['requested_satellites']}"
+            )
 
     n_total = len(df)
     n_granted = int(df["status"].eq("Action Complete").sum())

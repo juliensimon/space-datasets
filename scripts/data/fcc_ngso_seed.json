@@ -7,7 +7,7 @@
       "system_name": "Starlink Gen1",
       "requested_satellites": 4425,
       "orbital_shells": [
-        {"altitude_km": 1150, "inclination_deg": 53.0, "satellite_count": 1584},
+        {"altitude_km": 1150, "inclination_deg": 53.0, "satellite_count": 1600},
         {"altitude_km": 1110, "inclination_deg": 53.8, "satellite_count": 1600},
         {"altitude_km": 1130, "inclination_deg": 74.0, "satellite_count": 400},
         {"altitude_km": 1275, "inclination_deg": 81.0, "satellite_count": 375},
@@ -49,7 +49,7 @@
       ]
     },
     {
-      "file_number": "SAT-PDR-20200526-00053",
+      "file_number": "SAT-MPL-20200526-00053",
       "operator_family": "telesat",
       "system_name": "Telesat Lightspeed",
       "requested_satellites": 1671,
