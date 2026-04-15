@@ -46,6 +46,7 @@
     "isro": 290,
     "juice": 3047,
     "kp-index": 229,
+    "kuiper": 1,
     "launch-log": 75794,
     "launch-vehicles": 210,
     "lunar-geochemistry": 58289,
@@ -102,7 +103,9 @@
     "venus-express": 524787,
     "wds": 157371,
     "wmo-oscar": 2255,
-    "xray-binaries": 305
+    "xray-binaries": 305,
+    "globalstar": 4,
+    "blue-origin-launches": 45
   },
   "ae-index": "2026-04-12",
   "artemis-ii": "2026-04-13",
@@ -148,6 +151,7 @@
   "isro": "2026-04-03",
   "juice": "2026-04-13",
   "kp-index": "2026-04-14",
+  "kuiper": "2026-04-15",
   "launch-log": "2026-04-13",
   "launch-vehicles": "2026-04-01",
   "lunar-geochemistry": "2026-04-04",
@@ -204,5 +208,7 @@
   "venus-express": "2026-04-13",
   "wds": "2026-04-13",
   "wmo-oscar": "2026-04-03",
-  "xray-binaries": "2026-04-03"
+  "xray-binaries": "2026-04-03",
+  "globalstar": "2026-04-15",
+  "blue-origin-launches": "2026-04-15"
 }
