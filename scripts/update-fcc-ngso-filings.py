@@ -85,10 +85,58 @@ underlying filings are public records of the US federal government.\
 """
 
 
-def load_seed():
-    with open(SEED_PATH) as f:
+def load_seed(path=SEED_PATH):
+    """Load and validate the FCC NGSO seed file.
+
+    Fail-fast checks run here (not at upload time) so typos in the hand-curated
+    seed surface immediately without wasting any HTTP traffic.
+    """
+    with open(path) as f:
         data = json.load(f)
-    return data["filings"]
+    filings = data["filings"]
+
+    seen = set()
+    for i, entry in enumerate(filings):
+        ctx = f"seed[{i}]"
+        for key in ("file_number", "operator_family", "system_name",
+                    "requested_satellites", "orbital_shells"):
+            if key not in entry:
+                raise ValueError(f"{ctx}: missing required key {key!r}")
+
+        fn = entry["file_number"]
+        if fn in seen:
+            raise ValueError(f"{ctx}: duplicate file_number {fn!r}")
+        seen.add(fn)
+
+        op = entry["operator_family"]
+        if op not in VALID_OPERATOR_FAMILIES:
+            raise ValueError(
+                f"{ctx} ({fn}): operator_family={op!r} not in {sorted(VALID_OPERATOR_FAMILIES)}"
+            )
+
+        req = entry["requested_satellites"]
+        if not isinstance(req, int) or req <= 0:
+            raise ValueError(f"{ctx} ({fn}): requested_satellites must be positive int, got {req!r}")
+
+        shells = entry["orbital_shells"]
+        if not isinstance(shells, list) or not shells:
+            raise ValueError(f"{ctx} ({fn}): orbital_shells must be a non-empty list")
+        shell_sum = 0
+        for j, s in enumerate(shells):
+            for k in ("altitude_km", "inclination_deg", "satellite_count"):
+                if k not in s:
+                    raise ValueError(f"{ctx} ({fn}) shell[{j}]: missing key {k!r}")
+            if not isinstance(s["satellite_count"], int) or s["satellite_count"] <= 0:
+                raise ValueError(
+                    f"{ctx} ({fn}) shell[{j}]: satellite_count must be positive int, got {s['satellite_count']!r}"
+                )
+            shell_sum += s["satellite_count"]
+        if shell_sum != req:
+            raise ValueError(
+                f"{ctx} ({fn}): orbital_shells sum to {shell_sum} but requested_satellites={req}"
+            )
+
+    return filings
 
 
 def _session():
@@ -102,14 +150,27 @@ def _clean(s):
 
 
 def fetch_filing(session, file_number):
+    """HTTP wrapper around parse_filing_html. Handles network + one 5xx retry."""
     url = f"{BASE_URL}/{file_number}"
     resp = session.get(url, timeout=60)
     if resp.status_code >= 500:
-        # One retry with backoff
         time.sleep(5)
         resp = session.get(url, timeout=60)
     resp.raise_for_status()
-    soup = BeautifulSoup(resp.text, "html.parser")
+    return parse_filing_html(resp.text, file_number, url)
+
+
+def parse_filing_html(html, file_number, url=None):
+    """Parse a fcc.report IBFS landing page into a flat dict.
+
+    Split out from fetch_filing so tests can run against saved HTML fixtures
+    without network access. Fails fast if the page has no applicant in the
+    title, which is the clearest signal that the URL does not exist or the
+    HTML structure has drifted.
+    """
+    if url is None:
+        url = f"{BASE_URL}/{file_number}"
+    soup = BeautifulSoup(html, "html.parser")
 
     # Title: "Application for <service> by <applicant> [<file_number>]"
     title = _clean(soup.title.string if soup.title else "")
@@ -202,6 +263,7 @@ def main():
 
     session = _session()
     rows = []
+    skipped = []
     now_utc = datetime.now(timezone.utc)
 
     for i, entry in enumerate(seed):
@@ -210,19 +272,18 @@ def main():
         try:
             scraped = fetch_filing(session, file_number)
         except Exception as e:
-            print(f"    WARN: fetch failed: {e}")
+            # Graceful single-filing failure: log and continue. The final
+            # dataframe is still shipped as long as at least one row parses
+            # and the fail-fast validation below passes.
+            print(f"    WARN: fetch failed, skipping this row: {e}")
+            skipped.append((file_number, str(e)))
             continue
-
-        op = entry.get("operator_family", "other")
-        if op not in VALID_OPERATOR_FAMILIES:
-            print(f"    WARN: unknown operator_family={op!r}, coercing to 'other'")
-            op = "other"
 
         rows.append({
             "file_number": file_number,
             "applicant": scraped["applicant"],
-            "operator_family": op,
-            "system_name": entry.get("system_name", ""),
+            "operator_family": entry["operator_family"],
+            "system_name": entry["system_name"],
             "filing_type": extract_filing_type(file_number),
             "nature_of_service": scraped["nature_of_service"],
             "status": scraped["status"],
@@ -230,8 +291,8 @@ def main():
             "date_filed": scraped["date_filed"],
             "date_granted": scraped["date_granted"],
             "last_action_date": scraped["last_action_date"],
-            "requested_satellites": entry.get("requested_satellites"),
-            "orbital_shells_json": json.dumps(entry.get("orbital_shells", [])),
+            "requested_satellites": entry["requested_satellites"],
+            "orbital_shells_json": json.dumps(entry["orbital_shells"]),
             "frequency_bands": scraped["frequency_bands"],
             "description": scraped["description"],
             "applicant_address": scraped["applicant_address"],
@@ -242,6 +303,11 @@ def main():
         if i < len(seed) - 1:
             time.sleep(REQUEST_SLEEP_SEC)
 
+    if skipped:
+        print(f"  Skipped {len(skipped)}/{len(seed)} filings: {[fn for fn, _ in skipped]}")
+    if not rows:
+        raise RuntimeError("All seed filings failed to parse — aborting, nothing to upload")
+
     df = pd.DataFrame(rows)
     df["date_filed"] = pd.to_datetime(df["date_filed"], errors="coerce")
     df["date_granted"] = pd.to_datetime(df["date_granted"], errors="coerce")
@@ -249,8 +315,8 @@ def main():
     df["requested_satellites"] = pd.to_numeric(df["requested_satellites"], errors="coerce").astype("Int64")
     df = df.sort_values("date_filed", na_position="last").reset_index(drop=True)
 
-    # Fail fast on empty rows (beyond what check_dataset does): every row must have a
-    # non-empty applicant, nature_of_service, status, and date_filed.
+    # Fail fast on empty rows from the scraper. Shell-sum and operator_family
+    # checks already happened at seed-load time in load_seed().
     required_non_empty = ["applicant", "nature_of_service", "status"]
     for col in required_non_empty:
         bad = df[df[col].fillna("").str.strip() == ""]
@@ -261,18 +327,6 @@ def main():
     if df["date_filed"].isna().any():
         bad = df[df["date_filed"].isna()]["file_number"].tolist()
         raise RuntimeError(f"Missing date_filed in rows: {bad}")
-
-    # Shell-sum invariant: orbital_shells_json counts must equal requested_satellites
-    for _, row in df.iterrows():
-        if pd.isna(row["requested_satellites"]):
-            continue
-        shells = json.loads(row["orbital_shells_json"])
-        shell_sum = sum(int(s.get("satellite_count", 0)) for s in shells)
-        if shell_sum != int(row["requested_satellites"]):
-            raise RuntimeError(
-                f"Shell sum mismatch in {row['file_number']}: "
-                f"shells sum to {shell_sum} but requested_satellites={row['requested_satellites']}"
-            )
 
     n_total = len(df)
     n_granted = int(df["status"].eq("Action Complete").sum())
