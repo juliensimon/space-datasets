@@ -7,20 +7,20 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ### Top downloads
 
 <!-- TOP_DOWNLOADS_START -->
-**14,959** downloads (+581)  ·  **5** likes  ·  **183** datasets  ·  updated 2026-04-14
+**15,518** downloads (+559)  ·  **5** likes  ·  **183** datasets  ·  updated 2026-04-15
 
 | # | Dataset | Downloads |
 |--:|---------|----------:|
-| 1 | [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) | 928 (+26) |
-| 2 | [esa-exomars-tgo-observations](https://huggingface.co/datasets/juliensimon/esa-exomars-tgo-observations) | 641 (+1) |
-| 3 | [spacex-launches](https://huggingface.co/datasets/juliensimon/spacex-launches) | 365 (+13) |
-| 4 | [starlink-fleet-data](https://huggingface.co/datasets/juliensimon/starlink-fleet-data) | 332 (+11) |
-| 5 | [constellation-tle-latest](https://huggingface.co/datasets/juliensimon/constellation-tle-latest) | 330 (+48) |
-| 6 | [gaia-dr3-eclipsing-binaries](https://huggingface.co/datasets/juliensimon/gaia-dr3-eclipsing-binaries) | 324 (+15) |
-| 7 | [gaia-dr3-young-stellar-objects](https://huggingface.co/datasets/juliensimon/gaia-dr3-young-stellar-objects) | 313 (+19) |
-| 8 | [gaia-dr3-white-dwarfs](https://huggingface.co/datasets/juliensimon/gaia-dr3-white-dwarfs) | 308 (+12) |
-| 9 | [gaia-dr3-rrlyrae](https://huggingface.co/datasets/juliensimon/gaia-dr3-rrlyrae) | 296 (+21) |
-| 10 | [gaia-dr3-cepheids](https://huggingface.co/datasets/juliensimon/gaia-dr3-cepheids) | 285 (+14) |
+| 1 | [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) | 938 (+10) |
+| 2 | [esa-exomars-tgo-observations](https://huggingface.co/datasets/juliensimon/esa-exomars-tgo-observations) | 648 (+7) |
+| 3 | [spacex-launches](https://huggingface.co/datasets/juliensimon/spacex-launches) | 379 (+14) |
+| 4 | [constellation-tle-latest](https://huggingface.co/datasets/juliensimon/constellation-tle-latest) | 368 (+38) |
+| 5 | [starlink-fleet-data](https://huggingface.co/datasets/juliensimon/starlink-fleet-data) | 339 (+7) |
+| 6 | [gaia-dr3-eclipsing-binaries](https://huggingface.co/datasets/juliensimon/gaia-dr3-eclipsing-binaries) | 325 (+1) |
+| 7 | [gaia-dr3-young-stellar-objects](https://huggingface.co/datasets/juliensimon/gaia-dr3-young-stellar-objects) | 314 (+1) |
+| 8 | [gaia-dr3-white-dwarfs](https://huggingface.co/datasets/juliensimon/gaia-dr3-white-dwarfs) | 311 (+3) |
+| 9 | [gaia-dr3-rrlyrae](https://huggingface.co/datasets/juliensimon/gaia-dr3-rrlyrae) | 298 (+2) |
+| 10 | [gaia-dr3-cepheids](https://huggingface.co/datasets/juliensimon/gaia-dr3-cepheids) | 286 (+1) |
 <!-- TOP_DOWNLOADS_END -->
 
 <!-- Orbital Mechanics -->
