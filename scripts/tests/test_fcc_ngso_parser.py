@@ -11,7 +11,16 @@ Run:
 Update fixture if fcc.report layout intentionally changes:
     curl -s -A "space-datasets/fcc-ngso-filings" \
         https://fcc.report/IBFS/SAT-LOA-20190704-00057 \
-        -o scripts/data/fixtures/kuiper.html
+        | python3 -c "import sys,re; \
+sys.stdout.write(re.sub(r'src=\"https://www\\.google\\.com/maps/embed[^\"]*\"', \
+'src=\"REDACTED-GOOGLE-MAPS-EMBED-URL\"', sys.stdin.read()))" \
+        > scripts/data/fixtures/kuiper.html
+
+The inline scrub removes fcc.report's public Google Maps Embed API key
+from the saved HTML — GitHub secret scanning will flag it as a Google API
+key pattern even though the key is already publicly exposed on fcc.report
+and referrer-restricted at Google's end. The parser never touches the
+iframe block so stripping it does not affect test coverage.
 """
 
 import importlib.util
