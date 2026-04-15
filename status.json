@@ -105,7 +105,10 @@
     "wmo-oscar": 2255,
     "xray-binaries": 305,
     "globalstar": 4,
-    "blue-origin-launches": 45
+    "blue-origin-launches": 45,
+    "oneweb": 3,
+    "ast-spacemobile": 1,
+    "ula-launches": 211
   },
   "ae-index": "2026-04-12",
   "artemis-ii": "2026-04-13",
@@ -210,5 +213,8 @@
   "wmo-oscar": "2026-04-03",
   "xray-binaries": "2026-04-03",
   "globalstar": "2026-04-15",
-  "blue-origin-launches": "2026-04-15"
+  "blue-origin-launches": "2026-04-15",
+  "oneweb": "2026-04-15",
+  "ast-spacemobile": "2026-04-15",
+  "ula-launches": "2026-04-15"
 }
