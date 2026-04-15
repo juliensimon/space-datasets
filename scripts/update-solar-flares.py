@@ -36,7 +36,6 @@ COLUMN_DESCRIPTIONS = {
     "goes_class": "Full NOAA flare classification (e.g. 'B3.7', 'C1.6', 'M5.1', 'X1.0'); letter sets the decade, number is the multiplier (M5.2 = 5.2 x 10^-5 W/m2)",
     "goes_class_letter": "NOAA flare class letter: 'A' (background, 10^-8 W/m2), 'B' (10^-7), 'C' (10^-6, minor), 'M' (10^-5, moderate, may cause radio blackouts at HF), 'X' (>= 10^-4, major, can cause HF blackouts, radiation storms, CMEs)",
     "peak_flux_wm2": "Peak GOES X-ray flux in the 1-8 A band in W/m2; ranges from ~10^-8 (quiet sun) to ~10^-3 (extreme X-class); the numeric value that defines the full goes_class",
-    "active_region": "NOAA Active Region number of the source sunspot group (e.g. 12673); null when no source region is identified (e.g. behind-the-limb or spotless events)",
     "satellite": "GOES satellite that recorded the event: 'GOES-16' (primary since 2017) or 'GOES-18' (primary from 2022)",
 }
 
@@ -166,9 +165,6 @@ def parse_swpc_xra_line(line, date_str):
             m = int(hhmm[-2:])
             return datetime(year, month, day, h, m)
 
-        reg_match = re.search(r"(\d{4})\s*$", after_xra)
-        active_region = int(reg_match.group(1)) if reg_match else None
-
         return {
             "start_time": parse_hhmm(begin),
             "peak_time": parse_hhmm(max_t),
@@ -176,7 +172,6 @@ def parse_swpc_xra_line(line, date_str):
             "goes_class": goes_class,
             "goes_class_letter": goes_class[0],
             "peak_flux_wm2": peak_flux,
-            "active_region": active_region,
             "satellite": "GOES-18",
         }
     except (ValueError, IndexError):
@@ -237,6 +232,8 @@ def main():
         ],
     ) as p:
         df_existing = p.download_existing("solar_flare_events.parquet")
+        if df_existing is not None:
+            df_existing = df_existing.drop(columns=["active_region"], errors="ignore")
 
         if df_existing is not None and len(df_existing) > 0:
             # Incremental: skip NCEI download, just append SWPC daily
@@ -295,16 +292,11 @@ def main():
         for col in ["start_time", "peak_time", "end_time"]:
             df[col] = pd.to_datetime(df[col], errors="coerce")
         df["peak_flux_wm2"] = pd.to_numeric(df["peak_flux_wm2"], errors="coerce")
-        if "active_region" in df.columns:
-            df["active_region"] = pd.to_numeric(df["active_region"], errors="coerce").astype("Int64")
-        else:
-            df["active_region"] = pd.array([pd.NA] * len(df), dtype="Int64")
 
         # Keep only described columns
         df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
         df = p.clean(df, numeric=["peak_flux_wm2"],
-                     integer=["active_region"],
                      strings=["goes_class", "goes_class_letter", "satellite"])
 
         # Stats
@@ -343,10 +335,6 @@ monthly.plot(figsize=(12, 4), title="Monthly Flare Count")
 plt.ylabel("Flares")
 plt.tight_layout()
 plt.show()
-
-# X-class flares by active region
-x_flares = df[df["goes_class_letter"] == "X"]
-x_flares["active_region"].value_counts().head(10)
 
 # Flare duration distribution
 df["duration_min"] = (df["end_time"] - df["start_time"]).dt.total_seconds() / 60
