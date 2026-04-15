@@ -52,6 +52,11 @@ def _size_category(n_rows: int) -> str:
     return "n<1K"
 
 
+def _md_cell(s: str) -> str:
+    """Escape a string for inclusion in a markdown table cell."""
+    return s.replace("|", "\\|").replace("\n", " ")
+
+
 def _schema_table(df: pd.DataFrame, column_descriptions: dict[str, str] | None = None) -> str:
     """Generate a markdown table describing the DataFrame schema."""
     descs = column_descriptions or {}
@@ -61,11 +66,12 @@ def _schema_table(df: pd.DataFrame, column_descriptions: dict[str, str] | None =
     ]
     for col in df.columns:
         dtype = str(df[col].dtype)
-        desc = descs.get(col, "")
+        desc = _md_cell(descs.get(col, ""))
         non_null = df[col].dropna()
         sample = str(non_null.iloc[0]) if len(non_null) > 0 else ""
         if len(sample) > 40:
             sample = sample[:37] + "..."
+        sample = _md_cell(sample)
         null_pct = f"{df[col].isna().mean():.1%}"
         lines.append(f"| `{col}` | {dtype} | {desc} | {sample} | {null_pct} |")
     return "\n".join(lines)
