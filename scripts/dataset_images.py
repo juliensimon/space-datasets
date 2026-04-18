@@ -402,6 +402,7 @@ DATASET_DOMAIN = {
     "rc3": "galaxies",
     # Sky surveys
     "chandra": "sky_surveys",
+    "galex": "sky_surveys",
     "hst": "sky_surveys",
     "jwst": "sky_surveys",
     "kepler-obs": "exoplanets",

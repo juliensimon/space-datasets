@@ -1,6 +1,6 @@
 # space-datasets — Open Space, Astronomy & Physics Datasets on Hugging Face
 
-Open-source data pipelines that publish **187 space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
+Open-source data pipelines that publish **188 space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
 
 All datasets are loadable in one line (`load_dataset("juliensimon/...")`), require no API keys, and work with `pandas`, `polars`, or any Parquet-compatible tool.
 
@@ -91,6 +91,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![JWST](https://github.com/juliensimon/space-datasets/actions/workflows/update-jwst.yml/badge.svg)
 ![HST](https://github.com/juliensimon/space-datasets/actions/workflows/update-hst.yml/badge.svg)
 ![Kepler](https://github.com/juliensimon/space-datasets/actions/workflows/update-kepler-obs.yml/badge.svg)
+![GALEX](https://github.com/juliensimon/space-datasets/actions/workflows/update-galex.yml/badge.svg)
 ![HII Regions](https://github.com/juliensimon/space-datasets/actions/workflows/update-hii-regions.yml/badge.svg)
 ![Pulsar Glitches](https://github.com/juliensimon/space-datasets/actions/workflows/update-pulsar-glitches.yml/badge.svg)
 ![Cosmic Voids](https://github.com/juliensimon/space-datasets/actions/workflows/update-cosmic-voids.yml/badge.svg)
@@ -273,6 +274,7 @@ A broad survey of the observable universe — from exoplanets in our galactic ne
 | [gaia-dr3-white-dwarfs](https://huggingface.co/datasets/juliensimon/gaia-dr3-white-dwarfs) | 359K white dwarf candidates with atmospheric parameters and masses from Gaia DR3 | — | Static | ~50 MB |
 | [gaia-dr3-young-stellar-objects](https://huggingface.co/datasets/juliensimon/gaia-dr3-young-stellar-objects) | 79K+ young stellar object (YSO) candidates with classification scores and variability from Gaia DR3 | — | Static | ~10 MB |
 | [galah-dr4-stellar-abundances](https://huggingface.co/datasets/juliensimon/galah-dr4-stellar-abundances) | GALAH DR4 radial velocities, stellar parameters, and elemental abundances for 917K stars | — | Static | ~80 MB |
+| [galex-observations](https://huggingface.co/datasets/juliensimon/galex-observations) | 275K GALEX UV survey observations (2003–2013) tagged with survey type (AIS, MIS, DIS, NGS, etc.) | ![GALEX](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.galex&label=updated&color=brightgreen) | Quarterly | ~6 MB |
 | [galaxy-clusters](https://huggingface.co/datasets/juliensimon/galaxy-clusters) | 1,650+ galaxy clusters detected by Planck via the Sunyaev-Zeldovich effect | ![Clusters](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['galaxy-clusters']&label=updated&color=brightgreen) | Quarterly | 50 KB |
 | [galaxy-zoo-2-morphology](https://huggingface.co/datasets/juliensimon/galaxy-zoo-2-morphology) | 243K citizen-science galaxy morphology classifications with vote fractions and debiased probabilities | — | Static | ~20 MB |
 | [gamma-ray-bursts](https://huggingface.co/datasets/juliensimon/gamma-ray-bursts) | 4,200+ gamma-ray bursts from Fermi GBM with duration, flux, and spectral data | ![GRB](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.grb&label=updated&color=brightgreen) | Weekly | 0.3 MB |
@@ -501,6 +503,7 @@ python scripts/update-gaia-sb.py
 python scripts/update-gaia-wd.py
 python scripts/update-gaia-yso.py
 pip install astropy && python scripts/update-galah.py
+python scripts/update-galex.py
 python scripts/update-galaxy-clusters.py
 python scripts/update-galaxy-zoo.py
 python scripts/update-gcvs.py
