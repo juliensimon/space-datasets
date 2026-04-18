@@ -405,6 +405,7 @@ DATASET_DOMAIN = {
     "galex": "sky_surveys",
     "hst": "sky_surveys",
     "jwst": "sky_surveys",
+    "k2-obs": "exoplanets",
     "kepler-obs": "exoplanets",
     "chime-frb": "sky_surveys",
     "erosita": "sky_surveys",

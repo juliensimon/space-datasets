@@ -251,6 +251,7 @@ DATASETS = {
         "juliensimon/icecube-neutrino-catalog",
         "juliensimon/icrf3-reference-frame",
         "juliensimon/jwst-observations",
+        "juliensimon/k2-observations",
         "juliensimon/kepler-eclipsing-binaries",
         "juliensimon/kepler-observations",
         "juliensimon/kepler-transit-timing",

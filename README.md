@@ -1,6 +1,6 @@
 # space-datasets — Open Space, Astronomy & Physics Datasets on Hugging Face
 
-Open-source data pipelines that publish **188 space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
+Open-source data pipelines that publish **189 space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
 
 All datasets are loadable in one line (`load_dataset("juliensimon/...")`), require no API keys, and work with `pandas`, `polars`, or any Parquet-compatible tool.
 
@@ -91,6 +91,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![JWST](https://github.com/juliensimon/space-datasets/actions/workflows/update-jwst.yml/badge.svg)
 ![HST](https://github.com/juliensimon/space-datasets/actions/workflows/update-hst.yml/badge.svg)
 ![Kepler](https://github.com/juliensimon/space-datasets/actions/workflows/update-kepler-obs.yml/badge.svg)
+![K2](https://github.com/juliensimon/space-datasets/actions/workflows/update-k2-obs.yml/badge.svg)
 ![GALEX](https://github.com/juliensimon/space-datasets/actions/workflows/update-galex.yml/badge.svg)
 ![HII Regions](https://github.com/juliensimon/space-datasets/actions/workflows/update-hii-regions.yml/badge.svg)
 ![Pulsar Glitches](https://github.com/juliensimon/space-datasets/actions/workflows/update-pulsar-glitches.yml/badge.svg)
@@ -291,6 +292,7 @@ A broad survey of the observable universe — from exoplanets in our galactic ne
 | [icecube-neutrino-catalog](https://huggingface.co/datasets/juliensimon/icecube-neutrino-catalog) | IceCube neutrino point sources from HEASARC | — | Static | <1 MB |
 | [icrf3-reference-frame](https://huggingface.co/datasets/juliensimon/icrf3-reference-frame) | 3,417 ICRF3 extragalactic radio sources — THE celestial reference frame | — | Static | 2 MB |
 | [jwst-observations](https://huggingface.co/datasets/juliensimon/jwst-observations) | 960K+ JWST observations from MAST — proposal, target, instrument, timing, and wavelength metadata | ![JWST](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.jwst&label=updated&color=brightgreen) | Weekly | ~150 MB |
+| [k2-observations](https://huggingface.co/datasets/juliensimon/k2-observations) | 765K K2 extended-mission observations (2014–2018, campaigns C0–C19) with parsed EPIC ID, campaign, and cadence | ![K2](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['k2-obs']&label=updated&color=brightgreen) | Quarterly | ~20 MB |
 | [kepler-eclipsing-binaries](https://huggingface.co/datasets/juliensimon/kepler-eclipsing-binaries) | 2,177 Kepler eclipsing binary stars | — | Static | 1 MB |
 | [kepler-observations](https://huggingface.co/datasets/juliensimon/kepler-observations) | 213K Kepler prime-mission observations (2009–2013) with KIC ID, cadence, and per-quarter observation mask | ![Kepler](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['kepler-obs']&label=updated&color=brightgreen) | Quarterly | ~5 MB |
 | [kepler-transit-timing](https://huggingface.co/datasets/juliensimon/kepler-transit-timing) | 295K transit times for 2,599 KOIs with O-C residuals, durations, and depths (Holczer+ 2016) | — | Static | ~5 MB |
@@ -521,6 +523,7 @@ python scripts/update-hipparcos.py
 python scripts/update-icecube.py
 python scripts/update-icrf3.py
 python scripts/update-jwst.py
+python scripts/update-k2-obs.py
 python scripts/update-kepler-eb.py
 python scripts/update-kepler-obs.py
 python scripts/update-kepler-ttv.py
