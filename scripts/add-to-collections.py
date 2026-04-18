@@ -278,6 +278,7 @@ DATASETS = {
         "juliensimon/rave-dr6",
         "juliensimon/rc3-galaxy-morphology",
         "juliensimon/solar-eclipse-catalog",
+        "juliensimon/stackexchange-space-qa",
         "juliensimon/sumss-radio-catalog",
         "juliensimon/supernova-remnants",
         "juliensimon/tess-toi-candidates",

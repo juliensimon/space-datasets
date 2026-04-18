@@ -405,6 +405,7 @@ DATASET_DOMAIN = {
     "galex": "sky_surveys",
     "euve": "sky_surveys",
     "fuse": "sky_surveys",
+    "stackexchange-space": "sky_surveys",
     "hst": "sky_surveys",
     "iue": "sky_surveys",
     "jwst": "sky_surveys",

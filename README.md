@@ -1,6 +1,6 @@
 # space-datasets — Open Space, Astronomy & Physics Datasets on Hugging Face
 
-Open-source data pipelines that publish **192 space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
+Open-source data pipelines that publish **193 space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
 
 All datasets are loadable in one line (`load_dataset("juliensimon/...")`), require no API keys, and work with `pandas`, `polars`, or any Parquet-compatible tool.
 
@@ -96,6 +96,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![IUE](https://github.com/juliensimon/space-datasets/actions/workflows/update-iue.yml/badge.svg)
 ![FUSE](https://github.com/juliensimon/space-datasets/actions/workflows/update-fuse.yml/badge.svg)
 ![EUVE](https://github.com/juliensimon/space-datasets/actions/workflows/update-euve.yml/badge.svg)
+![SE Space Q&A](https://github.com/juliensimon/space-datasets/actions/workflows/update-stackexchange-space.yml/badge.svg)
 ![HII Regions](https://github.com/juliensimon/space-datasets/actions/workflows/update-hii-regions.yml/badge.svg)
 ![Pulsar Glitches](https://github.com/juliensimon/space-datasets/actions/workflows/update-pulsar-glitches.yml/badge.svg)
 ![Cosmic Voids](https://github.com/juliensimon/space-datasets/actions/workflows/update-cosmic-voids.yml/badge.svg)
@@ -324,6 +325,7 @@ A broad survey of the observable universe — from exoplanets in our galactic ne
 | [rc3-galaxy-morphology](https://huggingface.co/datasets/juliensimon/rc3-galaxy-morphology) | 23K bright galaxies with Hubble morphological types from RC3 | — | Static | 10 MB |
 | [roma-bzcat-blazars](https://huggingface.co/datasets/juliensimon/roma-bzcat-blazars) | 3,561 confirmed blazars (BL Lac + FSRQ) from Roma-BZCAT 5th edition | — | Static | <1 MB |
 | [solar-eclipse-catalog](https://huggingface.co/datasets/juliensimon/solar-eclipse-catalog) | 12,000+ solar eclipses spanning 5 millennia (-1999 to +3000) from NASA | — | Static | <1 MB |
+| [stackexchange-space-qa](https://huggingface.co/datasets/juliensimon/stackexchange-space-qa) | 33K Q&A pairs from Astronomy + Space Exploration Stack Exchange sites — top-scored/accepted answers, CC-BY-SA 4.0 | ![SE Space Q&A](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['stackexchange-space']&label=updated&color=brightgreen) | Annually | ~50 MB |
 | [sumss-radio-catalog](https://huggingface.co/datasets/juliensimon/sumss-radio-catalog) | 211K southern radio sources at 843 MHz from SUMSS | — | Static | 30 MB |
 | [supernova-remnants](https://huggingface.co/datasets/juliensimon/supernova-remnants) | 310 Galactic supernova remnants with radio flux and spectral index | ![SNR](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.snr&label=updated&color=brightgreen) | Quarterly | 10 KB |
 | [tess-toi-candidates](https://huggingface.co/datasets/juliensimon/tess-toi-candidates) | 7K+ TESS Objects of Interest — active exoplanet candidates | ![TESS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['tess-toi']&label=updated&color=brightgreen) | Weekly | 5 MB |
@@ -556,6 +558,7 @@ python scripts/update-rave-dr6.py
 python scripts/update-rc3.py
 python scripts/update-roma-bzcat.py
 python scripts/update-snr.py
+python scripts/update-stackexchange-space.py
 python scripts/update-sumss.py
 python scripts/update-supernovae.py
 python scripts/update-tess-toi.py
