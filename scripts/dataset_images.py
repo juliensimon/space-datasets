@@ -440,6 +440,7 @@ DATASET_DOMAIN = {
     "ground-stations": "satellites",
     "ucs": "satellites",
     "wmo-oscar": "satellites",
+    "constellation-tles": "satellites",
     # Asteroids & small bodies
     "asterank": "small_bodies",
     "lcdb": "small_bodies",
@@ -459,7 +460,6 @@ DATASET_DOMAIN = {
     "sentry": "small_bodies",
     "ssodnet": "small_bodies",
     "tno-centaur": "small_bodies",
-    "constellation-tles": "satellites",
     # Space probes & missions
     "artemis-ii": "probes",
     "astronauts": "probes",

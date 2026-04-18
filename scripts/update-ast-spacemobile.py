@@ -31,12 +31,12 @@ NOMINAL_ALT = 700.0
 
 COLUMN_DAILY_DESCRIPTIONS = {
     "date": "UTC date of the daily snapshot; one row per date",
-    "total_count": "Total AST SpaceMobile objects tracked on this date (BlueWalker + BlueBird)",
-    "bluewalker_count": "Number of BlueWalker prototype satellites (BlueWalker-3, launched 2022)",
-    "bluebird_count": "Number of production BlueBird satellites (SpaceMobile-001..00N)",
-    "operational_count": "Satellites within 100 km of the 700 km target operational altitude",
-    "mean_altitude_km": "Mean altitude of the fleet, kilometres above Earth's surface",
-    "mean_inclination_deg": "Mean orbital inclination of the fleet in degrees",
+    "total_count": "Total AST SpaceMobile objects tracked on this date (BlueWalker + BlueBird); expected range 1-250 as the constellation grows toward its ~243-satellite FCC-authorized Block-1/2 deployment",
+    "bluewalker_count": "Number of BlueWalker prototype satellites on orbit (always 0 or 1; only BlueWalker-3 was launched, in Sept 2022)",
+    "bluebird_count": "Number of production BlueBird satellites (SpaceMobile-001..00N); expected range 0-243 per FCC Block-1+Block-2 authorization, first five launched Sept 2024",
+    "operational_count": "Satellites within 100 km of the 700 km target operational altitude; expected to approach bluebird_count once each satellite finishes LEOP and orbit raising",
+    "mean_altitude_km": "Mean altitude of the fleet above Earth's surface (km); typical range 500-720 — mix of parked/transfer (500 km) and operational (700 km) altitudes",
+    "mean_inclination_deg": "Mean orbital inclination of the fleet (degrees); nominal 53° inclination per FCC filing",
 }
 
 DESCRIPTION = """\

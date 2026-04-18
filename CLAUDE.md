@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-Automated data pipelines that fetch public space data (orbital mechanics, space weather, astronomy, physics), convert to Parquet with zstd compression, and upload to Hugging Face under `juliensimon/`. Currently 177 datasets with 83 GitHub Actions workflows for daily/weekly updates. Static datasets (uploaded once) have no workflow.
+Automated data pipelines that fetch public space data (orbital mechanics, space weather, astronomy, physics), convert to Parquet with zstd compression, and upload to Hugging Face under `juliensimon/`. Currently 184 datasets with 90 GitHub Actions workflows for daily/weekly updates. Static datasets (uploaded once) have no workflow.
 
 ## Running a Dataset Pipeline
 
@@ -38,7 +38,7 @@ There is no test suite, linter, or build system. Validation happens inside each 
 
 ## Key Files
 
-- `scripts/hf_dataset_utils/` — shared Pipeline library used by all 177 dataset scripts. Provides `Pipeline` context manager that handles temp dirs, parquet writing (zstd), README generation, validation (`check_dataset()`), banner images, and HF upload. Key modules: `pipeline.py`, `validation.py`, `banner.py`, `readme.py`, `upload.py`, `tap.py` (VizieR/HEASARC TAP).
+- `scripts/hf_dataset_utils/` — shared Pipeline library used by all 184 dataset scripts. Provides `Pipeline` context manager that handles temp dirs, parquet writing (zstd), README generation, validation (`check_dataset()`), banner images, and HF upload. Key modules: `pipeline.py`, `validation.py`, `banner.py`, `readme.py`, `upload.py`, `tap.py` (VizieR/HEASARC TAP).
 - `scripts/validate.py` — legacy `check_dataset()` function (now re-exported from `hf_dataset_utils.validation`).
 - `scripts/vizier_tap.py` — legacy VizieR TAP client (now re-exported from `hf_dataset_utils.tap`).
 - `scripts/jpl_api.py` — shared helpers for NASA JPL SSD API (NEO, SBDB, Sentry, NHATS). Converts `{"fields": [...], "data": [[...]]}` format to DataFrame.

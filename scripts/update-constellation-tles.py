@@ -96,12 +96,12 @@ CONSTELLATIONS = OrderedDict([
 
 # ── Column descriptions for README schema table ─────────────────────
 COLUMN_DESCRIPTIONS = {
-    "norad_cat_id": "NORAD catalog number -- unique integer assigned by US Space Command to every tracked object",
-    "name": "Satellite name as listed in Space-Track (e.g., 'STARLINK-1234', 'ONEWEB-0012', 'NAVSTAR 78')",
-    "constellation": "Constellation identifier (e.g., 'starlink', 'oneweb', 'planet', 'galileo'); one Parquet file per constellation",
-    "line1": "TLE line 1 (69 characters): satellite number, classification, epoch, first/second derivative of mean motion, BSTAR drag term, element set number",
-    "line2": "TLE line 2 (69 characters): inclination, RAAN, eccentricity, argument of perigee, mean anomaly, mean motion (rev/day); use with SGP4 propagator",
-    "epoch_utc": "TLE reference epoch in UTC; elements are most accurate within +/-1-2 days of this time",
+    "norad_cat_id": ("int64", "NORAD catalog number -- unique integer assigned by US Space Command to every tracked object"),
+    "name": ("string", "Satellite name as listed in Space-Track (e.g., 'STARLINK-1234', 'ONEWEB-0012', 'NAVSTAR 78')"),
+    "constellation": ("string", "Constellation identifier (e.g., 'starlink', 'oneweb', 'planet', 'galileo')"),
+    "line1": ("string", "TLE line 1 (69 characters): satellite number, classification, epoch, first/second derivative of mean motion, BSTAR drag term, element set number"),
+    "line2": ("string", "TLE line 2 (69 characters): inclination, RAAN, eccentricity, argument of perigee, mean anomaly, mean motion (rev/day); use with SGP4 propagator"),
+    "epoch_utc": ("timestamp[ns, tz=UTC]", "TLE reference epoch in UTC; elements are most accurate within +/-1-2 days of this time"),
 }
 
 
@@ -278,8 +278,8 @@ def main():
 
     # Schema table from COLUMN_DESCRIPTIONS
     schema_lines = ["| Column | Type | Description |", "|--------|------|-------------|"]
-    for col, desc in COLUMN_DESCRIPTIONS.items():
-        schema_lines.append(f"| `{col}` | -- | {desc} |")
+    for col, (col_type, desc) in COLUMN_DESCRIPTIONS.items():
+        schema_lines.append(f"| `{col}` | `{col_type}` | {desc} |")
     schema_table = "\n".join(schema_lines)
 
     quick_stats = f"""\

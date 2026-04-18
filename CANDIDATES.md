@@ -2,11 +2,11 @@
 
 *Researched 2026-03-24, expanded 2026-03-26, solar system missions added 2026-03-27, Wikidata datasets added 2026-03-31. Goal: the most comprehensive free, tabular space data collection on Hugging Face.*
 
-**Built: 177 dataset scripts** | **Remaining candidates: 20** | All sources free, no auth.
+**Built: 184 dataset scripts** | **Remaining candidates: 20** | All sources free, no auth.
 
 ---
 
-## Already Built (177 dataset scripts)
+## Already Built (184 dataset scripts)
 
 All P0 and P1 candidates are built, plus many P2 and 8 Wikidata datasets. Scripts in `scripts/update-*.py`, workflows in `.github/workflows/`.
 
