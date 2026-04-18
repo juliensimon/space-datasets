@@ -402,6 +402,7 @@ DATASET_DOMAIN = {
     "rc3": "galaxies",
     # Sky surveys
     "chandra": "sky_surveys",
+    "jwst": "sky_surveys",
     "chime-frb": "sky_surveys",
     "erosita": "sky_surveys",
     "first": "sky_surveys",
