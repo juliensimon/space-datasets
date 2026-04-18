@@ -404,6 +404,7 @@ DATASET_DOMAIN = {
     "chandra": "sky_surveys",
     "galex": "sky_surveys",
     "hst": "sky_surveys",
+    "iue": "sky_surveys",
     "jwst": "sky_surveys",
     "k2-obs": "exoplanets",
     "kepler-obs": "exoplanets",
