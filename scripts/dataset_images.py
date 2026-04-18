@@ -404,6 +404,7 @@ DATASET_DOMAIN = {
     "chandra": "sky_surveys",
     "hst": "sky_surveys",
     "jwst": "sky_surveys",
+    "kepler-obs": "exoplanets",
     "chime-frb": "sky_surveys",
     "erosita": "sky_surveys",
     "first": "sky_surveys",

@@ -251,6 +251,7 @@ DATASETS = {
         "juliensimon/icrf3-reference-frame",
         "juliensimon/jwst-observations",
         "juliensimon/kepler-eclipsing-binaries",
+        "juliensimon/kepler-observations",
         "juliensimon/kepler-transit-timing",
         "juliensimon/mcgill-magnetar-catalog",
         "juliensimon/messier-catalog",

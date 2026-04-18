@@ -1,6 +1,6 @@
 # space-datasets — Open Space, Astronomy & Physics Datasets on Hugging Face
 
-Open-source data pipelines that publish **186 space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
+Open-source data pipelines that publish **187 space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
 
 All datasets are loadable in one line (`load_dataset("juliensimon/...")`), require no API keys, and work with `pandas`, `polars`, or any Parquet-compatible tool.
 
@@ -90,6 +90,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![CVs](https://github.com/juliensimon/space-datasets/actions/workflows/update-cataclysmic-variables.yml/badge.svg)
 ![JWST](https://github.com/juliensimon/space-datasets/actions/workflows/update-jwst.yml/badge.svg)
 ![HST](https://github.com/juliensimon/space-datasets/actions/workflows/update-hst.yml/badge.svg)
+![Kepler](https://github.com/juliensimon/space-datasets/actions/workflows/update-kepler-obs.yml/badge.svg)
 ![HII Regions](https://github.com/juliensimon/space-datasets/actions/workflows/update-hii-regions.yml/badge.svg)
 ![Pulsar Glitches](https://github.com/juliensimon/space-datasets/actions/workflows/update-pulsar-glitches.yml/badge.svg)
 ![Cosmic Voids](https://github.com/juliensimon/space-datasets/actions/workflows/update-cosmic-voids.yml/badge.svg)
@@ -289,6 +290,7 @@ A broad survey of the observable universe — from exoplanets in our galactic ne
 | [icrf3-reference-frame](https://huggingface.co/datasets/juliensimon/icrf3-reference-frame) | 3,417 ICRF3 extragalactic radio sources — THE celestial reference frame | — | Static | 2 MB |
 | [jwst-observations](https://huggingface.co/datasets/juliensimon/jwst-observations) | 960K+ JWST observations from MAST — proposal, target, instrument, timing, and wavelength metadata | ![JWST](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.jwst&label=updated&color=brightgreen) | Weekly | ~150 MB |
 | [kepler-eclipsing-binaries](https://huggingface.co/datasets/juliensimon/kepler-eclipsing-binaries) | 2,177 Kepler eclipsing binary stars | — | Static | 1 MB |
+| [kepler-observations](https://huggingface.co/datasets/juliensimon/kepler-observations) | 213K Kepler prime-mission observations (2009–2013) with KIC ID, cadence, and per-quarter observation mask | ![Kepler](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['kepler-obs']&label=updated&color=brightgreen) | Quarterly | ~5 MB |
 | [kepler-transit-timing](https://huggingface.co/datasets/juliensimon/kepler-transit-timing) | 295K transit times for 2,599 KOIs with O-C residuals, durations, and depths (Holczer+ 2016) | — | Static | ~5 MB |
 | [mcgill-magnetar-catalog](https://huggingface.co/datasets/juliensimon/mcgill-magnetar-catalog) | All known magnetars with spin parameters, magnetic field strengths, and X-ray properties | — | Static | <1 MB |
 | [messier-catalog](https://huggingface.co/datasets/juliensimon/messier-catalog) | The classic Messier catalog — 110 galaxies, nebulae, and star clusters | ![Messier](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.messier&label=updated&color=brightgreen) | Quarterly | 10 KB |
@@ -517,6 +519,7 @@ python scripts/update-icecube.py
 python scripts/update-icrf3.py
 python scripts/update-jwst.py
 python scripts/update-kepler-eb.py
+python scripts/update-kepler-obs.py
 python scripts/update-kepler-ttv.py
 python scripts/update-magnetars.py
 python scripts/update-messier.py
