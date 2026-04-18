@@ -6,25 +6,15 @@ instrument) with aggregated dbo.caomplane data (time, exposure, wavelength,
 filters). Result is one row per JWST observation.
 """
 
-import io
 import os
-import re
-import time
 
 import pandas as pd
-import requests
-
-# Local debug checkpoint — avoids re-fetching 2.5M rows when iterating on
-# schema/validation. Not used in CI.
-CHECKPOINT_PATH = os.environ.get("JWST_CHECKPOINT", "/tmp/jwst_raw.parquet")
 
 from hf_dataset_utils import Pipeline
+from mast_tap import fetch_observations, fetch_planes, load_checkpoint, save_checkpoint
 
 HF_REPO = "juliensimon/jwst-observations"
-TAP_URL = "https://mast.stsci.edu/vo-tap/api/v0.1/caom/sync"
-PAGE_SIZE = 100_000  # MAST TAP sync caps at 100K rows per request
-PAGE_SLEEP = 0.5
-HTTP_TIMEOUT = 600
+CHECKPOINT_PATH = os.environ.get("JWST_CHECKPOINT", "/tmp/jwst_raw.parquet")
 
 # ── Column descriptions ─────────────────────────────────────────────────
 COLUMN_DESCRIPTIONS = {
@@ -65,90 +55,6 @@ This dataset is the canonical source for answering questions like: what has JWST
 
 The catalog is derived from MAST's CAOM (Common Archive Observation Model) tables — specifically `dbo.caomobservation` joined with `dbo.caomplane` — and is refreshed weekly as JWST pipeline products flow through the archive. Calibration and engineering observations are included but are distinguishable via the `intent` column."""
 
-# ── TAP helpers ──────────────────────────────────────────────────────────
-
-_TR_RE = re.compile(r"<TR>(.*?)</TR>", re.S)
-_TD_RE = re.compile(r"<TD>(.*?)</TD>", re.S)
-_FIELD_RE = re.compile(r'<FIELD\s+name="([^"]+)"', re.S)
-
-
-def _parse_votable(text: str) -> pd.DataFrame:
-    """Parse a MAST VOTable response into a DataFrame.
-
-    Hand-rolled regex parser — ~10× faster than astropy.io.votable for our
-    shape (wide, string-heavy JWST rows) and avoids the astropy dependency.
-    """
-    fields = _FIELD_RE.findall(text)
-    if not fields:
-        return pd.DataFrame()
-    rows = []
-    for tr in _TR_RE.findall(text):
-        cells = _TD_RE.findall(tr)
-        if len(cells) == len(fields):
-            rows.append(cells)
-    df = pd.DataFrame(rows, columns=fields)
-    df.replace({"": pd.NA}, inplace=True)
-    return df
-
-
-def _tap_query(adql: str, tries: int = 3) -> pd.DataFrame:
-    """Run a synchronous TAP query and return a DataFrame. Retries on 5xx."""
-    last_err = None
-    for attempt in range(tries):
-        try:
-            r = requests.post(
-                TAP_URL,
-                data={"QUERY": adql, "REQUEST": "doQuery", "LANG": "ADQL"},
-                timeout=HTTP_TIMEOUT,
-            )
-            if r.status_code == 200:
-                return _parse_votable(r.text)
-            last_err = f"HTTP {r.status_code}: {r.text[:200]}"
-        except requests.RequestException as e:
-            last_err = str(e)
-        wait = 5 * (attempt + 1)
-        print(f"    TAP error ({last_err}); retry in {wait}s")
-        time.sleep(wait)
-    raise RuntimeError(f"TAP query failed after {tries} attempts: {last_err}")
-
-
-def fetch_paginated(base_select: str, table: str, where: str, order_col: str,
-                     page_size: int = PAGE_SIZE) -> pd.DataFrame:
-    """Keyset-paginate a large TAP query using ORDER BY order_col, picking up
-    where the last page left off. On a 504, halve page_size and retry.
-    """
-    chunks = []
-    last_key = None
-    total = 0
-    current_size = page_size
-    while True:
-        clause = where if last_key is None else f"{where} AND {order_col} > '{last_key}'"
-        q = f"SELECT TOP {current_size} {base_select} FROM {table} WHERE {clause} ORDER BY {order_col}"
-        try:
-            df = _tap_query(q)
-        except RuntimeError as e:
-            if "504" in str(e) and current_size > 5_000:
-                current_size = max(current_size // 2, 5_000)
-                print(f"    504 on {table}: halving page size to {current_size:,} and retrying")
-                time.sleep(10)
-                continue
-            raise
-        if df.empty:
-            break
-        chunks.append(df)
-        total += len(df)
-        last_key = df[order_col].iloc[-1]
-        print(f"    {table}: {total:,} rows (last {order_col}={str(last_key)[:40]}...)")
-        if len(df) < current_size:
-            break
-        # Do NOT ramp back up after a 504 — MAST is load-sensitive and
-        # bouncing between 50K/25K wastes pages on repeated timeouts.
-        time.sleep(PAGE_SLEEP)
-    if not chunks:
-        return pd.DataFrame()
-    return pd.concat(chunks, ignore_index=True)
-
-
 def mjd_to_iso(mjd_series: pd.Series) -> pd.Series:
     """Convert MJD (float) to ISO-8601 UTC string. MJD 0 = 1858-11-17."""
     mjd = pd.to_numeric(mjd_series, errors="coerce")
@@ -159,72 +65,26 @@ def mjd_to_iso(mjd_series: pd.Series) -> pd.Series:
 
 # ── Main ─────────────────────────────────────────────────────────────────
 
-def _load_checkpoint() -> pd.DataFrame | None:
-    if not CHECKPOINT_PATH or not os.path.exists(CHECKPOINT_PATH):
-        return None
-    try:
-        df = pd.read_parquet(CHECKPOINT_PATH)
-        print(f"  Loaded checkpoint from {CHECKPOINT_PATH}: {len(df):,} rows")
-        return df
-    except Exception as e:
-        print(f"  Checkpoint load failed: {e}")
-        return None
-
-
-def _save_checkpoint(df: pd.DataFrame) -> None:
-    if not CHECKPOINT_PATH:
-        return
-    try:
-        df.to_parquet(CHECKPOINT_PATH, compression="zstd")
-        print(f"  Saved checkpoint to {CHECKPOINT_PATH}")
-    except Exception as e:
-        print(f"  Checkpoint save failed (non-fatal): {e}")
-
-
 def main():
     print("JWST Observation Catalog pipeline")
 
-    cached = _load_checkpoint()
-    if cached is not None:
-        df = cached
-        skip_fetch = True
-    else:
-        df = None
-        skip_fetch = False
-
-    if skip_fetch:
+    df = load_checkpoint(CHECKPOINT_PATH)
+    if df is not None:
         print("  Skipping MAST fetch — using checkpoint")
     else:
         df = _fetch_and_aggregate()
-        _save_checkpoint(df)
+        save_checkpoint(CHECKPOINT_PATH, df)
 
     _transform_and_publish(df)
 
 
 def _fetch_and_aggregate() -> pd.DataFrame:
     print("  Fetching caomobservation (observation-level metadata)...")
-    obs_cols = (
-        "observationid, obstype, intent, prpid, prppi, prptitle, prpproject, "
-        "prpkeywords, trgname, trgposra, trgposdec, trgmoving, insname, id"
-    )
-    obs = fetch_paginated(
-        obs_cols, "dbo.caomobservation",
-        "collection = 'JWST'",
-        "observationid",
-    )
+    obs = fetch_observations("JWST")
     print(f"  observations: {len(obs):,}")
 
     print("  Fetching caomplane (timing + wavelength per plane)...")
-    plane_cols = (
-        "observationuuid, timmin, timmax, timexposure, enrmin, enrmax, "
-        "enrbandpassname, dataproducttype, calibrationlevel, releasedate, id"
-    )
-    planes = fetch_paginated(
-        plane_cols, "dbo.caomplane",
-        "collection = 'JWST'",
-        "id",
-        page_size=50_000,  # planes are wider rows; 100K hits 504s
-    )
+    planes = fetch_planes("JWST")
     print(f"  planes: {len(planes):,}")
 
     # ── Aggregate planes to one row per observation ─────────────────────
