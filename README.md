@@ -1,6 +1,6 @@
 # space-datasets — Open Space, Astronomy & Physics Datasets on Hugging Face
 
-Open-source data pipelines that publish **190 space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
+Open-source data pipelines that publish **192 space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
 
 All datasets are loadable in one line (`load_dataset("juliensimon/...")`), require no API keys, and work with `pandas`, `polars`, or any Parquet-compatible tool.
 
@@ -94,6 +94,8 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![K2](https://github.com/juliensimon/space-datasets/actions/workflows/update-k2-obs.yml/badge.svg)
 ![GALEX](https://github.com/juliensimon/space-datasets/actions/workflows/update-galex.yml/badge.svg)
 ![IUE](https://github.com/juliensimon/space-datasets/actions/workflows/update-iue.yml/badge.svg)
+![FUSE](https://github.com/juliensimon/space-datasets/actions/workflows/update-fuse.yml/badge.svg)
+![EUVE](https://github.com/juliensimon/space-datasets/actions/workflows/update-euve.yml/badge.svg)
 ![HII Regions](https://github.com/juliensimon/space-datasets/actions/workflows/update-hii-regions.yml/badge.svg)
 ![Pulsar Glitches](https://github.com/juliensimon/space-datasets/actions/workflows/update-pulsar-glitches.yml/badge.svg)
 ![Cosmic Voids](https://github.com/juliensimon/space-datasets/actions/workflows/update-cosmic-voids.yml/badge.svg)
@@ -267,8 +269,10 @@ A broad survey of the observable universe — from exoplanets in our galactic ne
 | [cosmicflows-galaxy-distances](https://huggingface.co/datasets/juliensimon/cosmicflows-galaxy-distances) | 56K galaxy distances from Cosmicflows-4 (8 distance methods) | — | Static | 3.7 MB |
 | [desi-dr1-redshifts](https://huggingface.co/datasets/juliensimon/desi-dr1-redshifts) | 1M+ spectroscopic redshifts from the DESI Data Release 1 Bright Galaxy Survey | — | Static | ~100 MB |
 | [erosita-erass1-xray](https://huggingface.co/datasets/juliensimon/erosita-erass1-xray) | 900K X-ray sources from the first eROSITA All-Sky Survey (eRASS1) | ![eROSITA](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.erosita&label=updated&color=brightgreen) | Per release | 500 MB |
+| [euve-observations](https://huggingface.co/datasets/juliensimon/euve-observations) | 1,367 EUVE extreme-UV observations (1992–2001) — the only EUV space mission ever flown (70–760 Å) | ![EUVE](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.euve&label=updated&color=brightgreen) | Quarterly | <1 MB |
 | [fermi-4fgl-dr4](https://huggingface.co/datasets/juliensimon/fermi-4fgl-dr4) | 7K gamma-ray sources from Fermi LAT 14-year all-sky survey | ![Fermi](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['fermi-4fgl']&label=updated&color=brightgreen) | Annual | 50 MB |
 | [first-radio-catalog](https://huggingface.co/datasets/juliensimon/first-radio-catalog) | 946K radio sources from the VLA FIRST Survey at 1.4 GHz (5" resolution) | — | Static | 113 MB |
+| [fuse-observations](https://huggingface.co/datasets/juliensimon/fuse-observations) | 5,729 FUSE far-UV spectra (1999–2007) — highest-resolution 905–1187 Å spectrograph ever flown | ![FUSE](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.fuse&label=updated&color=brightgreen) | Quarterly | <1 MB |
 | [gaia-dr3-cepheids](https://huggingface.co/datasets/juliensimon/gaia-dr3-cepheids) | Gaia DR3 Cepheid variable stars with pulsation periods, multi-band photometry, and parallaxes | — | Static | ~10 MB |
 | [gaia-dr3-eclipsing-binaries](https://huggingface.co/datasets/juliensimon/gaia-dr3-eclipsing-binaries) | Gaia DR3 eclipsing binary candidates with orbital periods and light-curve parameters | — | Static | ~20 MB |
 | [gaia-dr3-rrlyrae](https://huggingface.co/datasets/juliensimon/gaia-dr3-rrlyrae) | 272K RR Lyrae pulsating stars from Gaia DR3 — distance ladder | — | Static | 50 MB |
@@ -497,9 +501,11 @@ python scripts/update-cosmic-voids.py
 python scripts/update-cosmicflows.py
 python scripts/update-desi.py
 python scripts/update-erosita.py
+python scripts/update-euve.py
 python scripts/update-exoplanets.py
 pip install astropy && python scripts/update-fermi-4fgl.py
 python scripts/update-first.py
+python scripts/update-fuse.py
 python scripts/update-gaia-cepheids.py
 python scripts/update-gaia-eb.py
 python scripts/update-gaia-rrlyrae.py

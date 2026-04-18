@@ -403,6 +403,8 @@ DATASET_DOMAIN = {
     # Sky surveys
     "chandra": "sky_surveys",
     "galex": "sky_surveys",
+    "euve": "sky_surveys",
+    "fuse": "sky_surveys",
     "hst": "sky_surveys",
     "iue": "sky_surveys",
     "jwst": "sky_surveys",
