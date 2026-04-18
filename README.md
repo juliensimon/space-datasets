@@ -1,6 +1,6 @@
 # space-datasets — Open Space, Astronomy & Physics Datasets on Hugging Face
 
-Open-source data pipelines that publish **185 space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
+Open-source data pipelines that publish **186 space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
 
 All datasets are loadable in one line (`load_dataset("juliensimon/...")`), require no API keys, and work with `pandas`, `polars`, or any Parquet-compatible tool.
 
@@ -89,6 +89,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![X-ray Binaries](https://github.com/juliensimon/space-datasets/actions/workflows/update-xray-binaries.yml/badge.svg)
 ![CVs](https://github.com/juliensimon/space-datasets/actions/workflows/update-cataclysmic-variables.yml/badge.svg)
 ![JWST](https://github.com/juliensimon/space-datasets/actions/workflows/update-jwst.yml/badge.svg)
+![HST](https://github.com/juliensimon/space-datasets/actions/workflows/update-hst.yml/badge.svg)
 ![HII Regions](https://github.com/juliensimon/space-datasets/actions/workflows/update-hii-regions.yml/badge.svg)
 ![Pulsar Glitches](https://github.com/juliensimon/space-datasets/actions/workflows/update-pulsar-glitches.yml/badge.svg)
 ![Cosmic Voids](https://github.com/juliensimon/space-datasets/actions/workflows/update-cosmic-voids.yml/badge.svg)
@@ -283,6 +284,7 @@ A broad survey of the observable universe — from exoplanets in our galactic ne
 | [gswlc-galaxy-properties](https://huggingface.co/datasets/juliensimon/gswlc-galaxy-properties) | 659K galaxies with stellar masses, star formation rates, and dust attenuation from GALEX-SDSS-WISE | — | Static | ~50 MB |
 | [hecate-nearby-galaxies](https://huggingface.co/datasets/juliensimon/hecate-nearby-galaxies) | HECATE catalog of nearby galaxies within 200 Mpc with stellar masses, SFR, and morphology | — | Static | ~10 MB |
 | [hipparcos-catalog](https://huggingface.co/datasets/juliensimon/hipparcos-catalog) | 118K brightest stars with precise positions and parallaxes from ESA Hipparcos | — | Static | 30 MB |
+| [hst-observations](https://huggingface.co/datasets/juliensimon/hst-observations) | 2.6M+ Hubble Space Telescope observations (1990–present) — target, proposal, instrument, detector metadata from MAST | ![HST](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.hst&label=updated&color=brightgreen) | Weekly | ~80 MB |
 | [icecube-neutrino-catalog](https://huggingface.co/datasets/juliensimon/icecube-neutrino-catalog) | IceCube neutrino point sources from HEASARC | — | Static | <1 MB |
 | [icrf3-reference-frame](https://huggingface.co/datasets/juliensimon/icrf3-reference-frame) | 3,417 ICRF3 extragalactic radio sources — THE celestial reference frame | — | Static | 2 MB |
 | [jwst-observations](https://huggingface.co/datasets/juliensimon/jwst-observations) | 960K+ JWST observations from MAST — proposal, target, instrument, timing, and wavelength metadata | ![JWST](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.jwst&label=updated&color=brightgreen) | Weekly | ~150 MB |
@@ -508,6 +510,7 @@ python scripts/update-grb.py
 python scripts/update-grbweb.py
 python scripts/update-gswlc.py
 python scripts/update-hecate.py
+python scripts/update-hst.py
 python scripts/update-hii-regions.py
 python scripts/update-hipparcos.py
 python scripts/update-icecube.py
