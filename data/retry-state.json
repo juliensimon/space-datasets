@@ -1,52 +1,52 @@
 {
   "euve": {
     "first_failure": "2026-04-18",
-    "last_retry": "2026-04-18",
-    "retries": 1
+    "last_retry": "2026-04-19",
+    "retries": 2
   },
   "forbush-decreases": {
     "first_failure": "2026-04-18",
-    "last_retry": "2026-04-18",
-    "retries": 1
+    "last_retry": "2026-04-19",
+    "retries": 2
   },
   "fuse": {
     "first_failure": "2026-04-18",
-    "last_retry": "2026-04-18",
-    "retries": 1
+    "last_retry": "2026-04-19",
+    "retries": 2
   },
   "galex": {
     "first_failure": "2026-04-18",
-    "last_retry": "2026-04-18",
-    "retries": 1
+    "last_retry": "2026-04-19",
+    "retries": 2
   },
   "hst": {
     "first_failure": "2026-04-18",
-    "last_retry": "2026-04-18",
-    "retries": 1
+    "last_retry": "2026-04-19",
+    "retries": 2
   },
   "iue": {
     "first_failure": "2026-04-18",
-    "last_retry": "2026-04-18",
-    "retries": 1
+    "last_retry": "2026-04-19",
+    "retries": 2
   },
   "jwst": {
     "first_failure": "2026-04-18",
-    "last_retry": "2026-04-18",
-    "retries": 1
+    "last_retry": "2026-04-19",
+    "retries": 2
   },
   "k2-obs": {
     "first_failure": "2026-04-18",
-    "last_retry": "2026-04-18",
-    "retries": 1
+    "last_retry": "2026-04-19",
+    "retries": 2
   },
   "kepler-obs": {
     "first_failure": "2026-04-18",
-    "last_retry": "2026-04-18",
-    "retries": 1
+    "last_retry": "2026-04-19",
+    "retries": 2
   },
   "stackexchange-space": {
     "first_failure": "2026-04-18",
-    "last_retry": "2026-04-18",
-    "retries": 1
+    "last_retry": "2026-04-19",
+    "retries": 2
   }
 }
