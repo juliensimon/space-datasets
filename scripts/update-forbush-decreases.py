@@ -204,6 +204,11 @@ def main():
     # Keep only described columns
     df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
 
+    # Coerce stat columns to numeric before computing stats (p.clean() handles the rest)
+    for col in ("fd_magnitude_pct", "ground_level_enhancement"):
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
     # ── Domain-specific stats for README ─────────────────────────────
     n_total = len(df)
     year_min = df["datetime_utc"].dt.year.min()
