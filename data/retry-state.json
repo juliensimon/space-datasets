@@ -14,17 +14,7 @@
     "last_retry": "2026-04-19",
     "retries": 2
   },
-  "hst": {
-    "first_failure": "2026-04-18",
-    "last_retry": "2026-04-19",
-    "retries": 2
-  },
   "iue": {
-    "first_failure": "2026-04-18",
-    "last_retry": "2026-04-19",
-    "retries": 2
-  },
-  "jwst": {
     "first_failure": "2026-04-18",
     "last_retry": "2026-04-19",
     "retries": 2
