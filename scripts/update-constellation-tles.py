@@ -325,7 +325,8 @@ plt.show()
         description=DESCRIPTION,
         tags=["space", "open-data", "tabular-data", "parquet", "satellite", "tle",
               "orbital-mechanics", "celestrak", "sgp4", "gnss", "gps", "galileo",
-              "beidou", "glonass", "oneweb", "iridium", "constellation"],
+              "beidou", "glonass", "oneweb", "iridium", "constellation",
+              "earth-observation"],
         source_url="https://celestrak.org/",
         collection_url="https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994",
         banner={

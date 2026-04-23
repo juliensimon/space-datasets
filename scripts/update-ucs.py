@@ -228,7 +228,7 @@ plt.show()
         pretty_name="UCS Satellite Database",
         description=DESCRIPTION,
         tags=["space", "satellite", "orbit", "ucs", "launch",
-              "open-data", "tabular-data", "parquet"],
+              "earth-observation", "open-data", "tabular-data", "parquet"],
         source_url="https://www.ucsusa.org/resources/satellite-database",
         task_categories=["tabular-classification"],
         update_schedule="Quarterly (1st of the month at 06:00 UTC) via [GitHub Actions](https://github.com/juliensimon/space-datasets).",

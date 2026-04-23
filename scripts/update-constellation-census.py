@@ -467,7 +467,7 @@ def main():
         description=DESCRIPTION,
         tags=["open-data", "space", "satellites", "constellation", "orbital-mechanics",
               "tle", "norad", "starlink", "oneweb", "kuiper", "gps", "galileo",
-              "tabular-data", "parquet"],
+              "earth-observation", "tabular-data", "parquet"],
         source_url="https://celestrak.org/",
         task_categories=["tabular-classification", "time-series-forecasting"],
         update_schedule="Daily at 09:00 UTC via GitHub Actions",

@@ -33,17 +33,37 @@ from hf_dataset_utils.readme import _citation_bibtex, _size_category
 INSIDER_URL = "https://starlinkinsider.com/starlink-gateway-locations/"
 FCC_FTP_URL = "ftp://ftp.fcc.gov/pub/Bureaus/International/databases/IBFS.zip"
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
+PEERINGDB_API = "https://www.peeringdb.com/api"
 HF_REPO = "juliensimon/starlink-ground-stations"
 CACHE_PATH = Path(__file__).parent.parent / "data" / "ground-stations-cache.json"
 USER_AGENT = "StarLink-MissionControl/1.0"
 
-# ── PoPs ─────────────────────────────────────────────────────────────────────
+# SpaceX Starlink ASN on PeeringDB
+STARLINK_ASN = 14593
 
-# DNS codes from Starlink rDNS hostnames (customer.<code><N>.isp.starlink.com)
-# Coordinates from SpaceX peering/IXP locations.
-POPS = [
+# DNS codes derived from Starlink rDNS hostnames (customer.<code><N>.isp.starlink.com)
+# Keyed by PeeringDB city name for injection into PeeringDB results.
+KNOWN_DNS_CODES: dict[str, str] = {
+    "Frankfurt am Main": "frntdeu",
+    "Frankfurt": "frntdeu",
+    "London": "lndngbr",
+    "Madrid": "madresp",
+    "Los Angeles": "lax",
+    "Seattle": "sea",
+    "Chicago": "chi",
+    "Washington": "iad",
+    "Ashburn": "iad",
+    "Miami": "mia",
+    "Amsterdam": "ams",
+    "Paris": "par",
+    "Singapore": "sin",
+    "Sydney": "syd",
+    "Tokyo": "nrt",
+}
+
+# Fallback hardcoded PoPs used if PeeringDB is unavailable
+POPS_FALLBACK = [
     {"code": "frntdeu", "city": "Frankfurt", "country": "DE", "lat": 50.1109, "lon": 8.6821},
-    {"code": "frntfra", "city": "Frankfurt", "country": "DE", "lat": 50.1109, "lon": 8.6821},
     {"code": "lndngbr", "city": "London", "country": "GB", "lat": 51.5074, "lon": -0.1278},
     {"code": "madresp", "city": "Madrid", "country": "ES", "lat": 40.4168, "lon": -3.7038},
     {"code": "lax", "city": "Los Angeles", "country": "US", "lat": 34.0522, "lon": -118.2437},
@@ -68,11 +88,11 @@ GW_COLUMN_DESCRIPTIONS = {
 }
 
 POP_COLUMN_DESCRIPTIONS = {
-    "code": "DNS prefix code from Starlink reverse DNS hostnames (e.g., 'lax', 'frntdeu'); identifies the PoP in customer.<code><N>.isp.starlink.com patterns",
-    "city": "City name where the Point of Presence is located; determined from SpaceX peering/IXP registrations",
+    "code": "DNS prefix code from Starlink reverse DNS hostnames (e.g., 'lax', 'frntdeu'); identifies the PoP in customer.<code><N>.isp.starlink.com patterns; null for locations not yet observed in rDNS",
+    "city": "City name where the Point of Presence is located; sourced from PeeringDB facility registrations for SpaceX AS54184/AS35340",
     "country": "ISO 3166-1 alpha-2 country code (e.g., 'US', 'DE', 'JP')",
-    "lat": "Latitude in decimal degrees (WGS-84) of the PoP city center",
-    "lon": "Longitude in decimal degrees (WGS-84) of the PoP city center",
+    "lat": "Latitude in decimal degrees (WGS-84) of the facility",
+    "lon": "Longitude in decimal degrees (WGS-84) of the facility",
 }
 
 
@@ -115,6 +135,95 @@ def geocode(query: str) -> tuple[float, float] | None:
     except Exception as e:
         print(f"  Geocode failed for '{query}': {e}")
     return None
+
+
+# ── PeeringDB PoP fetch ──────────────────────────────────────────────────────
+
+def fetch_peeringdb_pops(geo_cache: dict) -> list[dict]:
+    """Fetch SpaceX Starlink PoP locations from PeeringDB (AS14593).
+
+    Makes two requests: one to resolve the net_id, one to get all facility
+    associations. Coordinates come from the existing geocoding cache or
+    Nominatim (city + country query). Falls back to POPS_FALLBACK if
+    PeeringDB is unreachable or returns fewer than 5 entries.
+    """
+    try:
+        net_resp = requests.get(
+            f"{PEERINGDB_API}/net",
+            params={"asn": STARLINK_ASN},
+            headers={"User-Agent": USER_AGENT},
+            timeout=15,
+        )
+        net_resp.raise_for_status()
+        nets = net_resp.json().get("data", [])
+        if not nets:
+            raise ValueError("No network record found for AS14593")
+        net_id = nets[0]["id"]
+
+        time.sleep(1)
+
+        fac_resp = requests.get(
+            f"{PEERINGDB_API}/netfac",
+            params={"net_id": net_id},
+            headers={"User-Agent": USER_AGENT},
+            timeout=30,
+        )
+        fac_resp.raise_for_status()
+        entries = fac_resp.json().get("data", [])
+
+    except Exception as e:
+        print(f"  WARNING: PeeringDB fetch failed: {e} — using hardcoded fallback")
+        return POPS_FALLBACK
+
+    pops: list[dict] = []
+    seen_fac_ids: set[int] = set()
+    geocoded = 0
+
+    for nf in entries:
+        fac_id = nf.get("fac_id")
+        if not fac_id or fac_id in seen_fac_ids:
+            continue
+        seen_fac_ids.add(fac_id)
+
+        city = (nf.get("city") or "").strip()
+        country = (nf.get("country") or "").strip()
+        if not city:
+            continue
+
+        # Try geocoding cache (keyed as "city, country" for PoPs)
+        cache_key = f"{city}, {country}".lower()
+        if cache_key in geo_cache:
+            cached = geo_cache[cache_key]
+            lat, lon = cached["lat"], cached["lon"]
+        else:
+            time.sleep(1.1)
+            query = f"{city}, {country}" if country else city
+            coords = geocode(query)
+            if not coords:
+                print(f"    -> Could not geocode {query}, skipping")
+                continue
+            lat, lon = round(coords[0], 4), round(coords[1], 4)
+            geo_cache[cache_key] = {"name": city, "lat": lat, "lon": lon}
+            geocoded += 1
+            print(f"  Geocoded PoP: {query} -> {lat}, {lon}")
+
+        pops.append({
+            "code": KNOWN_DNS_CODES.get(city),
+            "city": city,
+            "country": country,
+            "lat": lat,
+            "lon": lon,
+        })
+
+    if geocoded > 0:
+        print(f"  {geocoded} new PoP locations geocoded")
+
+    if len(pops) < 5:
+        print(f"  WARNING: PeeringDB returned only {len(pops)} PoPs — using hardcoded fallback")
+        return POPS_FALLBACK
+
+    print(f"  {len(pops)} PoPs from PeeringDB ({sum(1 for p in pops if p['code'])} with known DNS codes)")
+    return pops
 
 
 # ── Starlinkinsider scraper ──────────────────────────────────────────────────
@@ -338,10 +447,19 @@ def main():
             fcc_added += 1
     print(f"  {fcc_added} FCC-only stations added")
 
+    # ── Source 3: PeeringDB (SpaceX PoP locations) ───────────────────────
+    print("Fetching PoPs from PeeringDB...")
+    cache_size_before = len(geo_cache)
+    pop_records = fetch_peeringdb_pops(geo_cache)
+    if len(geo_cache) > cache_size_before:
+        cache["stations"] = geo_cache
+        save_cache(cache)
+    pop_records.sort(key=lambda p: (p["country"], p["city"]))
+
     # Build DataFrames
     gw_records.sort(key=lambda s: s["name"])
     gw_df = pd.DataFrame(gw_records, columns=["name", "lat", "lon", "status"])
-    pop_df = pd.DataFrame(POPS, columns=["code", "city", "country", "lat", "lon"])
+    pop_df = pd.DataFrame(pop_records, columns=["code", "city", "country", "lat", "lon"])
 
     # Keep only described columns
     gw_df = gw_df[[c for c in gw_df.columns if c in GW_COLUMN_DESCRIPTIONS]]
@@ -402,7 +520,8 @@ plt.show()
         pretty_name="Starlink Ground Stations & Points of Presence",
         description=DESCRIPTION,
         tags=["space", "starlink", "ground-stations", "satellite-internet",
-              "geospatial", "open-data", "spacex", "fcc", "tabular-data", "parquet"],
+              "geospatial", "earth-observation", "open-data", "spacex", "fcc",
+              "tabular-data", "parquet"],
         source_url="https://starlinkinsider.com/starlink-gateway-locations/",
         collection_url="https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994",
         banner={
@@ -489,6 +608,7 @@ Internet exchange points where Starlink traffic exits to the public internet.
 - [Starlink Insider](https://starlinkinsider.com/starlink-gateway-locations/) -- community-maintained list with operational status
 - [FCC IBFS](ftp://ftp.fcc.gov/pub/Bureaus/International/databases/) -- US earth station license filings
 - [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) -- geocoding for stations without coordinates
+- [PeeringDB](https://www.peeringdb.com/) -- SpaceX AS54184/AS35340 facility registrations for PoP locations
 
 ## Update schedule
 

@@ -164,7 +164,7 @@ plt.show()
         pretty_name="GCAT Satellite Catalog",
         description=DESCRIPTION,
         tags=["space", "satellites", "satellite-catalog", "gcat",
-              "orbital-mechanics", "spacecraft", "open-data",
+              "orbital-mechanics", "spacecraft", "earth-observation", "open-data",
               "tabular-data", "parquet"],
         source_url="https://planet4589.org/space/gcat/",
         collection_url="https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994",
