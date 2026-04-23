@@ -2159,6 +2159,251 @@
       "lat": 9.2895,
       "lon": -75.3994,
       "status": "operational"
+    },
+    "ashburn, us": {
+      "name": "Ashburn",
+      "lat": 31.706,
+      "lon": -83.6536
+    },
+    "san jose, us": {
+      "name": "San Jose",
+      "lat": 37.3362,
+      "lon": -121.8906
+    },
+    "miami, us": {
+      "name": "Miami",
+      "lat": 25.7742,
+      "lon": -80.1936
+    },
+    "los angeles, us": {
+      "name": "Los Angeles",
+      "lat": 34.0537,
+      "lon": -118.2428
+    },
+    "frankfurt, de": {
+      "name": "Frankfurt",
+      "lat": 50.1106,
+      "lon": 8.6821
+    },
+    "seattle, us": {
+      "name": "Seattle",
+      "lat": 47.6038,
+      "lon": -122.3301
+    },
+    "new york, us": {
+      "name": "New York",
+      "lat": 40.7127,
+      "lon": -74.006
+    },
+    "tokyo, jp": {
+      "name": "Tokyo",
+      "lat": 35.6769,
+      "lon": 139.7639
+    },
+    "barueri, br": {
+      "name": "Barueri",
+      "lat": -23.5112,
+      "lon": -46.8765
+    },
+    "singapore, sg": {
+      "name": "Singapore",
+      "lat": 1.3571,
+      "lon": 103.8195
+    },
+    "denver, us": {
+      "name": "Denver",
+      "lat": 39.7392,
+      "lon": -104.9849
+    },
+    "toronto, ca": {
+      "name": "Toronto",
+      "lat": 43.6535,
+      "lon": -79.3839
+    },
+    "kansas city, us": {
+      "name": "Kansas City",
+      "lat": 39.1001,
+      "lon": -94.5781
+    },
+    "chicago, us": {
+      "name": "Chicago",
+      "lat": 41.8756,
+      "lon": -87.6244
+    },
+    "warsaw, pl": {
+      "name": "Warsaw",
+      "lat": 52.2334,
+      "lon": 21.0711
+    },
+    "atlanta, us": {
+      "name": "Atlanta",
+      "lat": 33.7545,
+      "lon": -84.3898
+    },
+    "sofia, bg": {
+      "name": "Sofia",
+      "lat": 42.6977,
+      "lon": 23.3217
+    },
+    "london, gb": {
+      "name": "London",
+      "lat": 51.5074,
+      "lon": -0.1278
+    },
+    "johannesburg, za": {
+      "name": "Johannesburg",
+      "lat": -26.205,
+      "lon": 28.0497
+    },
+    "bogota, co": {
+      "name": "Bogota",
+      "lat": 4.6534,
+      "lon": -74.0836
+    },
+    "buenos aires, ar": {
+      "name": "Buenos Aires",
+      "lat": -34.6096,
+      "lon": -58.3888
+    },
+    "sydney, au": {
+      "name": "Sydney",
+      "lat": -33.8698,
+      "lon": 151.2083
+    },
+    "el marques, mx": {
+      "name": "El Marques",
+      "lat": 20.7351,
+      "lon": -100.2836
+    },
+    "tempe, us": {
+      "name": "Tempe",
+      "lat": 33.4255,
+      "lon": -111.94
+    },
+    "málaga, au": {
+      "name": "Málaga",
+      "lat": -31.8607,
+      "lon": 115.8942
+    },
+    "montreal, ca": {
+      "name": "Montreal",
+      "lat": 45.5032,
+      "lon": -73.5698
+    },
+    "milan, it": {
+      "name": "Milan",
+      "lat": 45.4642,
+      "lon": 9.1896
+    },
+    "melbourne, au": {
+      "name": "Melbourne",
+      "lat": -37.8142,
+      "lon": 144.9632
+    },
+    "salt lake city, us": {
+      "name": "Salt Lake City",
+      "lat": 40.7596,
+      "lon": -111.8868
+    },
+    "santiago, cl": {
+      "name": "Santiago",
+      "lat": -33.4377,
+      "lon": -70.6511
+    },
+    "dallas, us": {
+      "name": "Dallas",
+      "lat": 32.7763,
+      "lon": -96.7969
+    },
+    "minneapolis, us": {
+      "name": "Minneapolis",
+      "lat": 44.9773,
+      "lon": -93.2655
+    },
+    "calgary, ca": {
+      "name": "Calgary",
+      "lat": 51.0456,
+      "lon": -114.0575
+    },
+    "bluffdale, us": {
+      "name": "Bluffdale",
+      "lat": 40.4898,
+      "lon": -111.9393
+    },
+    "guatemala city, gt": {
+      "name": "Guatemala City",
+      "lat": 14.6416,
+      "lon": -90.5133
+    },
+    "fortitude valley, au": {
+      "name": "Fortitude Valley",
+      "lat": -27.4573,
+      "lon": 153.0363
+    },
+    "makati, ph": {
+      "name": "Makati",
+      "lat": 14.5568,
+      "lon": 121.0211
+    },
+    "lekki, ng": {
+      "name": "Lekki",
+      "lat": 6.4711,
+      "lon": 3.8148
+    },
+    "fortaleza, br": {
+      "name": "Fortaleza",
+      "lat": -3.7305,
+      "lon": -38.5218
+    },
+    "surabaya, id": {
+      "name": "Surabaya",
+      "lat": -7.2463,
+      "lon": 112.7378
+    },
+    "santiago de surco, pe": {
+      "name": "Santiago de Surco",
+      "lat": -12.1251,
+      "lon": -76.9822
+    },
+    "karen, ke": {
+      "name": "Karen",
+      "lat": -1.3284,
+      "lon": 36.705
+    },
+    "mumbai, in": {
+      "name": "Mumbai",
+      "lat": 19.055,
+      "lon": 72.8692
+    },
+    "madrid, es": {
+      "name": "Madrid",
+      "lat": 40.4168,
+      "lon": -3.7035
+    },
+    "doha, qa": {
+      "name": "Doha",
+      "lat": 25.3109,
+      "lon": 51.5082
+    },
+    "muscat, om": {
+      "name": "Muscat",
+      "lat": 23.6124,
+      "lon": 58.5938
+    },
+    "brasília, br": {
+      "name": "Brasília",
+      "lat": -10.3333,
+      "lon": -53.2
+    },
+    "darwin, au": {
+      "name": "Darwin",
+      "lat": -12.4604,
+      "lon": 130.841
+    },
+    "gazipur, bd": {
+      "name": "Gazipur",
+      "lat": 23.9997,
+      "lon": 90.4184
     }
   }
 }
