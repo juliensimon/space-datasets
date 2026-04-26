@@ -548,6 +548,11 @@ DATASET_DOMAIN = {
     "roma-bzcat": "galaxies",
     # Stellar (additions)
     "gaia-sb": "stellar",
+    # New datasets (2026-04)
+    "nasa-apod": "stellar",
+    "global-meteor-network": "small_bodies",
+    "lunar-eclipse-catalog": "planetary",
+    "space-tourism-flights": "probes",
     # Essentials / general
     "astronomers": "essentials",
     "constellations": "essentials",

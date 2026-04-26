@@ -2,7 +2,7 @@
 
 *Researched 2026-03-24, expanded 2026-03-26, solar system missions added 2026-03-27, Wikidata datasets added 2026-03-31. Goal: the most comprehensive free, tabular space data collection on Hugging Face.*
 
-**Built: 184 dataset scripts** | **Remaining candidates: 20** | All sources free, no auth.
+**Built: 188 dataset scripts** | **Remaining candidates: 20** | All sources free, no auth.
 
 ---
 
@@ -39,6 +39,8 @@ All P0 and P1 candidates are built, plus many P2 and 8 Wikidata datasets. Script
 **From new research (2026-04-04, 7):** Mercury Craters Herrick (16.9K, static), Substorm Onsets SuperMAG (253K, quarterly), Forbush Decreases IZMIRAN (7.1K, static), TNO/Centaur Properties PDS (652, static), Mercury Crater Degradation Kinczyk (3.3K, static), Pluto Atmosphere New Horizons (1.9K, static), Lunar Sample Geochemistry Astromat (58K, static)
 
 **From gap analysis (2026-04-05, 5):** 4XMM X-ray Sources (630K, static, VizieR IX/68 DR12s), Roma-BZCAT Blazars (3.6K, static, VizieR VII/274), Planck Cold Clumps PGCC (13.2K, static, VizieR J/A+A/594/A28), Gaia DR3 Spectroscopic Binaries (186K, static, VizieR I/357 SB1+SB2), Fermi 3PC Gamma-ray Pulsars (7.2K, static, HEASARC fermilpsc)
+
+**From new additions (2026-04-26, 4):** NASA APOD (11.3K entries since 1995, daily), Global Meteor Network (3M+ trajectories, daily), Lunar Eclipse Catalog (12K, static, NASA Five Millennium), Space Tourism Flights (85 commercial flights, monthly)
 
 **Note on actual sizes:** VLASS is 3.4M rows (not 700K — full component catalog). Chandra is 28K rows (HEASARC TAP truncates). AAVSO VSX is 10.3M (not 2.1M — catalog grew). DESI BGS subset is ~5M of the full 28.4M.
 

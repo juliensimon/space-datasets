@@ -1,6 +1,6 @@
 # space-datasets — Open Space, Astronomy & Physics Datasets on Hugging Face
 
-Open-source data pipelines that publish **193 space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
+Open-source data pipelines that publish **197 space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
 
 All datasets are loadable in one line (`load_dataset("juliensimon/...")`), require no API keys, and work with `pandas`, `polars`, or any Parquet-compatible tool.
 
@@ -404,6 +404,7 @@ python scripts/update-fireballs.py
 python scripts/update-fragmentation-events.py
 python scripts/update-gcat.py
 python scripts/update-gcat-satcat.py
+python scripts/update-gmn-meteors.py
 python scripts/update-ground-stations.py
 python scripts/update-launch-cost.py
 python scripts/update-launch-log.py
@@ -438,6 +439,7 @@ python scripts/update-wmo-oscar.py
 python scripts/update-ceres-craters.py
 python scripts/update-impact-craters.py
 python scripts/update-lunar-craters.py
+python scripts/update-lunar-eclipses.py
 python scripts/update-lunar-geochemistry.py
 python scripts/update-mars-craters.py
 python scripts/update-mercury-craters.py
@@ -490,11 +492,13 @@ python scripts/update-maven.py
 python scripts/update-meda-weather.py
 python scripts/update-pds-missions.py
 python scripts/update-rosetta.py
+python scripts/update-space-tourism.py
 python scripts/update-venus-express.py
 
 # Astronomy
 python scripts/update-4xmm-dr14.py
 python scripts/update-aavso-vsx.py
+python scripts/update-apod.py
 python scripts/update-apogee-dr17.py
 python scripts/update-astronomers.py
 python scripts/update-black-holes.py
