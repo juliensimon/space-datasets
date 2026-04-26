@@ -46,6 +46,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![Comets](https://github.com/juliensimon/space-datasets/actions/workflows/update-comets.yml/badge.svg)
 ![SpaceX Launches](https://github.com/juliensimon/space-datasets/actions/workflows/update-spacex-launches.yml/badge.svg)
 ![Constellation TLEs](https://github.com/juliensimon/space-datasets/actions/workflows/update-constellation-tles.yml/badge.svg)
+![GMN Meteors](https://github.com/juliensimon/space-datasets/actions/workflows/update-gmn-meteors.yml/badge.svg)
 <!-- Space Weather -->
 ![CelesTrak SW](https://github.com/juliensimon/space-datasets/actions/workflows/update-celestrak-sw.yml/badge.svg)
 ![Space Weather](https://github.com/juliensimon/space-datasets/actions/workflows/update-space-weather.yml/badge.svg)
@@ -100,6 +101,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![HII Regions](https://github.com/juliensimon/space-datasets/actions/workflows/update-hii-regions.yml/badge.svg)
 ![Pulsar Glitches](https://github.com/juliensimon/space-datasets/actions/workflows/update-pulsar-glitches.yml/badge.svg)
 ![Cosmic Voids](https://github.com/juliensimon/space-datasets/actions/workflows/update-cosmic-voids.yml/badge.svg)
+![APOD](https://github.com/juliensimon/space-datasets/actions/workflows/update-apod.yml/badge.svg)
 <!-- Space Probes -->
 ![Astronauts](https://github.com/juliensimon/space-datasets/actions/workflows/update-astronauts.yml/badge.svg)
 ![BepiColombo](https://github.com/juliensimon/space-datasets/actions/workflows/update-bepicolombo.yml/badge.svg)
@@ -112,6 +114,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![Artemis II](https://github.com/juliensimon/space-datasets/actions/workflows/update-artemis-ii.yml/badge.svg)
 ![Deep Space Probes](https://github.com/juliensimon/space-datasets/actions/workflows/update-deep-space-probes.yml/badge.svg)
 ![MEDA Weather](https://github.com/juliensimon/space-datasets/actions/workflows/update-meda-weather.yml/badge.svg)
+![Space Tourism](https://github.com/juliensimon/space-datasets/actions/workflows/update-space-tourism.yml/badge.svg)
 <!-- Planetary Science -->
 ![Impact Craters](https://github.com/juliensimon/space-datasets/actions/workflows/update-impact-craters.yml/badge.svg)
 ![Meteorites](https://github.com/juliensimon/space-datasets/actions/workflows/update-meteorites.yml/badge.svg)
@@ -141,6 +144,7 @@ Track every object orbiting Earth and beyond. This collection covers the complet
 | [fireball-bolide-events](https://huggingface.co/datasets/juliensimon/fireball-bolide-events) | Fireball and bolide atmospheric impact events detected by US government sensors | ![Fireballs](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.fireballs&label=updated&color=brightgreen) | Weekly | <1 MB |
 | [gcat-launch-vehicles](https://huggingface.co/datasets/juliensimon/gcat-launch-vehicles) | 4,875 launch vehicles, engines, and stages from GCAT | — | Static | <1 MB |
 | [gcat-satellite-catalog](https://huggingface.co/datasets/juliensimon/gcat-satellite-catalog) | 68K+ satellites, rocket bodies, and debris from GCAT (Jonathan McDowell) | ![GCAT SATCAT](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['gcat-satcat']&label=updated&color=brightgreen) | Weekly | 2.6 MB |
+| [global-meteor-network](https://huggingface.co/datasets/juliensimon/global-meteor-network) | 3M+ individual meteor trajectories with orbits, velocities, and shower IDs from 500+ all-sky cameras worldwide (GMN) | ![GMN Meteors](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['gmn-meteors']&label=updated&color=brightgreen) | Daily | 245 MB |
 | [globalstar-fleet-data](https://huggingface.co/datasets/juliensimon/globalstar-fleet-data) | Daily Globalstar constellation health — per-generation satellite counts and status (Amazon-owned as of 2026) | ![Globalstar](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.globalstar&label=updated&color=brightgreen) | Daily | <1 MB |
 | [iau-meteor-showers](https://huggingface.co/datasets/juliensimon/iau-meteor-showers) | 2,163 meteor shower records from the IAU Meteor Data Center | — | Static | <1 MB |
 | [jpl-small-body-database](https://huggingface.co/datasets/juliensimon/jpl-small-body-database) | 1.4M+ asteroids and comets with orbital elements and physical parameters | ![SBDB](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.sbdb&label=updated&color=brightgreen) | Daily | 200 MB |
@@ -202,6 +206,7 @@ Data returned by humanity's most distant spacecraft and surface explorers. Inclu
 | [nasa-maven-kp-insitu](https://huggingface.co/datasets/juliensimon/nasa-maven-kp-insitu) | MAVEN Mars atmosphere key parameters: solar wind, magnetic field, ion composition at 4-8s cadence | ![MAVEN](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['maven']&label=updated&color=brightgreen) | Quarterly | ~500 MB |
 | [pds-planetary-missions](https://huggingface.co/datasets/juliensimon/pds-planetary-missions) | NASA PDS mission catalog — 98 missions, 115 spacecraft, 748 instruments with targets and cross-references | — | Static | <5 MB |
 | [pluto-atmosphere](https://huggingface.co/datasets/juliensimon/pluto-atmosphere) | Pluto atmospheric profiles (temperature, pressure, composition, haze) from New Horizons | — | Static | <1 MB |
+| [space-tourism-flights](https://huggingface.co/datasets/juliensimon/space-tourism-flights) | Commercial spaceflight passengers — 85 seats across Virgin Galactic, Blue Origin, SpaceX, Axiom, and Space Adventures (2001–) | ![Space Tourism](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['space-tourism']&label=updated&color=brightgreen) | Quarterly | <1 MB |
 
 ### Planetary Science
 
@@ -303,6 +308,7 @@ A broad survey of the observable universe — from exoplanets in our galactic ne
 | [kepler-eclipsing-binaries](https://huggingface.co/datasets/juliensimon/kepler-eclipsing-binaries) | 2,177 Kepler eclipsing binary stars | — | Static | 1 MB |
 | [kepler-observations](https://huggingface.co/datasets/juliensimon/kepler-observations) | 213K Kepler prime-mission observations (2009–2013) with KIC ID, cadence, and per-quarter observation mask | ![Kepler](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['kepler-obs']&label=updated&color=brightgreen) | Quarterly | ~5 MB |
 | [kepler-transit-timing](https://huggingface.co/datasets/juliensimon/kepler-transit-timing) | 295K transit times for 2,599 KOIs with O-C residuals, durations, and depths (Holczer+ 2016) | — | Static | ~5 MB |
+| [lunar-eclipse-catalog](https://huggingface.co/datasets/juliensimon/lunar-eclipse-catalog) | 12,064 lunar eclipses spanning 5 millennia (-1999 to +3000) from NASA — companion to solar-eclipse-catalog | — | Static | <1 MB |
 | [mcgill-magnetar-catalog](https://huggingface.co/datasets/juliensimon/mcgill-magnetar-catalog) | All known magnetars with spin parameters, magnetic field strengths, and X-ray properties | — | Static | <1 MB |
 | [messier-catalog](https://huggingface.co/datasets/juliensimon/messier-catalog) | The classic Messier catalog — 110 galaxies, nebulae, and star clusters | ![Messier](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.messier&label=updated&color=brightgreen) | Quarterly | 10 KB |
 | [milliquas](https://huggingface.co/datasets/juliensimon/milliquas) | Milliquas v8 — the Million Quasars Catalog with positions, redshifts, and radio/X-ray associations | — | Static | ~100 MB |

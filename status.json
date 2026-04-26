@@ -111,7 +111,10 @@
     "venus-express": 524787,
     "wds": 157371,
     "wmo-oscar": 2255,
-    "xray-binaries": 305
+    "xray-binaries": 305,
+    "gmn-meteors": 3044754,
+    "space-tourism": 85,
+    "lunar-eclipse-catalog": 12064
   },
   "ae-index": "2026-04-24",
   "artemis-ii": "2026-04-26",
@@ -222,5 +225,8 @@
   "venus-express": "2026-04-20",
   "wds": "2026-04-20",
   "wmo-oscar": "2026-04-03",
-  "xray-binaries": "2026-04-03"
+  "xray-binaries": "2026-04-03",
+  "gmn-meteors": "2026-04-26",
+  "space-tourism": "2026-04-26",
+  "lunar-eclipse-catalog": "2026-04-26"
 }
