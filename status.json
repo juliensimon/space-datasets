@@ -114,7 +114,8 @@
     "xray-binaries": 305,
     "gmn-meteors": 3044754,
     "space-tourism": 85,
-    "lunar-eclipse-catalog": 12064
+    "lunar-eclipse-catalog": 12064,
+    "apod": 11268
   },
   "ae-index": "2026-04-24",
   "artemis-ii": "2026-04-26",
@@ -228,5 +229,6 @@
   "xray-binaries": "2026-04-03",
   "gmn-meteors": "2026-04-26",
   "space-tourism": "2026-04-26",
-  "lunar-eclipse-catalog": "2026-04-26"
+  "lunar-eclipse-catalog": "2026-04-26",
+  "apod": "2026-04-26"
 }

@@ -68,48 +68,61 @@ roughly 2 million words of expert-authored astronomy prose.
 
 # ── Fetch helpers ────────────────────────────────────────────────────
 
-def fetch_apod(start_date, end_date):
-    """Fetch APOD entries for a date range. Returns list of dicts."""
+def fetch_apod(start_date, end_date, max_retries=4):
+    """Fetch APOD entries for a date range with retries on 5xx/timeout."""
     params = {
         "api_key": NASA_API_KEY,
         "start_date": start_date,
         "end_date": end_date,
         "thumbs": "True",
     }
-    resp = requests.get(APOD_BASE, params=params, timeout=60)
-    resp.raise_for_status()
-    data = resp.json()
-    # API returns a list for multi-day ranges, a dict for single day
-    if isinstance(data, dict):
-        data = [data]
-    return data
+    for attempt in range(max_retries):
+        try:
+            resp = requests.get(APOD_BASE, params=params, timeout=120)
+            resp.raise_for_status()
+            data = resp.json()
+            if isinstance(data, dict):
+                data = [data]
+            return data
+        except (requests.HTTPError, requests.Timeout, requests.ConnectionError) as e:
+            status = getattr(getattr(e, "response", None), "status_code", None)
+            # Retry on 5xx and timeouts; fail fast on 4xx
+            if status and 400 <= status < 500:
+                raise
+            if attempt == max_retries - 1:
+                raise
+            wait = 2 ** attempt
+            time.sleep(wait)
 
 
 def fetch_full_rebuild():
-    """Fetch all APOD entries year by year from 1995 to today."""
+    """Fetch all APOD entries month by month from 1995-06-16 to today.
+
+    NASA's APOD API frequently 500s on year-long ranges, so we paginate by
+    month and rely on per-call retries to handle transient failures.
+    """
     now = datetime.utcnow()
     all_entries = []
-    start_year = 1995
+    cursor = datetime.strptime(APOD_START, "%Y-%m-%d")
+    today = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    for year in range(start_year, now.year + 1):
-        if year == start_year:
-            start_date = APOD_START
+    while cursor <= today:
+        if cursor.month == 12:
+            month_end = cursor.replace(day=31)
         else:
-            start_date = f"{year}-01-01"
-
-        if year < now.year:
-            end_date = f"{year}-12-31"
-        else:
-            end_date = now.strftime("%Y-%m-%d")
-
+            month_end = cursor.replace(month=cursor.month + 1, day=1) - timedelta(days=1)
+        end = min(month_end, today)
+        start_str = cursor.strftime("%Y-%m-%d")
+        end_str = end.strftime("%Y-%m-%d")
         try:
-            entries = fetch_apod(start_date, end_date)
+            entries = fetch_apod(start_str, end_str)
             all_entries.extend(entries)
-            print(f"    {year}: {len(entries)} entries")
+            print(f"    {start_str}..{end_str}: {len(entries)} entries (total {len(all_entries):,})")
         except Exception as e:
-            print(f"    {year}: error - {e}")
+            print(f"    {start_str}..{end_str}: error - {e}")
 
-        time.sleep(1)
+        cursor = end + timedelta(days=1)
+        time.sleep(0.5)
 
     return all_entries
 

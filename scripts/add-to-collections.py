@@ -215,6 +215,7 @@ DATASETS = {
         "juliensimon/aavso-vsx-variable-stars",
         "juliensimon/apogee-dr17",
         "juliensimon/astronaut-database",
+        "juliensimon/nasa-apod",
         "juliensimon/astronomer-database",
         "juliensimon/black-hole-catalog",
         "juliensimon/bright-star-catalog",
