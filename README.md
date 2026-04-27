@@ -7,20 +7,20 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ### Top downloads
 
 <!-- TOP_DOWNLOADS_START -->
-**23,132** downloads  ·  **7** likes  ·  **199** datasets  ·  updated 2026-04-26
+**22,999** downloads  ·  **7** likes  ·  **203** datasets  ·  updated 2026-04-27
 
 | # | Dataset | Downloads |
 |--:|---------|----------:|
-| 1 | [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) | 2,166 |
-| 2 | [esa-exomars-tgo-observations](https://huggingface.co/datasets/juliensimon/esa-exomars-tgo-observations) | 1,231 (+1) |
-| 3 | [wmo-oscar-satellites](https://huggingface.co/datasets/juliensimon/wmo-oscar-satellites) | 911 (+4) |
-| 4 | [constellation-tle-latest](https://huggingface.co/datasets/juliensimon/constellation-tle-latest) | 656 (+16) |
-| 5 | [spacex-launches](https://huggingface.co/datasets/juliensimon/spacex-launches) | 540 (+14) |
-| 6 | [open-agent-traces](https://huggingface.co/datasets/juliensimon/open-agent-traces) | 393 (+17) |
-| 7 | [gaia-dr3-eclipsing-binaries](https://huggingface.co/datasets/juliensimon/gaia-dr3-eclipsing-binaries) | 371 |
-| 8 | [starlink-tle-latest](https://huggingface.co/datasets/juliensimon/starlink-tle-latest) | 370 (+4) |
-| 9 | [starlink-fleet-data](https://huggingface.co/datasets/juliensimon/starlink-fleet-data) | 364 |
-| 10 | [gaia-dr3-young-stellar-objects](https://huggingface.co/datasets/juliensimon/gaia-dr3-young-stellar-objects) | 363 (+2) |
+| 1 | [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) | 1,972 |
+| 2 | [esa-exomars-tgo-observations](https://huggingface.co/datasets/juliensimon/esa-exomars-tgo-observations) | 1,246 (+15) |
+| 3 | [wmo-oscar-satellites](https://huggingface.co/datasets/juliensimon/wmo-oscar-satellites) | 912 (+1) |
+| 4 | [constellation-tle-latest](https://huggingface.co/datasets/juliensimon/constellation-tle-latest) | 669 (+13) |
+| 5 | [spacex-launches](https://huggingface.co/datasets/juliensimon/spacex-launches) | 556 (+16) |
+| 6 | [open-agent-traces](https://huggingface.co/datasets/juliensimon/open-agent-traces) | 402 (+9) |
+| 7 | [starlink-fleet-data](https://huggingface.co/datasets/juliensimon/starlink-fleet-data) | 369 (+5) |
+| 8 | [gaia-dr3-eclipsing-binaries](https://huggingface.co/datasets/juliensimon/gaia-dr3-eclipsing-binaries) | 368 |
+| 9 | [starlink-tle-latest](https://huggingface.co/datasets/juliensimon/starlink-tle-latest) | 368 |
+| 10 | [gaia-dr3-young-stellar-objects](https://huggingface.co/datasets/juliensimon/gaia-dr3-young-stellar-objects) | 360 |
 <!-- TOP_DOWNLOADS_END -->
 
 <!-- Orbital Mechanics -->
