@@ -4,11 +4,6 @@
     "last_retry": "2026-04-19",
     "retries": 2
   },
-  "exoplanets": {
-    "first_failure": "2026-04-22",
-    "last_retry": "2026-04-23",
-    "retries": 2
-  },
   "fuse": {
     "first_failure": "2026-04-18",
     "last_retry": "2026-04-19",
