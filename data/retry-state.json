@@ -29,6 +29,11 @@
     "last_retry": "2026-04-19",
     "retries": 2
   },
+  "meda-weather": {
+    "first_failure": "2026-04-28",
+    "last_retry": "2026-04-28",
+    "retries": 1
+  },
   "stackexchange-space": {
     "first_failure": "2026-04-18",
     "last_retry": "2026-04-19",
