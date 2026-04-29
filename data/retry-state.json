@@ -31,8 +31,8 @@
   },
   "meda-weather": {
     "first_failure": "2026-04-28",
-    "last_retry": "2026-04-28",
-    "retries": 1
+    "last_retry": "2026-04-29",
+    "retries": 2
   },
   "stackexchange-space": {
     "first_failure": "2026-04-18",
