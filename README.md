@@ -7,20 +7,20 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ### Top downloads
 
 <!-- TOP_DOWNLOADS_START -->
-**27,850** downloads (+3,551)  ·  **7** likes  ·  **203** datasets  ·  updated 2026-04-29
+**27,850** downloads  ·  **7** likes  ·  **203** datasets  ·  updated 2026-04-30
 
 | # | Dataset | Downloads |
 |--:|---------|----------:|
 | 1 | [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) | 1,702 |
-| 2 | [wmo-oscar-satellites](https://huggingface.co/datasets/juliensimon/wmo-oscar-satellites) | 1,453 (+71) |
-| 3 | [esa-exomars-tgo-observations](https://huggingface.co/datasets/juliensimon/esa-exomars-tgo-observations) | 1,274 (+14) |
-| 4 | [gaia-dr3-eclipsing-binaries](https://huggingface.co/datasets/juliensimon/gaia-dr3-eclipsing-binaries) | 1,066 (+543) |
-| 5 | [gaia-dr3-cepheids](https://huggingface.co/datasets/juliensimon/gaia-dr3-cepheids) | 1,025 (+531) |
-| 6 | [gaia-dr3-rrlyrae](https://huggingface.co/datasets/juliensimon/gaia-dr3-rrlyrae) | 1,022 (+531) |
-| 7 | [gaia-dr3-young-stellar-objects](https://huggingface.co/datasets/juliensimon/gaia-dr3-young-stellar-objects) | 1,021 (+521) |
-| 8 | [gaia-dr3-white-dwarfs](https://huggingface.co/datasets/juliensimon/gaia-dr3-white-dwarfs) | 1,003 (+500) |
-| 9 | [gaia-dr3-spectroscopic-binaries](https://huggingface.co/datasets/juliensimon/gaia-dr3-spectroscopic-binaries) | 842 (+506) |
-| 10 | [constellation-tle-latest](https://huggingface.co/datasets/juliensimon/constellation-tle-latest) | 713 (+31) |
+| 2 | [wmo-oscar-satellites](https://huggingface.co/datasets/juliensimon/wmo-oscar-satellites) | 1,453 |
+| 3 | [esa-exomars-tgo-observations](https://huggingface.co/datasets/juliensimon/esa-exomars-tgo-observations) | 1,274 |
+| 4 | [gaia-dr3-eclipsing-binaries](https://huggingface.co/datasets/juliensimon/gaia-dr3-eclipsing-binaries) | 1,066 |
+| 5 | [gaia-dr3-cepheids](https://huggingface.co/datasets/juliensimon/gaia-dr3-cepheids) | 1,025 |
+| 6 | [gaia-dr3-rrlyrae](https://huggingface.co/datasets/juliensimon/gaia-dr3-rrlyrae) | 1,022 |
+| 7 | [gaia-dr3-young-stellar-objects](https://huggingface.co/datasets/juliensimon/gaia-dr3-young-stellar-objects) | 1,021 |
+| 8 | [gaia-dr3-white-dwarfs](https://huggingface.co/datasets/juliensimon/gaia-dr3-white-dwarfs) | 1,003 |
+| 9 | [gaia-dr3-spectroscopic-binaries](https://huggingface.co/datasets/juliensimon/gaia-dr3-spectroscopic-binaries) | 842 |
+| 10 | [constellation-tle-latest](https://huggingface.co/datasets/juliensimon/constellation-tle-latest) | 713 |
 <!-- TOP_DOWNLOADS_END -->
 
 <!-- Orbital Mechanics -->
