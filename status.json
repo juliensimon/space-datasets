@@ -115,7 +115,7 @@
     "venus-express": 524787,
     "wds": 157371,
     "wmo-oscar": 2255,
-    "xray-binaries": 305
+    "xray-binaries": 301
   },
   "ae-index": "2026-04-30",
   "apod": "2026-05-01",
@@ -230,5 +230,5 @@
   "venus-express": "2026-04-27",
   "wds": "2026-04-27",
   "wmo-oscar": "2026-04-03",
-  "xray-binaries": "2026-04-03"
+  "xray-binaries": "2026-05-01"
 }
