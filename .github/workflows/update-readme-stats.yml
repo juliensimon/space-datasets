@@ -15,7 +15,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install huggingface_hub
+      - run: pip install huggingface_hub requests
       - run: python scripts/update-readme-stats.py
       - name: Push if changed
         run: |
