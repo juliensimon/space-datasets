@@ -3,7 +3,29 @@ data/tle-backfill/
 *.parquet
 __pycache__/
 *.pyc
-.env
 .claude/
+
+# Secrets / credentials — never commit these
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+secrets.json
+secrets.yaml
+secrets.yml
+credentials.json
+credentials.yaml
+*_credentials.*
+*_secrets.*
+*_token.*
+*_key.*
+.netrc
+.htpasswd
+
 # Intentionally tracked:
 # data/ground-stations-cache.json
