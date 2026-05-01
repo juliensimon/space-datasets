@@ -2,7 +2,7 @@
   "4xmm-dr14": "2026-04-05",
   "_rows": {
     "4xmm-dr14": 630347,
-    "ae-index": 45984,
+    "ae-index": 46320,
     "apod": 11268,
     "artemis-ii": 1284,
     "ast-spacemobile": 17,
@@ -117,7 +117,7 @@
     "wmo-oscar": 2255,
     "xray-binaries": 301
   },
-  "ae-index": "2026-04-30",
+  "ae-index": "2026-05-01",
   "apod": "2026-05-01",
   "artemis-ii": "2026-05-01",
   "ast-spacemobile": "2026-05-01",
