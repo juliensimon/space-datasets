@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install pandas pyarrow requests huggingface_hub[hf_xet] hf-dataset-utils beautifulsoup4
+      - run: pip install pandas pyarrow requests huggingface_hub[hf_xet] git+https://github.com/juliensimon/hf-dataset-utils.git beautifulsoup4
       - id: update
         run: python scripts/update-gmn-meteors.py
         env:
