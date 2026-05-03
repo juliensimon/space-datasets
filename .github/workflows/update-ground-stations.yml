@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install pandas pyarrow requests huggingface_hub[hf_xet]
+      - run: pip install pandas pyarrow requests huggingface_hub[hf_xet] hf-dataset-utils
       - id: update
         run: python scripts/update-ground-stations.py
         env:
