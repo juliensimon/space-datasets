@@ -5,6 +5,8 @@ Source: NRC Herzberg / DRAO Penticton via LASP LISIRD
 Daily 10.7 cm (2800 MHz) solar radio flux -- the primary proxy for solar EUV radiation.
 """
 
+import time
+
 import pandas as pd
 import requests
 
@@ -48,10 +50,23 @@ to deep solar minimum (~65 SFU).
 """
 
 
+def _fetch_with_retry(url, retries=3, timeout=120):
+    for attempt in range(1, retries + 1):
+        try:
+            resp = requests.get(url, timeout=timeout)
+            resp.raise_for_status()
+            return resp
+        except Exception as e:
+            if attempt == retries:
+                raise
+            wait = 2 ** attempt
+            print(f"  Attempt {attempt} failed ({e}), retrying in {wait}s...")
+            time.sleep(wait)
+
+
 def main():
     print("Fetching F10.7 Solar Radio Flux from LASP LISIRD...")
-    resp = requests.get(LISIRD_URL, timeout=120)
-    resp.raise_for_status()
+    resp = _fetch_with_retry(LISIRD_URL)
 
     df = pd.read_csv(pd.io.common.StringIO(resp.text))
     print(f"  {len(df):,} rows, columns: {list(df.columns)}")
