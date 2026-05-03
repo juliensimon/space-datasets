@@ -134,10 +134,14 @@ def main():
     # Rename columns if needed
     df = df.rename(columns=RENAME)
 
-    # Boolean columns
+    # Boolean columns — Gaia TAP returns "T"/"F" (not "true"/"false")
+    _bool_map = {"true": True, "false": False, "t": True, "f": False, "1": True, "0": False}
     for col in ["astrometric_selection_flag", "gaia_crf_source", "host_galaxy_detected"]:
         if col in df.columns:
-            df[col] = df[col].astype("boolean")
+            if df[col].dtype == object:
+                df[col] = df[col].astype(str).str.strip().str.lower().map(_bool_map).astype("boolean")
+            else:
+                df[col] = df[col].astype("boolean")
 
     # Integer columns
     for col in ["flags_qsoc", "n_transits", "host_galaxy_flag", "source_selection_flags"]:

@@ -1,6 +1,6 @@
 # space-datasets — Open Space, Astronomy & Physics Datasets on Hugging Face
 
-Open-source data pipelines that publish **197 space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
+Open-source data pipelines that publish **204 space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
 
 All datasets are loadable in one line (`load_dataset("juliensimon/...")`), require no API keys, and work with `pandas`, `polars`, or any Parquet-compatible tool.
 
@@ -286,7 +286,7 @@ A broad survey of the observable universe — from exoplanets in our galactic ne
 | [gaia-dr3-eclipsing-binaries](https://huggingface.co/datasets/juliensimon/gaia-dr3-eclipsing-binaries) | Gaia DR3 eclipsing binary candidates with orbital periods and light-curve parameters | — | Static | ~20 MB |
 | [gaia-dr3-long-period-variables](https://huggingface.co/datasets/juliensimon/gaia-dr3-long-period-variables) | 1.7M Mira and semi-regular variable stars (LPVs) from Gaia DR3 including carbon star classification | — | Static | ~50 MB |
 | [gaia-dr3-qso-candidates](https://huggingface.co/datasets/juliensimon/gaia-dr3-qso-candidates) | 6.6M quasar/AGN candidates with DSC classifier probabilities and photometric redshifts from Gaia DR3 | — | Static | ~2 GB |
-| [gaia-dr3-rotation-modulation](https://huggingface.co/datasets/juliensimon/gaia-dr3-rotation-modulation) | 474K stellar rotation periods from Gaia DR3 photometric modulation — largest all-sky rotation catalog | — | Static | ~30 MB |
+| [gaia-dr3-rotation-modulation](https://huggingface.co/datasets/juliensimon/gaia-dr3-rotation-modulation) | 84K stellar rotation periods from Gaia DR3 photometric modulation with starspot activity indices | — | Static | ~9 MB |
 | [gaia-dr3-rrlyrae](https://huggingface.co/datasets/juliensimon/gaia-dr3-rrlyrae) | 272K RR Lyrae pulsating stars from Gaia DR3 — distance ladder | — | Static | 50 MB |
 | [gaia-dr3-solar-system-objects](https://huggingface.co/datasets/juliensimon/gaia-dr3-solar-system-objects) | 158K solar system objects (asteroids, comets) observed by Gaia DR3 with minor planet numbers and spectra counts | — | Static | ~5 MB |
 | [gaia-dr3-spectroscopic-binaries](https://huggingface.co/datasets/juliensimon/gaia-dr3-spectroscopic-binaries) | 180K+ spectroscopic binary star orbital solutions (SB1+SB2) from Gaia DR3 | — | Static | ~20 MB |
@@ -526,10 +526,17 @@ python scripts/update-exoplanets.py
 pip install astropy && python scripts/update-fermi-4fgl.py
 python scripts/update-first.py
 python scripts/update-fuse.py
+python scripts/update-gaia-binary-masses.py
 python scripts/update-gaia-cepheids.py
+python scripts/update-gaia-chemical-cartography.py
+python scripts/update-gaia-compact-companions.py
 python scripts/update-gaia-eb.py
+python scripts/update-gaia-lrv.py
+python scripts/update-gaia-qso.py
+python scripts/update-gaia-rotation.py
 python scripts/update-gaia-rrlyrae.py
 python scripts/update-gaia-sb.py
+python scripts/update-gaia-sso.py
 python scripts/update-gaia-wd.py
 python scripts/update-gaia-yso.py
 pip install astropy && python scripts/update-galah.py

@@ -107,11 +107,11 @@ def main():
         if col != "is_cstar":
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # is_cstar: coerce to boolean if not already
+    # is_cstar: coerce to boolean — Gaia TAP may use "T"/"F", "true"/"false", or "1"/"0"
     if "is_cstar" in df.columns:
         if df["is_cstar"].dtype == object:
-            df["is_cstar"] = df["is_cstar"].map(
-                {"true": True, "false": False, "True": True, "False": False}
+            df["is_cstar"] = df["is_cstar"].astype(str).str.strip().str.lower().map(
+                {"true": True, "false": False, "t": True, "f": False, "1": True, "0": False}
             ).astype("boolean")
         else:
             df["is_cstar"] = df["is_cstar"].astype("boolean")
@@ -199,6 +199,8 @@ print("Use source_id to join with gaia_source for RA/Dec, parallax, etc.")
             "juliensimon/gcvs-variable-stars",
         ],
     ) as p:
+        # Preserve is_cstar before null-column pruning — it's sparse but scientifically essential
+        is_cstar_saved = df["is_cstar"].copy() if "is_cstar" in df.columns else None
         df = p.clean(
             df,
             numeric=[
@@ -207,6 +209,8 @@ print("Use source_id to join with gaia_source for RA/Dec, parallax, etc.")
             ],
             drop_mostly_null_threshold=0.95,
         )
+        if is_cstar_saved is not None and "is_cstar" not in df.columns and not is_cstar_saved.isna().all():
+            df["is_cstar"] = is_cstar_saved.values
         p.publish(
             df,
             filename="gaia_dr3_long_period_variables.parquet",

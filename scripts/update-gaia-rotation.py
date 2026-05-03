@@ -58,12 +58,12 @@ correlated with X-ray and UV emission, flare rates, and thus the radiation envir
 experienced by any orbiting planets. Fast-rotating, active stars are therefore important \
 targets for planetary habitability studies.
 
-With approximately 474,000 rotation periods covering the full sky, this is the largest \
-all-sky stellar rotation catalog ever assembled — roughly two orders of magnitude larger \
-than the Kepler rotation catalog (~34,000 stars) and the first with truly all-sky \
-coverage. The unspotted magnitudes (g_unspotted, bp_unspotted, rp_unspotted) enable \
-spot-corrected photometry, and the per-segment analysis quantifies how rotation periods \
-evolve over the ~34-month Gaia observation baseline.
+With approximately 82,000 rotation periods available through the Gaia archive TAP service, \
+this is one of the largest all-sky stellar rotation catalogs assembled from a single \
+space mission — covering both hemispheres with uniform photometric quality. The unspotted \
+magnitudes (g_unspotted, bp_unspotted, rp_unspotted) enable spot-corrected photometry, \
+and the per-segment analysis quantifies how rotation periods evolve over the ~34-month \
+Gaia observation baseline.
 """
 
 
@@ -215,7 +215,7 @@ print(f"Median activity index (fast rotators): {fast['max_activity_index_g'].med
         p.publish(
             df,
             filename="gaia_dr3_rotation_modulation.parquet",
-            min_rows=400_000,
+            min_rows=70_000,
             expected_columns=["source_id", "best_rotation_period", "max_activity_index_g"],
             critical_columns=["source_id", "best_rotation_period"],
             column_descriptions=COLUMN_DESCRIPTIONS,
