@@ -573,11 +573,30 @@ def main():
         fetch_end_year, fetch_end_month = args.year, 12
         print(f"  Single-year mode: fetching {args.year}")
     elif args.months:
-        # Rolling window: avoids downloading the full ~14 GB existing dataset
-        cutoff = date.today().replace(day=1) - timedelta(days=args.months * 30)
-        fetch_start_year, fetch_start_month = cutoff.year, cutoff.month
-        fetch_end_year, fetch_end_month = yesterday.year, yesterday.month
-        print(f"  Rolling {args.months}-month window from {fetch_start_year}-{fetch_start_month:02d}")
+        # LASP publishes KP data with a ~6-8 month lag, so scan backwards from
+        # today to find the actual latest available month, then go back N months.
+        print("  Scanning LASP for latest available month...")
+        latest_year, latest_month = yesterday.year, yesterday.month
+        for _ in range(18):  # look back up to 18 months
+            if list_tab_files(latest_year, latest_month):
+                break
+            latest_month -= 1
+            if latest_month == 0:
+                latest_month = 12
+                latest_year -= 1
+        else:
+            print("  No LASP data found in last 18 months — aborting")
+            sys.exit(1)
+        print(f"  Latest available month: {latest_year}-{latest_month:02d}")
+        # Walk back N months from the latest available month
+        cutoff_month = latest_month - args.months + 1
+        cutoff_year = latest_year
+        while cutoff_month <= 0:
+            cutoff_month += 12
+            cutoff_year -= 1
+        fetch_start_year, fetch_start_month = cutoff_year, cutoff_month
+        fetch_end_year, fetch_end_month = latest_year, latest_month
+        print(f"  Rolling {args.months}-month window: {fetch_start_year}-{fetch_start_month:02d} to {fetch_end_year}-{fetch_end_month:02d}")
     else:
         fetch_start_year, fetch_start_month = START_YEAR, START_MONTH
         fetch_end_year, fetch_end_month = yesterday.year, yesterday.month
