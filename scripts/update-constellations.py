@@ -175,6 +175,9 @@ plt.show()
             strings=["name", "wikidata_id", "iau_abbreviation", "symbol",
                      "brightest_star", "named_after"],
         )
+        # Wikidata rarely provides brightest_star; drop if entirely null to pass validation
+        if "brightest_star" in df.columns and df["brightest_star"].isna().all():
+            df = df.drop(columns=["brightest_star"])
         p.publish(
             df,
             filename="constellations.parquet",
