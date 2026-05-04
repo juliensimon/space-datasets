@@ -22,13 +22,14 @@ jobs:
       - run: pip install pandas pyarrow requests huggingface_hub[hf_xet]
       - id: update
         run: |
-          if [ -n "${{ github.event.inputs.year }}" ]; then
-            python scripts/update-maven.py --year ${{ github.event.inputs.year }}
+          if [ -n "$INPUT_YEAR" ]; then
+            python scripts/update-maven.py --year "$INPUT_YEAR"
           else
-            python scripts/update-maven.py
+            python scripts/update-maven.py --months 5
           fi
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          INPUT_YEAR: ${{ github.event.inputs.year }}
       - name: Update and push status
         run: |
           git config user.name "github-actions[bot]"

@@ -559,37 +559,26 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--year", type=int, default=None,
                         help="Fetch only this single year (e.g. --year 2020)")
+    parser.add_argument("--months", type=int, default=None,
+                        help="Fetch last N months (rolling window, skips large HF download)")
     args = parser.parse_args()
 
     print("Fetching NASA MAVEN KP in-situ data...")
 
     yesterday = date.today() - timedelta(days=1)
-
-    # Try incremental: load existing data
-    import tempfile
-    with tempfile.TemporaryDirectory() as probe:
-        existing = load_existing_instruments(Path(probe))
-
-    # Determine time range of existing data
-    existing_max_time = None
-    if existing:
-        for inst_df in existing.values():
-            if "time" in inst_df.columns and not inst_df.empty:
-                t = inst_df["time"].max()
-                if existing_max_time is None or t > existing_max_time:
-                    existing_max_time = t
+    existing = {}
 
     if args.year:
         fetch_start_year, fetch_start_month = args.year, 1
         fetch_end_year, fetch_end_month = args.year, 12
         print(f"  Single-year mode: fetching {args.year}")
-    elif existing_max_time is not None:
-        fetch_start_year = existing_max_time.year
-        fetch_start_month = existing_max_time.month
+    elif args.months:
+        # Rolling window: avoids downloading the full ~14 GB existing dataset
+        cutoff = date.today().replace(day=1) - timedelta(days=args.months * 30)
+        fetch_start_year, fetch_start_month = cutoff.year, cutoff.month
         fetch_end_year, fetch_end_month = yesterday.year, yesterday.month
-        print(f"  Incremental from {fetch_start_year}-{fetch_start_month:02d}")
+        print(f"  Rolling {args.months}-month window from {fetch_start_year}-{fetch_start_month:02d}")
     else:
-        existing = {}
         fetch_start_year, fetch_start_month = START_YEAR, START_MONTH
         fetch_end_year, fetch_end_month = yesterday.year, yesterday.month
         print(f"  Full rebuild from {fetch_start_year}-{fetch_start_month:02d}")
