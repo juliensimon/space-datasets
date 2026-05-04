@@ -115,7 +115,14 @@
     "venus-express": 524787,
     "wds": 157371,
     "wmo-oscar": 2255,
-    "xray-binaries": 301
+    "xray-binaries": 301,
+    "euve": 1367,
+    "fuse": 5729,
+    "galex": 274911,
+    "iue": 101971,
+    "k2-obs": 764820,
+    "kepler-obs": 212993,
+    "stackexchange-space": 33519
   },
   "ae-index": "2026-05-01",
   "apod": "2026-05-04",
@@ -237,5 +244,12 @@
   "venus-express": "2026-05-04",
   "wds": "2026-04-27",
   "wmo-oscar": "2026-04-03",
-  "xray-binaries": "2026-05-01"
+  "xray-binaries": "2026-05-01",
+  "euve": "2026-05-04",
+  "fuse": "2026-05-04",
+  "galex": "2026-05-04",
+  "iue": "2026-05-04",
+  "k2-obs": "2026-05-04",
+  "kepler-obs": "2026-05-04",
+  "stackexchange-space": "2026-05-04"
 }
