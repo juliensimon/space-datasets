@@ -201,6 +201,10 @@ print(heaviest)
             df,
             strings=["name", "operator", "manufacturer", "orbit_type", "mission"],
         )
+        # Wikidata optional fields may be entirely null; drop to pass validation
+        for col in ["decommissioned_date"]:
+            if col in df.columns and df[col].isna().all():
+                df = df.drop(columns=[col])
         p.publish(
             df,
             filename="spacecraft.parquet",

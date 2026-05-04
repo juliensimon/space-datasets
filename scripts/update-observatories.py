@@ -232,6 +232,10 @@ plt.show()
             numeric=["latitude", "longitude", "elevation_m", "aperture_m"],
             strings=["name", "country", "operator", "wavelengths", "opening_date"],
         )
+        # Wikidata optional fields may be entirely null; drop to pass validation
+        for col in ["aperture_m", "wavelengths"]:
+            if col in df.columns and df[col].isna().all():
+                df = df.drop(columns=[col])
         p.publish(
             df,
             filename="observatories.parquet",

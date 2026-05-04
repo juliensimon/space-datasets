@@ -255,6 +255,10 @@ plt.show()
             integer=["employees", "founded_year"],
             strings=["name", "country", "headquarters", "head", "website"],
         )
+        # Wikidata optional fields may be entirely null; drop to pass validation
+        for col in ["head"]:
+            if col in df.columns and df[col].isna().all():
+                df = df.drop(columns=[col])
         p.publish(
             df,
             filename="space-agencies.parquet",
