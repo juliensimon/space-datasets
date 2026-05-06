@@ -241,7 +241,6 @@ def transform(df):
 
 EXPECTED_COLUMNS = [
     "sclk", "lmst", "ltst", "sol", "pressure_pa",
-    "humidity_sensor_temp_k",
     "downward_lw_irradiance_wm2", "upward_lw_irradiance_wm2",
 ]
 
