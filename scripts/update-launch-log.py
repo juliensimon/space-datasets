@@ -5,7 +5,10 @@ Source: Jonathan McDowell's General Catalog of Artificial Space Objects (GCAT)
 https://planet4589.org/space/gcat/
 """
 
+import io
+
 import pandas as pd
+import requests
 
 from hf_dataset_utils import Pipeline
 from hf_dataset_utils.banner import banner_markdown as render_banner
@@ -120,14 +123,18 @@ def _schema_section(title, descriptions):
 def main():
     # ── Fetch ────────────────────────────────────────────────────────────
     print("Fetching GCAT launch log...")
-    df = pd.read_csv(LAUNCH_URL, sep="\t", comment="#", names=LAUNCH_COLS, low_memory=False)
+    resp = requests.get(LAUNCH_URL, timeout=60)
+    resp.raise_for_status()
+    df = pd.read_csv(io.StringIO(resp.text), sep="\t", comment="#", names=LAUNCH_COLS, low_memory=False)
     df["launch_jd"] = pd.to_numeric(df["launch_jd"], errors="coerce")
     df["apogee"] = pd.to_numeric(df["apogee"], errors="coerce")
     df["range"] = pd.to_numeric(df["range"], errors="coerce")
     print(f"  {len(df):,} launches")
 
     print("Fetching GCAT sites...")
-    sites = pd.read_csv(SITES_URL, sep="\t", comment="#", names=SITES_COLS, low_memory=False)
+    resp = requests.get(SITES_URL, timeout=30)
+    resp.raise_for_status()
+    sites = pd.read_csv(io.StringIO(resp.text), sep="\t", comment="#", names=SITES_COLS, low_memory=False)
     sites["longitude"] = pd.to_numeric(sites["longitude"], errors="coerce")
     sites["latitude"] = pd.to_numeric(sites["latitude"], errors="coerce")
     print(f"  {len(sites):,} sites")
