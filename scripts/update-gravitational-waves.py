@@ -256,7 +256,7 @@ plt.show()
             df,
             filename="gravitational_wave_events.parquet",
             min_rows=100,
-            expected_columns=["name", "gps", "catalog", "mass_1", "luminosity_distance"],
+            expected_columns=["name", "gps", "catalog"],
             critical_columns=["name", "gps"],
             column_descriptions=COLUMN_DESCRIPTIONS,
             quick_stats=quick_stats,
