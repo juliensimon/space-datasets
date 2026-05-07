@@ -2,6 +2,8 @@
 """Fetch confirmed exoplanets from NASA Exoplanet Archive and upload to HF."""
 
 import io
+import sys
+import time
 
 import pandas as pd
 import requests
@@ -75,11 +77,26 @@ target selection for JWST and future missions.
 
 def main():
     print("Fetching confirmed exoplanets from NASA Exoplanet Archive...")
-    resp = requests.get(TAP_URL, params={"query": ADQL_QUERY, "format": "csv"}, timeout=120)
-    resp.raise_for_status()
+    for attempt in range(3):
+        try:
+            resp = requests.get(TAP_URL, params={"query": ADQL_QUERY, "format": "csv"}, timeout=300)
+            resp.raise_for_status()
+            if resp.text.strip().startswith("<"):
+                raise ValueError(f"NASA TAP returned HTML (likely an error page): {resp.text[:200]}")
+            break
+        except Exception as exc:
+            print(f"  Attempt {attempt + 1}/3 failed: {exc}")
+            if attempt == 2:
+                print("All retries exhausted.")
+                sys.exit(1)
+            time.sleep(30 * (attempt + 1))
 
     df = pd.read_csv(io.StringIO(resp.text))
     print(f"  {len(df):,} confirmed planets")
+
+    if df.empty or "pl_name" not in df.columns or "disc_year" not in df.columns:
+        print(f"Unexpected response columns: {list(df.columns)}")
+        sys.exit(1)
 
     # Type coercion
     df["disc_year"] = df["disc_year"].astype("Int64")
@@ -96,6 +113,10 @@ def main():
 
     # ── Domain-specific stats for README ─────────────────────────────
     n_total = len(df)
+    if n_total == 0:
+        print("No exoplanet rows returned — aborting.")
+        sys.exit(1)
+
     method_counts = df["discoverymethod"].value_counts()
     method_lines = "\n".join(
         f"| {method} | {count:,} |" for method, count in method_counts.head(8).items()
