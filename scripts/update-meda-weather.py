@@ -120,10 +120,18 @@ between the regolith and atmosphere."""
 # ── Directory crawling ───────────────────────────────────────────────
 
 def list_links(url):
-    """Parse an Apache directory listing and return href links."""
-    resp = requests.get(url, timeout=TIMEOUT)
-    resp.raise_for_status()
-    return re.findall(r'href="([^"]+)"', resp.text)
+    """Parse an Apache directory listing and return href links, with 3 retries."""
+    for attempt in range(3):
+        try:
+            resp = requests.get(url, timeout=TIMEOUT)
+            resp.raise_for_status()
+            return re.findall(r'href="([^"]+)"', resp.text)
+        except Exception as exc:
+            if attempt == 2:
+                raise
+            print(f"    list_links attempt {attempt + 1}/3 failed ({exc}), retrying...")
+            time.sleep(5 * (attempt + 1))
+    return []  # unreachable, but satisfies type checkers
 
 
 def discover_sol_range_dirs():
@@ -279,7 +287,11 @@ def main():
 
         # ── Discover and crawl directories ───────────────────────────
         print("Discovering sol-range directories...")
-        range_dirs = discover_sol_range_dirs()
+        try:
+            range_dirs = discover_sol_range_dirs()
+        except Exception as e:
+            print(f"  ERROR: Could not list PDS directories: {e}")
+            range_dirs = []
         print(f"  Found {len(range_dirs)} sol-range directories")
 
         BATCH_SIZE = 25
