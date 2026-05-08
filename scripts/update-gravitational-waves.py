@@ -6,6 +6,9 @@ All confirmed events from LIGO/Virgo/KAGRA observing runs.
 https://gwosc.org/eventapi/
 """
 
+import sys
+import time
+
 import pandas as pd
 import requests
 
@@ -102,12 +105,30 @@ def _infer_run(catalog: str | None) -> str | None:
 
 def main():
     print("Fetching gravitational wave events from GWOSC...")
-    resp = requests.get(GWOSC_URL, timeout=60)
-    resp.raise_for_status()
+    for attempt in range(3):
+        try:
+            resp = requests.get(GWOSC_URL, timeout=120)
+            resp.raise_for_status()
+            if resp.text.strip().startswith("<"):
+                raise ValueError(f"GWOSC returned HTML (likely error page): {resp.text[:200]}")
+            break
+        except Exception as exc:
+            print(f"  Attempt {attempt + 1}/3 failed: {exc}")
+            if attempt == 2:
+                print("All retries exhausted.")
+                sys.exit(1)
+            time.sleep(30 * (attempt + 1))
+
     data = resp.json()
 
     events_dict = data.get("events", data)
+    if isinstance(events_dict, list):
+        events_dict = {str(i): e for i, e in enumerate(events_dict)}
     print(f"  {len(events_dict):,} event versions in API response")
+
+    if not events_dict:
+        print("No events returned from GWOSC — aborting.")
+        sys.exit(1)
 
     # Deduplicate: keep latest version of each commonName
     seen: dict[str, tuple[dict, int]] = {}
