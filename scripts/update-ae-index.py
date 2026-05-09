@@ -121,7 +121,7 @@ def list_days(year, month):
         return []
 
 
-# ── Column descriptions ─────────────────────────────────────────────
+# ── Column descriptions ──────────────────────────────────────
 COLUMN_DESCRIPTIONS = {
     "datetime": "Timestamp of 1-minute measurement averaged to hourly cadence (UTC); coverage starts 2021",
     "ae_index": "Auroral Electrojet index in nT — range of H-component variation (AU - AL); quiet: <200, substorm: >300, active: >500 nT",
@@ -206,6 +206,15 @@ def main():
                     time.sleep(0.3)
                 print(f"  {year}: {len(all_records):,} records so far")
             df = pd.DataFrame(all_records)
+
+            # WDC Kyoto may be unreachable (IP allowlist). Fall back to HF copy.
+            if df.empty:
+                print("  WDC returned no data — trying HF existing dataset as fallback...")
+                df_fallback = p.download_existing("ae_index.parquet")
+                if df_fallback is not None and len(df_fallback) > 0:
+                    df_fallback["datetime"] = pd.to_datetime(df_fallback["datetime"])
+                    df = df_fallback
+                    print(f"  Using {len(df):,} rows from HF as fallback (WDC unreachable)")
 
         if df.empty:
             print("::error::No AE data retrieved")
