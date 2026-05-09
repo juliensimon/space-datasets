@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import subprocess
 import sys
 from pathlib import Path
 
@@ -18,13 +17,18 @@ def download_existing(
 
     Returns DataFrame from the downloaded parquet, or None on any failure.
     """
+    from huggingface_hub import hf_hub_download
+
     local_dir = Path(local_dir)
+    (local_dir / "data").mkdir(parents=True, exist_ok=True)
     parquet_path = local_dir / "data" / filename
     try:
-        subprocess.run(
-            ["hf", "download", repo, f"data/{filename}",
-             "--repo-type", "dataset", "--local-dir", str(local_dir)],
-            check=True, capture_output=True, timeout=120,
+        print(f"  Downloading existing {filename} from {repo}...")
+        hf_hub_download(
+            repo_id=repo,
+            filename=f"data/{filename}",
+            repo_type="dataset",
+            local_dir=str(local_dir),
         )
         if parquet_path.exists():
             df = pd.read_parquet(parquet_path)
