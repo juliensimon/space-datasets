@@ -87,43 +87,27 @@ studying solar modulation effects.
 
 
 def main():
-    print("Fetching cosmic ray spectra from CRDB...")
+    print("Fetching all cosmic ray data from CRDB...")
 
-    # Query major particle species separately (CRDB doesn't support "*")
-    particles = [
-        "H", "He", "C", "N", "O", "Ne", "Mg", "Si", "Fe",
-        "e-", "e+", "p-bar",
-        "B/C", "Be/B", "Be/C",
-        "Li", "Be", "B", "F", "Na", "Al", "P", "S", "Cl", "Ar",
-        "K", "Ca", "Ti", "V", "Cr", "Mn", "Co", "Ni",
-    ]
-    all_dfs = []
-    for p in particles:
-        try:
-            tab = crdb.query(p, energy_type="EKN")
-            # Flatten multidimensional recarray fields
-            rows = []
-            for rec in tab:
-                row = {}
-                for name in tab.dtype.names:
-                    val = rec[name]
-                    if hasattr(val, '__len__') and not isinstance(val, str) and len(val) == 2:
-                        row[f"{name}_lo"] = val[0]
-                        row[f"{name}_hi"] = val[1]
-                    else:
-                        row[name] = val
-                rows.append(row)
-            df_p = pd.DataFrame(rows)
-            print(f"  {p}: {len(df_p):,} rows")
-            all_dfs.append(df_p)
-        except Exception as e:
-            print(f"  {p}: skipped ({e})")
-
-    if not all_dfs:
+    tab = crdb.all()
+    if len(tab) == 0:
         print("::error::No data fetched from CRDB")
         sys.exit(1)
 
-    df = pd.concat(all_dfs, ignore_index=True)
+    # Flatten multidimensional recarray fields (e_bin, err_sta, err_sys are 2-element arrays)
+    rows = []
+    for rec in tab:
+        row = {}
+        for name in tab.dtype.names:
+            val = rec[name]
+            if hasattr(val, '__len__') and not isinstance(val, str) and len(val) == 2:
+                row[f"{name}_lo"] = val[0]
+                row[f"{name}_hi"] = val[1]
+            else:
+                row[name] = val
+        rows.append(row)
+
+    df = pd.DataFrame(rows)
     df = df.drop_duplicates()
     print(f"  Total: {len(df):,} unique rows, {len(df.columns)} columns")
 
