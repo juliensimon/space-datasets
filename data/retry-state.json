@@ -1,17 +1,7 @@
 {
-  "exoplanets": {
-    "first_failure": "2026-05-06",
-    "last_retry": "2026-05-07",
-    "retries": 2
-  },
   "gravitational-waves": {
     "first_failure": "2026-05-06",
     "last_retry": "2026-05-07",
-    "retries": 2
-  },
-  "meda-weather": {
-    "first_failure": "2026-04-28",
-    "last_retry": "2026-04-29",
     "retries": 2
   }
 }
