@@ -8,10 +8,12 @@ Incremental: tracks the last-ingested sol and only fetches new sol directories.
 """
 
 import io
+import os
 import re
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -23,7 +25,7 @@ BASE_URL = "https://pds-atmospheres.nmsu.edu/PDS/data/PDS4/Mars2020/mars2020_med
 HF_REPO = "juliensimon/mars-perseverance-weather"
 PARQUET_NAME = "meda_weather.parquet"
 TIMEOUT = 60
-MIN_ROWS = 100_000
+MIN_ROWS = 100
 WORKERS = 8  # conservative for PDS server
 
 # CSV types to download per sol (skip ANCILLARY -- rover position, not weather)
@@ -238,6 +240,23 @@ def transform(df):
     return df
 
 
+# ── Lightweight last-sol lookup ──────────────────────────────────────
+
+def get_last_sol() -> int:
+    """Return max(sol) from the HF dataset statistics API — no parquet download."""
+    url = "https://datasets-server.huggingface.co/statistics"
+    params = {"dataset": HF_REPO, "config": "default", "split": "train"}
+    try:
+        resp = requests.get(url, params=params, timeout=30)
+        resp.raise_for_status()
+        for col in resp.json().get("statistics", []):
+            if col.get("column_name") == "sol":
+                return int(col["column_statistics"]["max"])
+    except Exception as e:
+        print(f"  Could not query HF statistics API ({e})")
+    return -1
+
+
 # ── Main ─────────────────────────────────────────────────────────────
 
 EXPECTED_COLUMNS = [
@@ -270,13 +289,12 @@ def main():
             "juliensimon/nasa-exoplanets",
         ],
     ) as p:
-        # ── Try incremental ──────────────────────────────────────────
-        df_existing = p.download_existing(PARQUET_NAME)
-
-        last_sol = -1
-        if df_existing is not None and len(df_existing) > 0:
-            last_sol = int(df_existing["sol"].max())
+        # ── Determine last ingested sol (no parquet download) ────────
+        last_sol = get_last_sol()
+        if last_sol >= 0:
             print(f"  Incremental mode: fetching sols > {last_sol}")
+        else:
+            print("  No existing sol info — fetching all available sols")
 
         # ── Phase 1: discover which range dirs need scanning ─────────
         print("Discovering sol-range directories...")
@@ -332,24 +350,13 @@ def main():
 
         print(f"  Fetched {sols_fetched} new sols")
 
-        # ── Combine new + existing ────────────────────────────────────
-        if new_frames:
-            df_new = pd.concat(new_frames, ignore_index=True)
-            if df_existing is not None and len(df_existing) > 0:
-                df = pd.concat([df_existing, df_new], ignore_index=True)
-                dedup_col = "sclk" if "sclk" in df.columns else "SCLK"
-                before = len(df)
-                df = df.drop_duplicates(subset=["sol", dedup_col], keep="last")
-                print(f"  Merged: {len(df):,} rows ({before - len(df):,} dupes removed)")
-            else:
-                df = df_new
-                print(f"  Combined: {len(df):,} rows")
-        elif df_existing is not None and len(df_existing) > 0:
-            df = df_existing
-            print("  No new sols found, re-uploading existing data")
-        else:
-            print("ERROR: No data fetched and no existing data")
-            sys.exit(1)
+        # ── Combine new sols ─────────────────────────────────────────
+        if not new_frames:
+            print("  No new sols found — nothing to publish")
+            sys.exit(0)
+
+        df = pd.concat(new_frames, ignore_index=True)
+        print(f"  Combined: {len(df):,} rows from {sols_fetched} new sols")
 
         # ── Transform ────────────────────────────────────────────────
         df = transform(df)
@@ -406,7 +413,8 @@ plt.show()
 
         p.publish(
             df,
-            filename=PARQUET_NAME,
+            # Monthly shard: never overwrites existing historical parquet
+            filename=f"meda_weather_{datetime.utcnow().strftime('%Y_%m')}.parquet",
             min_rows=MIN_ROWS,
             max_null_pct=0.50,
             expected_columns=EXPECTED_COLUMNS,
@@ -414,9 +422,9 @@ plt.show()
             column_descriptions=COLUMN_DESCRIPTIONS,
             quick_stats=quick_stats,
             usage=usage,
-            commit_message=f"Update MEDA weather: {n_rows:,} rows, {n_sols} sols (sol {sol_min}-{sol_max})",
+            commit_message=f"Add MEDA weather shard: {n_rows:,} rows, sols {sol_min}-{sol_max}",
         )
-    print(f"Done. {n_rows:,} rows across {n_sols} sols.")
+    print(f"Done. {n_rows:,} rows, sols {sol_min}-{sol_max}.")
 
 
 if __name__ == "__main__":
