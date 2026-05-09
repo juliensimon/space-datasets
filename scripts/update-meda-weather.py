@@ -10,8 +10,8 @@ Incremental: tracks the last-ingested sol and only fetches new sol directories.
 import io
 import re
 import sys
-import tempfile
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import pandas as pd
@@ -24,6 +24,7 @@ HF_REPO = "juliensimon/mars-perseverance-weather"
 PARQUET_NAME = "meda_weather.parquet"
 TIMEOUT = 60
 MIN_ROWS = 100_000
+WORKERS = 8  # conservative for PDS server
 
 # CSV types to download per sol (skip ANCILLARY -- rover position, not weather)
 CSV_TYPES = ["PS", "RHS", "TIRS"]
@@ -149,40 +150,34 @@ def discover_sol_dirs(range_dir):
     return sorted(dirs)
 
 
-def find_csv_url(range_dir, sol_dir, csv_type):
-    """Find the CSV file URL for a given type in a sol directory."""
-    url = f"{BASE_URL}/{range_dir}/{sol_dir}/"
-    links = list_links(url)
-    pattern = re.compile(rf"WE__\d{{4}}___________DER_{csv_type}_+P\d{{2}}\.CSV", re.IGNORECASE)
-    matches = [l for l in links if pattern.match(l)]
-    if matches:
-        return f"{url}{matches[0]}"
-    return None
-
-
 # ── CSV downloading and parsing ──────────────────────────────────────
 
-def download_csv(url):
-    """Download a CSV file and return a DataFrame."""
-    resp = requests.get(url, timeout=TIMEOUT)
-    resp.raise_for_status()
-    return pd.read_csv(io.StringIO(resp.text))
-
-
 def fetch_sol(range_dir, sol_dir):
-    """Fetch and merge PS, RHS, TIRS CSVs for one sol."""
+    """Fetch and merge PS, RHS, TIRS CSVs for one sol.
+
+    Uses a single directory listing to resolve all CSV URLs, then downloads
+    each file. Called concurrently from a ThreadPoolExecutor.
+    """
+    dir_url = f"{BASE_URL}/{range_dir}/{sol_dir}/"
+    try:
+        links = list_links(dir_url)
+    except Exception:
+        return None
+
     frames = {}
     for csv_type in CSV_TYPES:
-        url = find_csv_url(range_dir, sol_dir, csv_type)
-        if url is None:
+        pattern = re.compile(rf"WE__\d{{4}}___________DER_{csv_type}_+P\d{{2}}\.CSV", re.IGNORECASE)
+        matches = [l for l in links if pattern.match(l)]
+        if not matches:
             continue
         try:
-            df = download_csv(url)
-            if df.empty:
-                continue
-            frames[csv_type] = df
-        except Exception as e:
-            print(f"    Warning: failed to download {csv_type} for {sol_dir}: {e}")
+            resp = requests.get(f"{dir_url}{matches[0]}", timeout=TIMEOUT)
+            resp.raise_for_status()
+            df = pd.read_csv(io.StringIO(resp.text))
+            if not df.empty:
+                frames[csv_type] = df
+        except Exception:
+            pass
 
     if not frames:
         return None
@@ -204,12 +199,10 @@ def fetch_sol(range_dir, sol_dir):
             right_cols = [c for c in df.columns if c not in ("LMST", "LTST")]
             merged = merged.merge(df[right_cols], on="SCLK", how="outer")
 
-    # Extract sol number from directory name
     sol_match = re.search(r"sol_(\d+)$", sol_dir)
     if sol_match:
         merged["sol"] = int(sol_match.group(1))
 
-    # Downsample to 1-minute resolution
     if "SCLK" in merged.columns and len(merged) > 1000:
         merged["_sclk_min"] = pd.to_numeric(merged["SCLK"], errors="coerce") // 60
         merged = merged.drop_duplicates(subset=["_sclk_min"], keep="first")
@@ -285,7 +278,7 @@ def main():
             last_sol = int(df_existing["sol"].max())
             print(f"  Incremental mode: fetching sols > {last_sol}")
 
-        # ── Discover and crawl directories ───────────────────────────
+        # ── Phase 1: discover which range dirs need scanning ─────────
         print("Discovering sol-range directories...")
         try:
             range_dirs = discover_sol_range_dirs()
@@ -294,87 +287,62 @@ def main():
             range_dirs = []
         print(f"  Found {len(range_dirs)} sol-range directories")
 
-        BATCH_SIZE = 25
-        batch_dir = Path(tempfile.mkdtemp(prefix="meda_batches_"))
-        batch_frames = []
-        batch_num = 0
-        sols_fetched = 0
-        total_rows = 0
+        range_dirs_to_scan = [
+            rd for rd in range_dirs
+            if not (re.search(r"sol_\d+_(\d+)$", rd) and
+                    int(re.search(r"sol_\d+_(\d+)$", rd).group(1)) <= last_sol)
+        ]
+        skipped = len(range_dirs) - len(range_dirs_to_scan)
+        print(f"  Skipping {skipped} fully-ingested range dirs; scanning {len(range_dirs_to_scan)}")
 
-        for range_dir in range_dirs:
-            range_match = re.search(r"sol_\d+_(\d+)$", range_dir)
-            if range_match and int(range_match.group(1)) <= last_sol:
-                print(f"  Skipping {range_dir} (all sols <= {last_sol})")
-                continue
-
-            print(f"  Scanning {range_dir}...")
+        # ── Phase 2: parallel discovery of sol dirs within each range ─
+        def _discover_range(rd):
             try:
-                sol_dirs = discover_sol_dirs(range_dir)
+                return rd, discover_sol_dirs(rd)
             except Exception as e:
-                print(f"    Error listing {range_dir}: {e}")
-                continue
-            time.sleep(0.3)
+                print(f"    Error listing {rd}: {e}")
+                return rd, []
 
-            for sol_dir in sol_dirs:
-                sol_num = sol_number_from_dir(sol_dir)
-                if sol_num <= last_sol:
-                    continue
+        sols_to_fetch = []
+        with ThreadPoolExecutor(max_workers=WORKERS) as ex:
+            for rd, sol_dirs in ex.map(_discover_range, range_dirs_to_scan):
+                for sol_dir in sol_dirs:
+                    if sol_number_from_dir(sol_dir) > last_sol:
+                        sols_to_fetch.append((rd, sol_dir))
 
+        print(f"  {len(sols_to_fetch)} sols to fetch")
+
+        # ── Phase 3: parallel sol fetching ───────────────────────────
+        new_frames = []
+        sols_fetched = 0
+
+        with ThreadPoolExecutor(max_workers=WORKERS) as ex:
+            futures = {ex.submit(fetch_sol, rd, sd): sd for rd, sd in sols_to_fetch}
+            for future in as_completed(futures):
+                sol_dir = futures[future]
                 try:
-                    df_sol = fetch_sol(range_dir, sol_dir)
+                    df_sol = future.result()
                     if df_sol is not None and len(df_sol) > 0:
-                        batch_frames.append(df_sol)
+                        new_frames.append(df_sol)
                         sols_fetched += 1
-
-                        if sols_fetched % BATCH_SIZE == 0:
-                            batch_df = pd.concat(batch_frames, ignore_index=True)
-                            batch_path = batch_dir / f"batch_{batch_num:04d}.parquet"
-                            batch_df.to_parquet(batch_path, index=False, engine="pyarrow")
-                            total_rows += len(batch_df)
-                            print(f"    Batch {batch_num}: {len(batch_df):,} rows "
-                                  f"({sols_fetched} sols, {total_rows:,} total)")
-                            batch_frames.clear()
-                            batch_num += 1
-                            del batch_df
+                        if sols_fetched % 25 == 0:
+                            print(f"    {sols_fetched}/{len(sols_to_fetch)} sols fetched...")
                 except Exception as e:
                     print(f"    Error fetching {sol_dir}: {e}")
-                time.sleep(0.5)
 
-        # Flush remaining batch
-        if batch_frames:
-            batch_df = pd.concat(batch_frames, ignore_index=True)
-            batch_path = batch_dir / f"batch_{batch_num:04d}.parquet"
-            batch_df.to_parquet(batch_path, index=False, engine="pyarrow")
-            total_rows += len(batch_df)
-            print(f"    Final batch: {len(batch_df):,} rows ({total_rows:,} total)")
-            batch_frames.clear()
-            del batch_df
+        print(f"  Fetched {sols_fetched} new sols")
 
-        print(f"  Fetched {sols_fetched} new sols in {batch_num + 1} batches, {total_rows:,} rows")
-
-        # ── Combine batches ──────────────────────────────────────────
-        batch_files = sorted(batch_dir.glob("batch_*.parquet"))
-        if batch_files:
+        # ── Combine new + existing ────────────────────────────────────
+        if new_frames:
+            df_new = pd.concat(new_frames, ignore_index=True)
             if df_existing is not None and len(df_existing) > 0:
-                existing_path = batch_dir / "existing.parquet"
-                df_existing.to_parquet(existing_path, index=False, engine="pyarrow")
-                del df_existing
-
-                all_files = [existing_path] + batch_files
-                df = pd.read_parquet(batch_dir)
-                for f in all_files:
-                    f.unlink()
-                batch_dir.rmdir()
-
+                df = pd.concat([df_existing, df_new], ignore_index=True)
                 dedup_col = "sclk" if "sclk" in df.columns else "SCLK"
                 before = len(df)
                 df = df.drop_duplicates(subset=["sol", dedup_col], keep="last")
                 print(f"  Merged: {len(df):,} rows ({before - len(df):,} dupes removed)")
             else:
-                df = pd.read_parquet(batch_dir)
-                for f in batch_files:
-                    f.unlink()
-                batch_dir.rmdir()
+                df = df_new
                 print(f"  Combined: {len(df):,} rows")
         elif df_existing is not None and len(df_existing) > 0:
             df = df_existing
