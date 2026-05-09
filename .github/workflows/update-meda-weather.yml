@@ -22,5 +22,6 @@ jobs:
         run: python scripts/update-meda-weather.py
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          PYTHONUNBUFFERED: "1"
       - name: Update and push status
         run: bash scripts/push-status.sh meda-weather --rows ${{ steps.update.outputs.rows }}
