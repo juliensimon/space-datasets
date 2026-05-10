@@ -16,7 +16,8 @@ def main():
     rows = None
     if "--rows" in sys.argv:
         idx = sys.argv.index("--rows")
-        rows = int(sys.argv[idx + 1])
+        raw = sys.argv[idx + 1] if idx + 1 < len(sys.argv) else ""
+        rows = int(raw) if raw else None
 
     status = json.loads(STATUS_FILE.read_text()) if STATUS_FILE.exists() else {}
     status[key] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
