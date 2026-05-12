@@ -102,8 +102,10 @@ def main():
 
     # ── Domain-specific stats for README ─────────────────────────────
     n = len(df)
-    date_min = df["issue_datetime"].min().strftime("%Y-%m-%d") if "issue_datetime" in df.columns else "N/A"
-    date_max = df["issue_datetime"].max().strftime("%Y-%m-%d") if "issue_datetime" in df.columns else "N/A"
+    _ts_min = df["issue_datetime"].min() if "issue_datetime" in df.columns else None
+    _ts_max = df["issue_datetime"].max() if "issue_datetime" in df.columns else None
+    date_min = _ts_min.strftime("%Y-%m-%d") if _ts_min is not None and pd.notna(_ts_min) else "N/A"
+    date_max = _ts_max.strftime("%Y-%m-%d") if _ts_max is not None and pd.notna(_ts_max) else "N/A"
     type_counts = df["alert_type"].value_counts().to_dict() if "alert_type" in df.columns else {}
     type_lines = "\n".join(f"  - {k}: **{v:,}**" for k, v in sorted(type_counts.items()))
 
@@ -158,7 +160,7 @@ plt.show()
         p.publish(
             df,
             filename="swpc_alerts.parquet",
-            min_rows=100,
+            min_rows=50,
             expected_columns=["issue_datetime", "product_id", "message"],
             critical_columns=["issue_datetime", "product_id"],
             column_descriptions=COLUMN_DESCRIPTIONS,
