@@ -27,5 +27,12 @@ credentials.yaml
 .netrc
 .htpasswd
 
+# Internal working state — local notes, tool caches, audit scratch, planning docs
+.playwright-mcp/
+TEXT_CORPORA.md
+data/audit/
+data/backfill-progress.json
+docs/superpowers/
+
 # Intentionally tracked:
 # data/ground-stations-cache.json
