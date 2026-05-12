@@ -1,6 +1,6 @@
 # space-datasets — Open Space, Astronomy & Physics Datasets on Hugging Face
 
-Open-source data pipelines that publish **204 space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
+Open-source data pipelines that publish **207 space, astronomy, and physics datasets** to [Hugging Face](https://huggingface.co/juliensimon) in Parquet format. Covers satellites, orbital mechanics, asteroids, space weather, solar activity, exoplanets, gravitational waves, pulsars, radio surveys, X-ray catalogs, space probes, particle physics, and more — sourced from NASA, NOAA, ESA, SpaceX, Wikidata, and other public APIs. Updated daily via GitHub Actions.
 
 All datasets are loadable in one line (`load_dataset("juliensimon/...")`), require no API keys, and work with `pandas`, `polars`, or any Parquet-compatible tool.
 
@@ -305,10 +305,12 @@ A broad survey of the observable universe — from exoplanets in our galactic ne
 | [grbweb-unified-grb-catalog](https://huggingface.co/datasets/juliensimon/grbweb-unified-grb-catalog) | Unified GRB catalog from GRBweb combining Fermi, Swift, BATSE, BeppoSAX, and IPN detectors | — | Static | <1 MB |
 | [gswlc-galaxy-properties](https://huggingface.co/datasets/juliensimon/gswlc-galaxy-properties) | 659K galaxies with stellar masses, star formation rates, and dust attenuation from GALEX-SDSS-WISE | — | Static | ~50 MB |
 | [hecate-nearby-galaxies](https://huggingface.co/datasets/juliensimon/hecate-nearby-galaxies) | HECATE catalog of nearby galaxies within 200 Mpc with stellar masses, SFR, and morphology | — | Static | ~10 MB |
+| [henry-draper-catalog](https://huggingface.co/datasets/juliensimon/henry-draper-catalog) | 272K stars with MK spectral classifications — the foundational Henry Draper Catalogue (Cannon, 1918–1924) | — | Static | 7 MB |
 | [hipparcos-catalog](https://huggingface.co/datasets/juliensimon/hipparcos-catalog) | 118K brightest stars with precise positions and parallaxes from ESA Hipparcos | — | Static | 30 MB |
 | [hst-observations](https://huggingface.co/datasets/juliensimon/hst-observations) | 2.6M+ Hubble Space Telescope observations (1990–present) — target, proposal, instrument, detector metadata from MAST | ![HST](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.hst&label=updated&color=brightgreen) | Weekly | ~80 MB |
 | [icecube-neutrino-catalog](https://huggingface.co/datasets/juliensimon/icecube-neutrino-catalog) | IceCube neutrino point sources from HEASARC | — | Static | <1 MB |
 | [icrf3-reference-frame](https://huggingface.co/datasets/juliensimon/icrf3-reference-frame) | 3,417 ICRF3 extragalactic radio sources — THE celestial reference frame | — | Static | 2 MB |
+| [iras-faint-source-catalog](https://huggingface.co/datasets/juliensimon/iras-faint-source-catalog) | 173K mid-infrared sources (12/25/60/100 μm) from IRAS Faint Source Catalog v2.0 — first sensitive all-sky mid-IR survey | — | Static | ~6 MB |
 | [iue-observations](https://huggingface.co/datasets/juliensimon/iue-observations) | 102K IUE UV spectra (1978–1996) — the longest-running UV space observatory, from SWP, LWP, LWR cameras | ![IUE](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.iue&label=updated&color=brightgreen) | Quarterly | ~2 MB |
 | [jwst-observations](https://huggingface.co/datasets/juliensimon/jwst-observations) | 960K+ JWST observations from MAST — proposal, target, instrument, timing, and wavelength metadata | ![JWST](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.jwst&label=updated&color=brightgreen) | Weekly | ~150 MB |
 | [k2-observations](https://huggingface.co/datasets/juliensimon/k2-observations) | 765K K2 extended-mission observations (2014–2018, campaigns C0–C19) with parsed EPIC ID, campaign, and cadence | ![K2](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['k2-obs']&label=updated&color=brightgreen) | Quarterly | ~20 MB |
@@ -338,6 +340,7 @@ A broad survey of the observable universe — from exoplanets in our galactic ne
 | [rave-dr6](https://huggingface.co/datasets/juliensimon/rave-dr6) | RAVE DR6 stellar radial velocities, parameters, and elemental abundances for 518K spectra | — | Static | ~30 MB |
 | [rc3-galaxy-morphology](https://huggingface.co/datasets/juliensimon/rc3-galaxy-morphology) | 23K bright galaxies with Hubble morphological types from RC3 | — | Static | 10 MB |
 | [roma-bzcat-blazars](https://huggingface.co/datasets/juliensimon/roma-bzcat-blazars) | 3,561 confirmed blazars (BL Lac + FSRQ) from Roma-BZCAT 5th edition | — | Static | <1 MB |
+| [rosat-bright-source-catalog](https://huggingface.co/datasets/juliensimon/rosat-bright-source-catalog) | 18,806 soft X-ray sources (0.1–2.4 keV) from the ROSAT All-Sky Survey Bright Source Catalogue (1RXS) | — | Static | ~1 MB |
 | [solar-eclipse-catalog](https://huggingface.co/datasets/juliensimon/solar-eclipse-catalog) | 12,000+ solar eclipses spanning 5 millennia (-1999 to +3000) from NASA | — | Static | <1 MB |
 | [stackexchange-space-qa](https://huggingface.co/datasets/juliensimon/stackexchange-space-qa) | 33K Q&A pairs from Astronomy + Space Exploration Stack Exchange sites — top-scored/accepted answers, CC-BY-SA 4.0 | ![SE Space Q&A](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['stackexchange-space']&label=updated&color=brightgreen) | Annually | ~50 MB |
 | [sumss-radio-catalog](https://huggingface.co/datasets/juliensimon/sumss-radio-catalog) | 211K southern radio sources at 843 MHz from SUMSS | — | Static | 30 MB |
@@ -361,7 +364,7 @@ Fundamental particle properties and high-energy astrophysics catalogs. Includes 
 | [crdb-cosmic-ray-spectra](https://huggingface.co/datasets/juliensimon/crdb-cosmic-ray-spectra) | 316K cosmic ray measurements from 131 experiments | ![CRDB](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.crdb&label=updated&color=brightgreen) | Quarterly | 50 MB |
 | [fermi-3fhl-hard-gamma-ray](https://huggingface.co/datasets/juliensimon/fermi-3fhl-hard-gamma-ray) | 1,558 hard gamma-ray sources (>10 GeV) from Fermi LAT 3FHL | — | Static | 0.6 MB |
 | [fermi-3pc-gamma-ray-pulsars](https://huggingface.co/datasets/juliensimon/fermi-3pc-gamma-ray-pulsars) | 7K+ gamma-ray pulsars from Fermi LAT Third Pulsar Catalog (3PC) | — | Static | 2.2 MB |
-| [fermi-4lac-agn-catalog](https://huggingface.co/datasets/juliensimon/fermi-4lac-agn-catalog) | 3,409 gamma-ray AGN from Fermi LAT Fourth AGN Catalog (4LAC) | — | Static | 0.7 MB |
+| [fermi-4lac-agn-catalog](https://huggingface.co/datasets/juliensimon/fermi-4lac-agn-catalog) | 3,407 gamma-ray AGN from Fermi LAT Fourth AGN Catalog (4LAC) | — | Static | 0.7 MB |
 | [fermi-gbm-triggers](https://huggingface.co/datasets/juliensimon/fermi-gbm-triggers) | 12.5K+ Fermi GBM triggers — all triggers, not just confirmed GRBs | ![GBM](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['fermi-gbm-triggers']&label=updated&color=brightgreen) | Daily | 1.8 MB |
 | [hawc-tev-gamma-ray](https://huggingface.co/datasets/juliensimon/hawc-tev-gamma-ray) | 65 TeV gamma-ray sources from the 3HWC HAWC catalog | — | Static | <1 MB |
 | [icecat-neutrino-alerts](https://huggingface.co/datasets/juliensimon/icecat-neutrino-alerts) | High-energy neutrino alert events from the IceCube Neutrino Observatory (ICECAT-1) | — | Static | <1 MB |
@@ -369,7 +372,7 @@ Fundamental particle properties and high-energy astrophysics catalogs. Includes 
 | [lhaaso-gamma-ray-sources](https://huggingface.co/datasets/juliensimon/lhaaso-gamma-ray-sources) | 180 ultra-high-energy gamma-ray sources from 1LHAASO (2024) | — | Static | <1 MB |
 | [pdg-particle-properties](https://huggingface.co/datasets/juliensimon/pdg-particle-properties) | Every known particle from the Particle Data Group | ![PDG](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.pdg&label=updated&color=brightgreen) | Annual | 50 MB |
 | [physics-nobel-laureates](https://huggingface.co/datasets/juliensimon/physics-nobel-laureates) | 229 Physics Nobel Prize laureates with institutions and cited work from Wikidata | ![Nobel](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['physics-nobel']&label=updated&color=brightgreen) | Quarterly | <1 MB |
-| [swift-bat-hard-xray-survey](https://huggingface.co/datasets/juliensimon/swift-bat-hard-xray-survey) | 1,893 hard X-ray sources (14-195 keV) from Swift-BAT 157-month survey | — | Static | 0.3 MB |
+| [swift-bat-hard-xray-survey](https://huggingface.co/datasets/juliensimon/swift-bat-hard-xray-survey) | 1,891 hard X-ray sources (14-195 keV) from Swift-BAT 157-month survey | — | Static | 0.3 MB |
 | [tevcat-tev-gamma-ray](https://huggingface.co/datasets/juliensimon/tevcat-tev-gamma-ray) | 322 TeV gamma-ray sources — THE ground-based VHE reference catalog | — | Static | <1 MB |
 
 ## Collections on Hugging Face
@@ -552,11 +555,13 @@ python scripts/update-grb.py
 python scripts/update-grbweb.py
 python scripts/update-gswlc.py
 python scripts/update-hecate.py
+python scripts/update-henry-draper.py
 python scripts/update-hst.py
 python scripts/update-hii-regions.py
 python scripts/update-hipparcos.py
 python scripts/update-icecube.py
 python scripts/update-icrf3.py
+python scripts/update-iras-fsc.py
 python scripts/update-iue.py
 python scripts/update-jwst.py
 python scripts/update-k2-obs.py
@@ -582,6 +587,7 @@ python scripts/update-quasars.py
 python scripts/update-rave-dr6.py
 python scripts/update-rc3.py
 python scripts/update-roma-bzcat.py
+python scripts/update-rosat-bsc.py
 python scripts/update-snr.py
 python scripts/update-stackexchange-space.py
 python scripts/update-sumss.py

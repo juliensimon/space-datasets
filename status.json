@@ -122,7 +122,14 @@
     "venus-express": 524787,
     "wds": 157391,
     "wmo-oscar": 2255,
-    "xray-binaries": 301
+    "xray-binaries": 301,
+    "cassini-saturn-observations": 63022,
+    "swift-bat": 1891,
+    "fermi-4lac": 3407,
+    "fermi-3fhl": 1558,
+    "rosat-bsc": 18806,
+    "iras-fsc": 173044,
+    "henry-draper": 272150
   },
   "ae-index": "2026-05-11",
   "apod": "2026-05-12",
@@ -251,5 +258,12 @@
   "venus-express": "2026-05-11",
   "wds": "2026-05-11",
   "wmo-oscar": "2026-04-03",
-  "xray-binaries": "2026-05-01"
+  "xray-binaries": "2026-05-01",
+  "cassini-saturn-observations": "2026-05-10",
+  "swift-bat": "2026-05-10",
+  "fermi-4lac": "2026-05-10",
+  "fermi-3fhl": "2026-05-10",
+  "rosat-bsc": "2026-05-10",
+  "iras-fsc": "2026-05-10",
+  "henry-draper": "2026-05-10"
 }

@@ -2,11 +2,11 @@
 
 *Researched 2026-03-24, expanded 2026-03-26, solar system missions added 2026-03-27, Wikidata datasets added 2026-03-31. Goal: the most comprehensive free, tabular space data collection on Hugging Face.*
 
-**Built: 188 dataset scripts** | **Remaining candidates: 20** | All sources free, no auth.
+**Built: 207 dataset scripts** | **Remaining candidates: 20** | All sources free, no auth.
 
 ---
 
-## Already Built (184 dataset scripts)
+## Already Built (207 dataset scripts)
 
 All P0 and P1 candidates are built, plus many P2 and 8 Wikidata datasets. Scripts in `scripts/update-*.py`, workflows in `.github/workflows/`.
 
@@ -41,6 +41,8 @@ All P0 and P1 candidates are built, plus many P2 and 8 Wikidata datasets. Script
 **From gap analysis (2026-04-05, 5):** 4XMM X-ray Sources (630K, static, VizieR IX/68 DR12s), Roma-BZCAT Blazars (3.6K, static, VizieR VII/274), Planck Cold Clumps PGCC (13.2K, static, VizieR J/A+A/594/A28), Gaia DR3 Spectroscopic Binaries (186K, static, VizieR I/357 SB1+SB2), Fermi 3PC Gamma-ray Pulsars (7.2K, static, HEASARC fermilpsc)
 
 **From new additions (2026-04-26, 4):** NASA APOD (11.3K entries since 1995, daily), Global Meteor Network (3M+ trajectories, daily), Lunar Eclipse Catalog (12K, static, NASA Five Millennium), Space Tourism Flights (85 commercial flights, monthly)
+
+**From new additions (2026-05-10, 3):** Henry Draper Catalogue (272K stars, static, VizieR III/135A) — foundational MK spectral types by Annie Jump Cannon; IRAS Faint Source Catalog v2.0 (173K mid-IR sources, static, VizieR II/156A); ROSAT All-Sky Survey Bright Source Catalogue (18.8K soft X-ray sources, static, VizieR IX/10A)
 
 **Note on actual sizes:** VLASS is 3.4M rows (not 700K — full component catalog). Chandra is 28K rows (HEASARC TAP truncates). AAVSO VSX is 10.3M (not 2.1M — catalog grew). DESI BGS subset is ~5M of the full 28.4M.
 

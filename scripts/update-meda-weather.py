@@ -13,7 +13,7 @@ import re
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -414,7 +414,7 @@ plt.show()
         p.publish(
             df,
             # Monthly shard: never overwrites existing historical parquet
-            filename=f"meda_weather_{datetime.utcnow().strftime('%Y_%m')}.parquet",
+            filename=f"meda_weather_{datetime.now(timezone.utc).strftime('%Y_%m')}.parquet",
             min_rows=MIN_ROWS,
             max_null_pct=0.50,
             expected_columns=EXPECTED_COLUMNS,

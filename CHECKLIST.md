@@ -1,6 +1,6 @@
 # Dataset Addition Checklist
 
-Reusable checklist for adding any new dataset to `juliensimon/space-datasets`. Learned from building 184 datasets. For architecture, workflow template, and source gotchas, see `CLAUDE.md`.
+Reusable checklist for adding any new dataset to `juliensimon/space-datasets`. Learned from building 207 datasets. For architecture, workflow template, and source gotchas, see `CLAUDE.md`.
 
 ---
 
