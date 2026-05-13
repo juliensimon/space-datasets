@@ -6,6 +6,8 @@ incremental mode: download existing parquet from HF, fetch recent events,
 merge and deduplicate.
 """
 
+import time
+
 import pandas as pd
 import requests
 
@@ -15,7 +17,7 @@ SWPC_URL = "https://services.swpc.noaa.gov/json/edited_events.json"
 HF_REPO = "juliensimon/solar-radio-bursts"
 RADIO_TYPES = {"RSP", "RBR", "RNS"}
 
-# ── Column descriptions ─────────────────────────────────────────────
+# ── Column descriptions ───────────────────────────────────────────────
 COLUMN_DESCRIPTIONS = {
     "start_date": "UTC time when the radio burst began",
     "end_date": "UTC time when the radio burst ended; null if event was still in progress at report time",
@@ -54,10 +56,20 @@ minutes to days. Monitoring them is therefore critical for operational space wea
 
 
 def fetch_swpc_radio_events() -> pd.DataFrame:
-    """Fetch solar radio burst events from NOAA SWPC."""
+    """Fetch solar radio burst events from NOAA SWPC (3 retries, exponential backoff)."""
     print("  Fetching NOAA SWPC edited events...")
-    resp = requests.get(SWPC_URL, timeout=60)
-    resp.raise_for_status()
+    for attempt in range(3):
+        try:
+            resp = requests.get(SWPC_URL, timeout=60)
+            resp.raise_for_status()
+            break
+        except requests.RequestException as exc:
+            if attempt == 2:
+                print(f"  SWPC fetch failed after 3 attempts: {exc}")
+                return pd.DataFrame()
+            wait = 2 ** attempt
+            print(f"  Retry {attempt + 1}/2 after {wait}s: {exc}")
+            time.sleep(wait)
     data = resp.json()
     print(f"  Total SWPC events: {len(data)}")
 
@@ -113,10 +125,8 @@ def main():
     print("Fetching solar radio burst events...")
 
     df_new = fetch_swpc_radio_events()
-    if df_new.empty:
-        print("::error::No radio events retrieved from SWPC")
-        raise SystemExit(1)
-    df_new = normalize_radio_df(df_new)
+    if not df_new.empty:
+        df_new = normalize_radio_df(df_new)
 
     with Pipeline(
         repo=HF_REPO,
@@ -139,7 +149,14 @@ def main():
     ) as p:
         df_existing = p.download_existing("solar_radio_bursts.parquet")
 
-        if df_existing is not None and len(df_existing) > 0:
+        if df_new.empty and (df_existing is None or len(df_existing) == 0):
+            print("::error::No radio events from SWPC and no existing data")
+            raise SystemExit(1)
+
+        if df_new.empty:
+            print(f"  No new events from SWPC (quiet period or transient); using {len(df_existing):,} existing rows")
+            df = df_existing
+        elif df_existing is not None and len(df_existing) > 0:
             df_existing["start_date"] = pd.to_datetime(df_existing["start_date"])
 
             # Align columns

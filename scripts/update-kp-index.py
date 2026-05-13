@@ -5,6 +5,8 @@ Kp is a 3-hourly index (0-9) measuring geomagnetic disturbance. Incremental:
 appends recent SWPC data to existing dataset.
 """
 
+import time
+
 import pandas as pd
 import requests
 
@@ -14,7 +16,7 @@ HF_REPO = "juliensimon/geomagnetic-kp-index"
 
 KP_URL = "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json"
 
-# ── Column descriptions ─────────────────────────────────────────────
+# ── Column descriptions ───────────────────────────────────────────────
 COLUMN_DESCRIPTIONS = {
     "datetime": "Start timestamp of the 3-hour observation window (UTC). Kp is reported at 00, 03, 06, 09, 12, 15, 18, and 21 UT each day — 8 readings per day.",
     "kp_value": "Planetary K-index (Kp), a quasi-logarithmic scale (0.0-9.0) measuring global geomagnetic disturbance. Derived from standardized magnetometer readings at up to 13 mid-latitude observatories worldwide. Values >=5 indicate a geomagnetic storm; >=7 indicate a severe storm capable of disrupting power grids and satellites.",
@@ -51,10 +53,19 @@ significant orbital decay for LEO assets including the ISS and Starlink satellit
 
 
 def fetch_kp():
-    """Fetch recent Kp data from NOAA SWPC (30-day rolling window)."""
+    """Fetch recent Kp data from NOAA SWPC (30-day rolling window, 3 retries)."""
     print("  Fetching Kp data from SWPC...")
-    resp = requests.get(KP_URL, timeout=30)
-    resp.raise_for_status()
+    for attempt in range(3):
+        try:
+            resp = requests.get(KP_URL, timeout=30)
+            resp.raise_for_status()
+            break
+        except requests.RequestException as exc:
+            if attempt == 2:
+                raise
+            wait = 2 ** attempt
+            print(f"  Retry {attempt + 1}/2 after {wait}s: {exc}")
+            time.sleep(wait)
     raw = resp.json()
 
     # First row is header: ["time_tag", "Kp", "Kp_fraction", "a_running", "station_count"]
