@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """Fetch space weather indices from CelesTrak and upload to HF."""
 
+import io
+import time
+
 import pandas as pd
+import requests
 
 from hf_dataset_utils import Pipeline
 
@@ -106,9 +110,23 @@ def classify_storm(row):
     return None
 
 
+def _fetch_sw():
+    for attempt in range(3):
+        try:
+            resp = requests.get(SW_URL, timeout=60)
+            resp.raise_for_status()
+            lines = resp.text.splitlines()
+            data_lines = [l for l in lines if not l.startswith("#")]
+            return pd.read_csv(io.StringIO("\n".join(data_lines)))
+        except Exception as e:
+            if attempt == 2:
+                raise
+            time.sleep(2 ** attempt)
+
+
 def main():
     print("Fetching space weather indices from CelesTrak...")
-    df = pd.read_csv(SW_URL)
+    df = _fetch_sw()
     print(f"  {len(df):,} daily records")
 
     # Type conversions
