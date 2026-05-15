@@ -5,6 +5,8 @@ Source: ESA Planetary Science Archive — EPN-TAP service.
 Mars Express has been studying Mars since December 2003 with 8 instruments.
 """
 
+import io
+import sys
 import time
 
 import pandas as pd
@@ -126,26 +128,42 @@ monitoring, seasonal polar cap evolution, dust storm cycles, and surface changes
 """
 
 
+def _tap_csv(query: str, retries: int = 4) -> pd.DataFrame:
+    """PSA TAP query using CSV format with exponential-backoff retry."""
+    for attempt in range(retries):
+        try:
+            resp = requests.get(TAP_URL, params={
+                "REQUEST": "doQuery", "LANG": "ADQL",
+                "FORMAT": "csv", "QUERY": query,
+            }, timeout=600)
+            resp.raise_for_status()
+            text = resp.text.strip()
+            if text.startswith("<"):
+                raise ValueError(f"TAP returned XML instead of CSV: {text[:200]}")
+            return pd.read_csv(io.StringIO(text))
+        except Exception as e:
+            if attempt < retries - 1:
+                wait = 20 * (2 ** attempt)
+                print(f"    TAP error (attempt {attempt + 1}/{retries}): {e}; retry in {wait}s")
+                time.sleep(wait)
+            else:
+                raise
+    return pd.DataFrame()  # unreachable
+
+
 def fetch_count() -> int:
     """Sanity-check: fetch total row count."""
     query = ("SELECT COUNT(*) AS n FROM epn_core "
              "WHERE instrument_host_name = 'Mars Express'")
     print("Checking total row count...")
-    resp = requests.get(TAP_URL, params={
-        "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "json",
-        "QUERY": query,
-    }, timeout=120)
-    resp.raise_for_status()
-    data = resp.json()
-    cols = [m["name"] for m in data["metadata"]]
-    rows = data["data"]
-    n = int(rows[0][cols.index("n")])
+    df = _tap_csv(query)
+    n = int(df["n"].iloc[0])
     print(f"  Total rows in catalog: {n:,}")
     return n
 
 
 def fetch_instrument(instrument: str) -> pd.DataFrame:
-    """Fetch all rows for one instrument using granule_uid pagination."""
+    """Fetch all rows for one instrument using granule_uid pagination with CSV."""
     print(f"  Fetching {instrument}...")
     all_dfs = []
     last_id = ""
@@ -159,20 +177,11 @@ def fetch_instrument(instrument: str) -> pd.DataFrame:
             f"AND granule_uid > '{last_id}' "
             f"ORDER BY granule_uid"
         )
-        resp = requests.get(TAP_URL, params={
-            "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "json",
-            "QUERY": query,
-        }, timeout=600)
-        resp.raise_for_status()
+        df_page = _tap_csv(query)
 
-        data = resp.json()
-        cols = [m["name"] for m in data["metadata"]]
-        rows = data["data"]
-
-        if not rows:
+        if df_page.empty:
             break
 
-        df_page = pd.DataFrame(rows, columns=cols)
         all_dfs.append(df_page)
         page += 1
         print(f"    Page {page}: {len(df_page):,} rows")
@@ -193,8 +202,6 @@ def fetch_instrument(instrument: str) -> pd.DataFrame:
 
 
 def main():
-    import sys
-
     print("Fetching ESA Mars Express observation catalog...")
 
     # Verify expected size
