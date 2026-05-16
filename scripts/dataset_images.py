@@ -508,6 +508,11 @@ DATASET_DOMAIN = {
     "hot-subdwarfs": "stellar",
     "galactic-novae": "variable_stars",
     "yarkovsky-nea": "small_bodies",
+    "veron-agn": "galaxies",
+    "symbiotic-stars": "stellar",
+    "hypervelocity-stars": "stellar",
+    "cdaw-cme": "weather",
+    "feng-icmes": "weather",
     # Planetary science
     "ceres-craters": "planetary",
     "impact-craters": "planetary",

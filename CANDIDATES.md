@@ -2,7 +2,7 @@
 
 *Researched 2026-03-24, expanded 2026-03-26, solar system missions added 2026-03-27, Wikidata datasets added 2026-03-31, gap analysis 2026-05-15. Goal: the most comprehensive free, tabular space data collection on Hugging Face.*
 
-**Built: 215 dataset scripts** | **Remaining candidates: 30** | All sources free, no auth.
+**Built: 220 dataset scripts** | **Remaining candidates: 25** | All sources free, no auth.
 
 ---
 
@@ -116,7 +116,7 @@ Coverage gaps identified after reviewing the full 209-script catalog. All public
 | # | Dataset | Domain | Rows | Size | Incr? | Schedule | Notes |
 |---|---------|--------|-----:|------|:-----:|----------|-------|
 | 22 | GOES X-ray flux daily | Weather | ~11K | 2 MB | Yes | Daily | NOAA SWPC. Daily aggregates of XRS-A/B since 1986. Foundational solar flare measurement |
-| 23 | CDAW LASCO CME catalog | Weather | ~30K | 10 MB | Yes | Weekly | NASA CDAW. SOHO/LASCO coronal mass ejections since 1996 |
+| 23 | ~~CDAW LASCO CME catalog~~ | Weather | 42,744 | 1.1 MB | Yes | Weekly | **Built 2026-05-16** as `cdaw-lasco-cme-catalog`. NASA CDAW univ_all.txt parsed |
 | 24 | High-Speed Stream catalog | Weather | ~1K | <1 MB | No | Quarterly | Jian et al. recurrent solar wind HSS arrivals |
 | 25 | Geomagnetic Storm event list | Weather | ~500 | <1 MB | Yes | Monthly | NOAA G1–G5 storm catalog (discrete events, not daily index) |
 
@@ -136,6 +136,10 @@ Coverage gaps identified after reviewing the full 209-script catalog. All public
 | 30 | OB associations | Astronomy | ~80 | <1 MB | No | Static | Wright 2023. Galactic structure backbone |
 | 31 | Stellar streams | Astronomy | ~120 | <1 MB | No | Yearly | Mateu galstreams. Milky Way archaeology |
 | 32 | Be stars (BeSS) | Astronomy | ~3K | 1 MB | No | Quarterly | BeSS database — emission-line B stars |
+| -- | ~~Veron AGN/Quasar catalog~~ | Astronomy | 168,940 | 3.8 MB | No | Static | **Built 2026-05-16** as `veron-agn-quasar-catalog`. VizieR VII/258/vv10 (Veron-Cetty & Veron 13th ed.) |
+| -- | ~~Symbiotic stars (Belczynski)~~ | Astronomy | 218 | <1 MB | No | Static | **Built 2026-05-16** as `symbiotic-stars-catalog`. VizieR J/A+AS/146/407 |
+| -- | ~~Hypervelocity stars (Li 2023)~~ | Astronomy | 52 | <1 MB | No | Static | **Built 2026-05-16** as `hypervelocity-stars-li2023`. VizieR J/AJ/166/12 |
+| -- | ~~Feng 2018 ICME catalog~~ | Weather | 219 | <1 MB | No | Static | **Built 2026-05-16** as `feng-icme-catalog`. VizieR J/ApJ/868/124. In-situ ACE/WIND ICME compilation 1998-2011 |
 
 ### Recent mega-survey releases
 

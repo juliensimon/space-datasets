@@ -217,6 +217,8 @@ DATASETS = {
         "juliensimon/forbush-decreases",
         "juliensimon/parker-solar-probe-encounters",
         "juliensimon/solar-orbiter-encounters",
+        "juliensimon/cdaw-lasco-cme-catalog",
+        "juliensimon/feng-icme-catalog",
     ],
     # ── Parent: Astronomy (umbrella — all astronomy datasets) ──────────────
     ASTRONOMY: [
@@ -322,6 +324,9 @@ DATASETS = {
         "juliensimon/maxi-xray-sources",
         "juliensimon/hot-subdwarf-stars",
         "juliensimon/galactic-novae-schaefer",
+        "juliensimon/veron-agn-quasar-catalog",
+        "juliensimon/symbiotic-stars-catalog",
+        "juliensimon/hypervelocity-stars-li2023",
     ],
     # ── Sub: Stellar Catalogs ──────────────────────────────────────────────
     STELLAR: [
@@ -352,6 +357,8 @@ DATASETS = {
         "juliensimon/gaia-dr3-spectroscopic-binaries",
         "juliensimon/fermi-3pc-gamma-ray-pulsars",
         "juliensimon/hot-subdwarf-stars",
+        "juliensimon/symbiotic-stars-catalog",
+        "juliensimon/hypervelocity-stars-li2023",
     ],
     # ── Sub: Variable Stars & Transients ───────────────────────────────────
     VARIABLE_STARS: [
@@ -394,6 +401,7 @@ DATASETS = {
         "juliensimon/quasar-catalog",
         "juliensimon/rc3-galaxy-morphology",
         "juliensimon/roma-bzcat-blazars",
+        "juliensimon/veron-agn-quasar-catalog",
     ],
     # ── Sub: Sky Surveys ───────────────────────────────────────────────────
     SKY_SURVEYS: [
