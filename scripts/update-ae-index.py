@@ -273,6 +273,13 @@ plt.title("AE Activity Level Distribution")
 plt.show()
 ```"""
 
+        # Drop entirely-null optional columns (ao_index is not always
+        # available in WDC Kyoto realtime; prevents hard-fail in check_dataset)
+        all_null_cols = [c for c in df.columns if df[c].isna().all()]
+        if all_null_cols:
+            print(f"  Dropping entirely-null columns: {all_null_cols}")
+            df = df.drop(columns=all_null_cols)
+
         p.publish(
             df,
             filename="ae_index.parquet",
