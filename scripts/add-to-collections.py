@@ -145,6 +145,7 @@ DATASETS = {
         "juliensimon/sentry-impact-risk",
         "juliensimon/ssodnet-asteroid-properties",
         "juliensimon/tno-centaur-properties",
+        "juliensimon/yarkovsky-nea-drifts",
     ],
     # ── Parent: Space Probes ───────────────────────────────────────────────
     PROBES: [
@@ -317,6 +318,10 @@ DATASETS = {
         "juliensimon/planck-cold-clumps",
         "juliensimon/gaia-dr3-spectroscopic-binaries",
         "juliensimon/fermi-3pc-gamma-ray-pulsars",
+        "juliensimon/nicer-observations",
+        "juliensimon/maxi-xray-sources",
+        "juliensimon/hot-subdwarf-stars",
+        "juliensimon/galactic-novae-schaefer",
     ],
     # ── Sub: Stellar Catalogs ──────────────────────────────────────────────
     STELLAR: [
@@ -346,6 +351,7 @@ DATASETS = {
         "juliensimon/xray-binary-catalog",
         "juliensimon/gaia-dr3-spectroscopic-binaries",
         "juliensimon/fermi-3pc-gamma-ray-pulsars",
+        "juliensimon/hot-subdwarf-stars",
     ],
     # ── Sub: Variable Stars & Transients ───────────────────────────────────
     VARIABLE_STARS: [
@@ -366,6 +372,7 @@ DATASETS = {
         "juliensimon/otter-tde-catalog",
         "juliensimon/supernova-remnants",
         "juliensimon/tess-toi-candidates",
+        "juliensimon/galactic-novae-schaefer",
     ],
     # ── Sub: Galaxies & Cosmology ──────────────────────────────────────────
     GALAXIES: [

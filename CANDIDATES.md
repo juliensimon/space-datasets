@@ -2,7 +2,7 @@
 
 *Researched 2026-03-24, expanded 2026-03-26, solar system missions added 2026-03-27, Wikidata datasets added 2026-03-31, gap analysis 2026-05-15. Goal: the most comprehensive free, tabular space data collection on Hugging Face.*
 
-**Built: 210 dataset scripts** | **Remaining candidates: 35** | All sources free, no auth.
+**Built: 215 dataset scripts** | **Remaining candidates: 30** | All sources free, no auth.
 
 ---
 
@@ -124,15 +124,15 @@ Coverage gaps identified after reviewing the full 209-script catalog. All public
 
 | # | Dataset | Domain | Rows | Size | Incr? | Schedule | Notes |
 |---|---------|--------|-----:|------|:-----:|----------|-------|
-| 26 | NICER source catalog | Astronomy | ~5K | 5 MB | No | Quarterly | HEASARC `nicermastr`. Active ISS mission, neutron star science |
-| 27 | MAXI X-ray source catalog | Astronomy | ~700 | 1 MB | No | Quarterly | HEASARC. Japanese ISS X-ray monitor since 2009 |
+| 26 | ~~NICER observations~~ | Astronomy | 63,866 | 4.4 MB | No | Quarterly | **Built 2026-05-16** as `nicer-observations`. HEASARC `nicermastr` |
+| 27 | ~~MAXI X-ray source catalog~~ | Astronomy | 170 | <1 MB | No | Quarterly | **Built 2026-05-16** as `maxi-xray-sources`. HEASARC `maxissccat` |
 
 ### Stellar VizieR gaps (small mature catalogs)
 
 | # | Dataset | Domain | Rows | Size | Incr? | Schedule | Notes |
 |---|---------|--------|-----:|------|:-----:|----------|-------|
-| 28 | Nova catalog | Astronomy | ~400 | <1 MB | No | Yearly | VizieR V/154 (Downes & Shara) + modern additions. Historical novae |
-| 29 | Hot subdwarfs | Astronomy | ~5.6K | 1 MB | No | Static | VizieR J/A+A/635/A193 (Geier 2020). Compact stellar evolution |
+| 28 | ~~Galactic novae~~ | Astronomy | 402 | <1 MB | No | Yearly | **Built 2026-05-16** as `galactic-novae-schaefer`. VizieR J/MNRAS/517/6150 (Schaefer 2022) used instead of V/154 |
+| 29 | ~~Hot subdwarfs~~ | Astronomy | 1,714 | <1 MB | No | Static | **Built 2026-05-16** as `hot-subdwarf-stars`. VizieR III/137 (Kilkenny+) used instead of J/A+A/635/A193 |
 | 30 | OB associations | Astronomy | ~80 | <1 MB | No | Static | Wright 2023. Galactic structure backbone |
 | 31 | Stellar streams | Astronomy | ~120 | <1 MB | No | Yearly | Mateu galstreams. Milky Way archaeology |
 | 32 | Be stars (BeSS) | Astronomy | ~3K | 1 MB | No | Quarterly | BeSS database — emission-line B stars |
@@ -149,7 +149,7 @@ Coverage gaps identified after reviewing the full 209-script catalog. All public
 
 | # | Dataset | Domain | Rows | Size | Incr? | Schedule | Notes |
 |---|---------|--------|-----:|------|:-----:|----------|-------|
-| 36 | Yarkovsky effect catalog | Asteroids | ~250 | <1 MB | No | Yearly | Vokrouhlický et al. measured drift rates |
+| 36 | ~~Yarkovsky effect catalog~~ | Asteroids | 247 | <1 MB | No | Yearly | **Built 2026-05-16** as `yarkovsky-nea-drifts`. VizieR J/AJ/159/92 (Greenberg+ 2020) |
 | 37 | Comet nuclei sizes | Comets | ~200 | <1 MB | No | Yearly | LCDB-style for comets |
 | 38 | Asteroid radar shape models | Asteroids | ~150 | 5 MB | No | Yearly | JPL/Ostro radar measurements |
 

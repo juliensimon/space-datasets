@@ -132,7 +132,12 @@
     "venus-express": 524787,
     "wds": 157391,
     "wmo-oscar": 2255,
-    "xray-binaries": 301
+    "xray-binaries": 301,
+    "nicer": 63866,
+    "maxi": 170,
+    "hot-subdwarfs": 1714,
+    "galactic-novae": 402,
+    "yarkovsky-nea": 247
   },
   "ae-index": "2026-05-14",
   "apod": "2026-05-15",
@@ -271,5 +276,10 @@
   "venus-express": "2026-05-11",
   "wds": "2026-05-11",
   "wmo-oscar": "2026-04-03",
-  "xray-binaries": "2026-05-01"
+  "xray-binaries": "2026-05-01",
+  "nicer": "2026-05-16",
+  "maxi": "2026-05-16",
+  "hot-subdwarfs": "2026-05-16",
+  "galactic-novae": "2026-05-16",
+  "yarkovsky-nea": "2026-05-16"
 }

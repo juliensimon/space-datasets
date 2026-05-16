@@ -503,6 +503,11 @@ DATASET_DOMAIN = {
     "parker-solar-probe": "weather",
     "solar-orbiter": "weather",
     "rocket-lab-launches": "satellites",
+    "nicer": "physics",
+    "maxi": "physics",
+    "hot-subdwarfs": "stellar",
+    "galactic-novae": "variable_stars",
+    "yarkovsky-nea": "small_bodies",
     # Planetary science
     "ceres-craters": "planetary",
     "impact-craters": "planetary",
