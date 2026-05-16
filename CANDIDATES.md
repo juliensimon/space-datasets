@@ -1,8 +1,8 @@
 # The Definitive Space Data Archive — Candidate Datasets
 
-*Researched 2026-03-24, expanded 2026-03-26, solar system missions added 2026-03-27, Wikidata datasets added 2026-03-31. Goal: the most comprehensive free, tabular space data collection on Hugging Face.*
+*Researched 2026-03-24, expanded 2026-03-26, solar system missions added 2026-03-27, Wikidata datasets added 2026-03-31, gap analysis 2026-05-15. Goal: the most comprehensive free, tabular space data collection on Hugging Face.*
 
-**Built: 207 dataset scripts** | **Remaining candidates: 20** | All sources free, no auth.
+**Built: 210 dataset scripts** | **Remaining candidates: 35** | All sources free, no auth.
 
 ---
 
@@ -96,6 +96,62 @@ Built and uploaded: #1 PDS Missions, #2 InSight Marsquakes, #3 IAU Nomenclature,
 | 16 | NASA Fragmentation History | Orbital | 355 | 1 MB | No | Static | PDF extraction |
 | 17 | ESA OPS-SAT Anomalies | Orbital | 2,123 | 10 MB | No | Static | Niche ML benchmark |
 | 18 | Transients (TNS) | Astronomy | 10–50K | 5 MB | Yes | Daily | Needs free API key registration |
+
+---
+
+## P4 — New gap analysis (2026-05-15)
+
+Coverage gaps identified after reviewing the full 209-script catalog. All public, no auth.
+
+### Mission encounter logs (high narrative value, tiny tables)
+
+| # | Dataset | Domain | Rows | Size | Incr? | Schedule | Notes |
+|---|---------|--------|-----:|------|:-----:|----------|-------|
+| 19 | Parker Solar Probe encounters | Heliophysics | ~25 | <1 MB | No | Quarterly | NASA/JHU APL encounter table — perihelion dates, distances, speeds, Venus flybys |
+| 20 | Solar Orbiter encounters | Heliophysics | ~30 | <1 MB | No | Quarterly | ESA encounter table — perihelion dates, distances, Venus gravity assists |
+| 21 | Rocket Lab launches | Missions | ~70 | <1 MB | Yes | Monthly | Mirror SpaceX/Blue Origin/ULA pattern. Electron launches + Neutron |
+
+### Heliophysics gaps (complement existing weather suite)
+
+| # | Dataset | Domain | Rows | Size | Incr? | Schedule | Notes |
+|---|---------|--------|-----:|------|:-----:|----------|-------|
+| 22 | GOES X-ray flux daily | Weather | ~11K | 2 MB | Yes | Daily | NOAA SWPC. Daily aggregates of XRS-A/B since 1986. Foundational solar flare measurement |
+| 23 | CDAW LASCO CME catalog | Weather | ~30K | 10 MB | Yes | Weekly | NASA CDAW. SOHO/LASCO coronal mass ejections since 1996 |
+| 24 | High-Speed Stream catalog | Weather | ~1K | <1 MB | No | Quarterly | Jian et al. recurrent solar wind HSS arrivals |
+| 25 | Geomagnetic Storm event list | Weather | ~500 | <1 MB | Yes | Monthly | NOAA G1–G5 storm catalog (discrete events, not daily index) |
+
+### Active X-ray/gamma-ray missions (HEASARC TAP)
+
+| # | Dataset | Domain | Rows | Size | Incr? | Schedule | Notes |
+|---|---------|--------|-----:|------|:-----:|----------|-------|
+| 26 | NICER source catalog | Astronomy | ~5K | 5 MB | No | Quarterly | HEASARC `nicermastr`. Active ISS mission, neutron star science |
+| 27 | MAXI X-ray source catalog | Astronomy | ~700 | 1 MB | No | Quarterly | HEASARC. Japanese ISS X-ray monitor since 2009 |
+
+### Stellar VizieR gaps (small mature catalogs)
+
+| # | Dataset | Domain | Rows | Size | Incr? | Schedule | Notes |
+|---|---------|--------|-----:|------|:-----:|----------|-------|
+| 28 | Nova catalog | Astronomy | ~400 | <1 MB | No | Yearly | VizieR V/154 (Downes & Shara) + modern additions. Historical novae |
+| 29 | Hot subdwarfs | Astronomy | ~5.6K | 1 MB | No | Static | VizieR J/A+A/635/A193 (Geier 2020). Compact stellar evolution |
+| 30 | OB associations | Astronomy | ~80 | <1 MB | No | Static | Wright 2023. Galactic structure backbone |
+| 31 | Stellar streams | Astronomy | ~120 | <1 MB | No | Yearly | Mateu galstreams. Milky Way archaeology |
+| 32 | Be stars (BeSS) | Astronomy | ~3K | 1 MB | No | Quarterly | BeSS database — emission-line B stars |
+
+### Recent mega-survey releases
+
+| # | Dataset | Domain | Rows | Size | Incr? | Schedule | Notes |
+|---|---------|--------|-----:|------|:-----:|----------|-------|
+| 33 | Euclid Q1 photometric subset | Astronomy | ~10M | 200+ MB | No | Static | March 2025 release. Need to pick a manageable subset |
+| 34 | Pan-STARRS DR2 bright sources | Astronomy | varies | varies | No | Static | At minimum a bright-source/galactic-plane subset |
+| 35 | DESI DR2 (if available) | Astronomy | TBD | TBD | No | Static | You have DR1 BGS subset. Check release status |
+
+### Asteroid/comet niches
+
+| # | Dataset | Domain | Rows | Size | Incr? | Schedule | Notes |
+|---|---------|--------|-----:|------|:-----:|----------|-------|
+| 36 | Yarkovsky effect catalog | Asteroids | ~250 | <1 MB | No | Yearly | Vokrouhlický et al. measured drift rates |
+| 37 | Comet nuclei sizes | Comets | ~200 | <1 MB | No | Yearly | LCDB-style for comets |
+| 38 | Asteroid radar shape models | Asteroids | ~150 | 5 MB | No | Yearly | JPL/Ostro radar measurements |
 
 ---
 

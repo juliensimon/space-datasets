@@ -89,6 +89,7 @@ DATASETS = {
         "juliensimon/spacex-launches",
         "juliensimon/wmo-oscar-satellites",
         "juliensimon/constellation-tle-latest",
+        "juliensimon/rocket-lab-launches",
     ],
     # ── Sub: Satellites & Launches ─────────────────────────────────────────
     SATELLITES: [
@@ -121,6 +122,7 @@ DATASETS = {
         "juliensimon/spacex-launches",
         "juliensimon/wmo-oscar-satellites",
         "juliensimon/constellation-tle-latest",
+        "juliensimon/rocket-lab-launches",
     ],
     # ── Sub: Asteroids & Small Bodies ──────────────────────────────────────
     SMALL_BODIES: [
@@ -170,6 +172,8 @@ DATASETS = {
         "juliensimon/esa-juice-observations",
         "juliensimon/nasa-maven-kp-insitu",
         "juliensimon/nasa-mars-rover-images",
+        "juliensimon/parker-solar-probe-encounters",
+        "juliensimon/solar-orbiter-encounters",
     ],
     # ── Parent: Planetary Science ──────────────────────────────────────────
     PLANETARY: [
@@ -210,6 +214,8 @@ DATASETS = {
         "juliensimon/substorm-onsets",
         "juliensimon/swpc-alerts",
         "juliensimon/forbush-decreases",
+        "juliensimon/parker-solar-probe-encounters",
+        "juliensimon/solar-orbiter-encounters",
     ],
     # ── Parent: Astronomy (umbrella — all astronomy datasets) ──────────────
     ASTRONOMY: [

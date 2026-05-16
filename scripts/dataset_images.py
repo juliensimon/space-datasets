@@ -500,6 +500,9 @@ DATASET_DOMAIN = {
     "maven": "probes",
     "mars-rovers": "probes",
     "venus-express": "probes",
+    "parker-solar-probe": "weather",
+    "solar-orbiter": "weather",
+    "rocket-lab-launches": "satellites",
     # Planetary science
     "ceres-craters": "planetary",
     "impact-craters": "planetary",
