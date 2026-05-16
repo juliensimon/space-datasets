@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Update status.json with the current date for a given dataset key."""
+"""Update status.json with the current date for a given dataset key.
+
+Keys are always written in alphabetical order: `_rows` first (with its own
+keys sorted alphabetically), then the per-dataset date keys. Sorted ordering
+prevents merge conflicts between concurrent daily-cron pushes that would
+otherwise both append at the end of the file.
+"""
 
 import json
 import sys
@@ -7,6 +13,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 STATUS_FILE = Path(__file__).parent.parent / "status.json"
+
+
+def normalize(status: dict) -> dict:
+    """Reorder so `_rows` is first (alphabetically sorted inside), then dates."""
+    out: dict = {}
+    if "_rows" in status:
+        out["_rows"] = dict(sorted(status["_rows"].items()))
+    for k in sorted(k for k in status if k != "_rows"):
+        out[k] = status[k]
+    return out
+
 
 def main():
     if len(sys.argv) < 2:
@@ -25,9 +42,10 @@ def main():
     if rows is not None:
         status.setdefault("_rows", {})[key] = rows
 
-    STATUS_FILE.write_text(json.dumps(status, indent=2) + "\n")
+    STATUS_FILE.write_text(json.dumps(normalize(status), indent=2) + "\n")
     print(f"Updated status[{key}] = {status[key]}"
           + (f" ({rows:,} rows)" if rows else ""))
+
 
 if __name__ == "__main__":
     main()
