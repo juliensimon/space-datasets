@@ -10,6 +10,7 @@ cadence and success-rate analysis.
 Source: The Space Devs Launch Library 2 (https://ll.thespacedevs.com), agency id 147.
 """
 
+import sys
 import time
 from datetime import datetime, timezone
 
@@ -63,16 +64,32 @@ positioning Rocket Lab against SpaceX Falcon 9.\
 """
 
 
+def _safe_float(v):
+    try:
+        return float(v) if v is not None and v != "" else None
+    except (TypeError, ValueError):
+        return None
+
+
 def fetch_all_launches():
     """Paginate through all Rocket Lab launches from Launch Library 2."""
     all_results = []
     url = f"{LL2_URL}?lsp__id={AGENCY_ID}&limit=25&mode=detailed"
     while url:
         print(f"  Fetching: {url}")
-        resp = requests.get(url, timeout=180)
-        resp.raise_for_status()
+        for attempt in range(4):
+            try:
+                resp = requests.get(url, timeout=180)
+                resp.raise_for_status()
+                break
+            except Exception as e:
+                if attempt == 3:
+                    raise
+                wait = 15 * (2 ** attempt)
+                print(f"    HTTP error (attempt {attempt + 1}/4): {e}; retry in {wait}s")
+                time.sleep(wait)
         data = resp.json()
-        all_results.extend(data["results"])
+        all_results.extend(data.get("results", []))
         url = data.get("next")
         if url:
             time.sleep(2)
@@ -115,8 +132,8 @@ def flatten_launch(r):
         "pad_name": pad.get("name"),
         "pad_location": location.get("name"),
         "pad_country": pad.get("country_code"),
-        "pad_latitude": float(pad["latitude"]) if pad.get("latitude") else None,
-        "pad_longitude": float(pad["longitude"]) if pad.get("longitude") else None,
+        "pad_latitude": _safe_float(pad.get("latitude")),
+        "pad_longitude": _safe_float(pad.get("longitude")),
         "year": net.year if net else None,
     }
 
@@ -125,6 +142,9 @@ def main():
     print("Fetching Rocket Lab launches from The Space Devs Launch Library 2...")
     launches = fetch_all_launches()
     print(f"  {len(launches):,} launches fetched")
+    if not launches:
+        print("::error::LL2 returned 0 results for Rocket Lab (API may be down)")
+        sys.exit(1)
 
     rows = [flatten_launch(r) for r in launches]
     df = pd.DataFrame(rows)
@@ -173,7 +193,7 @@ def main():
 - **{len(df):,}** Rocket Lab launches ({len(past):,} past, {len(upcoming):,} upcoming)
 - **{len(electron):,}** Electron + **{len(neutron):,}** Neutron + **{len(haste):,}** HASTE flights tracked
 - **{success_rate:.1f}%** success rate across completed missions
-- Manifest spans **{int(df['year'].min())}** through **{int(df['year'].max())}**"""
+- Manifest spans **{int(df['year'].dropna().min())}** through **{int(df['year'].dropna().max())}**"""
 
         usage = """\
 ```python
