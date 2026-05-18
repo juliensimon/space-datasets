@@ -14,9 +14,9 @@ SIMBAD_TAP = "https://simbad.u-strasbg.fr/simbad/sim-tap/sync"
 
 # SIMBAD otypes for AGN: QSO (quasar), AGN (active galactic nucleus),
 # Sy1/Sy2 (Seyfert), BLL (BL Lac), Bla (Blazar), LIN (LINER)
-ADQL = """SELECT TOP 100000 main_id AS name, ra, dec, otype_txt AS object_type
+ADQL = """SELECT TOP 100000 main_id AS name, ra, dec, otype AS object_type
 FROM basic
-WHERE otype_txt = 'QSO' OR otype_txt = 'AGN' OR otype_txt = 'Sy1' OR otype_txt = 'Sy2' OR otype_txt = 'BLL' OR otype_txt = 'Bla' OR otype_txt = 'LIN'
+WHERE otype = 'QSO' OR otype = 'AGN' OR otype = 'Sy1' OR otype = 'Sy2' OR otype = 'BLL' OR otype = 'Bla' OR otype = 'LIN'
 ORDER BY main_id"""
 
 # -- Column descriptions for README schema table ---------------------------

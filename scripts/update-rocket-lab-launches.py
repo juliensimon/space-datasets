@@ -219,6 +219,10 @@ neutron = rl[rl["rocket"] == "Neutron"].sort_values("net_utc")
 print(neutron[["mission_name", "net_utc", "status", "orbit", "pad_location"]])
 ```"""
 
+        all_null = [c for c in df.columns if df[c].isna().all()]
+        if all_null:
+            print(f"  Dropping fully-null columns: {all_null}")
+            df = df.drop(columns=all_null)
         p.publish(
             df,
             filename="rocket_lab_launches.parquet",

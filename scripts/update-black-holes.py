@@ -18,12 +18,12 @@ SIMBAD_TAP = "https://simbad.u-strasbg.fr/simbad/sim-tap/sync"
 
 # SIMBAD otypes: BH = black hole, BH? = BH candidate, XB* = X-ray binary,
 # HXB = High-mass XRB, LXB = Low-mass XRB
-ADQL = """SELECT main_id AS name, ra, dec, otype_txt AS object_type, sp_type AS spectral_type
+ADQL = """SELECT main_id AS name, ra, dec, otype AS object_type, sp_type AS spectral_type
 FROM basic
-WHERE otype_txt = 'BH' OR otype_txt = 'BH?' OR otype_txt = 'XB*' OR otype_txt = 'HXB' OR otype_txt = 'LXB'
+WHERE otype = 'BH' OR otype = 'BH?' OR otype = 'XB*' OR otype = 'HXB' OR otype = 'LXB'
 ORDER BY main_id"""
 
-# ── Column descriptions for README schema table ─────────────────────
+# ── Column descriptions for README schema table ───────────────────────
 COLUMN_DESCRIPTIONS = {
     "name": "Primary SIMBAD identifier or common name (e.g. 'Cyg X-1', 'GRS 1915+105'); the canonical designation used in the astronomical literature for cross-matching",
     "ra_deg": "ICRS J2000.0 right ascension in degrees (0-360); useful for positional cross-matching with X-ray, radio, and optical surveys",
@@ -33,7 +33,7 @@ COLUMN_DESCRIPTIONS = {
     "spectral_type": "MK spectral classification of the companion or donor star (e.g. 'O9.7Iab' for Cyg X-1); indicates companion mass and evolutionary state; null for systems without spectroscopic data or for isolated black holes",
 }
 
-# ── Dataset description ──────────────────────────────────────────────
+# ── Dataset description ───────────────────────────────────────────────
 DESCRIPTION = """\
 Catalog of known black hole systems — confirmed black holes, candidates, and \
 X-ray binaries from the SIMBAD astronomical database.
@@ -67,13 +67,26 @@ electromagnetic radiation in accreting systems.
 def main():
     print("Fetching black hole systems from SIMBAD...")
 
-    resp = requests.get(SIMBAD_TAP, params={
-        "REQUEST": "doQuery",
-        "LANG": "ADQL",
-        "FORMAT": "csv",
-        "QUERY": ADQL,
-    }, timeout=120)
-    resp.raise_for_status()
+    last_err = None
+    for attempt in range(3):
+        try:
+            resp = requests.get(SIMBAD_TAP, params={
+                "REQUEST": "doQuery",
+                "LANG": "ADQL",
+                "FORMAT": "csv",
+                "QUERY": ADQL,
+            }, timeout=180)
+            resp.raise_for_status()
+            break
+        except Exception as e:
+            last_err = e
+            if attempt < 2:
+                import time
+                wait = 30 * (attempt + 1)
+                print(f"  SIMBAD error (attempt {attempt + 1}/3): {e}; retry in {wait}s")
+                time.sleep(wait)
+    else:
+        raise RuntimeError(f"SIMBAD query failed after 3 attempts: {last_err}")
 
     df = pd.read_csv(io.StringIO(resp.text))
     print(f"  {len(df)} objects from SIMBAD")
@@ -105,7 +118,7 @@ def main():
 
     df = df.sort_values("name").reset_index(drop=True)
 
-    # ── Domain-specific stats for README ─────────────────────────────
+    # ── Domain-specific stats for README ─────────────────────────────────
     n = len(df)
     n_confirmed = int((df["object_type"] == "BH").sum())
     n_candidate = int((df["object_type"] == "BH?").sum())
@@ -165,6 +178,10 @@ plt.show()
             numeric=["ra_deg", "dec_deg"],
             strings=["name", "object_type", "bh_category", "spectral_type"],
         )
+        all_null = [c for c in df.columns if df[c].isna().all()]
+        if all_null:
+            print(f"  Dropping fully-null columns: {all_null}")
+            df = df.drop(columns=all_null)
         p.publish(
             df,
             filename="black_holes.parquet",
