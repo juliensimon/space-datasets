@@ -1,7 +1,1 @@
-{
-  "mars-express": {
-    "first_failure": "2026-05-13",
-    "last_retry": "2026-05-14",
-    "retries": 2
-  }
-}
+{}
