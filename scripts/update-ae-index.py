@@ -273,11 +273,18 @@ plt.title("AE Activity Level Distribution")
 plt.show()
 ```"""
 
-        # Drop entirely-null optional columns (ao_index is not always
-        # available in WDC Kyoto realtime; prevents hard-fail in check_dataset)
-        all_null_cols = [c for c in df.columns if df[c].isna().all()]
+        # Drop entirely-null OPTIONAL columns only (ao_index is not always
+        # available in WDC Kyoto realtime; prevents hard-fail in check_dataset).
+        # Required columns (ae_index, au_index, al_index, datetime) are never
+        # dropped here — if they are all-null, check_dataset will emit the
+        # correct diagnostic and fail loudly.
+        _OPTIONAL_COLS = {"ao_index", "is_active", "activity_level", "quality"}
+        all_null_cols = [
+            c for c in df.columns
+            if df[c].isna().all() and c in _OPTIONAL_COLS
+        ]
         if all_null_cols:
-            print(f"  Dropping entirely-null columns: {all_null_cols}")
+            print(f"  Dropping entirely-null optional columns: {all_null_cols}")
             df = df.drop(columns=all_null_cols)
 
         p.publish(
