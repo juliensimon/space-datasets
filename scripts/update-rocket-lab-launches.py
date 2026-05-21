@@ -26,7 +26,7 @@ HF_REPO = "juliensimon/rocket-lab-launches"
 COLUMN_DESCRIPTIONS = {
     "launch_id": "The Space Devs UUID for the launch",
     "name": "Launch display name (e.g. 'Electron | Capstone', 'Neutron | Escapade')",
-    "mission_name": "Mission identifier or customer-facing name (e.g. 'It's a Test', 'Still Testing', 'There And Back Again', 'CAPSTONE')",
+    "mission_name": "Mission identifier or customer-facing name (e.g. 'It\'s a Test', 'Still Testing', 'There And Back Again', 'CAPSTONE')",
     "rocket": "Launch vehicle configuration name (Electron, Neutron, HASTE for hypersonic test variant)",
     "net_utc": "No Earlier Than launch time (UTC). For completed launches this is the actual liftoff time; for upcoming it is the target",
     "window_start_utc": "Start of the launch window (UTC)",
@@ -52,7 +52,7 @@ Covers Electron (small-lift two-stage rocket using Rutherford 3D-printed engines
 2017 from Mahia Peninsula in New Zealand and from LC-2 at Wallops Island, Virginia) and the \
 forthcoming Neutron medium-lift partially reusable rocket. Each row captures mission identifier, \
 vehicle, launch time, status, pad location, target orbit, and a free-text mission description. \
-Includes the full Electron history from the May 2017 'It's a Test' debut through the current \
+Includes the full Electron history from the May 2017 'It\'s a Test' debut through the current \
 manifest of confirmed upcoming Electron and Neutron customer missions.
 
 This dataset is designed as a counterpart to juliensimon/spacex-launches, juliensimon/blue-origin-launches, \
@@ -219,9 +219,10 @@ neutron = rl[rl["rocket"] == "Neutron"].sort_values("net_utc")
 print(neutron[["mission_name", "net_utc", "status", "orbit", "pad_location"]])
 ```"""
 
-        all_null = [c for c in df.columns if df[c].isna().all()]
+        _REQUIRED = {"launch_id", "name", "rocket", "net_utc", "status"}
+        all_null = [c for c in df.columns if df[c].isna().all() and c not in _REQUIRED]
         if all_null:
-            print(f"  Dropping fully-null columns: {all_null}")
+            print(f"  Dropping fully-null optional columns: {all_null}")
             df = df.drop(columns=all_null)
         p.publish(
             df,
