@@ -146,6 +146,25 @@ The AE index measures auroral zone magnetic activity caused by enhanced ionosphe
 AE complements the Dst index (ring current) by specifically tracking substorm-driven auroral activity, which is critical for high-latitude communications and power grids."""
 
 
+def _download_with_retry(p, filename, max_retries=3):
+    """Retry p.download_existing() up to max_retries times with exponential backoff.
+
+    Needed because WDC Kyoto is often blocked from CI IPs, forcing a full-rebuild
+    fallback that also downloads from HF. If HF has a transient hiccup at the same
+    moment, both downloads fail and the script exits with no data. Retrying here
+    means a brief HF blip only delays the run by a few seconds rather than failing it.
+    """
+    for attempt in range(1, max_retries + 1):
+        result = p.download_existing(filename)
+        if result is not None:
+            return result
+        if attempt < max_retries:
+            wait = 2 ** attempt
+            print(f"  HF download attempt {attempt} failed, retrying in {wait}s...")
+            time.sleep(wait)
+    return None
+
+
 def main():
     print("Fetching AE index from WDC Kyoto...")
     now = datetime.now(timezone.utc)
@@ -166,7 +185,7 @@ def main():
         related_datasets=["juliensimon/dst-index", "juliensimon/space-weather-indices", "juliensimon/geomagnetic-kp-index"],
     ) as p:
         # Try incremental
-        df_existing = p.download_existing("ae_index.parquet")
+        df_existing = _download_with_retry(p, "ae_index.parquet")
 
         if df_existing is not None and len(df_existing) > 0:
             df_existing["datetime"] = pd.to_datetime(df_existing["datetime"])
@@ -210,7 +229,7 @@ def main():
             # WDC Kyoto may be unreachable (IP allowlist). Fall back to HF copy.
             if df.empty:
                 print("  WDC returned no data — trying HF existing dataset as fallback...")
-                df_fallback = p.download_existing("ae_index.parquet")
+                df_fallback = _download_with_retry(p, "ae_index.parquet")
                 if df_fallback is not None and len(df_fallback) > 0:
                     df_fallback["datetime"] = pd.to_datetime(df_fallback["datetime"])
                     df = df_fallback
@@ -244,7 +263,7 @@ def main():
         quick_stats = f"""\
 - **{n_total:,}** hourly readings ({date_min} to {date_max})
 - **{n_active:,}** active hours (AE >= 500 nT)
-- Peak AE: **{max_ae} nT**"""
+- Peak AE: **{max_ae} nT"""
 
         usage = """\
 ```python
