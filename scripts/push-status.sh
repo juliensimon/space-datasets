@@ -14,15 +14,13 @@ git config user.name "github-actions[bot]"
 git config user.email "github-actions[bot]@users.noreply.github.com"
 
 for i in $(seq 1 $MAX_RETRIES); do
-  # Clean up any stuck rebase from a previous iteration
-  git rebase --abort 2>/dev/null || true
-
-  # Fetch latest remote and surgically reset only status.json
-  # (preserves any other uncommitted files like cache files)
+  # Reset local branch to the current remote HEAD so our commit is always a
+  # fast-forward. This is safe: workflow scripts write to /tmp or temp dirs,
+  # never to git-tracked files, so reset --hard loses nothing.
   git fetch origin main
-  git checkout origin/main -- status.json
+  git reset --hard origin/main
 
-  # Apply our status update on top of the latest remote state
+  # Apply our status update on top of the now-current remote HEAD
   python scripts/update-status.py "$@"
   git add status.json
 
@@ -33,7 +31,6 @@ for i in $(seq 1 $MAX_RETRIES); do
   git push origin main && { echo "Status pushed (attempt $i)"; exit 0; }
 
   echo "Push failed (attempt $i/$MAX_RETRIES), retrying..."
-  git reset HEAD~1
   sleep $((RANDOM % 5 + 2))
 done
 
