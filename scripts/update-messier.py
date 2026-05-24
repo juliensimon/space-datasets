@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fetch the Messier catalog (110 deep-sky objects) from SIMBAD and upload to HF.
 
-Source: SIMBAD astronomical database — the complete Messier catalog of
+Source: SIMBAD astronomical database -- the complete Messier catalog of
 galaxies, nebulae, and star clusters visible from the Northern Hemisphere.
 """
 
@@ -16,7 +16,7 @@ HF_REPO = "juliensimon/messier-catalog"
 
 SIMBAD_TAP = "https://simbad.u-strasbg.fr/simbad/sim-tap/sync"
 
-ADQL = """SELECT main_id, ra, dec, otype_txt AS object_type,
+ADQL = """SELECT main_id, ra, dec, otype AS object_type,
        galdim_majaxis AS major_axis_arcmin,
        galdim_minaxis AS minor_axis_arcmin
 FROM basic
@@ -56,7 +56,7 @@ COLUMN_DESCRIPTIONS = {
     "minor_axis_arcmin": "Minor axis apparent angular size in arcminutes; null for circular or point-like objects",
 }
 
-# ── Dataset description ──────────────────────────────────────────────
+# ── Dataset description ────────────────────────────────────────
 DESCRIPTION = """\
 The complete Messier catalog of 110 deep-sky objects -- galaxies, nebulae, and \
 star clusters visible from the Northern Hemisphere. From SIMBAD.
@@ -183,6 +183,11 @@ plt.show()
             numeric=["ra_deg", "dec_deg", "major_axis_arcmin", "minor_axis_arcmin"],
             strings=["name", "messier_id", "object_type", "object_category"],
         )
+        all_null = [c for c in df.columns if df[c].isna().all()]
+        if all_null:
+            print(f"  Dropping fully-null columns: {all_null}")
+            df = df.drop(columns=all_null)
+
         p.publish(
             df,
             filename="messier.parquet",
