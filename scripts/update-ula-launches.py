@@ -73,8 +73,17 @@ def fetch_all_launches():
     url = f"{LL2_URL}?lsp__id={AGENCY_ID}&limit=25&mode=detailed"
     while url:
         print(f"  Fetching: {url}")
-        resp = requests.get(url, timeout=180)
-        resp.raise_for_status()
+        for attempt in range(4):
+            try:
+                resp = requests.get(url, timeout=180)
+                resp.raise_for_status()
+                break
+            except Exception as e:
+                if attempt == 3:
+                    raise
+                wait = 15 * (2 ** attempt)
+                print(f"    HTTP error (attempt {attempt + 1}/4): {e}; retry in {wait}s")
+                time.sleep(wait)
         data = resp.json()
         all_results.extend(data["results"])
         url = data.get("next")

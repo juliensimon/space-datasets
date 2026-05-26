@@ -12,6 +12,7 @@ Source: CelesTrak GP data (NORAD/18th Space Defense Squadron, GROUP=ast)
 """
 
 import math
+import time
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -72,8 +73,17 @@ def altitude_from_mean_motion(n: float, ecc: float) -> float:
 
 def main():
     print("Fetching AST SpaceMobile TLEs from CelesTrak...")
-    resp = requests.get(CELESTRAK_URL, timeout=60)
-    resp.raise_for_status()
+    for attempt in range(3):
+        try:
+            resp = requests.get(CELESTRAK_URL, timeout=60)
+            resp.raise_for_status()
+            break
+        except Exception as e:
+            if attempt == 2:
+                raise
+            wait = 1 * (2 ** attempt)
+            print(f"  CelesTrak attempt {attempt + 1}/3 failed ({e}), retry in {wait}s")
+            time.sleep(wait)
     records = resp.json()
     print(f"  {len(records):,} satellites")
 

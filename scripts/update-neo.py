@@ -2,6 +2,7 @@
 """Fetch NEO close-approach data from NASA JPL and upload to HF."""
 
 import math
+import time
 
 import pandas as pd
 import requests
@@ -72,14 +73,23 @@ def estimate_diameter_m(h_mag, albedo):
 
 def main():
     print("Fetching NEO close approaches from NASA JPL...")
-    resp = requests.get(CAD_API, params={
-        "date-min": "1900-01-01",
-        "date-max": "2100-01-01",
-        "dist-max": "0.05",
-        "diameter": "true",
-        "fullname": "true",
-    }, timeout=120)
-    resp.raise_for_status()
+    for attempt in range(4):
+        try:
+            resp = requests.get(CAD_API, params={
+                "date-min": "1900-01-01",
+                "date-max": "2100-01-01",
+                "dist-max": "0.05",
+                "diameter": "true",
+                "fullname": "true",
+            }, timeout=120)
+            resp.raise_for_status()
+            break
+        except Exception as e:
+            if attempt == 3:
+                raise
+            wait = 15 * (2 ** attempt)
+            print(f"  JPL API attempt {attempt + 1}/4 failed ({e}), retry in {wait}s")
+            time.sleep(wait)
     payload = resp.json()
 
     df = pd.DataFrame(payload["data"], columns=payload["fields"])
