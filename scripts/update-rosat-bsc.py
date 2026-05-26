@@ -140,6 +140,9 @@ plt.show()
         tags=["space", "x-ray", "astronomy", "rosat", "soft-x-ray", "sky-survey",
               "open-data", "tabular-data", "parquet"],
         source_url="https://vizier.cds.unistra.fr/viz-bin/VizieR-3?-source=IX/10A/1rxs",
+        license="other",
+        license_name="vizier-scientific-use",
+        license_link="https://cds.unistra.fr/vizier-org/licences_vizier.html",
         task_categories=["tabular-classification"],
         collection_url=COLLECTION_URL,
         banner={

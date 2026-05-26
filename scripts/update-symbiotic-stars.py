@@ -155,6 +155,9 @@ print(df["infrared_type"].value_counts().head(10))
               "white-dwarfs", "mira-variables", "stellar-evolution", "vizier",
               "open-data", "tabular-data", "parquet"],
         source_url="https://cdsarc.cds.unistra.fr/viz-bin/cat/J/A+AS/146/407",
+        license="other",
+        license_name="vizier-scientific-use",
+        license_link="https://cds.unistra.fr/vizier-org/licences_vizier.html",
         task_categories=["tabular-classification"],
         collection_url="https://huggingface.co/collections/juliensimon/stellar-catalogs-69c792b1a52ab2757b0eaa57",
         banner={

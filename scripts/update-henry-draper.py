@@ -142,6 +142,9 @@ plt.show()
         tags=["space", "stellar", "spectral-classification", "astronomy",
               "henry-draper", "stellar-catalog", "open-data", "tabular-data", "parquet"],
         source_url="https://vizier.cds.unistra.fr/viz-bin/VizieR-3?-source=III/135A/catalog",
+        license="other",
+        license_name="vizier-scientific-use",
+        license_link="https://cds.unistra.fr/vizier-org/licences_vizier.html",
         task_categories=["tabular-classification"],
         collection_url=COLLECTION_URL,
         banner={

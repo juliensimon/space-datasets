@@ -183,6 +183,9 @@ plt.show()
         tags=["space", "gamma-ray", "lhaaso", "tev", "uhe", "astronomy",
               "physics", "open-data", "tabular-data", "parquet"],
         source_url="https://vizier.cds.unistra.fr/viz-bin/VizieR-3?-source=J/ApJS/271/25",
+        license="other",
+        license_name="vizier-scientific-use",
+        license_link="https://cds.unistra.fr/vizier-org/licences_vizier.html",
         task_categories=["tabular-classification"],
         collection_url="https://huggingface.co/collections/juliensimon/physics-datasets-69c2d4682d37dfdb77447bd7",
         banner={

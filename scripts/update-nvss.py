@@ -143,6 +143,9 @@ print(f"Sources > 1 Jy: {len(bright):,}")
         tags=["space", "radio", "nvss", "vla", "nrao", "astronomy",
               "1400mhz", "open-data", "tabular-data", "parquet"],
         source_url="https://vizier.cds.unistra.fr/viz-bin/VizieR-3?-source=VIII/65",
+        license="other",
+        license_name="vizier-scientific-use",
+        license_link="https://cds.unistra.fr/vizier-org/licences_vizier.html",
         task_categories=["tabular-classification"],
         collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
         banner={

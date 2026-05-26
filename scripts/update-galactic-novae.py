@@ -134,6 +134,9 @@ print(f"Median heliocentric distance: {np.nanmedian(dist_pc) / 1000:.1f} kpc")
               "binary-stars", "white-dwarfs", "stellar-evolution", "vizier",
               "open-data", "tabular-data", "parquet"],
         source_url="https://cdsarc.cds.unistra.fr/viz-bin/cat/J/MNRAS/517/6150",
+        license="other",
+        license_name="vizier-scientific-use",
+        license_link="https://cds.unistra.fr/vizier-org/licences_vizier.html",
         task_categories=["tabular-classification"],
         collection_url="https://huggingface.co/collections/juliensimon/variable-stars-and-transients-69c792b1dd7a45812c5a9b36",
         banner={

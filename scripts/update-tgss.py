@@ -144,6 +144,9 @@ print(f"{len(bright):,} sources brighter than 1 Jy at 150 MHz")
         tags=["space", "radio", "tgss", "gmrt", "150mhz", "astronomy",
               "open-data", "tabular-data", "parquet"],
         source_url="https://vizier.cds.unistra.fr/viz-bin/VizieR-3?-source=J/A+A/598/A78",
+        license="other",
+        license_name="vizier-scientific-use",
+        license_link="https://cds.unistra.fr/vizier-org/licences_vizier.html",
         task_categories=["tabular-classification"],
         collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
         banner={

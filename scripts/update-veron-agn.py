@@ -164,6 +164,9 @@ print(df["spectral_classification"].value_counts().head(15))
               "seyfert", "blazars", "bl-lac", "vizier", "open-data",
               "tabular-data", "parquet"],
         source_url="https://cdsarc.cds.unistra.fr/viz-bin/cat/VII/258",
+        license="other",
+        license_name="vizier-scientific-use",
+        license_link="https://cds.unistra.fr/vizier-org/licences_vizier.html",
         task_categories=["tabular-classification"],
         collection_url="https://huggingface.co/collections/juliensimon/galaxies-and-cosmology-69c792b117242a3b236df55d",
         banner={

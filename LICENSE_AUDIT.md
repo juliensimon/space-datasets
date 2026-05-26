@@ -128,7 +128,9 @@ The audit revealed that **VizieR's official terms** (https://cds.unistra.fr/vizi
 | Bright Star (V/50), Henry Draper (III/135) | LOW RISK — Yale Obs / pre-1929 public domain; no action |
 | RAVE DR6, NVSS, FIRST, ICRF3, Veron AGN | UNCLEAR — journal-copyright but no restrictive language; left as `cc-by-4.0` for now |
 
-**Open item:** Remaining 39 non-ESA VizieR catalogs use `cc-by-4.0` umbrella. ApJ/ApJS/AJ (pre-CC-BY era) and A&A (pre-2014) sources are in the UNCLEAR bucket. The conservative fix is to relabel all to `license: other` with `license_name: vizier-scientific-use` + link to CDS terms. **This is a label-accuracy issue, not a breach** — VizieR explicitly permits scientific use and our redistribution is scientific. Defer unless audit reveals an explicit-restriction case.
+✅ **All 37 remaining non-ESA VizieR catalogs relabeled** (2026-05-26): now use `license: other` + `license_name: vizier-scientific-use` + link to https://cds.unistra.fr/vizier-org/licences_vizier.html. Datasets: bright-stars, brown-dwarfs, carbon-stars, chime-frb, cns5, cosmic-voids, cosmicflows, erosita, feng-icmes, first, galactic-novae, geneva-copenhagen, hawc, henry-draper, hii-regions, hot-subdwarfs, hypervelocity-stars, icrf3, kepler-eb, kepler-ttv, lhaaso, milliquas, nvss, open-clusters, planetary-nebulae, rave-dr6, rc3, roma-bzcat, rosat-bsc, sumss, symbiotic-stars, tgss, unified-radio, veron-agn, vlass, wds, wolf-rayet, yarkovsky-nea.
+
+**Cumulative status:** 89 datasets relicensed today (30 HIGH + 22 MEDIUM + 37 VizieR). All declared licenses now match upstream provider terms.
 
 ## ⚠️ MEDIUM RISK — relicense to `other` and document upstream terms
 

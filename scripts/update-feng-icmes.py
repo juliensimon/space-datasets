@@ -182,6 +182,9 @@ plt.show()
               "magnetic-clouds", "vizier", "open-data",
               "tabular-data", "parquet"],
         source_url="https://cdsarc.cds.unistra.fr/viz-bin/cat/J/ApJ/868/124",
+        license="other",
+        license_name="vizier-scientific-use",
+        license_link="https://cds.unistra.fr/vizier-org/licences_vizier.html",
         task_categories=["tabular-classification", "time-series-forecasting"],
         collection_url="https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70",
         banner={

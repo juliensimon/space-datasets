@@ -171,6 +171,9 @@ print(f"Spirals (1 <= T <= 9): {len(spirals):,}")
         tags=["space", "galaxy", "morphology", "rc3", "hubble-type",
               "astronomy", "open-data", "tabular-data", "parquet"],
         source_url="https://vizier.cds.unistra.fr/viz-bin/VizieR-3?-source=VII/155",
+        license="other",
+        license_name="vizier-scientific-use",
+        license_link="https://cds.unistra.fr/vizier-org/licences_vizier.html",
         task_categories=["tabular-classification"],
         collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
         banner={

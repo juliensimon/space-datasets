@@ -229,6 +229,9 @@ plt.title("Stars by Spectral Class")
         tags=["space", "stars", "bright-stars", "stellar", "naked-eye", "bsc5",
               "yale", "astronomy", "open-data", "tabular-data", "parquet"],
         source_url="https://vizier.cds.unistra.fr/viz-bin/VizieR-3?-source=V/50/catalog",
+        license="other",
+        license_name="vizier-scientific-use",
+        license_link="https://cds.unistra.fr/vizier-org/licences_vizier.html",
         task_categories=["tabular-classification"],
         collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
         banner={
