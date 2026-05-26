@@ -206,6 +206,9 @@ plt.show()
         tags=["space", "variable-stars", "aavso", "vsx", "astronomy",
               "open-data", "tabular-data", "parquet"],
         source_url="https://www.aavso.org/vsx/",
+        license="other",
+        license_name="aavso-data-usage-guidelines",
+        license_link="https://www.aavso.org/data-usage-guidelines",
         task_categories=["tabular-classification", "tabular-regression"],
         collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
         banner={

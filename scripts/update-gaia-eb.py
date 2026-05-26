@@ -217,6 +217,9 @@ plt.show()
         tags=["space", "gaia", "eclipsing-binaries", "stars", "esa",
               "astronomy", "open-data", "tabular-data", "parquet"],
         source_url="https://gea.esac.esa.int/archive/",
+        license="other",
+        license_name="cc-by-nc-3.0-igo",
+        license_link="https://creativecommons.org/licenses/by-nc/3.0/igo/",
         task_categories=["tabular-classification", "tabular-regression"],
         collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
         banner={

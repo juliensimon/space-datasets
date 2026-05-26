@@ -41,6 +41,8 @@ class Pipeline:
         collection_url: str | None = None,
         banner: dict | None = None,
         license: str = "cc-by-4.0",
+        license_name: str | None = None,
+        license_link: str | None = None,
         language: list[str] | None = None,
         task_categories: list[str] | None = None,
     ):
@@ -54,6 +56,8 @@ class Pipeline:
         self.collection_url = collection_url
         self.banner = banner
         self.license = license
+        self.license_name = license_name
+        self.license_link = license_link
         self.language = language
         self.task_categories = task_categories
         self._tmp_dir_ctx = None
@@ -135,7 +139,10 @@ class Pipeline:
             repo=self.repo, pretty_name=self.pretty_name,
             description=self.description, tags=self.tags,
             df=df, filename=filename, source_url=self.source_url,
-            license=self.license, language=self.language,
+            license=self.license,
+            license_name=self.license_name,
+            license_link=self.license_link,
+            language=self.language,
             task_categories=self.task_categories,
             update_schedule=self.update_schedule,
             related_datasets=merged_related,

@@ -226,6 +226,9 @@ plt.show()
         tags=["space", "x-ray", "xmm-newton", "esa", "serendipitous-survey",
               "high-energy", "astronomy", "open-data", "tabular-data", "parquet"],
         source_url="https://vizier.cds.unistra.fr/viz-bin/VizieR-3?-source=IX/68",
+        license="other",
+        license_name="cc-by-nc-3.0-igo",
+        license_link="https://creativecommons.org/licenses/by-nc/3.0/igo/",
         task_categories=["tabular-classification"],
         collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
         banner={

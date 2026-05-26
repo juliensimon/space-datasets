@@ -201,6 +201,7 @@ ohtani = df[df["source"] == "ohtani"]["datetime_utc"]
         tags=["space", "space-weather", "substorm", "magnetosphere", "aurora",
               "geomagnetic", "supermag", "open-data", "tabular-data", "parquet"],
         source_url="https://supermag.jhuapl.edu/substorms/",
+        license="cc-by-nc-4.0",
         task_categories=["tabular-classification", "time-series-forecasting"],
         collection_url="https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70",
         banner={

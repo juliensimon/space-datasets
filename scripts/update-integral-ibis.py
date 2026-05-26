@@ -214,6 +214,9 @@ plt.show()
         tags=["space", "x-ray", "integral", "esa", "hard-x-ray", "astronomy",
               "physics", "open-data", "tabular-data", "parquet"],
         source_url="https://vizier.cds.unistra.fr/viz-bin/VizieR-3?-source=J/MNRAS/510/4796",
+        license="other",
+        license_name="cc-by-nc-3.0-igo",
+        license_link="https://creativecommons.org/licenses/by-nc/3.0/igo/",
         task_categories=["tabular-classification"],
         collection_url="https://huggingface.co/collections/juliensimon/physics-datasets-69c2d4682d37dfdb77447bd7",
         banner={

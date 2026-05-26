@@ -148,6 +148,7 @@ print(f"Cycle 25 max so far: {sc25['sunspot_number'].max()}")
         tags=["space", "sun", "sunspot", "solar-cycle", "space-weather",
               "silso", "open-data", "tabular-data", "parquet"],
         source_url="https://www.sidc.be/SILSO/",
+        license="cc-by-nc-4.0",
         task_categories=["tabular-regression", "time-series-forecasting"],
         collection_url="https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70",
         banner={

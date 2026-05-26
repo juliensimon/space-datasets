@@ -199,6 +199,7 @@ def main():
         tags=["space", "space-weather", "geomagnetic", "dst-index", "wdc-kyoto",
               "ring-current", "magnetosphere", "open-data", "tabular-data", "parquet"],
         source_url="https://wdc.kugi.kyoto-u.ac.jp/dstdir/",
+        license="cc-by-nc-4.0",
         task_categories=["time-series-forecasting", "tabular-regression"],
         collection_url="https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70",
         banner={"url": "https://images-assets.nasa.gov/image/iss072e159172/iss072e159172~medium.jpg",

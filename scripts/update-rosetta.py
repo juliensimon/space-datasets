@@ -342,6 +342,9 @@ def main():
         tags=["space", "comet", "67p", "rosetta", "philae", "esa",
               "planetary-science", "open-data", "tabular-data", "parquet"],
         source_url="https://psa.esa.int/",
+        license="other",
+        license_name="cc-by-nc-3.0-igo",
+        license_link="https://creativecommons.org/licenses/by-nc/3.0/igo/",
         task_categories=["tabular-classification"],
         collection_url="https://huggingface.co/collections/juliensimon/space-probe-and-mission-datasets-69c3fe82d410a42b1e313167",
         banner={

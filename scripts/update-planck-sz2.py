@@ -139,6 +139,9 @@ plt.show()
         tags=["space", "planck", "sunyaev-zeldovich", "galaxy-cluster", "cmb",
               "esa", "cosmology", "astronomy", "open-data", "tabular-data", "parquet"],
         source_url="https://heasarc.gsfc.nasa.gov/W3Browse/all/plancksz2.html",
+        license="other",
+        license_name="cc-by-nc-3.0-igo",
+        license_link="https://creativecommons.org/licenses/by-nc/3.0/igo/",
         task_categories=["tabular-classification"],
         collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
         banner={

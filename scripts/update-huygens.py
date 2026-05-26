@@ -248,6 +248,9 @@ plt.show()
               "planetary-science", "atmosphere",
               "open-data", "tabular-data", "parquet"],
         source_url="https://psa.esa.int/",
+        license="other",
+        license_name="cc-by-nc-3.0-igo",
+        license_link="https://creativecommons.org/licenses/by-nc/3.0/igo/",
         task_categories=["tabular-classification"],
         collection_url="https://huggingface.co/collections/juliensimon/solar-system-datasets-69c6fa681978de62dff2f347",
         banner={

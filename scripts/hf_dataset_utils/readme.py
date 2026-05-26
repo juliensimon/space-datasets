@@ -123,6 +123,18 @@ def _citation_bibtex(repo: str, pretty_name: str) -> str:
 ```"""
 
 
+_LICENSE_URLS = {
+    "cc-by-4.0": "https://creativecommons.org/licenses/by/4.0/",
+    "cc-by-sa-4.0": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "cc-by-nc-4.0": "https://creativecommons.org/licenses/by-nc/4.0/",
+    "cc-by-nc-sa-4.0": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "cc-by-nd-4.0": "https://creativecommons.org/licenses/by-nd/4.0/",
+    "cc-by-3.0": "https://creativecommons.org/licenses/by/3.0/",
+    "cc-by-nc-3.0": "https://creativecommons.org/licenses/by-nc/3.0/",
+    "cc0-1.0": "https://creativecommons.org/publicdomain/zero/1.0/",
+}
+
+
 def generate_readme(
     repo: str,
     pretty_name: str,
@@ -132,6 +144,8 @@ def generate_readme(
     filename: str,
     source_url: str,
     license: str = "cc-by-4.0",
+    license_name: str | None = None,
+    license_link: str | None = None,
     language: list[str] | None = None,
     task_categories: list[str] | None = None,
     update_schedule: str | None = None,
@@ -178,8 +192,17 @@ def generate_readme(
     lang_yaml = "\n".join(f"  - {_yaml_tag(l)}" for l in language)
     task_yaml = "\n".join(f"  - {_yaml_tag(t)}" for t in task_categories)
 
+    license_meta = f"license: {license}"
+    if license == "other":
+        if not license_name or not license_link:
+            raise ValueError(
+                "license='other' requires both license_name and license_link"
+            )
+        license_meta += f'\nlicense_name: "{_yaml_escape(license_name)}"'
+        license_meta += f'\nlicense_link: "{_yaml_escape(license_link)}"'
+
     frontmatter = f"""---
-license: {license}
+{license_meta}
 pretty_name: "{safe_name}"
 language:
 {lang_yaml}
@@ -249,7 +272,14 @@ configs:
     sections.append("## Citation")
     sections.append(_citation_bibtex(repo, pretty_name))
     sections.append("## License")
-    sections.append(f"[{license.upper()}](https://creativecommons.org/licenses/by/4.0/)")
+    if license == "other":
+        sections.append(f"[{license_name}]({license_link})")
+    else:
+        url = _LICENSE_URLS.get(license, "")
+        if url:
+            sections.append(f"[{license.upper()}]({url})")
+        else:
+            sections.append(license.upper())
 
     body = "\n\n".join(sections)
     return f"{frontmatter}\n\n{body}\n"
