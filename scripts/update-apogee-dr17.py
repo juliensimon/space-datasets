@@ -321,6 +321,9 @@ Galactic chemical evolution models.
         tags=["space", "stars", "stellar", "spectroscopy", "chemical-abundances",
               "apogee", "sdss", "astronomy", "open-data", "tabular-data", "parquet"],
         source_url="https://vizier.cds.unistra.fr/viz-bin/VizieR?-source=III/286",
+        license="other",
+        license_name="sdss-data-use-policy",
+        license_link="https://www.sdss4.org/dr17/data_access/",
         task_categories=["tabular-classification"],
         collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
         banner={

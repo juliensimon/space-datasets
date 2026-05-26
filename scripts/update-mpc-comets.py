@@ -241,6 +241,9 @@ plt.show()
         tags=["space", "comets", "orbits", "mpc", "orbital-mechanics",
               "open-data", "tabular-data", "parquet"],
         source_url="https://www.minorplanetcenter.net/iau/MPCORB/CometEls.txt",
+        license="other",
+        license_name="iau-mpc-policy",
+        license_link="https://www.minorplanetcenter.net/iau/WWWPolicy.html",
         task_categories=["tabular-classification", "tabular-regression"],
         collection_url="https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994",
         banner={

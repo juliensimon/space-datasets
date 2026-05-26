@@ -108,6 +108,28 @@
 
 ---
 
+## Status update — 2026-05-26 (post-audit fixes)
+
+- ✅ **30 HIGH-RISK datasets relicensed** live on HF (commit `e05a793`).
+- ✅ **22 MEDIUM-RISK datasets relicensed** to `license: other` with upstream policy links (CelesTrak ×13, Space Devs ×3, MPC, IERS, MAXI, Hipparcos ×ESA-NC, APOGEE DR17, IRAS FSC).
+- ✅ **VizieR spot-audit** completed (10 high-profile catalogs verified).
+
+### VizieR spot-audit follow-up (2026-05-26)
+
+The audit revealed that **VizieR's official terms** (https://cds.unistra.fr/vizier-org/licences_vizier.html) are *"free of usage in a scientific context"* with mandatory citation — **explicitly not CC-BY-4.0**. CC-BY permits commercial redistribution; VizieR's terms defer commercial/derivative terms to each catalog's originating journal.
+
+**Implication:** The blanket `cc-by-4.0` tag is technically overstated for *every* VizieR redistribution. Severity varies per catalog. Actionable findings:
+
+| Catalog | Action taken |
+|---|---|
+| Hipparcos (`hipparcos-catalog`) | Moved to ESA-NC group (CC-BY-NC-3.0-IGO) — ESA SP-1200 publication |
+| APOGEE DR17 (`apogee-dr17`) | `other` + SDSS Data Use Policy (AAS/IOP copyright on machine-readable tables) |
+| IRAS FSC (`iras-faint-source-catalog`) | `other` + NASA/IPAC IRAS Mission terms (explicit `(c)IRAS Faint Sources` marker on VizieR) |
+| Bright Star (V/50), Henry Draper (III/135) | LOW RISK — Yale Obs / pre-1929 public domain; no action |
+| RAVE DR6, NVSS, FIRST, ICRF3, Veron AGN | UNCLEAR — journal-copyright but no restrictive language; left as `cc-by-4.0` for now |
+
+**Open item:** Remaining 39 non-ESA VizieR catalogs use `cc-by-4.0` umbrella. ApJ/ApJS/AJ (pre-CC-BY era) and A&A (pre-2014) sources are in the UNCLEAR bucket. The conservative fix is to relabel all to `license: other` with `license_name: vizier-scientific-use` + link to CDS terms. **This is a label-accuracy issue, not a breach** — VizieR explicitly permits scientific use and our redistribution is scientific. Defer unless audit reveals an explicit-restriction case.
+
 ## ⚠️ MEDIUM RISK — relicense to `other` and document upstream terms
 
 ### CelesTrak (14 datasets)

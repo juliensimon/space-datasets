@@ -248,6 +248,9 @@ plt.show()
         tags=["space", "debris", "fragmentation", "orbital-mechanics",
               "collisions", "open-data", "tabular-data", "parquet"],
         source_url="https://celestrak.org/pub/satcat.csv",
+        license="other",
+        license_name="celestrak-usage-policy",
+        license_link="https://celestrak.org/usage-policy.php",
         task_categories=["tabular-classification"],
         collection_url="https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994",
         banner={

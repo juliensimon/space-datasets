@@ -150,6 +150,9 @@ print(nearby[["hip_id", "v_magnitude", "distance_pc", "spectral_type"]].head(20)
         tags=["space", "hipparcos", "star", "astrometry", "parallax", "astronomy",
               "open-data", "tabular-data", "parquet"],
         source_url="https://vizier.cds.unistra.fr/viz-bin/VizieR-3?-source=I/239/hip_main",
+        license="other",
+        license_name="cc-by-nc-3.0-igo",
+        license_link="https://creativecommons.org/licenses/by-nc/3.0/igo/",
         task_categories=["tabular-classification", "tabular-regression"],
         collection_url="https://huggingface.co/collections/juliensimon/astronomy-datasets-69c24caf2f17e36128946743",
         banner={

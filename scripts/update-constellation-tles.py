@@ -328,6 +328,9 @@ plt.show()
               "beidou", "glonass", "oneweb", "iridium", "constellation",
               "earth-observation"],
         source_url="https://celestrak.org/",
+        license="other",
+        license_name="celestrak-usage-policy",
+        license_link="https://celestrak.org/usage-policy.php",
         collection_url="https://huggingface.co/collections/juliensimon/orbital-mechanics-datasets-69c24caca4ab3934c9856994",
         banner={
             "url": "https://images-assets.nasa.gov/image/iss071e439624/iss071e439624~medium.jpg",

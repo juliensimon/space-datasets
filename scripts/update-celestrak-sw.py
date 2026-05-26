@@ -167,6 +167,9 @@ plt.show()
         tags=["space", "space-weather", "celestrak", "sgp4", "atmospheric-drag",
               "orbit-propagation", "open-data", "tabular-data", "parquet"],
         source_url="https://celestrak.org/SpaceData/",
+        license="other",
+        license_name="celestrak-usage-policy",
+        license_link="https://celestrak.org/usage-policy.php",
         task_categories=["tabular-regression", "time-series-forecasting"],
         collection_url="https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70",
         banner={

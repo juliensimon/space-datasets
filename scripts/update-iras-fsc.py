@@ -170,6 +170,9 @@ plt.show()
         tags=["space", "infrared", "astronomy", "iras", "mid-infrared", "sky-survey",
               "open-data", "tabular-data", "parquet"],
         source_url="https://vizier.cds.unistra.fr/viz-bin/VizieR-3?-source=II/156A/main",
+        license="other",
+        license_name="iras-mission-terms",
+        license_link="https://irsa.ipac.caltech.edu/Missions/iras.html",
         task_categories=["tabular-classification"],
         collection_url=COLLECTION_URL,
         banner={
