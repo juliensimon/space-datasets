@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Fetch JPL Small-Body Database (all asteroids + comets) and upload to HF."""
 
+import time
+
 import pandas as pd
 import requests
 
@@ -19,7 +21,7 @@ FIELDS = ",".join([
     "first_obs", "last_obs",
 ])
 
-# ── Column mapping ───────────────────────────────────────────────────
+# ── Column mapping ───────────────────────────────────────────
 RENAME = {
     "full_name": "full_name",
     "kind": "body_type",
@@ -50,7 +52,7 @@ RENAME = {
     "last_obs": "last_observation",
 }
 
-# ── Column descriptions for README schema table ─────────────────────
+# ── Column descriptions for README schema table ─────────────────
 COLUMN_DESCRIPTIONS = {
     "spkid": "JPL SPK kernel ID; primary unique identifier for this body in all JPL systems (e.g. 2000001 = Ceres)",
     "full_name": "Full designation including permanent number and name where assigned (e.g. '1 Ceres', '433 Eros', '2024 YR4'); provisional designations follow MPC format",
@@ -85,7 +87,7 @@ COLUMN_DESCRIPTIONS = {
     "last_observation": "Date of the most recent astrometric observation included in the orbit solution (YYYY-MM-DD)",
 }
 
-# ── Dataset description ──────────────────────────────────────────────
+# ── Dataset description ──────────────────────────────────────────
 DESCRIPTION = """\
 Complete catalog of all known asteroids and comets with orbital elements, physical parameters, \
 and discovery metadata. Updated daily from NASA JPL.
@@ -114,12 +116,21 @@ def fetch_small_bodies(kind: str) -> pd.DataFrame:
     label = "asteroids" if kind == "a" else "comets"
     print(f"  Fetching {label}...")
 
-    resp = requests.get(SBDB_API, params={
-        "fields": FIELDS,
-        "sb-kind": kind,
-        "full-prec": "false",
-    }, timeout=600)
-    resp.raise_for_status()
+    for attempt in range(4):
+        try:
+            resp = requests.get(SBDB_API, params={
+                "fields": FIELDS,
+                "sb-kind": kind,
+                "full-prec": "false",
+            }, timeout=600)
+            resp.raise_for_status()
+            break
+        except Exception as e:
+            if attempt == 3:
+                raise
+            wait = 15 * (2 ** attempt)
+            print(f"  JPL SBDB attempt {attempt + 1}/4 failed ({e}), retry in {wait}s")
+            time.sleep(wait)
 
     payload = resp.json()
     df = pd.DataFrame(payload["data"], columns=payload["fields"])
@@ -162,7 +173,7 @@ def main():
 
     df = df.sort_values("spkid").reset_index(drop=True)
 
-    # ── Domain-specific stats for README ─────────────────────────────
+    # ── Domain-specific stats for README ──────────────────────────────────
     n_total = len(df)
     n_ast = int((df["body_type"].isin(["an", "au"])).sum())
     n_com = n_total - n_ast
