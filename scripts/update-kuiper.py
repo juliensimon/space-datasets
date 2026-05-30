@@ -11,6 +11,7 @@ Source: CelesTrak GP data (NORAD/18th Space Defense Squadron)
 
 import math
 import sys
+import time
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -32,6 +33,25 @@ SHELLS = [
     {"id": 2, "inc_min": 48, "inc_max": 55, "target_alt": 630, "name": "Shell 3 (51.9 deg / 630km)"},
 ]
 SHELL_NAMES = {s["id"]: s["name"] for s in SHELLS}
+
+
+def _fetch_celestrak(url: str, retries: int = 4, timeout: int = 60) -> list:
+    """Fetch JSON from CelesTrak with exponential backoff (1s, 2s, 4s delays)."""
+    last_exc: Exception = RuntimeError("no attempts made")
+    for attempt in range(retries):
+        if attempt > 0:
+            wait = 2 ** (attempt - 1)
+            print(f"  CelesTrak retry {attempt}/{retries - 1} in {wait}s...")
+            time.sleep(wait)
+        try:
+            resp = requests.get(url, timeout=timeout)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as e:
+            last_exc = e
+            print(f"  CelesTrak fetch error (attempt {attempt + 1}): {e}")
+    raise last_exc
+
 
 COLUMN_DAILY_DESCRIPTIONS = {
     "date": "UTC date of the daily snapshot; one row per shell per date",
@@ -94,9 +114,7 @@ def classify_status(alt: float, shell_id: int, mm_dot: float) -> str:
 
 def main():
     print("Fetching Kuiper TLEs from CelesTrak...")
-    resp = requests.get(CELESTRAK_URL, timeout=60)
-    resp.raise_for_status()
-    records = resp.json()
+    records = _fetch_celestrak(CELESTRAK_URL)
     print(f"  {len(records):,} satellites")
 
     now = datetime.now(timezone.utc)
