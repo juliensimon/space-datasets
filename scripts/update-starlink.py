@@ -10,6 +10,7 @@ Source: CelesTrak GP data (NORAD/18th Space Defense Squadron)
 
 import math
 import sys
+import time
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -40,7 +41,7 @@ SHELL_ALT_BANDS = {
     4: (460, 600),
 }
 
-# ── Column descriptions ─────────────────────────────────────────────
+# ── Column descriptions ────────────────────────────────────────────
 COLUMN_DAILY_DESCRIPTIONS = {
     "date": "UTC date of the daily snapshot; one set of rows per date per shell",
     "shell_id": "Integer shell identifier (0-4); maps to inclination bands: 0=33 deg, 1=43 deg, 2=53 deg, 3=70 deg, 4=97.6 deg",
@@ -75,7 +76,25 @@ enables direct satellite-to-satellite routing without ground relay.\
 """
 
 
-# ── Orbital mechanics helpers ────────────────────────────────────────
+# ── Orbital mechanics helpers ────────────────────────────────────────────
+
+def _fetch_celestrak(url: str, retries: int = 4, timeout: int = 60) -> list:
+    """Fetch JSON from CelesTrak with exponential backoff (1s, 2s, 4s delays)."""
+    last_exc: Exception = RuntimeError("no attempts made")
+    for attempt in range(retries):
+        if attempt > 0:
+            wait = 2 ** (attempt - 1)
+            print(f"  CelesTrak retry {attempt}/{retries - 1} in {wait}s...")
+            time.sleep(wait)
+        try:
+            resp = requests.get(url, timeout=timeout)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as e:
+            last_exc = e
+            print(f"  CelesTrak fetch error (attempt {attempt + 1}): {e}")
+    raise last_exc
+
 
 def altitude_from_mean_motion(n: float, ecc: float) -> float:
     if n <= 0:
@@ -146,9 +165,7 @@ def is_isl_capable(inc: float, launch_year: int) -> bool:
 
 def main():
     print("Fetching Starlink TLEs from CelesTrak...")
-    resp = requests.get(CELESTRAK_URL, timeout=60)
-    resp.raise_for_status()
-    records = resp.json()
+    records = _fetch_celestrak(CELESTRAK_URL)
     print(f"  {len(records):,} satellites")
 
     now = datetime.now(timezone.utc)
@@ -270,7 +287,7 @@ def main():
         isl_count = int(df_latest["is_isl_capable"].sum())
         print(f"  {active:,} operational, {len(df_latest):,} total")
 
-        # ── Stats for README ────────────────────────────────────────
+        # ── Stats for README ────────────────────────────────────────────
         total = len(df_latest)
         daily_rows_count = len(df_daily)
         date_range_start = df_daily["date"].min().strftime("%Y-%m-%d")
