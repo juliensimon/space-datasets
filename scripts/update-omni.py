@@ -6,6 +6,7 @@ Merged near-Earth solar wind magnetic field, plasma, energetic particles,
 and geomagnetic activity indices from multiple spacecraft.
 """
 
+import time
 from io import StringIO
 
 import pandas as pd
@@ -185,8 +186,19 @@ magnetopause and is a key input to empirical geomagnetic activity models.
 
 def main():
     print("Fetching OMNI hourly data from NASA GSFC...")
-    resp = requests.get(DATA_URL, timeout=300)
-    resp.raise_for_status()
+    for attempt in range(3):
+        try:
+            resp = requests.get(DATA_URL, timeout=300)
+            resp.raise_for_status()
+            break
+        except Exception as exc:
+            if attempt < 2:
+                wait = 30 * (2 ** attempt)
+                print(f"  NASA GSFC attempt {attempt + 1}/3 failed: {exc}; retrying in {wait}s...")
+                time.sleep(wait)
+            else:
+                print(f"  NASA GSFC failed after 3 attempts: {exc}")
+                raise
     print(f"  Downloaded {len(resp.content) / 1024 / 1024:.1f} MB")
 
     # Parse fixed-width whitespace-delimited ASCII

@@ -36,11 +36,11 @@ SHELL_NAMES = {s["id"]: s["name"] for s in SHELLS}
 
 
 def _fetch_celestrak(url: str, retries: int = 4, timeout: int = 60) -> list:
-    """Fetch JSON from CelesTrak with exponential backoff (1s, 2s, 4s delays)."""
+    """Fetch JSON from CelesTrak with exponential backoff (30s, 60s, 120s delays)."""
     last_exc: Exception = RuntimeError("no attempts made")
     for attempt in range(retries):
         if attempt > 0:
-            wait = 2 ** (attempt - 1)
+            wait = 30 * (2 ** (attempt - 1))
             print(f"  CelesTrak retry {attempt}/{retries - 1} in {wait}s...")
             time.sleep(wait)
         try:

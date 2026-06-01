@@ -4,6 +4,8 @@
 Source: Wikidata SPARQL endpoint — property P106 (occupation) = Q11631 (astronaut).
 """
 
+import time
+
 import pandas as pd
 import requests
 
@@ -99,15 +101,26 @@ which is maintained by the WikiProject Spaceflight community and updated as new 
 
 
 def fetch_astronauts() -> pd.DataFrame:
-    """Query Wikidata SPARQL for all astronauts."""
+    """Query Wikidata SPARQL for all astronauts (3 retries with backoff)."""
     print("Querying Wikidata for astronauts...")
-    resp = requests.get(
-        WIKIDATA_URL,
-        params={"query": SPARQL_QUERY, "format": "json"},
-        headers=HEADERS,
-        timeout=120,
-    )
-    resp.raise_for_status()
+    for attempt in range(3):
+        try:
+            resp = requests.get(
+                WIKIDATA_URL,
+                params={"query": SPARQL_QUERY, "format": "json"},
+                headers=HEADERS,
+                timeout=120,
+            )
+            resp.raise_for_status()
+            break
+        except Exception as exc:
+            if attempt < 2:
+                wait = 30 * (2 ** attempt)
+                print(f"  Wikidata attempt {attempt + 1}/3 failed: {exc}; retrying in {wait}s...")
+                time.sleep(wait)
+            else:
+                print(f"  Wikidata failed after 3 attempts: {exc}")
+                raise
 
     results = resp.json()["results"]["bindings"]
     print(f"  {len(results):,} raw rows from Wikidata")

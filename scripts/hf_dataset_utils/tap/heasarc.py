@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import time
 
 import pandas as pd
 import requests
@@ -86,13 +87,16 @@ def heasarc_query(
     adql: str,
     formats: list[str] | None = None,
     timeout: int = 120,
+    retries: int = 3,
 ) -> pd.DataFrame:
-    """Query HEASARC TAP service with format fallback chain.
+    """Query HEASARC TAP service with format fallback chain and retry.
 
     HEASARC sometimes returns VOTable XML when you request CSV.
-    This tries multiple formats in order until one succeeds.
+    This tries multiple formats in order until one succeeds. Each format
+    attempt is retried up to `retries` times with exponential backoff to
+    handle transient HEASARC outages.
 
-    Raises RuntimeError if all formats fail.
+    Raises RuntimeError if all formats and retries fail.
     """
     formats = formats or ["text", "csv", "json"]
     errors = []
@@ -100,19 +104,26 @@ def heasarc_query(
         parser = _PARSERS.get(fmt)
         if not parser:
             continue
-        try:
-            resp = requests.get(TAP_URL, params={
-                "REQUEST": "doQuery", "LANG": "ADQL",
-                "FORMAT": fmt, "QUERY": adql,
-            }, timeout=timeout)
-            resp.raise_for_status()
-            df = parser(resp.text)
-            if df is not None and len(df) > 0:
-                print(f"  HEASARC ({table}): {len(df):,} rows via {fmt} format")
-                return df
-            errors.append(f"{fmt}: parsed but got empty/invalid result")
-        except Exception as e:
-            errors.append(f"{fmt}: {e}")
+        for attempt in range(retries):
+            try:
+                resp = requests.get(TAP_URL, params={
+                    "REQUEST": "doQuery", "LANG": "ADQL",
+                    "FORMAT": fmt, "QUERY": adql,
+                }, timeout=timeout)
+                resp.raise_for_status()
+                df = parser(resp.text)
+                if df is not None and len(df) > 0:
+                    print(f"  HEASARC ({table}): {len(df):,} rows via {fmt} format")
+                    return df
+                errors.append(f"{fmt}: parsed but got empty/invalid result")
+                break
+            except Exception as e:
+                if attempt < retries - 1:
+                    wait = 30 * (2 ** attempt)
+                    print(f"  HEASARC {fmt} attempt {attempt + 1}/{retries} failed: {e}; retrying in {wait}s...")
+                    time.sleep(wait)
+                else:
+                    errors.append(f"{fmt}: {e}")
         print(f"  HEASARC: {fmt} format failed, trying next...")
     raise RuntimeError(
         f"All formats failed for HEASARC table {table}:\n"
