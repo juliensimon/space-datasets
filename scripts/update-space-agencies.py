@@ -5,6 +5,8 @@ Source: Wikidata SPARQL endpoint — Q31855 (space agency) class hierarchy
 plus a supplementary label-based filter for programs not yet formally classified.
 """
 
+import time
+
 import pandas as pd
 import requests
 
@@ -47,7 +49,7 @@ FALSE_POSITIVE_KEYWORDS = [
     "electricity", "power authority", "gas authority",
 ]
 
-# ── Column descriptions for README schema table ─────────────────────
+# ── Column descriptions for README schema table ───────────────────────────────────
 COLUMN_DESCRIPTIONS = {
     "wikidata_id": "Wikidata entity ID (e.g. 'Q23548' for NASA); resolves to https://www.wikidata.org/wiki/Q23548 — links to the agency's full knowledge graph entry including founding date, budget history, and program list",
     "name": "Official agency name in English (e.g. 'NASA', 'ESA', 'ISRO', 'Roscosmos'); canonical form as recorded in Wikidata",
@@ -61,7 +63,7 @@ COLUMN_DESCRIPTIONS = {
     "founded_year": "Integer year extracted from founded; enables numeric filtering when full date is unavailable; null only if founding date is entirely unknown",
 }
 
-# ── Dataset description ──────────────────────────────────────────────
+# ── Dataset description ──────────────────────────────────────────────────────────────────
 DESCRIPTION = """\
 Database of space agencies and related governmental space organizations worldwide, \
 sourced from Wikidata.
@@ -83,15 +85,26 @@ Data is community-curated and updated continuously.
 
 
 def fetch_agencies() -> pd.DataFrame:
-    """Query Wikidata SPARQL for all space agencies."""
+    """Query Wikidata SPARQL for all space agencies (3 retries with backoff)."""
     print("Querying Wikidata for space agencies...")
-    resp = requests.get(
-        WIKIDATA_URL,
-        params={"query": SPARQL_QUERY, "format": "json"},
-        headers=HEADERS,
-        timeout=120,
-    )
-    resp.raise_for_status()
+    for attempt in range(3):
+        try:
+            resp = requests.get(
+                WIKIDATA_URL,
+                params={"query": SPARQL_QUERY, "format": "json"},
+                headers=HEADERS,
+                timeout=120,
+            )
+            resp.raise_for_status()
+            break
+        except Exception as exc:
+            if attempt < 2:
+                wait = 30 * (2 ** attempt)
+                print(f"  Wikidata attempt {attempt + 1}/3 failed: {exc}; retrying in {wait}s...")
+                time.sleep(wait)
+            else:
+                print(f"  Wikidata failed after 3 attempts: {exc}")
+                raise
 
     results = resp.json()["results"]["bindings"]
     print(f"  {len(results):,} raw rows from Wikidata")
@@ -163,7 +176,7 @@ def main():
     df = df.sort_values("name").reset_index(drop=True)
     print(f"  {len(df):,} unique space agencies")
 
-    # ── Domain-specific stats for README ─────────────────────────────
+    # ── Domain-specific stats for README ─────────────────────────────────────────────
     n = len(df)
     n_countries = int(df["country"].nunique())
     top_countries = df["country"].value_counts().head(5)
