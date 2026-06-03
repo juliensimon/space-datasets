@@ -11,9 +11,28 @@ import requests
 TAP_URL = "https://heasarc.gsfc.nasa.gov/xamin/vo/tap/sync"
 
 
+def _heasarc_failure(text: str) -> str | None:
+    """Return HEASARC's error message if the response is a query-failure block.
+
+    HEASARC reports query errors as a plain-text ``---- Messages ----`` block
+    with HTTP 200 (not an HTTP error status, and — for FORMAT=text — not XML).
+    The block contains a line beginning with ``Failure:``. Such a block is not
+    tabular data; left unguarded, the text parser turns it into a bogus
+    one-column DataFrame that passes the non-empty check, masking a hard query
+    failure as a cryptic downstream ``KeyError`` on a missing column.
+    """
+    lines = [l.strip() for l in text.splitlines()]
+    if not any(l.startswith("Failure:") for l in lines):
+        return None
+    msg = [l for l in lines if l and l != "---- Messages ----" and set(l) != {"-"}]
+    return " ".join(msg) or "HEASARC query failed"
+
+
 def _parse_text(text: str) -> pd.DataFrame | None:
     """Parse HEASARC pipe-delimited text format."""
     if text.strip().startswith("<?xml") or text.strip().startswith("<VOTABLE"):
+        return None
+    if _heasarc_failure(text) is not None:
         return None
     lines = [l for l in text.strip().split("\n") if l.strip()]
     if len(lines) < 2:
@@ -111,6 +130,12 @@ def heasarc_query(
                     "FORMAT": fmt, "QUERY": adql,
                 }, timeout=timeout)
                 resp.raise_for_status()
+                fail = _heasarc_failure(resp.text)
+                if fail is not None:
+                    # Deterministic query error (e.g. an unqueryable column) —
+                    # retrying won't help, so record it and move to the next format.
+                    errors.append(f"{fmt}: {fail}")
+                    break
                 df = parser(resp.text)
                 if df is not None and len(df) > 0:
                     print(f"  HEASARC ({table}): {len(df):,} rows via {fmt} format")
