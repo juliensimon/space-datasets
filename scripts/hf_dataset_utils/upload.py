@@ -11,7 +11,7 @@ from huggingface_hub import HfApi
 from huggingface_hub.errors import HfHubHTTPError
 
 
-def _hf_call_with_retry(fn, *args, max_attempts=5, base_delay=10, **kwargs):
+def _hf_call_with_retry(fn, *args, max_attempts=7, base_delay=10, **kwargs):
     """Call an HF API function, retrying on 429 with exponential backoff."""
     for attempt in range(max_attempts):
         try:
