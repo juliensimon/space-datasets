@@ -12,9 +12,12 @@ from hf_dataset_utils.tap import heasarc_query
 
 HF_REPO = "juliensimon/pulsar-catalog"
 
+# `age` is derived locally from period/period_dot — HEASARC's native `age`
+# column is currently broken server-side (SELECT on it returns "Query Error"),
+# which would otherwise fail the whole query.
 ADQL = """\
 SELECT name, alt_name, ra, dec, period, period_dot, dm, flux_1400_mhz,
-  companion_type, dm_distance, age, b_surf, e_dot, pulsar_type, pm_tot,
+  companion_type, dm_distance, b_surf, e_dot, pulsar_type, pm_tot,
   discovery_date, assoc_object, binary_model
 FROM atnfpulsar ORDER BY name\
 """
@@ -77,6 +80,13 @@ def main():
     df["is_millisecond"] = df["period"].apply(
         lambda x: True if pd.notna(x) and x < 0.03 else (False if pd.notna(x) else None)
     )
+
+    # Characteristic spin-down age tau = P / (2 * Pdot), in years, computed
+    # locally because HEASARC's native `age` column is unqueryable (see ADQL).
+    # Pdot must be positive; non-positive or null derivatives yield a null age.
+    seconds_per_year = 365.25 * 86400.0
+    pdot = df["period_dot"].where(df["period_dot"] > 0)
+    df["age"] = df["period"] / (2.0 * pdot) / seconds_per_year
 
     # Clean empty strings to NaN for string columns from text format
     for col in ["companion_type", "binary_model", "pulsar_type", "alt_name", "assoc_object"]:
