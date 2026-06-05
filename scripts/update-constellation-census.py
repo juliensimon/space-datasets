@@ -231,7 +231,7 @@ GP_URL = "https://celestrak.org/NORAD/elements/gp.php?GROUP={group}&FORMAT=json"
 FETCH_DELAY = 1.0
 MAX_RETRIES = 3
 
-# ── Column descriptions for latest_satellites ────────────────────────
+# ── Column descriptions for latest_satellites ────────────────────
 COLUMN_DESCRIPTIONS = {
     "norad_id": "NORAD catalog number -- sequential integer assigned by the 18th Space Defense Squadron; primary key for cross-referencing with TLE databases and SATCAT",
     "name": "Satellite common name from the NORAD catalog (e.g. 'STARLINK-1234', 'NAVSTAR 78', 'ONEWEB-0001')",
@@ -250,7 +250,7 @@ COLUMN_DESCRIPTIONS = {
     "epoch_utc": "Reference epoch of the TLE set (UTC); orbital elements are most accurate at this moment; position error grows roughly 1-3 km/day for LEO objects",
 }
 
-# ── Column descriptions for daily_snapshots ──────────────────────────
+# ── Column descriptions for daily_snapshots ────────────────────
 COLUMN_DAILY_DESCRIPTIONS = {
     "date": "UTC date of the daily census snapshot; one row per constellation per date",
     "constellation": "Lowercase constellation identifier matching the latest_satellites config (e.g. 'starlink', 'gps')",
@@ -262,7 +262,7 @@ COLUMN_DAILY_DESCRIPTIONS = {
     "median_inclination": "Median orbital inclination in degrees across all satellites in this constellation",
 }
 
-# ── Dataset description ──────────────────────────────────────────────
+# ── Dataset description ──────────────────────────────────────────────────────
 DESCRIPTION = """\
 Daily census of active satellite constellations with orbital shell classification. \
 Tracks satellites from CelesTrak GP data across LEO mega-constellations (Starlink, \
@@ -283,7 +283,7 @@ environment models that depend on accurate population counts by orbit regime.\
 """
 
 
-# ── Orbital mechanics helpers ────────────────────────────────────────
+# ── Orbital mechanics helpers ────────────────────────────────────
 
 def altitude_from_mean_motion(n: float, ecc: float) -> float:
     """Compute perigee altitude from mean motion (rev/day) and eccentricity."""
@@ -440,6 +440,9 @@ def main():
         time.sleep(FETCH_DELAY)
 
     df = pd.DataFrame(all_rows)
+    if df.empty:
+        print("::error::No satellites fetched from any constellation — CelesTrak appears fully unreachable. Aborting.")
+        sys.exit(1)
     df["norad_id"] = df["norad_id"].astype("int32")
     n_constellations = df["constellation"].nunique()
     print(f"\nTotal: {len(df):,} satellites across {n_constellations} constellations")
@@ -502,7 +505,7 @@ def main():
         write_parquet(df, p.data_dir / "latest_satellites.parquet")
         write_parquet(df_daily, p.data_dir / "daily_snapshots.parquet")
 
-        # ── Stats for README ────────────────────────────────────────
+        # ── Stats for README ─────────────────────────────────────────────
         total = len(df)
         operational = int((df["status"] == "operational").sum())
         top = df.groupby("constellation")["norad_id"].count().sort_values(ascending=False).head(5)
