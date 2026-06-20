@@ -1,9 +1,4 @@
 {
-  "gravitational-waves": {
-    "first_failure": "2026-06-17",
-    "last_retry": "2026-06-18",
-    "retries": 2
-  },
   "pulsars": {
     "first_failure": "2026-06-03",
     "last_retry": "2026-06-04",
