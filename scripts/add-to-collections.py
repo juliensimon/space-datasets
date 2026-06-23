@@ -41,6 +41,7 @@ SMALL_BODIES = "juliensimon/asteroids-and-small-bodies-69c792b1e0240f3bf1235c66"
 DATASETS = {
     # ── Parent: Orbital Mechanics (umbrella — all orbital datasets) ────────
     ORBITAL: [
+        "juliensimon/satellite-conjunctions",
         "juliensimon/asterank-asteroid-mining",
         "juliensimon/asteroid-lightcurves-lcdb",
         "juliensimon/bus-demeo-asteroid-taxonomy",
@@ -93,6 +94,7 @@ DATASETS = {
     ],
     # ── Sub: Satellites & Launches ─────────────────────────────────────────
     SATELLITES: [
+        "juliensimon/satellite-conjunctions",
         "juliensimon/constellation-census",
         "juliensimon/deep-space-probes",
         "juliensimon/gcat-launch-vehicles",
@@ -149,6 +151,7 @@ DATASETS = {
     ],
     # ── Parent: Space Probes ───────────────────────────────────────────────
     PROBES: [
+        "juliensimon/deep-space-missions-tracker",
         "juliensimon/artemis-ii",
         "juliensimon/astronaut-database",
         "juliensimon/cassini-saturn-observations",
@@ -197,6 +200,8 @@ DATASETS = {
     ],
     # ── Parent: Space Weather ──────────────────────────────────────────────
     WEATHER: [
+        "juliensimon/aurora-forecast",
+        "juliensimon/goes-xray-flux",
         "juliensimon/auroral-electrojet-index",
         "juliensimon/celestrak-space-weather",
         "juliensimon/donki-space-weather-events",
@@ -450,6 +455,7 @@ DATASETS = {
     ],
     # ── Parent: Solar System ───────────────────────────────────────────────
     SOLAR_SYSTEM: [
+        "juliensimon/deep-space-missions-tracker",
         "juliensimon/artemis-ii",
         "juliensimon/cassini-saturn-observations",
         "juliensimon/ceres-craters-dawn",
