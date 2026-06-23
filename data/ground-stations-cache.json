@@ -2404,6 +2404,21 @@
       "name": "Gazipur",
       "lat": 23.9997,
       "lon": 90.4184
+    },
+    "chennai, in": {
+      "name": "Chennai",
+      "lat": 13.0837,
+      "lon": 80.2702
+    },
+    "noida, in": {
+      "name": "Noida",
+      "lat": 28.5706,
+      "lon": 77.3272
+    },
+    "kolkata, in": {
+      "name": "Kolkata",
+      "lat": 22.5726,
+      "lon": 88.3639
     }
   }
 }
