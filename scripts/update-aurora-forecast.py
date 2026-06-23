@@ -30,10 +30,10 @@ COLUMN_DESCRIPTIONS = {
     "forecast_time": "UTC valid time of the nowcast, roughly 30-40 minutes after the observation time (the lead time for aurora to respond).",
     "north_total_power": "Sum of aurora probability (%) over all Northern-Hemisphere grid cells. A unitless index proportional to total Northern auroral activity; rises sharply during geomagnetic storms.",
     "north_max_intensity": "Peak aurora probability (%) in any Northern-Hemisphere cell (0-100). 100 means visible aurora is essentially certain somewhere in the north.",
-    "north_active_cells": f"Number of Northern-Hemisphere grid cells with aurora probability >= {ACTIVE_THRESHOLD}%, a proxy for the spatial extent (area) of the northern auroral oval.",
+    "north_active_cells": f"Number of Northern-Hemisphere grid cells (0 to ~32,000, up to half the ~65k-cell global grid) with aurora probability >= {ACTIVE_THRESHOLD}%, a proxy for the spatial extent (area) of the northern auroral oval.",
     "south_total_power": "Sum of aurora probability (%) over all Southern-Hemisphere grid cells. Unitless index proportional to total Southern (aurora australis) activity.",
     "south_max_intensity": "Peak aurora probability (%) in any Southern-Hemisphere cell (0-100).",
-    "south_active_cells": f"Number of Southern-Hemisphere grid cells with aurora probability >= {ACTIVE_THRESHOLD}%, a proxy for the area of the southern auroral oval.",
+    "south_active_cells": f"Number of Southern-Hemisphere grid cells (0 to ~32,000, up to half the ~65k-cell global grid) with aurora probability >= {ACTIVE_THRESHOLD}%, a proxy for the area of the southern auroral oval.",
 }
 
 # ── Dataset description ──────────────────────────────────────────────
