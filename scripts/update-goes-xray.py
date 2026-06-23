@@ -72,19 +72,24 @@ def fetch_xray():
     # Split the two energy bands and join into a wide, one-row-per-minute frame.
     short = (df[df["energy"] == "0.05-0.4nm"][["time_tag", "satellite", "flux"]]
              .rename(columns={"flux": "flux_short"}))
-    long_ = (df[df["energy"] == "0.1-0.8nm"][["time_tag", "flux"]]
+    long_ = (df[df["energy"] == "0.1-0.8nm"][["time_tag", "satellite", "flux"]]
              .rename(columns={"flux": "flux_long"}))
-    wide = short.merge(long_, on="time_tag", how="outer").rename(columns={"time_tag": "datetime"})
+    # Merge on both keys so `satellite` is populated for short-only AND long-only minutes.
+    wide = (short.merge(long_, on=["time_tag", "satellite"], how="outer")
+            .rename(columns={"time_tag": "datetime"}))
 
     for col in ["flux_short", "flux_long"]:
         wide[col] = pd.to_numeric(wide[col], errors="coerce")
     wide["satellite"] = pd.to_numeric(wide["satellite"], errors="coerce").astype("Int64")
 
     # Flare classification from the long-band flux.
+    # right=False -> [low, high) intervals, so flux == 1e-4 classifies as X (>=1e-4),
+    # matching the standard A/B/C/M/X convention and the column description.
     wide["flare_class"] = pd.cut(
         wide["flux_long"],
         bins=[-float("inf"), 1e-7, 1e-6, 1e-5, 1e-4, float("inf")],
         labels=["A", "B", "C", "M", "X"],
+        right=False,
     )
 
     wide = wide.sort_values("datetime").reset_index(drop=True)

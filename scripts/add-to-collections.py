@@ -323,7 +323,6 @@ DATASETS = {
         "juliensimon/4xmm-dr14-xray-sources",
         "juliensimon/roma-bzcat-blazars",
         "juliensimon/planck-cold-clumps",
-        "juliensimon/gaia-dr3-spectroscopic-binaries",
         "juliensimon/fermi-3pc-gamma-ray-pulsars",
         "juliensimon/nicer-observations",
         "juliensimon/maxi-xray-sources",

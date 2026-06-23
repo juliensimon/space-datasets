@@ -8,6 +8,7 @@ is from the Sun and Earth, where it appears on the sky, and how long its signal
 takes to reach us. Append-by-date: idempotent per UTC day.
 """
 
+import time
 from datetime import datetime, timedelta, timezone
 
 import pandas as pd
@@ -91,10 +92,20 @@ def fetch_mission(name, info, day):
         "CSV_FORMAT": "'YES'",
         "ANG_FORMAT": "'DEG'",
     }
+    result = None
+    for attempt in range(3):
+        try:
+            resp = requests.get(HORIZONS_URL, params=params, timeout=45)
+            resp.raise_for_status()
+            result = resp.json().get("result", "")
+            break
+        except requests.RequestException as exc:
+            if attempt == 2:
+                print(f"  WARNING: could not fetch {name} ({info['id']}) after retries: {exc}")
+                return None
+            time.sleep(2 ** attempt)
+
     try:
-        resp = requests.get(HORIZONS_URL, params=params, timeout=45)
-        resp.raise_for_status()
-        result = resp.json().get("result", "")
         block = result.split("$$SOE")[1].split("$$EOE")[0].strip().splitlines()
         # CSV cols: date, solar-flag, lunar-flag, RA, DEC, r, rdot, delta, deldot, LT
         p = [c.strip() for c in block[0].split(",")]
@@ -114,7 +125,7 @@ def fetch_mission(name, info, day):
             "light_time_min": float(p[9]),
         }
     except Exception as exc:
-        print(f"  WARNING: could not fetch {name} ({info['id']}): {exc}")
+        print(f"  WARNING: could not parse Horizons ephemeris for {name} ({info['id']}): {exc}")
         return None
 
 
