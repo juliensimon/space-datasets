@@ -20,7 +20,7 @@ HF_REPO = "juliensimon/donki-space-weather-events"
 START_YEAR = 2010
 OVERLAP_DAYS = 14
 
-# ── Column descriptions for README schema table ─────────────────────────────
+# ── Column descriptions for README schema table ───────────────────────────────────────────
 COLUMN_DESCRIPTIONS = {
     "event_type": "Event category: CME (coronal mass ejection), GST (geomagnetic storm), IPS (interplanetary shock), HSS (high-speed stream), or SEP (solar energetic particle)",
     "activity_id": "Unique DONKI event identifier (e.g. '2024-05-08T22:09:00-CME-001'); primary key for cross-referencing",
@@ -41,7 +41,7 @@ COLUMN_DESCRIPTIONS = {
     "linked_events": "Comma-separated activity IDs of causally linked events; enables Sun-to-Earth chain analysis (e.g. CME -> IPS -> GST)",
 }
 
-# ── Dataset description ──────────────────────────────────────────────
+# ── Dataset description ──────────────────────────────────────────────────────
 DESCRIPTION = """\
 Space weather events from NASA's DONKI (Database Of Notifications, Knowledge, \
 Information) at the Community Coordinated Modeling Center. Covers coronal mass \
@@ -64,7 +64,7 @@ statistical reliability of CME arrival forecasts.\
 """
 
 
-# ── Fetch helpers (kept from original) ────────────────────────────────────
+# ── Fetch helpers (kept from original) ────────────────────────────────────────────
 
 def fetch_donki(endpoint, start_date, end_date, extra_params=None):
     """Fetch from a DONKI endpoint with date range (3 retries, exponential backoff)."""
@@ -74,7 +74,7 @@ def fetch_donki(endpoint, start_date, end_date, extra_params=None):
     url = f"{DONKI_BASE}/{endpoint}"
     for attempt in range(3):
         try:
-            resp = requests.get(url, params=params, timeout=120)
+            resp = requests.get(url, params=params, timeout=(10, 90))
             resp.raise_for_status()
             return resp.json()
         except requests.RequestException as exc:
@@ -205,7 +205,7 @@ def coerce_types(df):
     return df
 
 
-# ── Main pipeline ────────────────────────────────────────────────────────────────
+# ── Main pipeline ────────────────────────────────────────────────────────────────────────
 
 def main():
     print("Fetching DONKI space weather events...")
@@ -278,7 +278,7 @@ def main():
                       "cme_longitude", "gst_max_kp", "gst_kp_count"],
         )
 
-        # ── Stats for README ──────────────────────────────────────────────
+        # ── Stats for README ──────────────────────────────────────────────────────
         n_total = len(df)
         n_cme = int((df["event_type"] == "CME").sum())
         n_gst = int((df["event_type"] == "GST").sum())
