@@ -573,6 +573,11 @@ DATASET_DOMAIN = {
     "global-meteor-network": "small_bodies",
     "lunar-eclipse-catalog": "planetary",
     "space-tourism-flights": "probes",
+    # New datasets (2026-06) — live operational feeds + mission tracker
+    "goes-xray": "weather",
+    "aurora-forecast": "weather",
+    "conjunctions": "satellites",
+    "missions-tracker": "probes",
     # Essentials / general
     "astronomers": "essentials",
     "constellations": "essentials",

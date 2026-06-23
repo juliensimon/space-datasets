@@ -7,7 +7,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ### Top downloads
 
 <!-- TOP_DOWNLOADS_START -->
-**226,407** downloads (all-time)  ·  **19** likes  ·  **226** datasets  ·  updated 2026-06-23
+**226,407** downloads (all-time)  ·  **19** likes  ·  **230** datasets  ·  updated 2026-06-23
 
 | # | Dataset | Downloads |
 |--:|---------|----------:|
@@ -47,6 +47,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![SpaceX Launches](https://github.com/juliensimon/space-datasets/actions/workflows/update-spacex-launches.yml/badge.svg)
 ![Constellation TLEs](https://github.com/juliensimon/space-datasets/actions/workflows/update-constellation-tles.yml/badge.svg)
 ![GMN Meteors](https://github.com/juliensimon/space-datasets/actions/workflows/update-gmn-meteors.yml/badge.svg)
+![Conjunctions](https://github.com/juliensimon/space-datasets/actions/workflows/update-conjunctions.yml/badge.svg)
 <!-- Space Weather -->
 ![CelesTrak SW](https://github.com/juliensimon/space-datasets/actions/workflows/update-celestrak-sw.yml/badge.svg)
 ![Space Weather](https://github.com/juliensimon/space-datasets/actions/workflows/update-space-weather.yml/badge.svg)
@@ -64,6 +65,8 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![Neutron Monitor](https://github.com/juliensimon/space-datasets/actions/workflows/update-neutron-monitor.yml/badge.svg)
 ![OMNI](https://github.com/juliensimon/space-datasets/actions/workflows/update-omni.yml/badge.svg)
 ![Substorm Onsets](https://github.com/juliensimon/space-datasets/actions/workflows/update-substorm-onsets.yml/badge.svg)
+![GOES X-ray](https://github.com/juliensimon/space-datasets/actions/workflows/update-goes-xray.yml/badge.svg)
+![Aurora Forecast](https://github.com/juliensimon/space-datasets/actions/workflows/update-aurora-forecast.yml/badge.svg)
 <!-- Astronomy -->
 ![Exoplanets](https://github.com/juliensimon/space-datasets/actions/workflows/update-exoplanets.yml/badge.svg)
 ![GRB](https://github.com/juliensimon/space-datasets/actions/workflows/update-grb.yml/badge.svg)
@@ -115,6 +118,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![Deep Space Probes](https://github.com/juliensimon/space-datasets/actions/workflows/update-deep-space-probes.yml/badge.svg)
 ![MEDA Weather](https://github.com/juliensimon/space-datasets/actions/workflows/update-meda-weather.yml/badge.svg)
 ![Space Tourism](https://github.com/juliensimon/space-datasets/actions/workflows/update-space-tourism.yml/badge.svg)
+![Missions Tracker](https://github.com/juliensimon/space-datasets/actions/workflows/update-missions-tracker.yml/badge.svg)
 <!-- Planetary Science -->
 ![Impact Craters](https://github.com/juliensimon/space-datasets/actions/workflows/update-impact-craters.yml/badge.svg)
 ![Meteorites](https://github.com/juliensimon/space-datasets/actions/workflows/update-meteorites.yml/badge.svg)
@@ -160,6 +164,7 @@ Track every object orbiting Earth and beyond. This collection covers the complet
 | [orbital-fragmentation-events](https://huggingface.co/datasets/juliensimon/orbital-fragmentation-events) | Catalog of orbital fragmentation events (breakups, explosions, collisions) from NORAD SATCAT | — | Static | <1 MB |
 | [reentry-events](https://huggingface.co/datasets/juliensimon/reentry-events) | 35K satellite and debris reentry events with decay dates and locations | ![Reentry](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['reentry-events']&label=updated&color=brightgreen) | Daily | <1 MB |
 | [rocket-lab-launches](https://huggingface.co/datasets/juliensimon/rocket-lab-launches) | Complete Rocket Lab launch manifest — Electron + Neutron flights (past and upcoming) | ![Rocket Lab](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['rocket-lab-launches']&label=updated&color=brightgreen) | Daily | <1 MB |
+| [satellite-conjunctions](https://huggingface.co/datasets/juliensimon/satellite-conjunctions) | CelesTrak SOCRATES near-miss log — predicted satellite close approaches (<=1 km or Pc >=1e-4) with time, miss distance, and collision probability | ![Conjunctions](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['conjunctions']&label=updated&color=brightgreen) | Daily | <1 MB |
 | [satnogs-transmitters](https://huggingface.co/datasets/juliensimon/satnogs-transmitters) | 10K+ satellite radio transmitters and frequencies from SatNOGS | ![SatNOGS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.satnogs&label=updated&color=brightgreen) | Weekly | 5 MB |
 | [sdss-asteroid-taxonomy](https://huggingface.co/datasets/juliensimon/sdss-asteroid-taxonomy) | Compositional taxonomy for 50K+ SDSS observations of asteroids with ugriz reflectances | — | Static | ~5 MB |
 | [sentry-impact-risk](https://huggingface.co/datasets/juliensimon/sentry-impact-risk) | Near-Earth objects with non-zero Earth impact probability | ![Sentry](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.sentry&label=updated&color=brightgreen) | Daily | <1 MB |
@@ -188,6 +193,7 @@ Data returned by humanity's most distant spacecraft and surface explorers. Inclu
 |---------|-------------|-------------|----------|------|
 | [artemis-ii](https://huggingface.co/datasets/juliensimon/artemis-ii) | Artemis II crewed lunar flyby: 1,285 trajectory vectors, crew manifest, mission timeline, payloads | ![Artemis II](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['artemis-ii']&label=updated&color=brightgreen) | Daily | <1 MB |
 | [cassini-saturn-observations](https://huggingface.co/datasets/juliensimon/cassini-saturn-observations) | 63K Saturn observation records from the Cassini mission (2004-2017) | — | Static | 1.6 MB |
+| [deep-space-missions-tracker](https://huggingface.co/datasets/juliensimon/deep-space-missions-tracker) | Daily positions of 9 active deep-space missions (Voyagers, New Horizons, Juno, Lucy, Psyche, Europa Clipper, OSIRIS-APEX, JUICE) — Sun/Earth distance, sky position, light-time via JPL Horizons | ![Missions Tracker](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['missions-tracker']&label=updated&color=brightgreen) | Daily | <1 MB |
 | [deep-space-probes](https://huggingface.co/datasets/juliensimon/deep-space-probes) | 1.2M hourly readings from Voyager 1+2 and Pioneer 10+11 (1972-2025) | ![Probes](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['deep-space-probes']&label=updated&color=blue) | Monthly | 32 MB |
 | [esa-bepicolombo-observations](https://huggingface.co/datasets/juliensimon/esa-bepicolombo-observations) | 176K+ observation records from ESA/JAXA BepiColombo Mercury mission (11 instruments, cruise + flybys) | ![BepiColombo](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['bepicolombo']&label=updated&color=brightgreen) | Weekly | ~20 MB |
 | [esa-exomars-tgo-observations](https://huggingface.co/datasets/juliensimon/esa-exomars-tgo-observations) | 27M+ observation records from ESA ExoMars TGO (4 instruments, since 2018) | ![ExoMars TGO](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['exomars-tgo']&label=updated&color=brightgreen) | Weekly | ~2 GB |
@@ -234,6 +240,7 @@ Monitor the Sun-Earth connection in near real-time. These datasets track solar f
 
 | Dataset | Description | Last Updated | Schedule | Size |
 |---------|-------------|-------------|----------|------|
+| [aurora-forecast](https://huggingface.co/datasets/juliensimon/aurora-forecast) | Daily auroral activity index from NOAA SWPC OVATION nowcast — per-hemisphere integrated power, peak intensity, and oval extent | ![Aurora Forecast](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['aurora-forecast']&label=updated&color=brightgreen) | Daily | <1 MB |
 | [auroral-electrojet-index](https://huggingface.co/datasets/juliensimon/auroral-electrojet-index) | Hourly AE/AU/AL/AO auroral electrojet indices from Kyoto WDC | ![AE](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['ae-index']&label=updated&color=brightgreen) | Daily | 2 MB |
 | [cdaw-lasco-cme-catalog](https://huggingface.co/datasets/juliensimon/cdaw-lasco-cme-catalog) | 42K+ coronal mass ejections from SOHO/LASCO since 1996 (NASA CDAW) — the canonical CME compilation | ![CDAW CME](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['cdaw-cme']&label=updated&color=brightgreen) | Weekly | 1.1 MB |
 | [celestrak-space-weather](https://huggingface.co/datasets/juliensimon/celestrak-space-weather) | Consolidated space weather data for orbit propagation (Kp, Ap, F10.7) | ![CelesTrak SW](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['celestrak-sw']&label=updated&color=brightgreen) | Daily | 5 MB |
@@ -243,6 +250,7 @@ Monitor the Sun-Earth connection in near real-time. These datasets track solar f
 | [feng-icme-catalog](https://huggingface.co/datasets/juliensimon/feng-icme-catalog) | 219 ACE/WIND in-situ ICMEs 1998-2011 with shock arrival, body duration, and magnetic-cloud flag (Feng+ 2018) | — | Static | <1 MB |
 | [forbush-decreases](https://huggingface.co/datasets/juliensimon/forbush-decreases) | 7,097 Forbush decrease events (1957-2016) with solar wind, IMF, and CME parameters from IZMIRAN | — | Static | <1 MB |
 | [geomagnetic-kp-index](https://huggingface.co/datasets/juliensimon/geomagnetic-kp-index) | 3-hourly geomagnetic disturbance index (Kp 0-9) with NOAA storm scale | ![Kp](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['kp-index']&label=updated&color=brightgreen) | Daily | 4 KB |
+| [goes-xray-flux](https://huggingface.co/datasets/juliensimon/goes-xray-flux) | 1-minute GOES solar X-ray flux (both bands) with A/B/C/M/X flare classification from NOAA SWPC | ![GOES X-ray](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['goes-xray']&label=updated&color=brightgreen) | Daily | <1 MB |
 | [iers-earth-orientation](https://huggingface.co/datasets/juliensimon/iers-earth-orientation) | Daily Earth orientation parameters (polar motion, UT1-UTC, LOD) since 1973 | ![IERS](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['iers-eop']&label=updated&color=brightgreen) | Daily | 5 MB |
 | [neutron-monitor-cosmic-rays](https://huggingface.co/datasets/juliensimon/neutron-monitor-cosmic-rays) | Hourly cosmic ray intensity from the global neutron monitor network | ![Neutron](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['neutron-monitor']&label=updated&color=brightgreen) | Daily | <1 MB |
 | [omni-solar-wind-parameters](https://huggingface.co/datasets/juliensimon/omni-solar-wind-parameters) | 561K+ hourly solar wind parameters (velocity, density, IMF) from NASA OMNI | ![OMNI](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.omni&label=updated&color=brightgreen) | Daily | 20 MB |
@@ -421,6 +429,7 @@ pip install pandas pyarrow requests huggingface_hub[hf_xet]
 python scripts/update-asterank.py
 python scripts/update-bus-demeo.py
 python scripts/update-comets.py
+python scripts/update-conjunctions.py
 python scripts/update-constellation-census.py
 python scripts/update-constellation-tles.py
 python scripts/update-fireballs.py
@@ -474,11 +483,13 @@ pip install beautifulsoup4 lxml && python scripts/update-solar-system-moons.py
 
 # Space Weather
 python scripts/update-ae-index.py
+python scripts/update-aurora-forecast.py
 python scripts/update-celestrak-sw.py
 python scripts/update-donki.py
 python scripts/update-dst-index.py
 python scripts/update-f107.py
 python scripts/update-forbush-decreases.py
+python scripts/update-goes-xray.py
 python scripts/update-iers-eop.py
 python scripts/update-kp-index.py
 python scripts/update-neutron-monitor.py
@@ -513,6 +524,7 @@ python scripts/update-mars-express.py
 python scripts/update-mars-rovers.py
 python scripts/update-maven.py
 python scripts/update-meda-weather.py
+python scripts/update-missions-tracker.py
 python scripts/update-pds-missions.py
 python scripts/update-rosetta.py
 python scripts/update-space-tourism.py
