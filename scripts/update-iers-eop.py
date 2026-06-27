@@ -6,6 +6,7 @@ Includes polar motion, UT1-UTC, length of day, and nutation offsets.
 """
 
 import io
+import time
 
 import pandas as pd
 import requests
@@ -15,7 +16,7 @@ from hf_dataset_utils import Pipeline
 IERS_URL = "https://datacenter.iers.org/data/csv/finals2000A.data.csv"
 HF_REPO = "juliensimon/iers-earth-orientation"
 
-# ── Column mapping ───────────────────────────────────────────────────
+# ── Column mapping ────────────────────────────────────────
 RENAME_RULES = {
     "mjd": "mjd",
     "x_pole": "x_pole_arcsec", "x": "x_pole_arcsec", "x_arcsec": "x_pole_arcsec",
@@ -29,7 +30,7 @@ RENAME_RULES = {
     "dy": "dy_mas",
 }
 
-# ── Column descriptions for README schema table ─────────────────────
+# ── Column descriptions for README schema table ─────────────────
 COLUMN_DESCRIPTIONS = {
     "date": "Calendar date in UTC of the EOP measurement; daily cadence from 1962-01-01 to present; values after the last bulletin date are IERS short-term predictions, not observations",
     "mjd": "Modified Julian Date = Julian Date - 2400000.5; a compact decimal day count used throughout astronomy and geodesy; J2000.0 corresponds to MJD 51544.5; enables direct arithmetic on time differences without calendar conversions",
@@ -44,7 +45,7 @@ COLUMN_DESCRIPTIONS = {
     "dy_mas": "Celestial pole offset dY in milliarcseconds; observed deviation along the Y axis complementing dX; together dX and dY provide the residual nutation corrections needed for the highest-precision celestial mechanics and VLBI analysis",
 }
 
-# ── Dataset description ──────────────────────────────────────────────
+# ── Dataset description ──────────────────────────────────────
 DESCRIPTION = """\
 Earth Orientation Parameters (EOP) from the IERS finals2000A series. Includes \
 polar motion, UT1-UTC, length of day, and nutation offsets. Updated daily.
@@ -76,10 +77,23 @@ insertion of a leap second.
 """
 
 
+def _fetch_with_retry(url, retries=3, timeout=120):
+    for attempt in range(1, retries + 1):
+        try:
+            resp = requests.get(url, timeout=timeout)
+            resp.raise_for_status()
+            return resp
+        except Exception as e:
+            if attempt == retries:
+                raise
+            wait = 2 ** attempt
+            print(f"  Attempt {attempt} failed ({e}), retrying in {wait}s...")
+            time.sleep(wait)
+
+
 def main():
     print("Fetching IERS Earth Orientation Parameters...")
-    resp = requests.get(IERS_URL, timeout=120)
-    resp.raise_for_status()
+    resp = _fetch_with_retry(IERS_URL)
 
     # IERS CSV uses semicolons as separator
     try:
@@ -117,7 +131,7 @@ def main():
 
     df = df.sort_values("date").reset_index(drop=True) if "date" in df.columns else df
 
-    # ── Domain-specific stats for README ─────────────────────────────
+    # ── Domain-specific stats for README ─────────────────────
     n = len(df)
     date_min = df["date"].min().strftime("%Y-%m-%d") if "date" in df.columns else "N/A"
     date_max = df["date"].max().strftime("%Y-%m-%d") if "date" in df.columns else "N/A"
