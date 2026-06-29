@@ -1,4 +1,9 @@
 {
+  "iers-eop": {
+    "first_failure": "2026-06-29",
+    "last_retry": "2026-06-29",
+    "retries": 1
+  },
   "pulsars": {
     "first_failure": "2026-06-03",
     "last_retry": "2026-06-04",
