@@ -34,7 +34,7 @@ MISSIONS = {
     "JUICE":           {"id": -28,  "agency": "ESA",  "launch_year": 2023, "destination": "Jupiter icy moons"},
 }
 
-# ── Column descriptions ───────────────────────────────────────────────
+# ── Column descriptions ─────────────────────────────────────────────────────
 COLUMN_DESCRIPTIONS = {
     "date": "UTC date of the ephemeris snapshot (00:00 UT geometry).",
     "mission": "Common name of the spacecraft.",
@@ -51,7 +51,7 @@ COLUMN_DESCRIPTIONS = {
     "light_time_min": "One-way light travel time from the spacecraft to Earth, in minutes. The signal delay for commands and telemetry.",
 }
 
-# ── Dataset description ──────────────────────────────────────────────
+# ── Dataset description ───────────────────────────────────────────────────────
 DESCRIPTION = """\
 A daily-updating log of where humanity's active deep-space missions are right now, \
 computed from NASA/JPL's Horizons ephemeris system. Updated daily, growing one row \
@@ -161,11 +161,17 @@ def main():
         df_existing = p.download_existing("missions_tracker.parquet")
 
         if df_existing is None or len(df_existing) == 0:
+            if df_today.empty:
+                raise RuntimeError("Horizons returned 0 missions and no existing data — cannot seed dataset")
             df = df_today.copy()  # first run: seed from today
         else:
             df_existing["date"] = pd.to_datetime(df_existing["date"])
-            df = p.append_by_date(df_existing, df_today, date_col="date", min_existing=1)
-            print(f"  Appended: {len(df):,} total rows ({len(df) - len(df_existing):+,} net new)")
+            if df_today.empty:
+                print("  WARNING: Horizons returned 0 missions today; keeping existing data unchanged")
+                df = df_existing.copy()
+            else:
+                df = p.append_by_date(df_existing, df_today, date_col="date", min_existing=1)
+                print(f"  Appended: {len(df):,} total rows ({len(df) - len(df_existing):+,} net new)")
 
         df = p.clean(
             df,
@@ -175,7 +181,7 @@ def main():
             strings=["mission", "agency", "destination"],
         )
 
-        # ── Stats ────────────────────────────────────────────────────
+        # ── Stats ────────────────────────────────────────────────────────────
         n = len(df)
         n_days = df["date"].nunique()
         latest = df[df["date"] == df["date"].max()]
