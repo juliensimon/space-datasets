@@ -1,12 +1,1 @@
-{
-  "iers-eop": {
-    "first_failure": "2026-06-29",
-    "last_retry": "2026-06-30",
-    "retries": 2
-  },
-  "pulsars": {
-    "first_failure": "2026-06-03",
-    "last_retry": "2026-06-04",
-    "retries": 2
-  }
-}
+{}
