@@ -15,6 +15,9 @@ HF_REPO = "juliensimon/solar-wind"
 
 PLASMA_URL = "https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json"
 MAG_URL = "https://services.swpc.noaa.gov/products/solar-wind/mag-7-day.json"
+# NOAA retired the 7-day endpoints; fall back to 1-hour window (same format, same columns)
+PLASMA_URL_SHORT = "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-hour.json"
+MAG_URL_SHORT = "https://services.swpc.noaa.gov/products/solar-wind/mag-1-hour.json"
 
 # ── Column descriptions ─────────────────────────────────────────────
 COLUMN_DESCRIPTIONS = {
@@ -63,20 +66,25 @@ Typical quiet-time solar wind conditions show speeds of 300-450 km/s and densiti
 interplanetary CMEs can drive transient speeds above 1,000 km/s with enhanced magnetic fields."""
 
 
-def fetch_solar_wind():
-    """Fetch and merge plasma + magnetometer 7-day data from SWPC."""
-    print("  Fetching plasma data...")
-    resp = requests.get(PLASMA_URL, timeout=60)
+def _get_sw_json(primary_url, fallback_url, label):
+    """Fetch solar wind JSON; fall back to shorter window if primary is 404."""
+    resp = requests.get(primary_url, timeout=60)
+    if resp.status_code == 404:
+        print(f"  {label}: {primary_url} returned 404, using 1-hour fallback")
+        resp = requests.get(fallback_url, timeout=60)
     resp.raise_for_status()
-    plasma_raw = resp.json()
-    # First row is header: ["time_tag", "density", "speed", "temperature"]
-    df_plasma = pd.DataFrame(plasma_raw[1:], columns=plasma_raw[0])
+    raw = resp.json()
+    # Format: first row is header, rest are data rows
+    return pd.DataFrame(raw[1:], columns=raw[0])
+
+
+def fetch_solar_wind():
+    """Fetch and merge plasma + magnetometer data from SWPC."""
+    print("  Fetching plasma data...")
+    df_plasma = _get_sw_json(PLASMA_URL, PLASMA_URL_SHORT, "plasma")
 
     print("  Fetching magnetometer data...")
-    resp = requests.get(MAG_URL, timeout=60)
-    resp.raise_for_status()
-    mag_raw = resp.json()
-    df_mag = pd.DataFrame(mag_raw[1:], columns=mag_raw[0])
+    df_mag = _get_sw_json(MAG_URL, MAG_URL_SHORT, "mag")
 
     # Parse time_tag
     df_plasma["time_tag"] = pd.to_datetime(df_plasma["time_tag"])
