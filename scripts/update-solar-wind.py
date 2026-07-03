@@ -16,8 +16,8 @@ HF_REPO = "juliensimon/solar-wind"
 PLASMA_URL = "https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json"
 MAG_URL = "https://services.swpc.noaa.gov/products/solar-wind/mag-7-day.json"
 # NOAA retired the 7-day endpoints; fall back to 1-hour window (same format, same columns)
-PLASMA_URL_SHORT = "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-hour.json"
-MAG_URL_SHORT = "https://services.swpc.noaa.gov/products/solar-wind/mag-1-hour.json"
+PLASMA_URL_SHORT = "https://services.swpc.noaa.gov/products/solar-wind/plasma-2-hour.json"
+MAG_URL_SHORT = "https://services.swpc.noaa.gov/products/solar-wind/mag-2-hour.json"
 
 # ── Column descriptions ─────────────────────────────────────────────
 COLUMN_DESCRIPTIONS = {
