@@ -13,11 +13,11 @@ from hf_dataset_utils import Pipeline
 
 HF_REPO = "juliensimon/solar-wind"
 
-PLASMA_URL = "https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json"
-MAG_URL = "https://services.swpc.noaa.gov/products/solar-wind/mag-7-day.json"
-# NOAA retired the 7-day endpoints; fall back to 1-hour window (same format, same columns)
-PLASMA_URL_SHORT = "https://services.swpc.noaa.gov/products/solar-wind/plasma-2-hour.json"
-MAG_URL_SHORT = "https://services.swpc.noaa.gov/products/solar-wind/mag-2-hour.json"
+PLASMA_URL = "https://services.swpc.noaa.gov/products/solar-wind/plasma-3-day.json"
+MAG_URL = "https://services.swpc.noaa.gov/products/solar-wind/mag-3-day.json"
+# NOAA retired 7-day and 2-hour; fall back to 1-day window (same format, same columns)
+PLASMA_URL_SHORT = "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json"
+MAG_URL_SHORT = "https://services.swpc.noaa.gov/products/solar-wind/mag-1-day.json"
 
 # ── Column descriptions ─────────────────────────────────────────────
 COLUMN_DESCRIPTIONS = {
@@ -70,7 +70,7 @@ def _get_sw_json(primary_url, fallback_url, label):
     """Fetch solar wind JSON; fall back to shorter window if primary is 404."""
     resp = requests.get(primary_url, timeout=60)
     if resp.status_code == 404:
-        print(f"  {label}: {primary_url} returned 404, using 1-hour fallback")
+        print(f"  {label}: {primary_url} returned 404, using 1-day fallback")
         resp = requests.get(fallback_url, timeout=60)
     resp.raise_for_status()
     raw = resp.json()
