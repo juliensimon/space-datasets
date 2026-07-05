@@ -6,7 +6,7 @@
   },
   "solar-wind": {
     "first_failure": "2026-07-04",
-    "last_retry": "2026-07-04",
-    "retries": 1
+    "last_retry": "2026-07-05",
+    "retries": 2
   }
 }
