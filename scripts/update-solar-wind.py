@@ -13,11 +13,16 @@ from hf_dataset_utils import Pipeline
 
 HF_REPO = "juliensimon/solar-wind"
 
-PLASMA_URL = "https://services.swpc.noaa.gov/products/solar-wind/plasma-3-day.json"
-MAG_URL = "https://services.swpc.noaa.gov/products/solar-wind/mag-3-day.json"
-# NOAA retired 7-day and 2-hour; fall back to 1-day window (same format, same columns)
-PLASMA_URL_SHORT = "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json"
-MAG_URL_SHORT = "https://services.swpc.noaa.gov/products/solar-wind/mag-1-day.json"
+# NOAA SWPC retired the longer-window products in April 2026; try 6-hour then 2-hour.
+# Same JSON array-of-arrays format, same column names across all windows.
+PLASMA_URLS = [
+    "https://services.swpc.noaa.gov/products/solar-wind/plasma-6-hour.json",
+    "https://services.swpc.noaa.gov/products/solar-wind/plasma-2-hour.json",
+]
+MAG_URLS = [
+    "https://services.swpc.noaa.gov/products/solar-wind/mag-6-hour.json",
+    "https://services.swpc.noaa.gov/products/solar-wind/mag-2-hour.json",
+]
 
 # ── Column descriptions ─────────────────────────────────────────────
 COLUMN_DESCRIPTIONS = {
@@ -66,25 +71,27 @@ Typical quiet-time solar wind conditions show speeds of 300-450 km/s and densiti
 interplanetary CMEs can drive transient speeds above 1,000 km/s with enhanced magnetic fields."""
 
 
-def _get_sw_json(primary_url, fallback_url, label):
-    """Fetch solar wind JSON; fall back to shorter window if primary is 404."""
-    resp = requests.get(primary_url, timeout=60)
-    if resp.status_code == 404:
-        print(f"  {label}: {primary_url} returned 404, using 1-day fallback")
-        resp = requests.get(fallback_url, timeout=60)
-    resp.raise_for_status()
-    raw = resp.json()
-    # Format: first row is header, rest are data rows
-    return pd.DataFrame(raw[1:], columns=raw[0])
+def _get_sw_json(urls, label):
+    """Fetch solar wind JSON; try each URL in order until one returns 200."""
+    for i, url in enumerate(urls):
+        resp = requests.get(url, timeout=60)
+        if resp.status_code == 404 and i < len(urls) - 1:
+            print(f"  {label}: {url} returned 404, trying next fallback")
+            continue
+        resp.raise_for_status()
+        raw = resp.json()
+        # Format: first row is header, rest are data rows
+        return pd.DataFrame(raw[1:], columns=raw[0])
+    raise RuntimeError(f"{label}: all URLs returned 404")
 
 
 def fetch_solar_wind():
     """Fetch and merge plasma + magnetometer data from SWPC."""
     print("  Fetching plasma data...")
-    df_plasma = _get_sw_json(PLASMA_URL, PLASMA_URL_SHORT, "plasma")
+    df_plasma = _get_sw_json(PLASMA_URLS, "plasma")
 
     print("  Fetching magnetometer data...")
-    df_mag = _get_sw_json(MAG_URL, MAG_URL_SHORT, "mag")
+    df_mag = _get_sw_json(MAG_URLS, "mag")
 
     # Parse time_tag
     df_plasma["time_tag"] = pd.to_datetime(df_plasma["time_tag"])
