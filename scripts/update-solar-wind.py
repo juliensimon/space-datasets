@@ -13,15 +13,25 @@ from hf_dataset_utils import Pipeline
 
 HF_REPO = "juliensimon/solar-wind"
 
-# NOAA SWPC retired the longer-window products in April 2026; try 6-hour then 2-hour.
+# NOAA SWPC periodically retires time-window variants; probe widest-window first.
 # Same JSON array-of-arrays format, same column names across all windows.
 PLASMA_URLS = [
+    "https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json",
+    "https://services.swpc.noaa.gov/products/solar-wind/plasma-3-day.json",
+    "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json",
     "https://services.swpc.noaa.gov/products/solar-wind/plasma-6-hour.json",
     "https://services.swpc.noaa.gov/products/solar-wind/plasma-2-hour.json",
+    "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-hour.json",
+    "https://services.swpc.noaa.gov/products/solar-wind/plasma-5-minute.json",
 ]
 MAG_URLS = [
+    "https://services.swpc.noaa.gov/products/solar-wind/mag-7-day.json",
+    "https://services.swpc.noaa.gov/products/solar-wind/mag-3-day.json",
+    "https://services.swpc.noaa.gov/products/solar-wind/mag-1-day.json",
     "https://services.swpc.noaa.gov/products/solar-wind/mag-6-hour.json",
     "https://services.swpc.noaa.gov/products/solar-wind/mag-2-hour.json",
+    "https://services.swpc.noaa.gov/products/solar-wind/mag-1-hour.json",
+    "https://services.swpc.noaa.gov/products/solar-wind/mag-5-minute.json",
 ]
 
 # ── Column descriptions ─────────────────────────────────────────────
