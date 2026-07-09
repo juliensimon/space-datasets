@@ -1,8 +1,8 @@
 {
   "gravitational-waves": {
     "first_failure": "2026-07-08",
-    "last_retry": "2026-07-08",
-    "retries": 1
+    "last_retry": "2026-07-09",
+    "retries": 2
   },
   "snr": {
     "first_failure": "2026-07-03",
