@@ -13,9 +13,13 @@ from hf_dataset_utils import Pipeline
 
 HF_REPO = "juliensimon/solar-wind"
 
-# NOAA SWPC periodically retires time-window variants; probe widest-window first.
-# Same JSON array-of-arrays format, same column names across all windows.
+# NOAA SWPC migrated solar wind data from /products/solar-wind/ to /json/rtsw/ in 2025.
+# New RTSW endpoints return array-of-objects; legacy endpoints return 2D header-first arrays.
+# Try new paths first, fall back to legacy in case of future restructuring.
 PLASMA_URLS = [
+    # New RTSW endpoints (array-of-objects format, active as of 2025)
+    "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_7-day.json",
+    # Legacy endpoints (2D-array format, retired 2025 — kept for fallback reference)
     "https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json",
     "https://services.swpc.noaa.gov/products/solar-wind/plasma-3-day.json",
     "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json",
@@ -25,6 +29,9 @@ PLASMA_URLS = [
     "https://services.swpc.noaa.gov/products/solar-wind/plasma-5-minute.json",
 ]
 MAG_URLS = [
+    # New RTSW endpoints (array-of-objects format, active as of 2025)
+    "https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_7-day.json",
+    # Legacy endpoints (2D-array format, retired 2025 — kept for fallback reference)
     "https://services.swpc.noaa.gov/products/solar-wind/mag-7-day.json",
     "https://services.swpc.noaa.gov/products/solar-wind/mag-3-day.json",
     "https://services.swpc.noaa.gov/products/solar-wind/mag-1-day.json",
@@ -82,7 +89,12 @@ interplanetary CMEs can drive transient speeds above 1,000 km/s with enhanced ma
 
 
 def _get_sw_json(urls, label):
-    """Fetch solar wind JSON; try each URL in order until one returns 200."""
+    """Fetch solar wind JSON; try each URL in order until one returns 200.
+
+    Handles two formats:
+    - New RTSW (array-of-dicts): [{field: value, ...}, ...]  → pd.DataFrame(raw)
+    - Legacy (2D header-first):  [[col1, col2, ...], [v1, v2, ...], ...] → pd.DataFrame(raw[1:], columns=raw[0])
+    """
     for i, url in enumerate(urls):
         resp = requests.get(url, timeout=60)
         if resp.status_code == 404 and i < len(urls) - 1:
@@ -90,8 +102,12 @@ def _get_sw_json(urls, label):
             continue
         resp.raise_for_status()
         raw = resp.json()
-        # Format: first row is header, rest are data rows
-        return pd.DataFrame(raw[1:], columns=raw[0])
+        if raw and isinstance(raw[0], dict):
+            # New RTSW format: array of objects
+            return pd.DataFrame(raw)
+        else:
+            # Legacy format: first row is header, rest are data rows
+            return pd.DataFrame(raw[1:], columns=raw[0])
     raise RuntimeError(f"{label}: all URLs returned 404")
 
 
