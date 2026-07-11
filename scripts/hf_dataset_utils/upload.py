@@ -12,15 +12,19 @@ from huggingface_hub.errors import HfHubHTTPError
 
 
 def _hf_call_with_retry(fn, *args, max_attempts=10, base_delay=10, max_delay=300, **kwargs):
-    """Call an HF API function, retrying on 429 with capped exponential backoff."""
+    """Call an HF API function, retrying on 429/5xx with capped exponential backoff."""
     for attempt in range(max_attempts):
         try:
             return fn(*args, **kwargs)
         except HfHubHTTPError as e:
-            if "429" not in str(e) or attempt == max_attempts - 1:
+            err = str(e)
+            is_rate_limit = "429" in err
+            is_server_error = any(code in err for code in ("500", "502", "503", "504"))
+            if not (is_rate_limit or is_server_error) or attempt == max_attempts - 1:
                 raise
             delay = min(base_delay * (2 ** attempt), max_delay)
-            print(f"  HF rate limit (429), retrying in {delay}s (attempt {attempt + 1}/{max_attempts})...")
+            reason = "rate limit (429)" if is_rate_limit else "server error (5xx)"
+            print(f"  HF {reason}, retrying in {delay}s (attempt {attempt + 1}/{max_attempts})...")
             time.sleep(delay)
 
 
