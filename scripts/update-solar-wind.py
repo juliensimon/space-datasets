@@ -13,13 +13,17 @@ from hf_dataset_utils import Pipeline
 
 HF_REPO = "juliensimon/solar-wind"
 
-# NOAA SWPC migrated solar wind data from /products/solar-wind/ to /json/rtsw/ in 2025.
-# New RTSW endpoints return array-of-objects; legacy endpoints return 2D header-first arrays.
-# Try new paths first, fall back to legacy in case of future restructuring.
+# NOAA SWPC migrated from services.swpc.noaa.gov to services.swpc.woc.noaa.gov ~June 30 2026
+# (SCN 26-21). The /json/rtsw/ path structure is preserved on the new host.
+# Try new host first, fall back to old host in case of partial rollout/redirects.
 PLASMA_URLS = [
-    # New RTSW endpoints (array-of-objects format, active as of 2025)
+    # New host (active as of 2026-07)
+    "https://services.swpc.woc.noaa.gov/json/rtsw/rtsw_wind_7-day.json",
+    "https://services.swpc.woc.noaa.gov/products/solar-wind/plasma-7-day.json",
+    "https://services.swpc.woc.noaa.gov/products/solar-wind/plasma-3-day.json",
+    "https://services.swpc.woc.noaa.gov/products/solar-wind/plasma-1-day.json",
+    # Old host fallbacks (retired ~2026-06-30, kept in case of partial redirect)
     "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_7-day.json",
-    # Legacy endpoints (2D-array format, retired 2025 — kept for fallback reference)
     "https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json",
     "https://services.swpc.noaa.gov/products/solar-wind/plasma-3-day.json",
     "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json",
@@ -29,9 +33,13 @@ PLASMA_URLS = [
     "https://services.swpc.noaa.gov/products/solar-wind/plasma-5-minute.json",
 ]
 MAG_URLS = [
-    # New RTSW endpoints (array-of-objects format, active as of 2025)
+    # New host (active as of 2026-07)
+    "https://services.swpc.woc.noaa.gov/json/rtsw/rtsw_mag_7-day.json",
+    "https://services.swpc.woc.noaa.gov/products/solar-wind/mag-7-day.json",
+    "https://services.swpc.woc.noaa.gov/products/solar-wind/mag-3-day.json",
+    "https://services.swpc.woc.noaa.gov/products/solar-wind/mag-1-day.json",
+    # Old host fallbacks (retired ~2026-06-30, kept in case of partial redirect)
     "https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_7-day.json",
-    # Legacy endpoints (2D-array format, retired 2025 — kept for fallback reference)
     "https://services.swpc.noaa.gov/products/solar-wind/mag-7-day.json",
     "https://services.swpc.noaa.gov/products/solar-wind/mag-3-day.json",
     "https://services.swpc.noaa.gov/products/solar-wind/mag-1-day.json",
@@ -151,7 +159,7 @@ def main():
         description=DESCRIPTION,
         tags=["space", "space-weather", "solar-wind", "dscovr", "ace", "noaa",
               "magnetosphere", "bz", "geomagnetic", "open-data", "tabular-data", "parquet"],
-        source_url="https://www.swpc.noaa.gov/products/real-time-solar-wind",
+        source_url="https://www.spaceweather.gov/products/real-time-solar-wind",
         task_categories=["time-series-forecasting", "tabular-regression"],
         collection_url="https://huggingface.co/collections/juliensimon/space-weather-datasets-69c24cae98f1666f2101ca70",
         banner={"url": "https://images-assets.nasa.gov/image/iss072e159172/iss072e159172~medium.jpg",
