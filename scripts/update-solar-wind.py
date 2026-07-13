@@ -105,7 +105,7 @@ def _get_sw_json(urls, label):
     """
     for i, url in enumerate(urls):
         resp = requests.get(url, timeout=60)
-        if resp.status_code == 404 and i < len(urls) - 1:
+        if resp.status_code == 404:
             print(f"  {label}: {url} returned 404, trying next fallback")
             continue
         resp.raise_for_status()
