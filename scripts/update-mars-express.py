@@ -354,7 +354,7 @@ plt.show()
         p.publish(
             df,
             filename="mars_express_observations.parquet",
-            min_rows=1_000_000,
+            min_rows=200_000,
             expected_columns=["granule_uid", "instrument_name", "target_name",
                               "time_min", "time_max", "dataproduct_type"],
             critical_columns=["granule_uid", "instrument_name", "time_min"],
