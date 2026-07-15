@@ -7,7 +7,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ### Top downloads
 
 <!-- TOP_DOWNLOADS_START -->
-**248,354** downloads (all-time) (+761)  ·  **20** likes  ·  **230** datasets  ·  updated 2026-07-14
+**248,354** downloads (all-time)  ·  **20** likes  ·  **230** datasets  ·  updated 2026-07-15
 
 | # | Dataset | Downloads |
 |--:|---------|----------:|
@@ -19,7 +19,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 | 6 | [gaia-dr3-cepheids](https://huggingface.co/datasets/juliensimon/gaia-dr3-cepheids) | 10,137 |
 | 7 | [gaia-dr3-young-stellar-objects](https://huggingface.co/datasets/juliensimon/gaia-dr3-young-stellar-objects) | 9,795 |
 | 8 | [gaia-dr3-spectroscopic-binaries](https://huggingface.co/datasets/juliensimon/gaia-dr3-spectroscopic-binaries) | 9,521 |
-| 9 | [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) | 8,826 (+18) |
+| 9 | [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) | 8,826 |
 | 10 | [wmo-oscar-satellites](https://huggingface.co/datasets/juliensimon/wmo-oscar-satellites) | 8,009 |
 <!-- TOP_DOWNLOADS_END -->
 
