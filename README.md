@@ -7,7 +7,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ### Top downloads
 
 <!-- TOP_DOWNLOADS_START -->
-**248,354** downloads (all-time)  ·  **20** likes  ·  **230** datasets  ·  updated 2026-07-15
+**248,354** downloads (all-time)  ·  **20** likes  ·  **230** datasets  ·  updated 2026-07-16
 
 | # | Dataset | Downloads |
 |--:|---------|----------:|
