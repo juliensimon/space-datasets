@@ -13,40 +13,16 @@ from hf_dataset_utils import Pipeline
 
 HF_REPO = "juliensimon/solar-wind"
 
-# NOAA SWPC migrated from services.swpc.noaa.gov to services.swpc.woc.noaa.gov ~June 30 2026
-# (SCN 26-21). The /json/rtsw/ path structure is preserved on the new host.
-# Try new host first, fall back to old host in case of partial rollout/redirects.
+# NOAA SWPC SCN 26-21: new RTSW 1-minute JSON format active 2026-03-31;
+# all /products/solar-wind/ and 7-day RTSW paths deprecated 2026-04-30.
+# services.swpc.woc.noaa.gov is an internal-only host (403 from public internet).
+# New files cover the last 24 hours at 1-minute cadence; pipeline is incremental so
+# daily appends are sufficient.
 PLASMA_URLS = [
-    # New host (active as of 2026-07)
-    "https://services.swpc.woc.noaa.gov/json/rtsw/rtsw_wind_7-day.json",
-    "https://services.swpc.woc.noaa.gov/products/solar-wind/plasma-7-day.json",
-    "https://services.swpc.woc.noaa.gov/products/solar-wind/plasma-3-day.json",
-    "https://services.swpc.woc.noaa.gov/products/solar-wind/plasma-1-day.json",
-    # Old host fallbacks (retired ~2026-06-30, kept in case of partial redirect)
-    "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_7-day.json",
-    "https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json",
-    "https://services.swpc.noaa.gov/products/solar-wind/plasma-3-day.json",
-    "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json",
-    "https://services.swpc.noaa.gov/products/solar-wind/plasma-6-hour.json",
-    "https://services.swpc.noaa.gov/products/solar-wind/plasma-2-hour.json",
-    "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-hour.json",
-    "https://services.swpc.noaa.gov/products/solar-wind/plasma-5-minute.json",
+    "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
 ]
 MAG_URLS = [
-    # New host (active as of 2026-07)
-    "https://services.swpc.woc.noaa.gov/json/rtsw/rtsw_mag_7-day.json",
-    "https://services.swpc.woc.noaa.gov/products/solar-wind/mag-7-day.json",
-    "https://services.swpc.woc.noaa.gov/products/solar-wind/mag-3-day.json",
-    "https://services.swpc.woc.noaa.gov/products/solar-wind/mag-1-day.json",
-    # Old host fallbacks (retired ~2026-06-30, kept in case of partial redirect)
-    "https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_7-day.json",
-    "https://services.swpc.noaa.gov/products/solar-wind/mag-7-day.json",
-    "https://services.swpc.noaa.gov/products/solar-wind/mag-3-day.json",
-    "https://services.swpc.noaa.gov/products/solar-wind/mag-1-day.json",
-    "https://services.swpc.noaa.gov/products/solar-wind/mag-6-hour.json",
-    "https://services.swpc.noaa.gov/products/solar-wind/mag-2-hour.json",
-    "https://services.swpc.noaa.gov/products/solar-wind/mag-1-hour.json",
-    "https://services.swpc.noaa.gov/products/solar-wind/mag-5-minute.json",
+    "https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json",
 ]
 
 # ── Column descriptions ─────────────────────────────────────────────
@@ -111,8 +87,12 @@ def _get_sw_json(urls, label):
         resp.raise_for_status()
         raw = resp.json()
         if raw and isinstance(raw[0], dict):
-            # New RTSW format: array of objects
-            return pd.DataFrame(raw)
+            df = pd.DataFrame(raw)
+            # New multi-source RTSW format: filter to the active satellite only
+            # to avoid duplicate time_tags from DSCOVR+ACE
+            if "active" in df.columns:
+                df = df[df["active"].astype(bool)]
+            return df
         else:
             # Legacy format: first row is header, rest are data rows
             return pd.DataFrame(raw[1:], columns=raw[0])
