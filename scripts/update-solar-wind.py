@@ -104,6 +104,14 @@ def fetch_solar_wind():
     print("  Fetching plasma data...")
     df_plasma = _get_sw_json(PLASMA_URLS, "plasma")
 
+    # SCN 26-21 (2026-03-31): new RTSW format renamed plasma columns.
+    # Normalise to legacy names used throughout this script and in the dataset.
+    df_plasma = df_plasma.rename(columns={
+        "proton_density": "density",
+        "proton_speed": "speed",
+        "proton_temperature": "temperature",
+    })
+
     print("  Fetching magnetometer data...")
     df_mag = _get_sw_json(MAG_URLS, "mag")
 
