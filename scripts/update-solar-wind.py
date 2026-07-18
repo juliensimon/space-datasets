@@ -173,6 +173,13 @@ def main():
         df = p.clean(df, numeric=["density", "speed", "temperature",
                                    "bt", "bx_gsm", "by_gsm", "bz_gsm"])
 
+        # Drop alpha-particle columns introduced by the new RTSW format that
+        # NOAA currently leaves entirely null (as of 2026-03 SCN 26-21 rollout).
+        null_cols = [col for col in df.columns if df[col].isna().all()]
+        if null_cols:
+            print(f"  Dropping all-null columns: {null_cols}")
+            df = df.drop(columns=null_cols)
+
         # Stats
         n = len(df)
         date_min = df["time_tag"].min().strftime("%Y-%m-%d")
