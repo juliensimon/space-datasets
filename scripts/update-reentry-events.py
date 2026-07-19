@@ -1,12 +1,30 @@
 #!/usr/bin/env python3
 """Derive reentry events from CelesTrak SATCAT and upload to HF."""
 
+import io
+import time
+
 import pandas as pd
+import requests
 
 from hf_dataset_utils import Pipeline
 
 SATCAT_URL = "https://celestrak.org/pub/satcat.csv"
 HF_REPO = "juliensimon/reentry-events"
+
+
+def _fetch_satcat():
+    for attempt in range(3):
+        try:
+            resp = requests.get(SATCAT_URL, timeout=60)
+            resp.raise_for_status()
+            return pd.read_csv(io.StringIO(resp.text))
+        except Exception as e:
+            if attempt == 2:
+                raise
+            wait = 2 ** attempt
+            print(f"  WARNING: SATCAT fetch attempt {attempt + 1}/3: {e}, retrying in {wait}s...")
+            time.sleep(wait)
 
 # ── Column descriptions for README schema table ─────────────────────
 COLUMN_DESCRIPTIONS = {
@@ -48,7 +66,7 @@ but nonzero risk of surviving debris reaching populated areas.
 
 def main():
     print("Fetching SATCAT from CelesTrak...")
-    df = pd.read_csv(SATCAT_URL)
+    df = _fetch_satcat()
     print(f"  {len(df):,} total objects")
 
     # Parse dates
