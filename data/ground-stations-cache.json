@@ -2419,6 +2419,26 @@
       "name": "Kolkata",
       "lat": 22.5726,
       "lon": 88.3639
+    },
+    "hillsboro, us": {
+      "name": "Hillsboro",
+      "lat": 45.5229,
+      "lon": -122.9898
+    },
+    "batam city, id": {
+      "name": "Batam City",
+      "lat": 1.1031,
+      "lon": 104.0384
+    },
+    "ho chi minh city, vn": {
+      "name": "Ho Chi Minh City",
+      "lat": 10.7737,
+      "lon": 106.7166
+    },
+    "dakar, sn": {
+      "name": "Dakar",
+      "lat": 14.6934,
+      "lon": -17.4479
     }
   }
 }
