@@ -8,6 +8,7 @@ Crew, timeline, and payload data from NASA press kit and public sources.
 import math
 import re
 import sys
+import time
 
 import pandas as pd
 import requests
@@ -91,7 +92,23 @@ def fetch_horizons_vectors(center, start, stop, step="10m"):
         "STEP_SIZE": step,
         "VEC_TABLE": "2",
     }
-    resp = requests.get(HORIZONS_URL, params=params, timeout=120)
+    for attempt in range(3):
+        try:
+            resp = requests.get(HORIZONS_URL, params=params, timeout=120)
+            if resp.status_code < 500:
+                resp.raise_for_status()
+                return resp.text
+            if attempt < 2:
+                wait = 10 * (2 ** attempt)
+                print(f"  Horizons returned {resp.status_code}, retrying in {wait}s (attempt {attempt + 1}/3)...")
+                time.sleep(wait)
+        except requests.exceptions.Timeout:
+            if attempt < 2:
+                wait = 10 * (2 ** attempt)
+                print(f"  Horizons connection timed out, retrying in {wait}s (attempt {attempt + 1}/3)...")
+                time.sleep(wait)
+            else:
+                raise
     resp.raise_for_status()
     return resp.text
 
