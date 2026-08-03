@@ -143,6 +143,12 @@ def main():
     df = df[[c for c in df.columns if c in LAUNCH_COLUMN_DESCRIPTIONS]]
     sites = sites[[c for c in sites.columns if c in SITE_COLUMN_DESCRIPTIONS]]
 
+    # Drop all-null columns (apogee/range are null when source omits suborbital data)
+    all_null = [c for c in df.columns if df[c].isna().all()]
+    if all_null:
+        print(f"  Dropping all-null launch columns: {all_null}")
+        df = df.drop(columns=all_null)
+
     # ── Validate ─────────────────────────────────────────────────────────
     check_dataset(df, "launches", min_rows=70000,
                   expected_columns=["launch_tag", "launch_date", "lv_type", "launch_site"],
@@ -218,8 +224,10 @@ df_geo = df.merge(sites_df[["code", "latitude", "longitude"]],
             p.banner["alt"], p.banner["credit"], filename=banner_file,
         ) if banner_file else ""
 
-        launch_schema = _schema_section("Launches schema", LAUNCH_COLUMN_DESCRIPTIONS)
-        site_schema = _schema_section("Sites schema", SITE_COLUMN_DESCRIPTIONS)
+        launch_schema = _schema_section("Launches schema",
+            {k: v for k, v in LAUNCH_COLUMN_DESCRIPTIONS.items() if k in df.columns})
+        site_schema = _schema_section("Sites schema",
+            {k: v for k, v in SITE_COLUMN_DESCRIPTIONS.items() if k in sites.columns})
 
         readme = f"""---
 license: cc-by-4.0
