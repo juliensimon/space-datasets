@@ -49,7 +49,12 @@ def upload_to_hf(
     """Upload a directory to a Hugging Face dataset repository via Python API."""
     token = os.environ.get("HF_TOKEN")
     api = HfApi(token=token)
-    _hf_call_with_retry(api.create_repo, repo, repo_type="dataset", exist_ok=True)
+    # Skip create_repo when the repo already exists; avoids rate-limited calls
+    # during the busy morning window when many workflows run concurrently.
+    try:
+        api.repo_info(repo_id=repo, repo_type="dataset")
+    except Exception:
+        _hf_call_with_retry(api.create_repo, repo, repo_type="dataset", exist_ok=True)
     _hf_call_with_retry(
         api.upload_folder,
         repo_id=repo,
