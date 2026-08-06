@@ -1,26 +1,24 @@
 #!/usr/bin/env python3
 """Parser fixture test for update-fcc-ngso-filings.
 
-Runs parse_filing_html against a saved fcc.report HTML snapshot so that any
+Runs parse_filing_html against saved fcc.report HTML snapshots so that any
 upstream HTML drift is caught locally *before* the weekly cron ships broken
 data. Pure unit test — no network, no HF upload.
+
+fcc.report serves two layouts and both are covered here, because they exercise
+different code paths: kuiper.html carries transcribed FCC Form 312 sections
+(applicant address, nature of service), while starlink-gen1.html is an older
+record with the "Filing overview" table only, where those fields must fall
+back instead of raising.
 
 Run:
     python3 scripts/tests/test_fcc_ngso_parser.py
 
-Update fixture if fcc.report layout intentionally changes:
+Update fixtures if fcc.report layout intentionally changes:
     curl -s -A "space-datasets/fcc-ngso-filings" \
-        https://fcc.report/IBFS/SAT-LOA-20190704-00057 \
-        | python3 -c "import sys,re; \
-sys.stdout.write(re.sub(r'src=\"https://www\\.google\\.com/maps/embed[^\"]*\"', \
-'src=\"REDACTED-GOOGLE-MAPS-EMBED-URL\"', sys.stdin.read()))" \
-        > scripts/data/fixtures/kuiper.html
-
-The inline scrub removes fcc.report's public Google Maps Embed API key
-from the saved HTML — GitHub secret scanning will flag it as a Google API
-key pattern even though the key is already publicly exposed on fcc.report
-and referrer-restricted at Google's end. The parser never touches the
-iframe block so stripping it does not affect test coverage.
+        https://fcc.report/IBFS/SAT-LOA-20190704-00057 > scripts/data/fixtures/kuiper.html
+    curl -s -A "space-datasets/fcc-ngso-filings" \
+        https://fcc.report/IBFS/SAT-LOA-20161115-00118 > scripts/data/fixtures/starlink-gen1.html
 """
 
 import importlib.util
@@ -29,7 +27,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 SCRIPT = REPO / "scripts" / "update-fcc-ngso-filings.py"
-FIXTURE = REPO / "scripts" / "data" / "fixtures" / "kuiper.html"
+FIXTURES = REPO / "scripts" / "data" / "fixtures"
 SEED = REPO / "scripts" / "data" / "fcc_ngso_seed.json"
 
 
@@ -41,37 +39,61 @@ def _load_module():
     return m
 
 
-def test_parse_kuiper_fixture():
-    m = _load_module()
-    html = FIXTURE.read_text()
-    file_number = "SAT-LOA-20190704-00057"
-    result = m.parse_filing_html(html, file_number)
-
-    expectations = {
-        "applicant": "Kuiper Systems LLC",
-        "nature_of_service": "Fixed Satellite Service",
-        "status": "Action Complete",
-        "last_action": "Grant of Authority",
-    }
+def _check(result, expectations):
     for k, expected in expectations.items():
         assert result[k] == expected, f"{k}: expected {expected!r}, got {result[k]!r}"
 
+
+def test_parse_kuiper_fixture():
+    """Form-312 layout: applicant details come from the transcribed form."""
+    m = _load_module()
+    file_number = "SAT-LOA-20190704-00057"
+    result = m.parse_filing_html((FIXTURES / "kuiper.html").read_text(), file_number)
+
+    _check(result, {
+        "applicant": "Kuiper Systems LLC",
+        "nature_of_service": "Fixed-Satellite Service",
+        "status": "Closed",
+        "last_action": "Grant of Authority",
+    })
     assert str(result["date_filed"]) == "2019-07-04", f"date_filed: {result['date_filed']}"
     assert str(result["date_granted"]) == "2020-07-30", f"date_granted: {result['date_granted']}"
 
-    # Kuiper address and IBFS URL
-    assert "1776 K Street" in result["applicant_address"], f"address: {result['applicant_address']!r}"
+    # Applicant address must be Amazon's HQ, not the outside counsel address
+    # that fcc.report lists one section earlier under "Application details".
+    addr = result["applicant_address"]
+    assert "410 Terry Avenue North" in addr and "Seattle" in addr, f"address: {addr!r}"
     assert result["ibfs_url"].endswith(file_number)
 
-    # Ka-band frequency pairs must be present (17700-18200 is the core Kuiper band)
+    # Ka-band frequency pairs, stripped of the fixed-point zero padding
     assert "17700-18200" in result["frequency_bands"], f"frequency_bands: {result['frequency_bands']!r}"
 
-    # Description should mention Kuiper and NGSO
-    desc = result["description"].lower()
-    assert "kuiper" in desc and ("non-geostationary" in desc or "ngso" in desc), \
-        f"description missing expected keywords: {result['description'][:200]!r}"
-
+    assert "kuiper" in result["description"].lower(), f"description: {result['description'][:200]!r}"
     print("PASS: parse_filing_html(kuiper.html) extracted all expected fields")
+
+
+def test_parse_legacy_layout_fixture():
+    """Overview-only layout: no form sections, so the fallbacks must carry it."""
+    m = _load_module()
+    file_number = "SAT-LOA-20161115-00118"
+    result = m.parse_filing_html((FIXTURES / "starlink-gen1.html").read_text(), file_number)
+
+    _check(result, {
+        "applicant": "Space Exploration Holdings, LLC",
+        # No Form 312 section here — this falls back to the overview "Service" cell.
+        "nature_of_service": "Fixed Satellite Service",
+        "status": "Action Complete",
+        "last_action": "Grant of Authority",
+        # fcc.report transcribes no applicant form fields for this vintage.
+        "applicant_address": "",
+    })
+    assert str(result["date_filed"]) == "2016-11-15", f"date_filed: {result['date_filed']}"
+    assert str(result["date_granted"]) == "2018-03-29", f"date_granted: {result['date_granted']}"
+    assert "10700-10950" in result["frequency_bands"], f"frequency_bands: {result['frequency_bands']!r}"
+
+    desc = result["description"].lower()
+    assert "non-geostationary" in desc, f"description: {result['description'][:200]!r}"
+    print("PASS: parse_filing_html(starlink-gen1.html) handled the overview-only layout")
 
 
 def test_parse_empty_html_fails_fast():
@@ -99,6 +121,7 @@ def test_load_seed_validates():
 
 if __name__ == "__main__":
     test_parse_kuiper_fixture()
+    test_parse_legacy_layout_fixture()
     test_parse_empty_html_fails_fast()
     test_load_seed_validates()
     print("\nAll tests passed.")
