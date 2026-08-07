@@ -44,16 +44,16 @@ COLUMN_DESCRIPTIONS = {
     "system_name": "Human-readable constellation name (Starlink Gen2, Project Kuiper, OneWeb Gen1, etc.)",
     "filing_type": "IBFS filing type extracted from the file number: LOA (Launch and Operate), MOD (Modification), MPL (Market-Access Petition), AMD (Amendment), LOI (Letter of Intent), PDR (Petition for Declaratory Ruling)",
     "nature_of_service": "FCC service classification (Fixed Satellite Service, Mobile Satellite Service, etc.)",
-    "status": "Current processing status (Action Complete, Pending, Dismissed, etc.)",
-    "last_action": "Most recent action taken (Grant of Authority, Application Filed, etc.)",
+    "status": "Current processing status (Action Complete, Closed, Pending Review, etc. — fcc.report uses both the legacy and current IBFS status vocabularies)",
+    "last_action": "Most recent action taken (Grant of Authority, Granted in Part/Deferred in Part, etc.; empty while a filing is still pending)",
     "date_filed": "Date the filing was submitted to the FCC",
     "date_granted": "Date authorization was granted (null for pending or denied applications)",
-    "last_action_date": "Date of the most recent action on the filing",
+    "last_action_date": "Date of the most recent status change on the filing",
     "requested_satellites": "Total satellite count requested in the filing, as disclosed in filing attachments",
     "orbital_shells_json": "JSON array of shell descriptors (altitude_km, inclination_deg, satellite_count) — structure of the requested constellation",
-    "frequency_bands": "Comma-separated MHz band edges from the Frequency Summary table (e.g. 17700-18200,27500-28350)",
+    "frequency_bands": "Comma-separated MHz band edges from the Frequencies table (e.g. 17700-18200,27500-28350)",
     "description": "Filing description or abstract as published on the IBFS landing page",
-    "applicant_address": "Mailing address on the filing",
+    "applicant_address": "Applicant mailing address from FCC Form 312 (empty on older filings, whose form fields fcc.report does not transcribe)",
     "ibfs_url": "Canonical URL of the filing on fcc.report",
     "fetched_at_utc": "UTC timestamp when this row was refreshed from fcc.report",
 }
@@ -160,6 +160,12 @@ def fetch_filing(session, file_number):
     return parse_filing_html(resp.text, file_number, url)
 
 
+def _trim_number(text):
+    """'17700.000000' -> '17700'. Band edges are printed as fixed-point floats."""
+    s = _clean(text)
+    return s.rstrip("0").rstrip(".") if "." in s else s
+
+
 def parse_filing_html(html, file_number, url=None):
     """Parse a fcc.report IBFS landing page into a flat dict.
 
@@ -167,62 +173,91 @@ def parse_filing_html(html, file_number, url=None):
     without network access. Fails fast if the page has no applicant in the
     title, which is the clearest signal that the URL does not exist or the
     HTML structure has drifted.
+
+    fcc.report serves two layouts for IBFS filings. Every page has the
+    "Filing overview" table; pages whose FCC Form 312 has been transcribed
+    additionally carry <dl class="form-details"> sections (applicant address,
+    nature of service). Older records have the overview only, so the form
+    lookups below all fall back rather than fail.
     """
     if url is None:
         url = f"{BASE_URL}/{file_number}"
     soup = BeautifulSoup(html, "html.parser")
 
-    # Title: "Application for <service> by <applicant> [<file_number>]"
+    # Title: "<file_number> - <applicant> - FCC.report"
     title = _clean(soup.title.string if soup.title else "")
-    m = re.search(r"by (.+?) \[" + re.escape(file_number) + r"\]", title)
-    applicant_from_title = m.group(1) if m else ""
-    if not applicant_from_title:
+    m = re.match(re.escape(file_number) + r" - (.+?) - FCC\.report$", title)
+    applicant = m.group(1) if m else ""
+    if not applicant:
         raise RuntimeError(
             f"No applicant found on fcc.report page for {file_number} — "
             f"the page is empty or the file number does not exist"
         )
 
     # Description meta
-    meta_desc = soup.find("meta", {"name": "Description"})
+    meta_desc = soup.find("meta", attrs={"name": "description"})
     description = _clean(meta_desc["content"]) if meta_desc else ""
 
-    # Core metadata: first table inside <div class=well>
-    well = soup.find("div", class_="well")
+    # Core metadata: <th>label</th><td>value</td> rows of the overview table
     kv = {}
-    if well:
-        meta_tbl = well.find("table", class_="table")
-        if meta_tbl:
-            for tr in meta_tbl.find_all("tr"):
-                tds = tr.find_all("td")
-                if len(tds) == 2:
-                    k = _clean(tds[0].get_text())
-                    v = _clean(tds[1].get_text())
-                    kv[k] = v
+    overview_h = soup.find("h2", string="Filing overview")
+    overview_tbl = overview_h.find_next("table") if overview_h else None
+    if overview_tbl:
+        for tr in overview_tbl.find_all("tr"):
+            th, td = tr.find("th"), tr.find("td")
+            if th and td:
+                kv[_clean(th.get_text())] = _clean(td.get_text())
 
-    # Applicant block: <h5>Applicant</h5> inside a column div
-    applicant = applicant_from_title
-    applicant_address = ""
-    app_h5 = soup.find("h5", string="Applicant")
-    if app_h5:
-        parent = app_h5.parent
-        # Get text after the h5
-        text = parent.get_text("\n", strip=True)
-        lines = [line for line in text.splitlines() if line and line != "Applicant"]
-        if lines:
-            applicant = lines[0]
-            applicant_address = " ".join(lines[1:])
+    # Transcribed FCC Form 312 sections, keyed by their <h2> heading
+    forms = {}
+    for sec in soup.find_all("section"):
+        h2 = sec.find("h2")
+        dl = sec.find("dl", class_="form-details")
+        if not h2 or not dl:
+            continue
+        pairs = {}
+        for div in dl.find_all("div"):
+            dt, dd = div.find("dt"), div.find("dd")
+            if dt and dd:
+                pairs[_clean(dt.get_text())] = _clean(dd.get_text())
+        forms[_clean(h2.get_text())] = pairs
 
-    # Frequency Summary: table under <h3>Frequency Summary</h3>
-    freq_h = soup.find("h3", string="Frequency Summary")
+    def form_section(prefix):
+        # Headings carry FCC question ranges ("Applicant Information (Q1 - 16)")
+        # that shift between form revisions, so match on the stable prefix.
+        for name, pairs in forms.items():
+            if name.startswith(prefix):
+                return pairs
+        return {}
+
+    applicant_info = form_section("Applicant Information")
+    applicant = applicant_info.get("Name") or applicant
+    address_parts = [
+        applicant_info.get(k, "")
+        for k in ("Street Address", "Street Address 2", "City", "State",
+                  "Zip Code/Postal Code", "Country")
+    ]
+    applicant_address = " ".join(p for p in address_parts if p and p != "-")
+
+    # Nature of service: Form 312 question 20, else the overview "Service"
+    # column, which on the legacy layout holds the spelled-out service name.
+    nature_of_service = next(
+        (v for k, v in form_section("Type of Service").items() if "NATURE OF SERVICE" in k),
+        kv.get("Service", ""),
+    )
+
+    # Frequencies: table under <h2>Frequencies</h2>, first two columns are the
+    # lower/upper MHz edges (emission and location columns follow).
+    freq_h = soup.find("h2", string="Frequencies")
     freqs = []
     if freq_h:
         tbl = freq_h.find_next("table")
         if tbl:
-            for tr in tbl.find_all("tr")[1:]:  # skip header
+            for tr in tbl.find_all("tr"):
                 tds = tr.find_all("td")
-                if len(tds) == 2:
-                    lo = _clean(tds[0].get_text())
-                    hi = _clean(tds[1].get_text())
+                if len(tds) >= 2:
+                    lo = _trim_number(tds[0].get_text())
+                    hi = _trim_number(tds[1].get_text())
                     if lo and hi:
                         freqs.append(f"{lo}-{hi}")
     frequency_bands = ",".join(freqs)
@@ -238,12 +273,12 @@ def parse_filing_html(html, file_number, url=None):
     return {
         "applicant": applicant,
         "applicant_address": applicant_address,
-        "nature_of_service": kv.get("Nature of Service", ""),
+        "nature_of_service": nature_of_service,
         "status": kv.get("Status", ""),
-        "last_action": kv.get("Last Action", ""),
-        "date_filed": parse_date(kv.get("Date Filed", "")),
-        "date_granted": parse_date(kv.get("Date Granted", "")),
-        "last_action_date": parse_date(kv.get("Last Action Date", "")),
+        "last_action": kv.get("Last action", ""),
+        "date_filed": parse_date(kv.get("Date filed", "")),
+        "date_granted": parse_date(kv.get("Grant date", "")),
+        "last_action_date": parse_date(kv.get("Status date", "")),
         "frequency_bands": frequency_bands,
         "description": description,
         "ibfs_url": url,
@@ -329,7 +364,9 @@ def main():
         raise RuntimeError(f"Missing date_filed in rows: {bad}")
 
     n_total = len(df)
-    n_granted = int(df["status"].eq("Action Complete").sum())
+    # Grant date presence, not a status string: fcc.report reports the same
+    # outcome as "Action Complete" on legacy records and "Closed" on newer ones.
+    n_granted = int(df["date_granted"].notna().sum())
     total_requested = int(df["requested_satellites"].dropna().sum())
     family_counts = df["operator_family"].value_counts().to_dict()
 
@@ -366,7 +403,7 @@ def main():
         quick_stats = f"""\
 - **{n_total}** NGSO constellation filings tracked
 - **{total_requested:,}** total satellites requested across all filings
-- **{n_granted}** filings with Grant of Authority (Action Complete)
+- **{n_granted}** filings with an authorization granted
 - Operator families: {top_families}
 - Source: FCC IBFS via [fcc.report](https://fcc.report/IBFS/) (third-party mirror, not affiliated with the FCC)"""
 
