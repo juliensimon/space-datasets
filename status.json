@@ -1,4 +1,5 @@
 {
+  "4xmm-dr14": "2026-04-05",
   "_rows": {
     "4xmm-dr14": 630347,
     "ae-index": 48504,
@@ -147,7 +148,6 @@
     "xray-binaries": 301,
     "yarkovsky-nea": 247
   },
-  "4xmm-dr14": "2026-04-05",
   "ae-index": "2026-08-07",
   "apod": "2026-08-07",
   "artemis-ii": "2026-08-07",
@@ -178,7 +178,7 @@
   "exomars-tgo": "2026-08-03",
   "exoplanets": "2026-08-03",
   "f107": "2026-08-07",
-  "fcc-ngso-filings": "2026-07-27",
+  "fcc-ngso-filings": "2026-08-07",
   "feng-icmes": "2026-05-16",
   "fermi-3fhl": "2026-05-10",
   "fermi-3pc": "2026-04-05",
