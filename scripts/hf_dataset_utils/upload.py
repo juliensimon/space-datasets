@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import time
 from pathlib import Path
 
@@ -55,10 +56,33 @@ def upload_to_hf(
         api.repo_info(repo_id=repo, repo_type="dataset", timeout=30)
     except Exception:
         _hf_call_with_retry(api.create_repo, repo, repo_type="dataset", exist_ok=True)
-    _hf_call_with_retry(
-        api.upload_folder,
-        repo_id=repo,
-        folder_path=str(local_dir),
-        repo_type="dataset",
-        commit_message=commit_message,
-    )
+    try:
+        _hf_call_with_retry(
+            api.upload_folder,
+            repo_id=repo,
+            folder_path=str(local_dir),
+            repo_type="dataset",
+            commit_message=commit_message,
+        )
+    except HfHubHTTPError as e:
+        # HF rejects commits when an existing file has a broken LFS pointer.
+        # Recovery: delete the offending remote file and retry the upload once.
+        if "400" in str(e) and "LFS pointer" in str(e):
+            match = re.search(r"Offending file: - (.+)", str(e))
+            if match:
+                file_path = match.group(1).strip()
+                print(f"  Broken LFS pointer for {file_path}; deleting remote file and retrying...")
+                try:
+                    api.delete_file(file_path, repo_id=repo, repo_type="dataset")
+                except Exception as del_err:
+                    print(f"  Could not delete {file_path}: {del_err}")
+                    raise e
+                _hf_call_with_retry(
+                    api.upload_folder,
+                    repo_id=repo,
+                    folder_path=str(local_dir),
+                    repo_type="dataset",
+                    commit_message=commit_message,
+                )
+                return
+        raise
