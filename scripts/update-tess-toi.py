@@ -2,6 +2,7 @@
 """Fetch TESS Objects of Interest from NASA Exoplanet Archive and upload to HF."""
 
 import io
+import time
 
 import pandas as pd
 import requests
@@ -84,15 +85,28 @@ candidates still awaiting confirmation.
 """
 
 
+def _fetch_with_retry(retries=3, backoff=30):
+    for attempt in range(retries):
+        try:
+            resp = requests.post(TAP_URL, data={
+                "REQUEST": "doQuery",
+                "LANG": "ADQL",
+                "FORMAT": "csv",
+                "QUERY": ADQL,
+            }, timeout=300)
+            resp.raise_for_status()
+            return resp
+        except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError) as exc:
+            if attempt == retries - 1:
+                raise
+            wait = backoff * (2 ** attempt)
+            print(f"  Attempt {attempt + 1} failed ({exc}), retrying in {wait}s...")
+            time.sleep(wait)
+
+
 def main():
     print("Fetching TESS TOI catalog from NASA Exoplanet Archive...")
-    resp = requests.post(TAP_URL, data={
-        "REQUEST": "doQuery",
-        "LANG": "ADQL",
-        "FORMAT": "csv",
-        "QUERY": ADQL,
-    }, timeout=120)
-    resp.raise_for_status()
+    resp = _fetch_with_retry()
 
     df = pd.read_csv(io.StringIO(resp.text))
     print(f"  {len(df):,} TOI entries")
