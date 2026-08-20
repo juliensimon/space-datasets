@@ -2439,6 +2439,26 @@
       "name": "Dakar",
       "lat": 14.6934,
       "lon": -17.4479
+    },
+    "stockholm, se": {
+      "name": "Stockholm",
+      "lat": 59.3251,
+      "lon": 18.0711
+    },
+    "cyberjaya, my": {
+      "name": "Cyberjaya",
+      "lat": 2.9339,
+      "lon": 101.6456
+    },
+    "porto alegre, br": {
+      "name": "Porto Alegre",
+      "lat": -30.0325,
+      "lon": -51.2304
+    },
+    "kampala, ug": {
+      "name": "Kampala",
+      "lat": 0.3177,
+      "lon": 32.5814
     }
   }
 }
