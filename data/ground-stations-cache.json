@@ -2459,6 +2459,11 @@
       "name": "Kampala",
       "lat": 0.3177,
       "lon": 32.5814
+    },
+    "mcallen, us": {
+      "name": "McAllen",
+      "lat": 26.2041,
+      "lon": -98.2301
     }
   }
 }
