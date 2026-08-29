@@ -293,12 +293,9 @@ plt.title("AE Activity Level Distribution")
 plt.show()
 ```"""
 
-        # Drop entirely-null OPTIONAL columns only (ao_index is not always
-        # available in WDC Kyoto realtime; prevents hard-fail in check_dataset).
-        # Required columns (ae_index, au_index, al_index, datetime) are never
-        # dropped here — if they are all-null, check_dataset will emit the
-        # correct diagnostic and fail loudly.
-        _OPTIONAL_COLS = {"ao_index", "is_active", "activity_level", "quality"}
+        # Drop entirely-null columns that WDC Kyoto may not serve from CI IPs.
+        # Only ae_index and datetime are truly required; au/al/ao are best-effort.
+        _OPTIONAL_COLS = {"ao_index", "au_index", "al_index", "is_active", "activity_level", "quality"}
         all_null_cols = [
             c for c in df.columns
             if df[c].isna().all() and c in _OPTIONAL_COLS
