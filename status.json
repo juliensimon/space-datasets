@@ -1,5 +1,4 @@
 {
-  "4xmm-dr14": "2026-04-05",
   "_rows": {
     "4xmm-dr14": 630347,
     "ae-index": 49176,
@@ -78,7 +77,7 @@
     "launch-vehicles": 212,
     "lunar-eclipse-catalog": 12064,
     "lunar-geochemistry": 58289,
-    "mars-express": 593335,
+    "mars-express": 1696758,
     "mars-rovers": 505188,
     "maven": 8691683,
     "maxi": 170,
@@ -148,6 +147,7 @@
     "xray-binaries": 301,
     "yarkovsky-nea": 247
   },
+  "4xmm-dr14": "2026-04-05",
   "ae-index": "2026-08-30",
   "apod": "2026-08-30",
   "artemis-ii": "2026-08-30",
@@ -231,7 +231,7 @@
   "launch-vehicles": "2026-07-01",
   "lunar-eclipse-catalog": "2026-04-26",
   "lunar-geochemistry": "2026-04-04",
-  "mars-express": "2026-08-24",
+  "mars-express": "2026-08-31",
   "mars-rovers": "2026-08-24",
   "maven": "2026-07-01",
   "maxi": "2026-05-16",
