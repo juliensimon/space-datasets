@@ -2,12 +2,11 @@
 """Fetch space weather indices from CelesTrak and upload to HF."""
 
 import io
-import time
 
 import pandas as pd
-import requests
 
 from hf_dataset_utils import Pipeline
+from hf_dataset_utils.http import fetch_with_retry
 
 SW_URL = "https://celestrak.org/SpaceData/SW-All.csv"
 HF_REPO = "juliensimon/space-weather-indices"
@@ -111,17 +110,10 @@ def classify_storm(row):
 
 
 def _fetch_sw():
-    for attempt in range(3):
-        try:
-            resp = requests.get(SW_URL, timeout=60)
-            resp.raise_for_status()
-            lines = resp.text.splitlines()
-            data_lines = [l for l in lines if not l.startswith("#")]
-            return pd.read_csv(io.StringIO("\n".join(data_lines)))
-        except Exception as e:
-            if attempt == 2:
-                raise
-            time.sleep(2 ** attempt)
+    resp = fetch_with_retry(SW_URL, label="CelesTrak SW")
+    lines = resp.text.splitlines()
+    data_lines = [l for l in lines if not l.startswith("#")]
+    return pd.read_csv(io.StringIO("\n".join(data_lines)))
 
 
 def main():

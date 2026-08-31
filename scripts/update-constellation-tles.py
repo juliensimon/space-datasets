@@ -13,7 +13,7 @@ Starlink is excluded — see update-tle-latest.py for dedicated Starlink TLEs.
 """
 
 import sys
-import time
+
 from collections import OrderedDict
 from datetime import datetime, timezone
 
@@ -25,12 +25,12 @@ from hf_dataset_utils.banner import banner_markdown as render_banner
 from hf_dataset_utils.banner import download_banner
 from hf_dataset_utils.github import emit_output
 from hf_dataset_utils.readme import _citation_bibtex, _size_category
+from hf_dataset_utils.http import fetch_with_retry
 
 HF_REPO = "juliensimon/constellation-tle-latest"
 
 # Single bulk endpoint — all active satellites in one request (3LE = 3-line TLE text)
 BULK_URL = "https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=3le"
-MAX_RETRIES = 3
 
 # Constellation definitions: name patterns used to filter the bulk CSV.
 # "patterns" is a list of prefixes matched against OBJECT_NAME (case-insensitive).
@@ -129,21 +129,14 @@ def parse_3le_text(text: str) -> pd.DataFrame:
 
 def fetch_bulk_catalog() -> pd.DataFrame:
     """Fetch all active satellites from CelesTrak in 3LE format."""
-    for attempt in range(MAX_RETRIES):
-        try:
-            r = requests.get(BULK_URL, timeout=120)
-            r.raise_for_status()
-            df = parse_3le_text(r.text)
-            print(f"  Fetched {len(df):,} satellites from CelesTrak (single request)")
-            return df
-        except requests.RequestException as e:
-            if attempt < MAX_RETRIES - 1:
-                wait = 2 ** (attempt + 1)
-                print(f"  Retry {attempt + 1}/{MAX_RETRIES} in {wait}s: {e}")
-                time.sleep(wait)
-            else:
-                print(f"::error::Failed to fetch bulk catalog after {MAX_RETRIES} attempts: {e}")
-                sys.exit(1)
+    try:
+        r = fetch_with_retry(BULK_URL, timeout=120, label="CelesTrak bulk")
+    except requests.RequestException as e:
+        print(f"::error::Failed to fetch bulk catalog: {e}")
+        sys.exit(1)
+    df = parse_3le_text(r.text)
+    print(f"  Fetched {len(df):,} satellites from CelesTrak (single request)")
+    return df
 
 
 def match_constellation(row: pd.Series, cdef: dict) -> bool:

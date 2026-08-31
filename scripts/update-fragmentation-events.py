@@ -10,9 +10,11 @@ Based on the methodology used by NASA's Orbital Debris Program Office in the
 "History of On-Orbit Satellite Fragmentations" report series.
 """
 
+import io
 import pandas as pd
 
 from hf_dataset_utils import Pipeline
+from hf_dataset_utils.http import fetch_with_retry
 
 SATCAT_URL = "https://celestrak.org/pub/satcat.csv"
 HF_REPO = "juliensimon/orbital-fragmentation-events"
@@ -91,7 +93,7 @@ def identify_parent(group: pd.DataFrame) -> pd.Series:
 
 def main():
     print("Fetching SATCAT from CelesTrak...")
-    df = pd.read_csv(SATCAT_URL)
+    df = pd.read_csv(io.StringIO(fetch_with_retry(SATCAT_URL, label="SATCAT").text))
     print(f"  {len(df):,} total objects")
 
     # Parse dates

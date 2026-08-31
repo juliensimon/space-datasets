@@ -10,12 +10,11 @@ object pair and time of closest approach.
 """
 
 import io
-import time
 
 import pandas as pd
-import requests
 
 from hf_dataset_utils import Pipeline
+from hf_dataset_utils.http import fetch_with_retry
 
 HF_REPO = "juliensimon/satellite-conjunctions"
 
@@ -83,20 +82,10 @@ guidance."""
 
 
 def fetch_socrates():
-    """Fetch and curate the SOCRATES close-approach screen (CelesTrak 500-retry)."""
+    """Fetch and curate the SOCRATES close-approach screen."""
     print("  Fetching SOCRATES conjunctions from CelesTrak...")
-    for attempt in range(3):
-        try:
-            resp = requests.get(SOCRATES_URL, timeout=60,
-                                headers={"User-Agent": "Mozilla/5.0"})
-            resp.raise_for_status()
-            break
-        except requests.RequestException as exc:
-            if attempt == 2:
-                raise
-            wait = 2 ** attempt
-            print(f"  Retry {attempt + 1}/2 after {wait}s: {exc}")
-            time.sleep(wait)
+    resp = fetch_with_retry(SOCRATES_URL, headers={"User-Agent": "Mozilla/5.0"},
+                            label="SOCRATES")
 
     df = pd.read_csv(io.StringIO(resp.text)).rename(columns=RENAME)
     n_all = len(df)

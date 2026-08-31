@@ -8,6 +8,7 @@ from hf_dataset_utils.upload import upload_to_hf, write_parquet
 from hf_dataset_utils.readme import generate_readme
 from hf_dataset_utils.cleaning import coerce_numeric, coerce_int, clean_strings, drop_mostly_null
 from hf_dataset_utils.crosslinks import get_domain_crosslinks
+from hf_dataset_utils.http import fetch_with_retry
 
 __all__ = [
     "Pipeline",
@@ -20,4 +21,5 @@ __all__ = [
     "clean_strings",
     "drop_mostly_null",
     "get_domain_crosslinks",
+    "fetch_with_retry",
 ]

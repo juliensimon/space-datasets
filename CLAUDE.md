@@ -38,7 +38,7 @@ There is no test suite, linter, or build system. Validation happens inside each 
 
 ## Key Files
 
-- `scripts/hf_dataset_utils/` — shared Pipeline library used by all 226 dataset scripts. Provides `Pipeline` context manager that handles temp dirs, parquet writing (zstd), README generation, validation (`check_dataset()`), banner images, and HF upload. Key modules: `pipeline.py`, `validation.py`, `banner.py`, `readme.py`, `upload.py`, `tap.py` (VizieR/HEASARC TAP).
+- `scripts/hf_dataset_utils/` — shared Pipeline library used by all 226 dataset scripts. Provides `Pipeline` context manager that handles temp dirs, parquet writing (zstd), README generation, validation (`check_dataset()`), banner images, and HF upload. Key modules: `pipeline.py`, `validation.py`, `banner.py`, `readme.py`, `upload.py`, `tap.py` (VizieR/HEASARC TAP), `http.py` (`fetch_with_retry`).
 - `scripts/validate.py` — legacy `check_dataset()` function (now re-exported from `hf_dataset_utils.validation`).
 - `scripts/vizier_tap.py` — legacy VizieR TAP client (now re-exported from `hf_dataset_utils.tap`).
 - `scripts/jpl_api.py` — shared helpers for NASA JPL SSD API (NEO, SBDB, Sentry, NHATS). Converts `{"fields": [...], "data": [[...]]}` format to DataFrame.
@@ -120,6 +120,6 @@ APIs are unauthenticated except HF uploads and Space-Track (TLE history). Use `t
 | VizieR TAP | Always `SELECT *`, check actual CSV headers with curl. Column names may differ from docs (e.g. `logAge50` not `Age`, brackets get sanitized). No OFFSET — use `recno` pagination via `vizier_tap.py`. |
 | HEASARC TAP | Use `FORMAT=text` (pipe-delimited). `FORMAT=csv` returns VOTable XML. |
 | SIMBAD TAP | Use `basic` table only — JOINs with `allfluxes`/`mesDistance` fail. Use `OR` chains, not `IN (...)`. No `regexp()`. |
-| CelesTrak | 500 errors are common — add 1s delay + 3 retries with exponential backoff. |
+| CelesTrak | 500s are common, and it black-holes TCP connections from GitHub runners for 6+ minutes at a time (2026-08-28..31 took out 5 pipelines). Never hand-roll a retry loop — use `fetch_with_retry` from `hf_dataset_utils.http`, which rides out ~12 min. Tune the budget in `RETRY_WAITS` there, not per script. |
 | GFZ Kp API | Unreliable — use NOAA SWPC endpoint instead. |
 | Space-Track | Authenticated (cookie session). Max 2 requests/day for the daily pipeline. GP history returns only TLEs *generated* that day, not a complete snapshot — use forward-fill for backfills. Account has been banned before for aggressive usage. |

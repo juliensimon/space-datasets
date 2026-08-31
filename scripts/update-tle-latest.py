@@ -8,16 +8,14 @@ Two configs:
 Raw .tle files are provided alongside Parquet for SGP4 propagator compatibility.
 """
 
-import time
-
 import pandas as pd
-import requests
 
 from hf_dataset_utils import Pipeline, check_dataset, write_parquet
 from hf_dataset_utils.banner import banner_markdown as render_banner
 from hf_dataset_utils.banner import download_banner
 from hf_dataset_utils.github import emit_output
 from hf_dataset_utils.readme import _citation_bibtex, _size_category
+from hf_dataset_utils.http import fetch_with_retry
 
 STARLINK_URL = "https://celestrak.org/NORAD/elements/gp.php?GROUP=starlink&FORMAT=tle"
 GPS_URL = "https://celestrak.org/NORAD/elements/gp.php?GROUP=gps-ops&FORMAT=tle"
@@ -54,20 +52,9 @@ experiencing variable atmospheric drag), daily updates are essential.\
 """
 
 
-def fetch_tle(url: str, label: str, retries: int = 3) -> str:
-    """Fetch raw TLE text with retry (CelesTrak 500s are common)."""
-    for attempt in range(retries):
-        try:
-            r = requests.get(url, timeout=60)
-            r.raise_for_status()
-            return r.text
-        except requests.RequestException as e:
-            if attempt < retries - 1:
-                wait = 2 ** (attempt + 1)
-                print(f"  Retry {attempt + 1}/{retries} for {label} in {wait}s: {e}")
-                time.sleep(wait)
-            else:
-                raise
+def fetch_tle(url: str, label: str) -> str:
+    """Fetch raw TLE text, riding out multi-minute CelesTrak outages."""
+    return fetch_with_retry(url, label=label).text
 
 
 def parse_tle_text(text: str) -> pd.DataFrame:

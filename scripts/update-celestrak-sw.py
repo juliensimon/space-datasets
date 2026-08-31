@@ -7,12 +7,11 @@ standard input file for SGP4/SDP4 orbit propagation.
 """
 
 import io
-import time
 
 import pandas as pd
-import requests
 
 from hf_dataset_utils import Pipeline
+from hf_dataset_utils.http import fetch_with_retry
 
 HF_REPO = "juliensimon/celestrak-space-weather"
 SW_URL = "https://celestrak.org/SpaceData/SW-All.csv"
@@ -84,18 +83,10 @@ variability and its impact on the orbital environment.
 
 
 def _fetch_celestrak():
-    for attempt in range(3):
-        try:
-            resp = requests.get(SW_URL, timeout=60)
-            resp.raise_for_status()
-            lines = resp.text.splitlines()
-            data_lines = [line for line in lines if not line.startswith("#")]
-            return "\n".join(data_lines)
-        except Exception as e:
-            if attempt == 2:
-                raise
-            print(f"  Attempt {attempt + 1} failed: {e}; retrying in {2 ** attempt}s...")
-            time.sleep(2 ** attempt)
+    resp = fetch_with_retry(SW_URL, label="CelesTrak SW")
+    lines = resp.text.splitlines()
+    data_lines = [line for line in lines if not line.startswith("#")]
+    return "\n".join(data_lines)
 
 
 def main():

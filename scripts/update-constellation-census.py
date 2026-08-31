@@ -14,10 +14,10 @@ import time
 from datetime import datetime, timezone
 
 import pandas as pd
-import requests
 
 from hf_dataset_utils import Pipeline
 from hf_dataset_utils.upload import write_parquet
+from hf_dataset_utils.http import fetch_with_retry
 
 HF_REPO = "juliensimon/constellation-census"
 
@@ -229,7 +229,6 @@ CONSTELLATIONS = {
 
 GP_URL = "https://celestrak.org/NORAD/elements/gp.php?GROUP={group}&FORMAT=json"
 FETCH_DELAY = 1.0
-MAX_RETRIES = 3
 
 # ── Column descriptions for latest_satellites ────────────────────
 COLUMN_DESCRIPTIONS = {
@@ -350,21 +349,12 @@ def fetch_constellation_gp(constellation_id: str, cdef: dict, now: datetime) -> 
     group = cdef["group"]
     url = GP_URL.format(group=group)
 
-    records = None
-    for attempt in range(1, MAX_RETRIES + 1):
-        try:
-            resp = requests.get(url, timeout=30)
-            resp.raise_for_status()
-            records = resp.json()
-            break
-        except Exception as e:
-            if attempt < MAX_RETRIES:
-                wait = attempt * 2
-                print(f"  WARNING: {constellation_id} attempt {attempt}/{MAX_RETRIES}: {e}, retrying in {wait}s...")
-                time.sleep(wait)
-            else:
-                print(f"  WARNING: {constellation_id} ({group}): {e} (gave up after {MAX_RETRIES} attempts)")
-                return []
+    try:
+        records = fetch_with_retry(url, timeout=30, label=constellation_id).json()
+    except Exception as e:
+        # Soft-fail: one dead constellation must not sink the whole census.
+        print(f"  WARNING: {constellation_id} ({group}): {e} (gave up)")
+        return []
 
     if not records:
         return []

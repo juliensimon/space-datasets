@@ -12,14 +12,14 @@ Source: CelesTrak GP data (NORAD/18th Space Defense Squadron, GROUP=ast)
 """
 
 import math
-import time
+
 from datetime import datetime, timezone
 
 import pandas as pd
-import requests
 
 from hf_dataset_utils import Pipeline
 from hf_dataset_utils.upload import write_parquet
+from hf_dataset_utils.http import fetch_with_retry
 
 CELESTRAK_URL = "https://celestrak.org/NORAD/elements/gp.php?GROUP=ast&FORMAT=json"
 HF_REPO = "juliensimon/ast-spacemobile-fleet-data"
@@ -73,18 +73,7 @@ def altitude_from_mean_motion(n: float, ecc: float) -> float:
 
 def main():
     print("Fetching AST SpaceMobile TLEs from CelesTrak...")
-    for attempt in range(5):
-        try:
-            resp = requests.get(CELESTRAK_URL, timeout=60)
-            resp.raise_for_status()
-            break
-        except Exception as e:
-            if attempt == 4:
-                raise
-            wait = 5 * (2 ** attempt)  # 5, 10, 20, 40s
-            print(f"  CelesTrak attempt {attempt + 1}/5 failed ({e}), retry in {wait}s")
-            time.sleep(wait)
-    records = resp.json()
+    records = fetch_with_retry(CELESTRAK_URL, label="CelesTrak").json()
     print(f"  {len(records):,} satellites")
 
     now = datetime.now(timezone.utc)

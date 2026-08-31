@@ -2,12 +2,11 @@
 """Fetch NORAD SATCAT from CelesTrak and upload to HF."""
 
 import io
-import time
 
 import pandas as pd
-import requests
 
 from hf_dataset_utils import Pipeline
+from hf_dataset_utils.http import fetch_with_retry
 
 SATCAT_URL = "https://celestrak.org/pub/satcat.csv"
 HF_REPO = "juliensimon/space-track-satcat"
@@ -84,23 +83,9 @@ launch history analysis, spectrum management, and insurance risk modeling.
 """
 
 
-def _fetch_with_retry(url, retries=3, timeout=60):
-    for attempt in range(1, retries + 1):
-        try:
-            resp = requests.get(url, timeout=timeout)
-            resp.raise_for_status()
-            return resp
-        except Exception as e:
-            if attempt == retries:
-                raise
-            wait = 2 ** attempt
-            print(f"  Attempt {attempt} failed ({e}), retrying in {wait}s...")
-            time.sleep(wait)
-
-
 def main():
     print("Fetching SATCAT from CelesTrak...")
-    resp = _fetch_with_retry(SATCAT_URL)
+    resp = fetch_with_retry(SATCAT_URL)
     df = pd.read_csv(io.StringIO(resp.text))
     print(f"  {len(df):,} objects")
 

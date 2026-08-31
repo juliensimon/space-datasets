@@ -6,12 +6,11 @@ Includes polar motion, UT1-UTC, length of day, and nutation offsets.
 """
 
 import io
-import time
 
 import pandas as pd
-import requests
 
 from hf_dataset_utils import Pipeline
+from hf_dataset_utils.http import fetch_with_retry
 
 IERS_URL = "https://datacenter.iers.org/data/csv/finals2000A.data.csv"
 HF_REPO = "juliensimon/iers-earth-orientation"
@@ -77,23 +76,9 @@ insertion of a leap second.
 """
 
 
-def _fetch_with_retry(url, retries=3, timeout=120):
-    for attempt in range(1, retries + 1):
-        try:
-            resp = requests.get(url, timeout=timeout)
-            resp.raise_for_status()
-            return resp
-        except Exception as e:
-            if attempt == retries:
-                raise
-            wait = 2 ** attempt
-            print(f"  Attempt {attempt} failed ({e}), retrying in {wait}s...")
-            time.sleep(wait)
-
-
 def main():
     print("Fetching IERS Earth Orientation Parameters...")
-    resp = _fetch_with_retry(IERS_URL)
+    resp = fetch_with_retry(IERS_URL, timeout=120)
 
     # IERS CSV uses semicolons as separator
     try:

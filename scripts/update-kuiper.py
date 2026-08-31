@@ -11,14 +11,14 @@ Source: CelesTrak GP data (NORAD/18th Space Defense Squadron)
 
 import math
 import sys
-import time
+
 from datetime import datetime, timezone
 
 import pandas as pd
-import requests
 
 from hf_dataset_utils import Pipeline
 from hf_dataset_utils.upload import write_parquet
+from hf_dataset_utils.http import fetch_with_retry
 
 CELESTRAK_URL = "https://celestrak.org/NORAD/elements/gp.php?GROUP=kuiper&FORMAT=json"
 HF_REPO = "juliensimon/kuiper-fleet-data"
@@ -35,22 +35,9 @@ SHELLS = [
 SHELL_NAMES = {s["id"]: s["name"] for s in SHELLS}
 
 
-def _fetch_celestrak(url: str, retries: int = 4, timeout: int = 60) -> list:
-    """Fetch JSON from CelesTrak with exponential backoff (30s, 60s, 120s delays)."""
-    last_exc: Exception = RuntimeError("no attempts made")
-    for attempt in range(retries):
-        if attempt > 0:
-            wait = 30 * (2 ** (attempt - 1))
-            print(f"  CelesTrak retry {attempt}/{retries - 1} in {wait}s...")
-            time.sleep(wait)
-        try:
-            resp = requests.get(url, timeout=timeout)
-            resp.raise_for_status()
-            return resp.json()
-        except Exception as e:
-            last_exc = e
-            print(f"  CelesTrak fetch error (attempt {attempt + 1}): {e}")
-    raise last_exc
+def _fetch_celestrak(url: str, timeout: int = 60) -> list:
+    """Fetch JSON from CelesTrak, riding out multi-minute upstream outages."""
+    return fetch_with_retry(url, timeout=timeout, label="CelesTrak").json()
 
 
 COLUMN_DAILY_DESCRIPTIONS = {
