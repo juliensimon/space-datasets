@@ -7,20 +7,20 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ### Top downloads
 
 <!-- TOP_DOWNLOADS_START -->
-**318,041** downloads (all-time)  ·  **27** likes  ·  **230** datasets  ·  updated 2026-09-03
+**316,968** downloads (all-time) (+721)  ·  **27** likes  ·  **230** datasets  ·  updated 2026-08-31
 
 | # | Dataset | Downloads |
 |--:|---------|----------:|
-| 1 | [wmo-oscar-satellites](https://huggingface.co/datasets/juliensimon/wmo-oscar-satellites) | 24,396 |
-| 2 | [esa-rosetta-observations](https://huggingface.co/datasets/juliensimon/esa-rosetta-observations) | 20,512 |
-| 3 | [esa-exomars-tgo-observations](https://huggingface.co/datasets/juliensimon/esa-exomars-tgo-observations) | 20,036 |
-| 4 | [gaia-dr3-eclipsing-binaries](https://huggingface.co/datasets/juliensimon/gaia-dr3-eclipsing-binaries) | 11,403 |
-| 5 | [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) | 11,360 |
-| 6 | [gaia-dr3-white-dwarfs](https://huggingface.co/datasets/juliensimon/gaia-dr3-white-dwarfs) | 11,297 |
-| 7 | [gaia-dr3-rrlyrae](https://huggingface.co/datasets/juliensimon/gaia-dr3-rrlyrae) | 10,244 |
-| 8 | [gaia-dr3-cepheids](https://huggingface.co/datasets/juliensimon/gaia-dr3-cepheids) | 10,194 |
-| 9 | [gaia-dr3-young-stellar-objects](https://huggingface.co/datasets/juliensimon/gaia-dr3-young-stellar-objects) | 9,854 |
-| 10 | [gaia-dr3-spectroscopic-binaries](https://huggingface.co/datasets/juliensimon/gaia-dr3-spectroscopic-binaries) | 9,603 |
+| 1 | [wmo-oscar-satellites](https://huggingface.co/datasets/juliensimon/wmo-oscar-satellites) | 24,395 (+132) |
+| 2 | [esa-rosetta-observations](https://huggingface.co/datasets/juliensimon/esa-rosetta-observations) | 20,455 (+13) |
+| 3 | [esa-exomars-tgo-observations](https://huggingface.co/datasets/juliensimon/esa-exomars-tgo-observations) | 19,987 (+31) |
+| 4 | [gaia-dr3-eclipsing-binaries](https://huggingface.co/datasets/juliensimon/gaia-dr3-eclipsing-binaries) | 11,400 (+1) |
+| 5 | [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) | 11,314 (+22) |
+| 6 | [gaia-dr3-white-dwarfs](https://huggingface.co/datasets/juliensimon/gaia-dr3-white-dwarfs) | 11,296 |
+| 7 | [gaia-dr3-rrlyrae](https://huggingface.co/datasets/juliensimon/gaia-dr3-rrlyrae) | 10,241 |
+| 8 | [gaia-dr3-cepheids](https://huggingface.co/datasets/juliensimon/gaia-dr3-cepheids) | 10,191 |
+| 9 | [gaia-dr3-young-stellar-objects](https://huggingface.co/datasets/juliensimon/gaia-dr3-young-stellar-objects) | 9,853 |
+| 10 | [gaia-dr3-spectroscopic-binaries](https://huggingface.co/datasets/juliensimon/gaia-dr3-spectroscopic-binaries) | 9,600 |
 <!-- TOP_DOWNLOADS_END -->
 
 <!-- Orbital Mechanics -->
@@ -47,6 +47,7 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ![SpaceX Launches](https://github.com/juliensimon/space-datasets/actions/workflows/update-spacex-launches.yml/badge.svg)
 ![Constellation TLEs](https://github.com/juliensimon/space-datasets/actions/workflows/update-constellation-tles.yml/badge.svg)
 ![GMN Meteors](https://github.com/juliensimon/space-datasets/actions/workflows/update-gmn-meteors.yml/badge.svg)
+![GPS NANU](https://github.com/juliensimon/space-datasets/actions/workflows/update-gps-nanu.yml/badge.svg)
 ![Conjunctions](https://github.com/juliensimon/space-datasets/actions/workflows/update-conjunctions.yml/badge.svg)
 <!-- Space Weather -->
 ![CelesTrak SW](https://github.com/juliensimon/space-datasets/actions/workflows/update-celestrak-sw.yml/badge.svg)
@@ -149,6 +150,7 @@ Track every object orbiting Earth and beyond. This collection covers the complet
 | [gcat-launch-vehicles](https://huggingface.co/datasets/juliensimon/gcat-launch-vehicles) | 4,875 launch vehicles, engines, and stages from GCAT | — | Static | <1 MB |
 | [gcat-satellite-catalog](https://huggingface.co/datasets/juliensimon/gcat-satellite-catalog) | 68K+ satellites, rocket bodies, and debris from GCAT (Jonathan McDowell) | ![GCAT SATCAT](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['gcat-satcat']&label=updated&color=brightgreen) | Weekly | 2.6 MB |
 | [global-meteor-network](https://huggingface.co/datasets/juliensimon/global-meteor-network) | 3M+ individual meteor trajectories with orbits, velocities, and shower IDs from 500+ all-sky cameras worldwide (GMN) | ![GMN Meteors](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['gmn-meteors']&label=updated&color=brightgreen) | Daily | 245 MB |
+| [gps-nanu-archive](https://huggingface.co/datasets/juliensimon/gps-nanu-archive) | Complete GPS NANU notices archive (1990-present) — satellite status changes, maintenance windows, and forecast outages parsed from CelesTrak | ![GPS NANU](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$['gps-nanu']&label=updated&color=brightgreen) | Weekly | 5 MB |
 | [globalstar-fleet-data](https://huggingface.co/datasets/juliensimon/globalstar-fleet-data) | Daily Globalstar constellation health — per-generation satellite counts and status (Amazon-owned as of 2026) | ![Globalstar](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.globalstar&label=updated&color=brightgreen) | Daily | <1 MB |
 | [iau-meteor-showers](https://huggingface.co/datasets/juliensimon/iau-meteor-showers) | 2,163 meteor shower records from the IAU Meteor Data Center | — | Static | <1 MB |
 | [jpl-small-body-database](https://huggingface.co/datasets/juliensimon/jpl-small-body-database) | 1.4M+ asteroids and comets with orbital elements and physical parameters | ![SBDB](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/juliensimon/space-datasets/main/status.json&query=$.sbdb&label=updated&color=brightgreen) | Daily | 200 MB |
