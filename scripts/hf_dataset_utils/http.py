@@ -23,8 +23,9 @@ RETRY_WAITS = (30, 60, 120, 240)
 
 # Transient server-side conditions worth waiting out. Everything else (404,
 # 401, 400) is a real breakage -- retrying it burns the whole budget and buries
-# the cause under a timeout.
-RETRY_STATUS = frozenset({408, 425, 429, 500, 502, 503, 504})
+# the cause under a timeout. 403 is included because CelesTrak transiently
+# blocks GitHub runner IPs with 403 before allowing access again.
+RETRY_STATUS = frozenset({403, 408, 425, 429, 500, 502, 503, 504})
 
 
 def fetch_with_retry(url, *, timeout=60, waits=RETRY_WAITS, label=None, **kwargs):
