@@ -74,7 +74,7 @@ Built and uploaded: #1 PDS Missions, #2 InSight Marsquakes, #3 IAU Nomenclature,
 | # | Dataset | Domain | Rows | Size | Incr? | Schedule | Notes |
 |---|---------|--------|-----:|------|:-----:|----------|-------|
 | 1 | ~~Substorm Onset List~~ | Weather | 253,319 | 3 MB | No | Quarterly | **Built 2026-04-04** as `substorm-onsets` (SuperMAG, 5 algorithms) |
-| 2 | GPS NANU Archive | Orbital | 3,000 | 5 MB | Yes | Weekly | Append new NANUs by date |
+| 2 | ~~GPS NANU Archive~~ | Orbital | 5,681 | 5 MB | Yes | Weekly | **Built 2026-09-01** as `gps-nanu-archive` |
 | 3 | ~~Forbush Decreases~~ | Weather | 7,097 | <1 MB | No | Static | **Built 2026-04-04** as `forbush-decreases` (IZMIRAN FEID) |
 | 4 | Aerospace Corp Reentries | Orbital | 1,000+ | 5 MB | Yes | Weekly | Append new reentries. Web scraping, fragile |
 | 5 | Habitable Worlds Catalog | Astronomy | 70 | <1 MB | No | Quarterly | Full rebuild. Better as filtered exoplanets view |
@@ -165,11 +165,11 @@ Coverage gaps identified after reviewing the full 209-script catalog. All public
 |------|------:|----------|
 | **Static** | 12 | Venus Craters, GRS Elements, MAVEN, Juno Mag, Orbital Debris, Thermospheric Density, Gaia RR Lyrae full, SpaceTrack-TimeSeries, EGM2008, NANOGrav, NASA Fragmentation, ESA OPS-SAT |
 | **Daily** | 2 | Ionosonde, Transients (TNS) |
-| **Weekly** | 2 | GPS NANU, Aerospace Reentries |
+| **Weekly** | 1 | Aerospace Reentries |
 | **Monthly** | 1 | AstDyS Proper Elements |
 | **Quarterly** | 2 | Habitable Worlds, ASAS-SN |
 | **Yearly** | 1 | OGLE |
-| **Total remaining** | **20** | (4 solar system + 4 P2 + 12 P3) |
+| **Total remaining** | **19** | (4 solar system + 3 P2 + 12 P3) |
 
 ## Skip
 
