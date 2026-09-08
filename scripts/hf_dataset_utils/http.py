@@ -9,9 +9,10 @@ now.
 Budget rationale: between 2026-08-28 and 08-31, celestrak.org black-holed TCP
 connections from GitHub runners for stretches of 6+ minutes at a time. Every
 pipeline whose retries gave up sooner failed; run 33388408533 retried from
-11:44 to 11:51 and never completed a handshake. RETRY_WAITS rides out ~12 min
-worst case (450s of backoff plus five connect timeouts). Widen it here, not in
-the callers.
+11:44 to 11:51 and never completed a handshake. On 2026-09-08 the blackholing
+lasted longer than the original ~12 min budget (run 34209051829 exhausted all 5
+attempts). RETRY_WAITS now rides out ~21 min worst case (930s of backoff plus
+six connect timeouts). Widen it here, not in the callers.
 """
 
 import time
@@ -19,7 +20,7 @@ import time
 import requests
 
 # Waits between attempts; total attempts is len(RETRY_WAITS) + 1.
-RETRY_WAITS = (30, 60, 120, 240)
+RETRY_WAITS = (30, 60, 120, 240, 480)
 
 # Transient server-side conditions worth waiting out. Everything else (404,
 # 401, 400) is a real breakage -- retrying it burns the whole budget and buries
