@@ -21,5 +21,13 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add README.md data/download-stats.json
-          git diff --cached --quiet || (git commit -m "stats: update top downloads $(date -u +%Y-%m-%d)" && git pull --rebase && git push)
+          for i in 1 2 3; do
+            git pull --rebase || true
+            git add README.md data/download-stats.json
+            git diff --cached --quiet && break
+            git commit -m "stats: update top downloads $(date -u +%Y-%m-%d)"
+            git push && break
+            echo "Push failed (attempt $i), retrying..."
+            git reset HEAD~1
+            sleep 2
+          done
