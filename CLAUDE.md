@@ -15,7 +15,11 @@ pip install -r requirements.txt
 # Run any single pipeline:
 HF_TOKEN=hf_xxx python scripts/update-<dataset>.py
 
-# Local testing without HF upload: script fails at `hf upload` but parquet is written to temp dir first
+# WARNING: a local run publishes for real if an HF token is cached (~/.cache/huggingface/token
+# from a prior `hf login`) — huggingface_hub picks it up with no HF_TOKEN set, so Pipeline.publish()
+# creates or updates a PUBLIC dataset. To rehearse without uploading, point the token path at a
+# file that does not exist (HF_TOKEN="" and HF_HUB_DISABLE_IMPLICIT_TOKEN do NOT suppress it):
+HF_TOKEN_PATH=/nonexistent python scripts/update-<name>.py  # fails at upload; parquet still written to temp dir first
 # Syntax check: python3 -c "import py_compile; py_compile.compile('scripts/update-<name>.py', doraise=True)"
 ```
 
