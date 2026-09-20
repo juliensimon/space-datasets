@@ -6,6 +6,11 @@ from datetime import datetime, timezone
 
 import pandas as pd
 
+from hf_dataset_utils.sources import source_attribution
+
+# BibTeX "Last, First" form so reference managers parse the name correctly.
+DATASET_AUTHOR = "Simon, Julien"
+
 _YAML_TAG_SPECIAL = ('": ', ': ', '{', '[', '#', '"')
 
 
@@ -108,16 +113,21 @@ def _ml_task_hint(task_categories: list[str]) -> str:
     return f"This dataset is suitable for **{joined}** tasks."
 
 
-def _citation_bibtex(repo: str, pretty_name: str) -> str:
-    """Generate a BibTeX citation block."""
+def _citation_bibtex(repo: str, pretty_name: str, source_url: str | None = None) -> str:
+    """Generate a BibTeX citation block crediting the author and the source."""
     year = datetime.now(timezone.utc).year
     key = repo.split("/")[-1].replace("-", "_")
+    attribution = source_attribution(source_url)
+    note = ""
+    if attribution:
+        origin = f"{attribution}, {source_url}" if source_url else attribution
+        note = f"\n  note = {{Derived from {origin}}},"
     return f"""```bibtex
 @dataset{{{key},
   title = {{{pretty_name}}},
-  author = {{{repo.split("/")[0]}}},
+  author = {{{DATASET_AUTHOR}}},
   year = {{{year}}},
-  url = {{https://huggingface.co/datasets/{repo}}},
+  url = {{https://huggingface.co/datasets/{repo}}},{note}
   publisher = {{Hugging Face}}
 }}
 ```"""
@@ -270,7 +280,7 @@ configs:
         "Part of the [Space Datasets](https://julien.org/datasets) collection."
     )
     sections.append("## Citation")
-    sections.append(_citation_bibtex(repo, pretty_name))
+    sections.append(_citation_bibtex(repo, pretty_name, source_url))
     sections.append("## License")
     if license == "other":
         sections.append(f"[{license_name}]({license_link})")
