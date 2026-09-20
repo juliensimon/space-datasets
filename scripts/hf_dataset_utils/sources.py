@@ -27,6 +27,7 @@ SOURCE_ATTRIBUTION = {
     "sbn.psi.edu": "NASA PDS Small Bodies Node, Planetary Science Institute",
     "sbnarchive.psi.edu": "NASA PDS Small Bodies Node, Planetary Science Institute",
     "astropedia.astrogeology.usgs.gov": "USGS Astrogeology Science Center",
+    "astrogeology.usgs.gov": "USGS Astrogeology Science Center",
     "planetarynames.wr.usgs.gov": "IAU/USGS Gazetteer of Planetary Nomenclature",
     "mars.nasa.gov": "NASA Mars Exploration Program",
     # Small bodies and orbits

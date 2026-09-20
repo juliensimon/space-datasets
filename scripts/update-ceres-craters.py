@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fetch Ceres crater database (Zeilnhofer 2020) and upload to HF.
 
-Source: Zeilnhofer & Hiesinger (2020), Dawn Framing Camera 2.
+Source: Zeilnhofer & Barlow (2021), Icarus, from Dawn Framing Camera 2 images.
 Distributed by USGS Astrogeology Science Center via Astropedia.
 """
 
@@ -15,44 +15,57 @@ import requests
 
 from hf_dataset_utils import Pipeline
 
-DATA_URL = "https://astropedia.astrogeology.usgs.gov/download/Ceres/Dawn/Craters/ceres_dawn_fc2_craterdatabase_zeilnhofer_2020_v2.zip"
+DATA_URL = "https://astrogeology.usgs.gov/ckan/dataset/6c684fc5-91e2-4381-9d72-15dd5e02cdcf/resource/9ffe7225-0d7c-42db-ac3b-bb2a2320d67b/download/ceres_dawn_fc2_craterdatabase_zeilnhofer_2020_v2.zip"
 HF_REPO = "juliensimon/ceres-craters-dawn"
 
 # ── Column mapping ───────────────────────────────────────────────────
+# The source CSV's first two headers are swapped relative to their contents:
+# the column labelled "Latitude" holds longitude (0-360) and "Longitude" holds
+# latitude (-84.66 to +89.62). Confirmed two ways: the published coverage is
+# 84.66S-89.62N, and the documented Crater_ID rule ("first four digits of the
+# longitude, first three of the latitude, separated by the latitude sign")
+# pairs ID 1039-846 with Latitude=103.93, Longitude=-84.66.
 RENAME = {
-    "CRATER_ID": "crater_id", "Crater_ID": "crater_id", "ID": "crater_id",
-    "LAT_CIRC_IMG": "latitude_deg", "LATITUDE_CIRCLE_IMAGE": "latitude_deg",
-    "Lat_Circ_Img": "latitude_deg", "Lat": "latitude_deg", "lat": "latitude_deg",
-    "LON_CIRC_IMG": "longitude_deg", "LONGITUDE_CIRCLE_IMAGE": "longitude_deg",
-    "Lon_Circ_Img": "longitude_deg", "Lon": "longitude_deg", "lon": "longitude_deg",
-    "DIAM_CIRC_IMG": "diameter_km", "DIAM_CIRCLE_IMAGE": "diameter_km",
-    "Diam_Circ_Img": "diameter_km", "Diam_km": "diameter_km", "diam_km": "diameter_km",
-    "Diameter": "diameter_km", "D_km": "diameter_km",
-    "DEPTH_RIM_TOPO": "depth_km", "DEPTH_RIMFLOOR_TOPOG": "depth_km",
-    "Depth_Rim_Topo": "depth_km", "Depth_km": "depth_km", "d_km": "depth_km",
-    "DEPTH_DIAM_RATIO": "depth_diameter_ratio", "Depth_Diam_Ratio": "depth_diameter_ratio",
-    "d_D": "depth_diameter_ratio", "dD": "depth_diameter_ratio",
-    "MORPHOLOGY_EJECTA_1": "ejecta_morphology", "MORPH_EJECTA_1": "ejecta_morphology",
-    "Morphology": "morphology", "morphology": "morphology",
-    "Degradation": "degradation_state", "Degradation_State": "degradation_state",
-    "DEG_STATE": "degradation_state",
-    "Preservation": "preservation_state",
-    "Confidence": "confidence", "CONFIDENCE": "confidence",
+    "Latitude": "longitude_deg",
+    "Longitude": "latitude_deg",
+    "Crater_ID": "crater_id",
+    "Dc_km": "diameter_km",
+    "Minor_Dc_km": "minor_diameter_km",
+    "Pres": "preservation_state",
+    "Ejecta": "ejecta_morphology",
+    "Int_1": "interior_morphology_1",
+    "Int_2": "interior_morphology_2",
+    "Dpk_km": "central_peak_diameter_km",
+    "Dpk_Dc": "peak_crater_diameter_ratio",
+    "Dp_km": "central_pit_diameter_km",
+    "Dp_Dc": "pit_crater_diameter_ratio",
+    "rim_km_Mean_Sphere": "rim_height_km_mean_sphere",
+    "d_km_Mean_Sphere": "depth_km_mean_sphere",
+    "rim_km_Oblate_Sphere": "rim_height_km_oblate_sphere",
+    "d_km_Oblate_Sphere": "depth_km_oblate_sphere",
 }
 
 # ── Column descriptions for README schema table ─────────────────────
+# Wording follows the column-definition document shipped inside the source zip.
 COLUMN_DESCRIPTIONS = {
-    "crater_id": "Unique integer crater identifier assigned in the Zeilnhofer (2020) catalog; stable across versions",
-    "latitude_deg": "Crater center planetocentric latitude (degrees, -90 to +90)",
-    "longitude_deg": "Crater center east longitude on Ceres (degrees, 0-360 E; Ceres uses east-positive convention)",
-    "diameter_km": "Crater rim-to-rim diameter (km); range ~0.1-280 km (largest: Kerwan basin)",
-    "depth_km": "Rim-to-floor depth (km); shallower than expected for size suggests infill by mass wasting or cryovolcanism; null if not measured",
-    "depth_diameter_ratio": "Depth divided by diameter; fresh craters ~0.15-0.20; decreases with degradation and ice-driven viscous relaxation",
-    "ejecta_morphology": "Morphological classification of the crater ejecta blanket (e.g., layered, radial); null for craters without distinct ejecta",
-    "morphology": "General morphological classification of the crater (e.g., simple, complex, degraded); null for unclassified craters",
-    "degradation_state": "Qualitative degradation state indicating crater freshness; fresh craters have sharp rims, degraded ones are partially infilled",
-    "preservation_state": "Preservation quality assessment of the crater structure; complements the degradation state",
-    "confidence": "Confidence level in the crater identification; lower values indicate ambiguous or uncertain detections",
+    "crater_id": "Crater identifier built from its centre coordinates: the first four digits of the longitude and the first three of the latitude, separated by the latitude sign (e.g. '1039-846' is 103.93E, 84.66S)",
+    "latitude_deg": "Crater centre latitude in degrees, positive north, measured in JMARS; coverage runs 84.66S to 89.62N",
+    "longitude_deg": "Crater centre east longitude in degrees (0-360), measured in JMARS",
+    "diameter_km": "Crater (major) diameter in km, measured in JMARS to the nearest tenth of a km; range 1.0-282.0 km",
+    "minor_diameter_km": "Minor-axis diameter in km, reported only where it differs from the major diameter by at least 0.1 km; 0.0 means the crater is effectively circular, not that the value is missing",
+    "preservation_state": "Preservation on a 0-5 scale: 1 highly degraded to the point of erasure, 2 highly degraded, 3 moderate, 4 slight, 5 fresh; 0 would be a 'ghost' crater but none are reported",
+    "ejecta_morphology": "Ejecta morphology from Low Altitude Mapping Orbit images: 'CE' for a continuous ejecta blanket, 'No' where none is visible",
+    "interior_morphology_1": "Most prominent interior morphology: BA/DA bright or dark albedo feature, EB external ejecta blanket deposit, Pk central peak, SP summit pit, SY floor pit, FD floor deposit, WT wall terrace; 'No' where none is present",
+    "interior_morphology_2": "Second most prominent interior morphology, same coding as interior_morphology_1",
+    "central_peak_diameter_km": "Basal diameter of the central peak in km, averaged over three measurements; applies to craters with a central peak (Pk) or summit pit (SP); 0.0 where not applicable",
+    "peak_crater_diameter_ratio": "Central peak basal diameter divided by crater diameter; 0.0 where no peak was measured",
+    "central_pit_diameter_km": "Diameter of the central pit in km, averaged over three measurements; applies to floor pits (SY) and summit pits (SP); 0.0 where not applicable",
+    "pit_crater_diameter_ratio": "Central pit diameter divided by crater diameter; 0.0 where no pit was measured",
+    "rim_height_km_mean_sphere": "Crater rim height in km under the Mean Spheroid model of Ceres topography, averaged over three profiles taken out to about two crater radii",
+    "depth_km_mean_sphere": "Crater depth in km under the Mean Spheroid model, averaged over three profiles taken out to about two crater radii",
+    "rim_height_km_oblate_sphere": "Crater rim height in km under the Oblate Spheroid model, same three-profile method",
+    "depth_km_oblate_sphere": "Crater depth in km under the Oblate Spheroid model, same three-profile method",
+    "depth_diameter_ratio": "depth_km_mean_sphere divided by diameter_km; derived, not in the source file. Fresh craters sit near 0.15-0.20 and the ratio falls as craters degrade or relax viscously",
     "size_class": "Derived size category: small (<5 km), medium (5-20 km), large (20-100 km), giant (>100 km)",
 }
 
@@ -61,7 +74,7 @@ DESCRIPTION = """\
 The most comprehensive catalog of impact craters on dwarf planet Ceres, containing \
 craters with diameter >= 1 km identified from Dawn Framing Camera (FC2) imagery.
 
-This database was compiled by M. F. Zeilnhofer and H. Hiesinger (2020) using images from NASA's Dawn \
+This database was compiled by M. F. Zeilnhofer and N. G. Barlow (2021) using images from NASA's Dawn \
 spacecraft Framing Camera 2. Every crater >= 1 km in diameter on Ceres was identified and measured, \
 providing positions, diameters, and depth measurements where available.
 
@@ -142,8 +155,10 @@ def main():
     )
 
     # Compute depth/diameter ratio if not present but components exist
-    if "depth_diameter_ratio" not in df.columns and "depth_km" in df.columns and "diameter_km" in df.columns:
-        df["depth_diameter_ratio"] = (df["depth_km"] / df["diameter_km"]).round(4)
+    if "depth_km_mean_sphere" in df.columns and "diameter_km" in df.columns:
+        df["depth_diameter_ratio"] = (
+            df["depth_km_mean_sphere"] / df["diameter_km"]
+        ).round(4)
 
     # Derived column: size class
     df["size_class"] = df["diameter_km"].apply(size_class)
@@ -166,7 +181,7 @@ def main():
     n_giant = int((df["size_class"] == "giant").sum())
     diam_min = df["diameter_km"].min()
     diam_max = df["diameter_km"].max()
-    has_depth = int(df["depth_km"].notna().sum()) if "depth_km" in df.columns else 0
+    has_depth = int((df["depth_km_mean_sphere"] > 0).sum()) if "depth_km_mean_sphere" in df.columns else 0
 
     quick_stats = f"""\
 - **{n_total:,}** total craters on Ceres
@@ -208,7 +223,7 @@ print(f"Craters >50 km: {len(large)}")
         description=DESCRIPTION,
         tags=["space", "ceres", "dawn", "craters", "planetary-science",
               "usgs", "asteroid", "nasa", "open-data", "tabular-data", "parquet"],
-        source_url="https://astropedia.astrogeology.usgs.gov/download/Ceres/Dawn/Craters/",
+        source_url="https://astrogeology.usgs.gov/search/map/ceres_dawn_zeilnhofer_crater_database_2020",
         task_categories=["tabular-classification", "tabular-regression"],
         collection_url="https://huggingface.co/collections/juliensimon/planetary-science-datasets-69c2d4683bd6a66c34fb4af2",
         banner={
@@ -225,8 +240,12 @@ print(f"Craters >50 km: {len(large)}")
         df = p.clean(
             df,
             numeric=[
-                "latitude_deg", "longitude_deg", "diameter_km", "depth_km",
-                "depth_diameter_ratio",
+                "latitude_deg", "longitude_deg", "diameter_km",
+                "minor_diameter_km", "central_peak_diameter_km",
+                "peak_crater_diameter_ratio", "central_pit_diameter_km",
+                "pit_crater_diameter_ratio", "rim_height_km_mean_sphere",
+                "depth_km_mean_sphere", "rim_height_km_oblate_sphere",
+                "depth_km_oblate_sphere", "depth_diameter_ratio",
             ],
         )
         p.publish(
