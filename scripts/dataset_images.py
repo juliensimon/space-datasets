@@ -552,6 +552,7 @@ DATASET_DOMAIN = {
     "fermi-4lac": "physics",
     "fermi-gbm-triggers": "physics",
     "gravitational-waves": "physics",
+    "gw-candidate-alerts": "physics",
     "hawc": "physics",
     "icecat": "physics",
     "integral-ibis": "physics",

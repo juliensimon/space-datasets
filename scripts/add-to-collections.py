@@ -442,6 +442,7 @@ DATASETS = {
         "juliensimon/fermi-3fhl-hard-gamma-ray",
         "juliensimon/fermi-4lac-agn-catalog",
         "juliensimon/fermi-gbm-triggers",
+        "juliensimon/gw-candidate-alerts",
         "juliensimon/hawc-tev-gamma-ray",
         "juliensimon/icecat-neutrino-alerts",
         "juliensimon/integral-ibis-hard-xray",
