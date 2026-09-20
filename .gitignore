@@ -27,6 +27,10 @@ credentials.yaml
 .netrc
 .htpasswd
 
+# claude-mem auto-generated per-directory context stubs (root CLAUDE.md is tracked)
+**/CLAUDE.md
+!/CLAUDE.md
+
 # Internal working state — local notes, tool caches, audit scratch, planning docs
 .playwright-mcp/
 TEXT_CORPORA.md
