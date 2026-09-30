@@ -1,39 +1,42 @@
-import json, requests
+import json, requests, time
 B = "https://fccprod.servicenowservices.com"
-P = "6865628b1bd2625069c154e2604bcbf2"
-FN = "SAT-LOA-20190704-00057"
+SEED = [f["file_number"] for f in json.load(open("scripts/data/fcc_ngso_seed.json"))["filings"]]
 s = requests.Session()
-s.headers.update({"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
-                  "Accept": "application/json"})
-s.get(f"{B}/icfs?id=ibfs_application_summary&number={FN}", timeout=30)
-URLS = [
-    f"{B}/api/now/sp/page?id=ibfs_application_summary&number={FN}&portal_id={P}",
-    f"{B}/api/now/sp/page?id=ibfs_application_summary&number={FN}",
-    f"{B}/api/now/table/x_g_fmc_ibfs_filing?sysparm_query=file_number={FN}&sysparm_limit=1",
-    f"{B}/icfs?id=ibfs_search",
-]
-for u in URLS:
-    try:
-        r = s.get(u, timeout=60)
-        print(f"== {r.status_code} {u} ({len(r.text)} bytes, {r.headers.get('content-type')})")
-        t = r.text
-        for kw in ("Kuiper", "KUIPER", "Date Filed", "date_filed", "Grant", "Status", "error"):
-            i = t.find(kw)
-            if i >= 0:
-                print(f"   [{kw}] ...{' '.join(t[max(0,i-300):i+500].split())}...")
-        print("   HEAD:", " ".join(t[:1500].split()))
-        if "json" in (r.headers.get("content-type") or ""):
-            j = r.json()
-            def walk(o, path="", depth=0):
-                if depth > 6: return
-                if isinstance(o, dict):
-                    for k, v in o.items():
-                        if isinstance(v, (dict, list)): walk(v, f"{path}.{k}", depth+1)
-                        elif isinstance(v, str) and v and len(v) < 200 and any(x in k.lower() for x in ("name","title","widget","id","file","date","status","applicant","value","display")):
-                            print(f"   {path}.{k} = {v!r}")
-                elif isinstance(o, list):
-                    for i, v in enumerate(o[:40]): walk(v, f"{path}[{i}]", depth+1)
-            walk(j)
-    except Exception as e:
-        print("ERR", u, e)
+s.headers.update({"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36", "Accept": "application/json"})
+
+def widgets(o):
+    if isinstance(o, dict):
+        if "widget" in o and isinstance(o.get("widget"), dict):
+            yield o["widget"]
+        for v in o.values():
+            yield from widgets(v)
+    elif isinstance(o, list):
+        for v in o:
+            yield from widgets(v)
+
+def show(d, pre, depth=0):
+    if depth > 4: return
+    if isinstance(d, dict):
+        if set(d) >= {"display_value", "label"}:
+            print(f"{pre} [{d['label']}] = {str(d['display_value'])[:160]!r}")
+            return
+        for k, v in d.items():
+            show(v, f"{pre}.{k}", depth+1)
+    elif isinstance(d, list):
+        print(f"{pre} (list len={len(d)})")
+        for i, v in enumerate(d[:6]): show(v, f"{pre}[{i}]", depth+1)
+    elif isinstance(d, (str, int, float, bool)) or d is None:
+        print(f"{pre} = {str(d)[:160]!r}")
+
+for n, fn in enumerate(SEED):
+    r = s.get(f"{B}/api/now/sp/page", params={"id": "ibfs_application_summary", "number": fn}, timeout=60)
+    print(f"\n######## {fn} -> {r.status_code}, {len(r.text)} bytes")
+    j = r.json()
+    for w in widgets(j):
+        d = w.get("data") or {}
+        if not d: continue
+        print(f"--- widget name={w.get('name')!r} id={w.get('id')!r} keys={sorted(d)[:40]}")
+        if n < 2 or "summary" in d:
+            show(d, "   data")
+    time.sleep(2)
 raise SystemExit(1)
