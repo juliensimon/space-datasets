@@ -1,42 +1,43 @@
 import json, requests, time
 B = "https://fccprod.servicenowservices.com"
-SEED = [f["file_number"] for f in json.load(open("scripts/data/fcc_ngso_seed.json"))["filings"]]
 s = requests.Session()
 s.headers.update({"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36", "Accept": "application/json"})
+SKIP = {"template", "css", "client_script", "link", "script", "server_script", "option_schema", "demo_data"}
+KW = ("freq", "service", "descr", "band", "emission", "orbit", "satell", "narrative")
 
-def widgets(o):
+def walk(o, path, out):
     if isinstance(o, dict):
-        if "widget" in o and isinstance(o.get("widget"), dict):
-            yield o["widget"]
-        for v in o.values():
-            yield from widgets(v)
-    elif isinstance(o, list):
-        for v in o:
-            yield from widgets(v)
-
-def show(d, pre, depth=0):
-    if depth > 4: return
-    if isinstance(d, dict):
-        if set(d) >= {"display_value", "label"}:
-            print(f"{pre} [{d['label']}] = {str(d['display_value'])[:160]!r}")
+        if set(o) >= {"display_value", "label"}:
+            if any(k in (path + str(o["label"])).lower() for k in KW):
+                out.append(f"{path} [{o['label']}] = {str(o['display_value'])[:300]!r}")
             return
-        for k, v in d.items():
-            show(v, f"{pre}.{k}", depth+1)
-    elif isinstance(d, list):
-        print(f"{pre} (list len={len(d)})")
-        for i, v in enumerate(d[:6]): show(v, f"{pre}[{i}]", depth+1)
-    elif isinstance(d, (str, int, float, bool)) or d is None:
-        print(f"{pre} = {str(d)[:160]!r}")
+        for k, v in o.items():
+            if k in SKIP: continue
+            p = f"{path}.{k}"
+            if isinstance(v, (str, int, float)) and any(x in k.lower() for x in KW) and str(v).strip():
+                out.append(f"{p} = {str(v)[:300]!r}")
+            walk(v, p, out)
+    elif isinstance(o, list):
+        for i, v in enumerate(o[:60]):
+            walk(v, f"{path}[{i}]", out)
 
-for n, fn in enumerate(SEED):
-    r = s.get(f"{B}/api/now/sp/page", params={"id": "ibfs_application_summary", "number": fn}, timeout=60)
-    print(f"\n######## {fn} -> {r.status_code}, {len(r.text)} bytes")
-    j = r.json()
-    for w in widgets(j):
-        d = w.get("data") or {}
-        if not d: continue
-        print(f"--- widget name={w.get('name')!r} id={w.get('id')!r} keys={sorted(d)[:40]}")
-        if n < 2 or "summary" in d:
-            show(d, "   data")
+for fn in ("SAT-LOA-20190704-00057", "SAT-LOA-20161115-00118"):
+    j = s.get(f"{B}/api/now/sp/page", params={"id": "ibfs_application_summary", "number": fn}, timeout=60).json()
+    out = []
+    walk(j, "", out)
+    print(f"\n######## {fn}: {len(out)} hits")
+    for line in out[:150]: print("  ", line)
+    # tab widget names/ids and their data keys
+    def tabs(o, path=""):
+        if isinstance(o, dict):
+            if o.get("id") == "ibfs-tabs" or o.get("name") == "IBFS Tabs":
+                for i, w in enumerate((o.get("data") or {}).get("widgets", [])):
+                    ww = w.get("widget", w) if isinstance(w, dict) else {}
+                    print(f"   TAB[{i}] name={ww.get('name')!r} id={ww.get('id')!r} keys={sorted((ww.get('data') or {}).keys())[:30]} topkeys={sorted(w.keys())[:20] if isinstance(w, dict) else None}")
+            for k, v in o.items():
+                if k not in SKIP: tabs(v, path + "." + k)
+        elif isinstance(o, list):
+            for v in o: tabs(v, path)
+    tabs(j)
     time.sleep(2)
 raise SystemExit(1)
