@@ -15,6 +15,7 @@ landing page). Everything else is scraped from fcc.report per filing.
 
 import json
 import re
+import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,10 +25,19 @@ import requests
 from bs4 import BeautifulSoup
 
 from hf_dataset_utils import Pipeline
+from hf_dataset_utils.incremental import download_existing
 
 SEED_PATH = Path(__file__).parent / "data" / "fcc_ngso_seed.json"
 BASE_URL = "https://fcc.report/IBFS"
 HF_REPO = "juliensimon/fcc-ngso-filings"
+PARQUET_NAME = "fcc_ngso_filings.parquet"
+
+# fcc.report sits behind a Cloudflare managed challenge that GitHub runners
+# cannot pass (403, cf-mitigated: challenge, since 2026-09-21). The FCC's own
+# ICFS portal (ServiceNow) serves the same filing summary as JSON to guests.
+ICFS_BASE = "https://fccprod.servicenowservices.com"
+ICFS_PAGE_API = f"{ICFS_BASE}/api/now/sp/page"
+ICFS_FILING_URL = ICFS_BASE + "/icfs?id=ibfs_application_summary&number={}"
 
 USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -57,8 +67,8 @@ COLUMN_DESCRIPTIONS = {
     "frequency_bands": "Comma-separated MHz band edges from the Frequencies table (e.g. 17700-18200,27500-28350)",
     "description": "Filing description or abstract as published on the IBFS landing page",
     "applicant_address": "Applicant mailing address from FCC Form 312 (empty on older filings, whose form fields fcc.report does not transcribe)",
-    "ibfs_url": "Canonical URL of the filing on fcc.report",
-    "fetched_at_utc": "UTC timestamp when this row was refreshed from fcc.report",
+    "ibfs_url": "URL of the filing record this row was refreshed from (fcc.report, or the FCC ICFS portal when fcc.report is unavailable)",
+    "fetched_at_utc": "UTC timestamp when this row was refreshed",
 }
 
 DESCRIPTION = """\
@@ -83,8 +93,9 @@ FCC promises. Two hand-curated columns — requested_satellites and orbital_shel
 transcribed from filing PDF attachments because those technical parameters are not exposed on \
 the HTML landing page; all other fields are scraped from the public IBFS record. Weekly refresh.
 
-Source: FCC IBFS via fcc.report (third-party mirror, not affiliated with the FCC). The \
-underlying filings are public records of the US federal government.\
+Source: FCC IBFS via fcc.report (third-party mirror, not affiliated with the FCC), falling \
+back to the FCC's own ICFS portal when fcc.report is unreachable. The underlying filings are \
+public records of the US federal government.\
 """
 
 
@@ -292,6 +303,109 @@ def parse_filing_html(html, file_number, url=None):
     }
 
 
+def _icfs_summary(payload):
+    """Find the 'IBFS Application Summary' widget data in an ICFS page payload."""
+    stack = [payload]
+    while stack:
+        o = stack.pop()
+        if isinstance(o, dict):
+            data = o.get("data")
+            if isinstance(data, dict) and isinstance(data.get("summary"), dict):
+                return data
+            stack.extend(o.values())
+        elif isinstance(o, list):
+            stack.extend(o)
+    return None
+
+
+def parse_icfs_payload(payload, file_number):
+    """Map an ICFS sp/page JSON payload onto the parse_filing_html dict shape.
+
+    ICFS does not expose nature of service, frequency bands, last-action text
+    or the full description; those come back empty and are carried forward
+    from the published dataset by carry_forward().
+    """
+    data = _icfs_summary(payload)
+    if not data or str(data.get("found")).lower() != "true":
+        raise RuntimeError(f"{file_number} not found on FCC ICFS")
+    summary = data["summary"]
+
+    def v(key):
+        return _clean(str((summary.get(key) or {}).get("display_value") or ""))
+
+    applicant = v("applicant_name")
+    if not applicant:
+        raise RuntimeError(f"No applicant on FCC ICFS record for {file_number}")
+
+    address_parts = [v(k) for k in ("applicant_street", "applicant_street_2", "applicant_city",
+                                    "applicant_state", "applicant_zip_code", "applicant_country")]
+    applicant_address = " ".join(p.rstrip("-") for p in address_parts if p.rstrip("-"))
+
+    def parse_date(s):
+        try:
+            return datetime.strptime(s[:10], "%Y-%m-%d").date() if s else None
+        except ValueError:
+            return None
+
+    return {
+        "applicant": applicant,
+        "applicant_address": applicant_address,
+        "nature_of_service": v("nature_of_service"),
+        "status": v("state"),
+        "last_action": v("last_action"),
+        "date_filed": parse_date(v("submission_date")),
+        "date_granted": parse_date(v("grant_date")),
+        "last_action_date": parse_date(v("status_date")),
+        "frequency_bands": "",
+        "description": v("brief_application_description"),
+        "ibfs_url": ICFS_FILING_URL.format(file_number),
+    }
+
+
+def fetch_filing_icfs(session, file_number):
+    resp = session.get(
+        ICFS_PAGE_API,
+        params={"id": "ibfs_application_summary", "number": file_number},
+        headers={"Accept": "application/json"},
+        timeout=60,
+    )
+    if resp.status_code >= 500:
+        time.sleep(5)
+        resp = session.get(resp.url, headers={"Accept": "application/json"}, timeout=60)
+    resp.raise_for_status()
+    return parse_icfs_payload(resp.json(), file_number)
+
+
+def carry_forward(scraped, prior):
+    """Fill fields ICFS lacks from the last published row for the same filing.
+
+    nature_of_service, frequency_bands and description are fixed at filing time.
+    last_action is only reused while last_action_date is unchanged, so a newer
+    action is never labelled with an older action's text.
+    """
+    if prior is None:
+        return scraped
+    out = dict(scraped)
+    for col in ("nature_of_service", "frequency_bands", "description"):
+        old = prior.get(col)
+        if isinstance(old, str) and old.strip() and (col != "description" or len(old) > len(out[col])):
+            out[col] = old
+    old_date = pd.to_datetime(prior.get("last_action_date"), errors="coerce")
+    new_date = pd.to_datetime(out["last_action_date"], errors="coerce")
+    if (not out["last_action"] and isinstance(prior.get("last_action"), str)
+            and pd.notna(old_date) and pd.notna(new_date) and old_date == new_date):
+        out["last_action"] = prior["last_action"]
+    return out
+
+
+def load_prior_rows():
+    with tempfile.TemporaryDirectory() as tmp:
+        df = download_existing(HF_REPO, PARQUET_NAME, tmp)
+    if df is None or "file_number" not in df.columns:
+        return {}
+    return {r["file_number"]: r for r in df.to_dict("records")}
+
+
 def extract_filing_type(file_number):
     # SAT-LOA-YYYYMMDD-NNNNN → LOA
     parts = file_number.split("-")
@@ -307,12 +421,26 @@ def main():
     rows = []
     skipped = []
     now_utc = datetime.now(timezone.utc)
+    use_icfs = False
+    prior_rows = None
 
     for i, entry in enumerate(seed):
         file_number = entry["file_number"]
         print(f"  [{i+1}/{len(seed)}] {file_number}...")
         try:
-            scraped = fetch_filing(session, file_number)
+            if not use_icfs:
+                try:
+                    scraped = fetch_filing(session, file_number)
+                except requests.HTTPError as e:
+                    if e.response is None or e.response.status_code != 403:
+                        raise
+                    print(f"    fcc.report blocked ({e}); switching to FCC ICFS for this run")
+                    use_icfs = True
+            if use_icfs:
+                if prior_rows is None:
+                    prior_rows = load_prior_rows()
+                scraped = carry_forward(fetch_filing_icfs(session, file_number),
+                                        prior_rows.get(file_number))
         except Exception as e:
             # Graceful single-filing failure: log and continue. The final
             # dataframe is still shipped as long as at least one row parses
@@ -359,13 +487,17 @@ def main():
 
     # Fail fast on empty rows from the scraper. Shell-sum and operator_family
     # checks already happened at seed-load time in load_seed().
-    required_non_empty = ["applicant", "nature_of_service", "status"]
+    required_non_empty = ["applicant", "status"]
     for col in required_non_empty:
         bad = df[df[col].fillna("").str.strip() == ""]
         if len(bad):
             raise RuntimeError(
                 f"Empty {col!r} in {len(bad)} row(s): {bad['file_number'].tolist()}"
             )
+    # ICFS has no nature-of-service field; it is carried forward when possible.
+    bad = df[df["nature_of_service"].fillna("").str.strip() == ""]["file_number"].tolist()
+    if bad:
+        print(f"::warning::fcc-ngso-filings: empty nature_of_service for {bad}")
     if df["date_filed"].isna().any():
         bad = df[df["date_filed"].isna()]["file_number"].tolist()
         raise RuntimeError(f"Missing date_filed in rows: {bad}")
@@ -412,7 +544,7 @@ def main():
 - **{total_requested:,}** total satellites requested across all filings
 - **{n_granted}** filings with an authorization granted
 - Operator families: {top_families}
-- Source: FCC IBFS via [fcc.report](https://fcc.report/IBFS/) (third-party mirror, not affiliated with the FCC)"""
+- Source: FCC IBFS via [fcc.report](https://fcc.report/IBFS/) (third-party mirror, not affiliated with the FCC), with the FCC [ICFS portal]({ICFS_BASE}/icfs) as fallback"""
 
         usage = """\
 ```python
@@ -434,7 +566,7 @@ print(ds[["file_number", "applicant", "date_filed", "date_granted", "status"]].s
 
         p.publish(
             df,
-            filename="fcc_ngso_filings.parquet",
+            filename=PARQUET_NAME,
             min_rows=1,
             expected_columns=["file_number", "applicant", "operator_family", "status"],
             critical_columns=["file_number", "applicant"],
