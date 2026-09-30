@@ -18,8 +18,6 @@ jobs:
           python-version: '3.12'
       - run: pip install pandas pyarrow requests beautifulsoup4 lxml huggingface_hub[hf_xet]
       - id: update
-        run: python scripts/update-fcc-probe.py
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: HF_TOKEN_PATH=/nonexistent python scripts/update-fcc-ngso-filings.py
       - name: Update and push status
         run: bash scripts/push-status.sh fcc-ngso-filings --rows ${{ steps.update.outputs.rows }}
