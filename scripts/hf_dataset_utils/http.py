@@ -11,8 +11,10 @@ connections from GitHub runners for stretches of 6+ minutes at a time. Every
 pipeline whose retries gave up sooner failed; run 33388408533 retried from
 11:44 to 11:51 and never completed a handshake. On 2026-09-08 the blackholing
 lasted longer than the original ~12 min budget (run 34209051829 exhausted all 5
-attempts). RETRY_WAITS now rides out ~21 min worst case (930s of backoff plus
-six connect timeouts). Widen it here, not in the callers.
+attempts). RETRY_WAITS was widened to ~21 min. On 2026-10-10 an outage exceeded
+even that (run 38066191779 exhausted all 6 attempts). RETRY_WAITS now rides out
+~37 min worst case (1890s of backoff plus seven connect timeouts). Widen it
+here, not in the callers.
 """
 
 import time
@@ -20,7 +22,7 @@ import time
 import requests
 
 # Waits between attempts; total attempts is len(RETRY_WAITS) + 1.
-RETRY_WAITS = (30, 60, 120, 240, 480)
+RETRY_WAITS = (30, 60, 120, 240, 480, 960)
 
 # Transient server-side conditions worth waiting out. Everything else (404,
 # 401, 400) is a real breakage -- retrying it burns the whole budget and buries
