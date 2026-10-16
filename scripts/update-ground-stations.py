@@ -387,8 +387,7 @@ def main():
     try:
         insider = scrape_insider()
     except Exception as e:
-        print(f"ERROR: Starlinkinsider scrape failed ({e})")
-        sys.exit(1)
+        print(f"WARNING: Starlinkinsider scrape failed ({e}) — continuing with FCC+PeeringDB data only")
 
     # Build norm->cache-key map for coordinate lookup
     norm_to_key: dict[str, str] = {}
