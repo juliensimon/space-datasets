@@ -178,21 +178,29 @@ STRING_COLS = [
 ]
 
 
-def fetch_count() -> int:
+def fetch_count(max_retries: int = 5) -> int:
     """Sanity-check: fetch total row count."""
     query = ("SELECT COUNT(*) AS n FROM epn_core "
              "WHERE instrument_host_name = 'Venus Express'")
     print("Checking total row count...")
-    resp = requests.get(TAP_URL, params={
-        "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "json",
-        "QUERY": query,
-    }, timeout=120)
-    resp.raise_for_status()
-    data = resp.json()
-    cols = [m["name"] for m in data["metadata"]]
-    n = int(data["data"][0][cols.index("n")])
-    print(f"  Total rows in catalog: {n:,}")
-    return n
+    for attempt in range(max_retries):
+        try:
+            resp = requests.get(TAP_URL, params={
+                "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "json",
+                "QUERY": query,
+            }, timeout=120)
+            resp.raise_for_status()
+            data = resp.json()
+            cols = [m["name"] for m in data["metadata"]]
+            n = int(data["data"][0][cols.index("n")])
+            print(f"  Total rows in catalog: {n:,}")
+            return n
+        except (requests.ConnectionError, requests.Timeout):
+            if attempt == max_retries - 1:
+                raise
+            wait = 10 * (2 ** attempt)
+            print(f"    Connection error (attempt {attempt + 1}), retrying in {wait}s...")
+            time.sleep(wait)
 
 
 def _tap_csv(query: str, max_retries: int = 5) -> pd.DataFrame:
