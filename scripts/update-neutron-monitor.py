@@ -13,6 +13,7 @@ import pandas as pd
 import requests
 
 from hf_dataset_utils import Pipeline
+from hf_dataset_utils.http import fetch_with_retry
 
 HF_REPO = "juliensimon/neutron-monitor-cosmic-rays"
 
@@ -83,8 +84,7 @@ def fetch_nmdb(start_dt, end_dt):
     url = f"{API_URL}?{station_params}"
 
     print(f"  Fetching {start_dt.date()} to {end_dt.date()} ...")
-    resp = requests.get(url, params=params, timeout=120)
-    resp.raise_for_status()
+    resp = fetch_with_retry(url, params=params, timeout=120, label="NMDB")
 
     text = resp.text
     if "no data available" in text.lower():
