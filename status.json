@@ -1,5 +1,4 @@
 {
-  "4xmm-dr14": "2026-04-05",
   "_rows": {
     "4xmm-dr14": 630347,
     "ae-index": 50520,
@@ -113,7 +112,7 @@
     "rocket-lab-launches": 158,
     "roma-bzcat": 3561,
     "rosat-bsc": 18806,
-    "satcat": 71090,
+    "satcat": 71093,
     "satnogs": 5120,
     "sbdb": 1580038,
     "sentry": 2223,
@@ -149,6 +148,7 @@
     "xray-binaries": 301,
     "yarkovsky-nea": 247
   },
+  "4xmm-dr14": "2026-04-05",
   "ae-index": "2026-10-22",
   "apod": "2026-10-22",
   "artemis-ii": "2026-10-22",
@@ -267,7 +267,7 @@
   "rocket-lab-launches": "2026-10-22",
   "roma-bzcat": "2026-04-05",
   "rosat-bsc": "2026-05-10",
-  "satcat": "2026-10-22",
+  "satcat": "2026-10-23",
   "satnogs": "2026-10-19",
   "sbdb": "2026-10-22",
   "sentry": "2026-10-22",
