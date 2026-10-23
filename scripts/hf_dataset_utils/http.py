@@ -12,9 +12,11 @@ pipeline whose retries gave up sooner failed; run 33388408533 retried from
 11:44 to 11:51 and never completed a handshake. On 2026-09-08 the blackholing
 lasted longer than the original ~12 min budget (run 34209051829 exhausted all 5
 attempts). RETRY_WAITS was widened to ~21 min. On 2026-10-10 an outage exceeded
-even that (run 38066191779 exhausted all 6 attempts). RETRY_WAITS now rides out
-~37 min worst case (1890s of backoff plus seven connect timeouts). Widen it
-here, not in the callers.
+even that (run 38066191779 exhausted all 6 attempts). RETRY_WAITS widened to
+~37 min. On 2026-10-22/23, outages exceeded even that (runs 39814549497,
+39963443389 both exhausted all 7 attempts at ~38 min). RETRY_WAITS now rides
+out ~71 min worst case (3810s of backoff plus eight connect timeouts). Widen
+it here, not in the callers.
 """
 
 import time
@@ -22,7 +24,7 @@ import time
 import requests
 
 # Waits between attempts; total attempts is len(RETRY_WAITS) + 1.
-RETRY_WAITS = (30, 60, 120, 240, 480, 960)
+RETRY_WAITS = (30, 60, 120, 240, 480, 960, 1920)
 
 # Transient server-side conditions worth waiting out. Everything else (404,
 # 401, 400) is a real breakage -- retrying it burns the whole budget and buries

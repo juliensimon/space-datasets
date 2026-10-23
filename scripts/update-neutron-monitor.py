@@ -206,7 +206,11 @@ def main():
         if df_existing is not None and len(df_existing) > 0:
             df_existing["datetime"] = pd.to_datetime(df_existing["datetime"])
             print("  Incremental mode: fetching last 14 days")
-            df_new = fetch_incremental(days=14)
+            try:
+                df_new = fetch_incremental(days=14)
+            except Exception as e:
+                print(f"  NMDB temporarily unavailable ({e}); publishing existing data unchanged")
+                df_new = pd.DataFrame()
             if not df_new.empty:
                 cutoff = df_new["datetime"].min()
                 df_kept = df_existing[df_existing["datetime"] < cutoff]
