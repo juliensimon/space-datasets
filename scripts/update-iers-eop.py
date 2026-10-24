@@ -12,7 +12,12 @@ import pandas as pd
 from hf_dataset_utils import Pipeline
 from hf_dataset_utils.http import fetch_with_retry
 
-IERS_URL = "https://datacenter.iers.org/data/csv/finals2000A.data.csv"
+# IERS restructured /data/csv/ → /products/eop/rapid/standard/csv/ in Oct 2026
+IERS_URLS = [
+    "https://datacenter.iers.org/products/eop/rapid/standard/csv/finals2000A.data.csv",
+    "https://data.iers.org/products/eop/rapid/standard/csv/finals2000A.data.csv",
+    "https://datacenter.iers.org/data/csv/finals2000A.data.csv",  # pre-Oct-2026 path
+]
 HF_REPO = "juliensimon/iers-earth-orientation"
 
 # ── Column mapping ────────────────────────────────────────
@@ -76,23 +81,19 @@ insertion of a leap second.
 """
 
 
-def main():
-    print("Fetching IERS Earth Orientation Parameters...")
-    resp = fetch_with_retry(IERS_URL, timeout=120)
-
-    # IERS CSV uses semicolons as separator
+def _parse_iers_csv(text: str) -> pd.DataFrame:
+    """Parse IERS CSV response (semicolon or comma separated)."""
     try:
-        df = pd.read_csv(io.StringIO(resp.text), sep=';')
+        return pd.read_csv(io.StringIO(text), sep=';')
     except Exception:
-        df = pd.read_csv(io.StringIO(resp.text))
+        return pd.read_csv(io.StringIO(text))
 
-    print(f"  {len(df):,} rows, columns: {list(df.columns)[:10]}...")
 
-    # Create date column from Year/Month/Day if present
+def _transform(df: pd.DataFrame) -> pd.DataFrame:
+    """Apply column mapping and derive the date column."""
     year_col = [c for c in df.columns if c.strip().lower() == 'year']
     month_col = [c for c in df.columns if c.strip().lower() == 'month']
     day_col = [c for c in df.columns if c.strip().lower() == 'day']
-
     if year_col and month_col and day_col:
         df["date"] = pd.to_datetime(
             df[year_col[0]].astype(int).astype(str) + "-" +
@@ -100,56 +101,18 @@ def main():
             df[day_col[0]].astype(int).astype(str).str.zfill(2),
             errors="coerce",
         )
-
-    # Build rename mapping (guard all column accesses)
-    rename_map = {}
-    for col in df.columns:
-        cl = col.strip().lower()
-        if cl in RENAME_RULES:
-            rename_map[col] = RENAME_RULES[cl]
-
+    rename_map = {col: RENAME_RULES[col.strip().lower()]
+                  for col in df.columns if col.strip().lower() in RENAME_RULES}
     if rename_map:
         df = df.rename(columns=rename_map)
-
-    # Keep only described columns
     df = df[[c for c in df.columns if c in COLUMN_DESCRIPTIONS]]
+    if "date" in df.columns:
+        df = df.sort_values("date").reset_index(drop=True)
+    return df
 
-    df = df.sort_values("date").reset_index(drop=True) if "date" in df.columns else df
 
-    # ── Domain-specific stats for README ─────────────────────
-    n = len(df)
-    date_min = df["date"].min().strftime("%Y-%m-%d") if "date" in df.columns else "N/A"
-    date_max = df["date"].max().strftime("%Y-%m-%d") if "date" in df.columns else "N/A"
-    ut1_range = ""
-    if "ut1_utc_sec" in df.columns:
-        recent = df[df["date"] > "2020-01-01"] if "date" in df.columns else df
-        ut1_min = recent["ut1_utc_sec"].min()
-        ut1_max = recent["ut1_utc_sec"].max()
-        ut1_range = f"\n- UT1-UTC range (since 2020): {ut1_min:.4f} to {ut1_max:.4f} s"
-
-    quick_stats = f"""\
-- **{n:,}** daily records ({date_min} to {date_max}){ut1_range}"""
-
-    usage = f"""\
-```python
-from datasets import load_dataset
-
-ds = load_dataset("juliensimon/iers-earth-orientation", split="train")
-df = ds.to_pandas()
-
-# Recent UT1-UTC values
-recent = df[df["date"] > "2025-01-01"].sort_values("date")
-print(recent[["date", "ut1_utc_sec", "x_pole_arcsec", "y_pole_arcsec"]])
-
-# Polar motion scatter plot
-import matplotlib.pyplot as plt
-fig, ax = plt.subplots(figsize=(8, 8))
-ax.scatter(df["x_pole_arcsec"], df["y_pole_arcsec"], s=0.5, alpha=0.3)
-ax.set_xlabel("x pole (arcsec)")
-ax.set_ylabel("y pole (arcsec)")
-ax.set_title("Polar Motion")
-plt.show()
-```"""
+def main():
+    print("Fetching IERS Earth Orientation Parameters...")
 
     with Pipeline(
         repo=HF_REPO,
@@ -170,6 +133,64 @@ plt.show()
             "credit": "NASA",
         },
     ) as p:
+        # Try each candidate URL; fall back to existing HF data if all fail
+        resp = None
+        for url in IERS_URLS:
+            try:
+                resp = fetch_with_retry(url, timeout=120)
+                print(f"  Fetched from {url}")
+                break
+            except Exception as exc:
+                print(f"  {url} unavailable: {exc}")
+
+        if resp is not None:
+            df = _transform(_parse_iers_csv(resp.text))
+            print(f"  {len(df):,} rows, columns: {list(df.columns)[:10]}...")
+        else:
+            df_existing = p.download_existing("iers_earth_orientation.parquet")
+            if df_existing is None or len(df_existing) == 0:
+                import sys
+                print("::error::All IERS URL candidates failed and no existing data available")
+                sys.exit(1)
+            print(f"  All IERS URLs unavailable; re-publishing existing {len(df_existing):,} rows")
+            df = df_existing
+            if "date" in df.columns:
+                df["date"] = pd.to_datetime(df["date"], errors="coerce")
+
+        # ── Stats for README ──────────────────────────────────────────
+        n = len(df)
+        date_min = df["date"].min().strftime("%Y-%m-%d") if "date" in df.columns else "N/A"
+        date_max = df["date"].max().strftime("%Y-%m-%d") if "date" in df.columns else "N/A"
+        ut1_range = ""
+        if "ut1_utc_sec" in df.columns:
+            recent = df[df["date"] > "2020-01-01"] if "date" in df.columns else df
+            ut1_min = recent["ut1_utc_sec"].min()
+            ut1_max = recent["ut1_utc_sec"].max()
+            ut1_range = f"\n- UT1-UTC range (since 2020): {ut1_min:.4f} to {ut1_max:.4f} s"
+
+        quick_stats = f"- **{n:,}** daily records ({date_min} to {date_max}){ut1_range}"
+
+        usage = """\
+```python
+from datasets import load_dataset
+
+ds = load_dataset("juliensimon/iers-earth-orientation", split="train")
+df = ds.to_pandas()
+
+# Recent UT1-UTC values
+recent = df[df["date"] > "2025-01-01"].sort_values("date")
+print(recent[["date", "ut1_utc_sec", "x_pole_arcsec", "y_pole_arcsec"]])
+
+# Polar motion scatter plot
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots(figsize=(8, 8))
+ax.scatter(df["x_pole_arcsec"], df["y_pole_arcsec"], s=0.5, alpha=0.3)
+ax.set_xlabel("x pole (arcsec)")
+ax.set_ylabel("y pole (arcsec)")
+ax.set_title("Polar Motion")
+plt.show()
+```"""
+
         df = p.clean(
             df,
             numeric=[
