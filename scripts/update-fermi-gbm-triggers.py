@@ -164,17 +164,20 @@ def main():
                 f"ORDER BY trigger_time DESC"
             )
             print(f"  Incremental fetch: last {OVERLAP_DAYS} days overlap from {max_date}")
-            df_new = heasarc_query("fermigtrig", adql_inc, timeout=300)
-            df_new = transform(df_new)
-
-            if not df_new.empty:
-                df = p.merge(df_existing, df_new, dedup_on="name", sort_by="trigger_time")
-                # Re-sort descending after merge (merge sorts ascending)
-                df = df.sort_values("trigger_time", ascending=False).reset_index(drop=True)
-                print(f"  Merged: {len(df):,} triggers ({len(df) - len(df_existing):+,} net)")
-            else:
+            try:
+                df_new = heasarc_query("fermigtrig", adql_inc, timeout=300)
+                df_new = transform(df_new)
+                if not df_new.empty:
+                    df = p.merge(df_existing, df_new, dedup_on="name", sort_by="trigger_time")
+                    # Re-sort descending after merge (merge sorts ascending)
+                    df = df.sort_values("trigger_time", ascending=False).reset_index(drop=True)
+                    print(f"  Merged: {len(df):,} triggers ({len(df) - len(df_existing):+,} net)")
+                else:
+                    df = df_existing
+                    print("  No new triggers")
+            except Exception as exc:
+                print(f"  HEASARC unavailable ({exc}); re-publishing existing {len(df_existing):,} triggers")
                 df = df_existing
-                print("  No new triggers")
         else:
             # Full rebuild
             print("  Full rebuild...")
