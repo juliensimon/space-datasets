@@ -7,20 +7,20 @@ All datasets are loadable in one line (`load_dataset("juliensimon/...")`), requi
 ### Top downloads
 
 <!-- TOP_DOWNLOADS_START -->
-**418,792** downloads (all-time) (+6)  ·  **32** likes  ·  **232** datasets  ·  updated 2026-10-27
+**421,361** downloads (all-time) (+2,569)  ·  **32** likes  ·  **232** datasets  ·  updated 2026-10-28
 
 | # | Dataset | Downloads |
 |--:|---------|----------:|
 | 1 | [wmo-oscar-satellites](https://huggingface.co/datasets/juliensimon/wmo-oscar-satellites) | 34,061 |
-| 2 | [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) | 24,544 |
-| 3 | [esa-exomars-tgo-observations](https://huggingface.co/datasets/juliensimon/esa-exomars-tgo-observations) | 21,399 (+2) |
-| 4 | [esa-rosetta-observations](https://huggingface.co/datasets/juliensimon/esa-rosetta-observations) | 20,829 |
+| 2 | [space-track-tle-history](https://huggingface.co/datasets/juliensimon/space-track-tle-history) | 24,721 (+177) |
+| 3 | [esa-exomars-tgo-observations](https://huggingface.co/datasets/juliensimon/esa-exomars-tgo-observations) | 21,404 (+5) |
+| 4 | [esa-rosetta-observations](https://huggingface.co/datasets/juliensimon/esa-rosetta-observations) | 20,838 (+9) |
 | 5 | [gaia-dr3-eclipsing-binaries](https://huggingface.co/datasets/juliensimon/gaia-dr3-eclipsing-binaries) | 11,508 |
 | 6 | [gaia-dr3-white-dwarfs](https://huggingface.co/datasets/juliensimon/gaia-dr3-white-dwarfs) | 11,380 |
 | 7 | [gaia-dr3-rrlyrae](https://huggingface.co/datasets/juliensimon/gaia-dr3-rrlyrae) | 10,306 |
-| 8 | [gaia-dr3-cepheids](https://huggingface.co/datasets/juliensimon/gaia-dr3-cepheids) | 10,282 |
-| 9 | [gaia-dr3-young-stellar-objects](https://huggingface.co/datasets/juliensimon/gaia-dr3-young-stellar-objects) | 9,923 |
-| 10 | [gaia-dr3-spectroscopic-binaries](https://huggingface.co/datasets/juliensimon/gaia-dr3-spectroscopic-binaries) | 9,717 |
+| 8 | [gaia-dr3-cepheids](https://huggingface.co/datasets/juliensimon/gaia-dr3-cepheids) | 10,283 (+1) |
+| 9 | [gaia-dr3-young-stellar-objects](https://huggingface.co/datasets/juliensimon/gaia-dr3-young-stellar-objects) | 9,925 (+2) |
+| 10 | [gaia-dr3-spectroscopic-binaries](https://huggingface.co/datasets/juliensimon/gaia-dr3-spectroscopic-binaries) | 9,720 (+3) |
 <!-- TOP_DOWNLOADS_END -->
 
 <!-- Orbital Mechanics -->
