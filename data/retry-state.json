@@ -1,1 +1,12 @@
-{}
+{
+  "exomars-tgo": {
+    "first_failure": "2026-10-28",
+    "last_retry": "2026-10-28",
+    "retries": 1
+  },
+  "grb": {
+    "first_failure": "2026-10-28",
+    "last_retry": "2026-10-28",
+    "retries": 1
+  }
+}
