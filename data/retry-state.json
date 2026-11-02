@@ -8,5 +8,10 @@
     "first_failure": "2026-10-28",
     "last_retry": "2026-10-29",
     "retries": 2
+  },
+  "hii-regions": {
+    "first_failure": "2026-11-02",
+    "last_retry": "2026-11-02",
+    "retries": 1
   }
 }
