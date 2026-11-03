@@ -15,7 +15,7 @@ from hf_dataset_utils.github import emit_output
 from hf_dataset_utils.incremental import append_by_date as inc_append_by_date
 from hf_dataset_utils.incremental import download_existing as inc_download_existing
 from hf_dataset_utils.incremental import merge_dedup
-from hf_dataset_utils.readme import generate_readme
+from hf_dataset_utils.readme import gated_frontmatter, generate_readme
 from hf_dataset_utils.upload import upload_to_hf, write_parquet
 from hf_dataset_utils.validation import check_dataset
 
@@ -134,8 +134,9 @@ class Pipeline:
                 related.append(link)
         merged_related = related or None
 
-        # 5. Generate README
+        # 5. Generate README, carrying over the gated-access form of the current card
         readme_text = generate_readme(
+            extra_frontmatter=gated_frontmatter(self.download_readme()),
             repo=self.repo, pretty_name=self.pretty_name,
             description=self.description, tags=self.tags,
             df=df, filename=filename, source_url=self.source_url,
@@ -171,6 +172,20 @@ class Pipeline:
 
     def download_existing(self, filename):
         return inc_download_existing(self.repo, filename, self.tmp_dir)
+
+    def download_readme(self) -> str | None:
+        """Current dataset card on the Hub, or None when there is none or the Hub is unreachable.
+
+        Read from the HF cache, not from tmp_dir: everything in tmp_dir is uploaded.
+        """
+        from huggingface_hub import hf_hub_download
+
+        try:
+            path = hf_hub_download(repo_id=self.repo, filename="README.md", repo_type="dataset")
+            return Path(path).read_text()
+        except Exception as e:
+            print(f"  Could not read the current card ({e}); no front matter carried over")
+            return None
 
     def merge(self, df_existing, df_new, dedup_on, sort_by):
         return merge_dedup(df_existing, df_new, key=dedup_on, sort_by=sort_by)

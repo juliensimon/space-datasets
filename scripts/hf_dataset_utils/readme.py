@@ -145,6 +145,34 @@ _LICENSE_URLS = {
 }
 
 
+GATED_KEYS = ("extra_gated_prompt", "extra_gated_fields")
+
+
+def gated_frontmatter(readme: str | None) -> str:
+    """Return the gated-access keys of an existing card's front matter, verbatim.
+
+    The Hub stores the access form (`extra_gated_prompt`, `extra_gated_fields`)
+    in the dataset card. The card is rebuilt from scratch on every pipeline run,
+    so these lines are read back from the current card and written again by
+    `generate_readme(extra_frontmatter=...)`. A top-level key and its indented
+    continuation lines are kept as they are; anything outside the front matter
+    is ignored. Returns "" when there is nothing to carry over.
+    """
+    if not readme or not readme.startswith("---\n"):
+        return ""
+    end = readme.find("\n---", 4)
+    if end < 0:
+        return ""
+    kept: list[str] = []
+    keep = False
+    for line in readme[4:end].splitlines():
+        if line[:1] not in (" ", "\t"):
+            keep = line.split(":", 1)[0] in GATED_KEYS
+        if keep:
+            kept.append(line)
+    return "".join(f"{line}\n" for line in kept)
+
+
 def generate_readme(
     repo: str,
     pretty_name: str,
@@ -166,6 +194,7 @@ def generate_readme(
     extra_sections: dict[str, str] | None = None,
     quick_stats: str | None = None,
     usage: str | None = None,
+    extra_frontmatter: str | None = None,
 ) -> str:
     """Generate a complete HF dataset card (README.md with YAML frontmatter).
 
@@ -188,6 +217,8 @@ def generate_readme(
         extra_sections: Additional sections as {heading: content}.
         quick_stats: Custom quick stats markdown. Replaces auto-generated stats if provided.
         usage: Custom usage snippet markdown. Replaces default load_dataset snippet if provided.
+        extra_frontmatter: Verbatim YAML lines appended to the front matter, such as the
+            gated-access form returned by `gated_frontmatter` for the current card.
 
     Returns:
         Complete README string.
@@ -230,6 +261,8 @@ configs:
         path: data/{filename}
     default: true
 ---"""
+    if extra_frontmatter and extra_frontmatter.strip():
+        frontmatter = frontmatter[: -len("---")] + extra_frontmatter.rstrip() + "\n---"
 
     sections = []
     sections.append(f"# {pretty_name}")
