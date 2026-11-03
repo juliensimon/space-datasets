@@ -10,6 +10,7 @@ as partitioned parquet files to keep memory bounded.
 
 import io
 import shutil
+import signal
 import sys
 import tempfile
 import time
@@ -153,22 +154,37 @@ def fetch_count():
 
 
 def _tap_csv(query, max_retries=5):
-    """TAP query returning CSV, with retry + exponential backoff."""
+    """TAP query returning CSV, with retry + exponential backoff.
+
+    Uses SIGALRM to enforce a wall-clock cap per page so a slow-trickle
+    server cannot hang the job indefinitely (previous failure: 6 h timeout).
+    """
+    def _alarm_handler(signum, frame):
+        raise requests.Timeout("page fetch wall-clock timeout (SIGALRM)")
+
     for attempt in range(max_retries):
+        old_handler = signal.signal(signal.SIGALRM, _alarm_handler)
+        signal.alarm(600)  # 10-min hard cap per page
         try:
             resp = requests.get(TAP_URL, params={
                 "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "csv",
                 "QUERY": query,
-            }, timeout=600, stream=True)
+            }, timeout=60)
             resp.raise_for_status()
-            return pd.read_csv(io.StringIO(resp.text), low_memory=False)
+            result = pd.read_csv(io.StringIO(resp.text), low_memory=False)
         except (requests.ConnectionError, requests.Timeout,
                 requests.exceptions.ChunkedEncodingError) as e:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, old_handler)
             if attempt == max_retries - 1:
                 raise
             wait = 10 * (2 ** attempt)
             print(f"    Connection error (attempt {attempt + 1}), retrying in {wait}s...")
             time.sleep(wait)
+            continue
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, old_handler)
+        return result
 
 
 def fetch_instrument(instrument, parquet_dir):
