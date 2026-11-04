@@ -135,22 +135,32 @@ access URLs."""
 
 # ── TAP query helpers ────────────────────────────────────────────────
 
-def fetch_count():
+def fetch_count(max_retries=5):
     """Sanity-check: fetch total row count."""
     query = ("SELECT COUNT(*) AS n FROM epn_core "
              "WHERE instrument_host_name = 'ExoMars 2016'")
     print("Checking total row count...")
-    resp = requests.get(TAP_URL, params={
-        "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "json",
-        "QUERY": query,
-    }, timeout=120)
-    resp.raise_for_status()
-    data = resp.json()
-    cols = [m["name"] for m in data["metadata"]]
-    rows = data["data"]
-    n = int(rows[0][cols.index("n")])
-    print(f"  Total rows in catalog: {n:,}")
-    return n
+    for attempt in range(max_retries):
+        try:
+            resp = requests.get(TAP_URL, params={
+                "REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "json",
+                "QUERY": query,
+            }, timeout=120)
+            resp.raise_for_status()
+        except (requests.ConnectionError, requests.Timeout,
+                requests.exceptions.HTTPError) as e:
+            if attempt == max_retries - 1:
+                raise
+            wait = 30 * (2 ** attempt)
+            print(f"  fetch_count error (attempt {attempt + 1}), retrying in {wait}s: {e}")
+            time.sleep(wait)
+            continue
+        data = resp.json()
+        cols = [m["name"] for m in data["metadata"]]
+        rows = data["data"]
+        n = int(rows[0][cols.index("n")])
+        print(f"  Total rows in catalog: {n:,}")
+        return n
 
 
 def _tap_csv(query, max_retries=5):
