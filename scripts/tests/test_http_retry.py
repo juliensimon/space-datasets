@@ -19,13 +19,14 @@ Run:
 """
 
 import sys
+from contextlib import contextmanager
 from pathlib import Path
+from unittest import mock
 
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "scripts"))
 
 import requests
-
 from hf_dataset_utils import http
 
 
@@ -63,6 +64,35 @@ def _patch(script):
     http.requests.get = fake_get
     http.time.sleep = lambda s: calls["sleeps"].append(s)
     return calls
+
+
+@contextmanager
+def _patch_post(script):
+    """Script requests.post with a sequence, restoring it (and sleep) on exit.
+
+    Same capture as ``_patch`` but scoped with mock.patch, so the stand-ins do
+    not leak into other tests that share the process (e.g. the VizieR tests).
+    """
+    calls = {"sleeps": [], "kwargs": [], "urls": []}
+    seq = list(script)
+
+    def fake_post(url, **kwargs):
+        calls["urls"].append(url)
+        calls["kwargs"].append(kwargs)
+        item = seq.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return item
+
+    def no_get(*args, **kwargs):
+        raise AssertionError("method='POST' must not call requests.get")
+
+    with (
+        mock.patch.object(http.requests, "post", fake_post),
+        mock.patch.object(http.requests, "get", no_get),
+        mock.patch.object(http.time, "sleep", lambda s: calls["sleeps"].append(s)),
+    ):
+        yield calls
 
 
 def _timeout():
@@ -136,10 +166,80 @@ def test_request_kwargs_reach_requests_get():
     print("PASS: headers and timeout are forwarded to requests.get")
 
 
+def test_post_transient_failure_is_retried_then_succeeds():
+    """VizieR and SIMBAD sit behind CDS hosts that time out for minutes."""
+    with _patch_post([_timeout(), _Resp(503), _Resp(200)]) as calls:
+        resp = http.fetch_with_retry(
+            "https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync",
+            method="POST", data={"QUERY": "SELECT 1"},
+        )
+
+    assert resp.text == "payload", resp.text
+    assert calls["sleeps"] == [30, 60], calls["sleeps"]
+    assert len(calls["kwargs"]) == 3, calls["kwargs"]
+    print("PASS: POST retried on the same ladder as GET, then succeeds")
+
+
+def test_post_dead_url_is_not_retried():
+    """A 404 on a POST must cost zero waiting, exactly as on a GET."""
+    with _patch_post([_Resp(404)]) as calls:
+        try:
+            http.fetch_with_retry("https://example.org/missing",
+                                  method="POST", data={"QUERY": "x"})
+        except requests.HTTPError:
+            pass
+        else:
+            raise AssertionError("a 404 on POST must raise, not be retried")
+
+    assert calls["sleeps"] == [], f"404 burned the retry budget: {calls['sleeps']}"
+    assert len(calls["kwargs"]) == 1, calls["kwargs"]
+    print("PASS: POST 404 raises immediately without spending the retry budget")
+
+
+def test_post_data_and_timeout_reach_requests_post():
+    """The TAP form body travels as data=, with the caller's timeout."""
+    data = {"REQUEST": "doQuery", "QUERY": "SELECT 1"}
+    with _patch_post([_Resp(200)]) as calls:
+        http.fetch_with_retry("https://example.org/tap", method="POST",
+                              timeout=300, data=data)
+
+    assert calls["urls"] == ["https://example.org/tap"], calls["urls"]
+    assert calls["kwargs"][0]["data"] == data, calls["kwargs"]
+    assert calls["kwargs"][0]["timeout"] == 300, calls["kwargs"]
+    assert "method" not in calls["kwargs"][0], calls["kwargs"]
+    print("PASS: data= and timeout reach requests.post; method is not forwarded")
+
+
+def test_unknown_method_is_rejected():
+    """A typo such as method='PUT' must fail fast, not silently become a GET."""
+    with _patch_post([_Resp(200)]) as calls:
+        try:
+            http.fetch_with_retry("https://example.org/tap", method="PUT")
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("unsupported method must raise ValueError")
+    assert calls["kwargs"] == [], calls["kwargs"]
+    print("PASS: unsupported method raises ValueError before any request")
+
+
+def test_default_method_is_get():
+    """Every existing caller omits method; it must still mean GET."""
+    calls = _patch([_Resp(200)])
+    http.fetch_with_retry("https://celestrak.org/pub/satcat.csv")
+    assert len(calls["kwargs"]) == 1
+    print("PASS: default method is GET")
+
+
 if __name__ == "__main__":
     test_transient_failures_are_ridden_out()
     test_budget_is_finite_and_original_error_surfaces()
     test_dead_url_is_not_retried()
     test_transient_status_still_retried()
     test_request_kwargs_reach_requests_get()
+    test_post_transient_failure_is_retried_then_succeeds()
+    test_post_dead_url_is_not_retried()
+    test_post_data_and_timeout_reach_requests_post()
+    test_unknown_method_is_rejected()
+    test_default_method_is_get()
     print("\nAll tests passed.")

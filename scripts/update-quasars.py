@@ -2,12 +2,10 @@
 """Fetch quasar/AGN catalog from SIMBAD and upload to HF."""
 
 import io
-import time
 
 import pandas as pd
-import requests
-
 from hf_dataset_utils import Pipeline
+from hf_dataset_utils.http import fetch_with_retry
 
 HF_REPO = "juliensimon/quasar-catalog"
 
@@ -60,25 +58,17 @@ and building training sets for machine-learning classification of AGN from photo
 def main():
     print("Fetching quasar/AGN catalog from SIMBAD...")
 
-    last_err = None
-    for attempt in range(3):
-        try:
-            resp = requests.get(SIMBAD_TAP, params={
-                "REQUEST": "doQuery",
-                "LANG": "ADQL",
-                "FORMAT": "csv",
-                "QUERY": ADQL,
-            }, timeout=300)
-            resp.raise_for_status()
-            break
-        except Exception as e:
-            last_err = e
-            if attempt < 2:
-                wait = 30 * (attempt + 1)
-                print(f"  SIMBAD error (attempt {attempt + 1}/3): {e}; retry in {wait}s")
-                time.sleep(wait)
-    else:
-        raise RuntimeError(f"SIMBAD query failed after 3 attempts: {last_err}")
+    resp = fetch_with_retry(
+        SIMBAD_TAP,
+        params={
+            "REQUEST": "doQuery",
+            "LANG": "ADQL",
+            "FORMAT": "csv",
+            "QUERY": ADQL,
+        },
+        timeout=300,
+        label="SIMBAD",
+    )
 
     df = pd.read_csv(io.StringIO(resp.text))
     print(f"  {len(df)} objects from SIMBAD")

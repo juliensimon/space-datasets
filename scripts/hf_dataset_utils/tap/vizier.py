@@ -8,7 +8,8 @@ import sys
 import time
 
 import pandas as pd
-import requests
+
+from hf_dataset_utils.http import fetch_with_retry
 
 TAP_URL = "https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync"
 PAGE_SIZE = 500_000
@@ -32,25 +33,20 @@ def _add_recno_filter(adql: str, last_recno: int) -> str:
     return f"{before} {after}".strip() if after else before
 
 
-def _fetch_page(adql: str, timeout: int, retries: int = 3) -> pd.DataFrame:
-    """Fetch a single TAP query page with retry logic."""
-    for attempt in range(retries):
-        try:
-            resp = requests.post(TAP_URL, data={
-                "REQUEST": "doQuery", "LANG": "ADQL",
-                "FORMAT": "csv", "QUERY": adql,
-            }, timeout=timeout)
-            resp.raise_for_status()
-            break
-        except Exception as e:
-            if attempt < retries - 1:
-                wait = 10 * (2 ** attempt)
-                print(f"  VizieR retry {attempt + 1}/{retries} in {wait}s: {e}")
-                time.sleep(wait)
-            else:
-                raise
+def _fetch_page(adql: str, timeout: int) -> pd.DataFrame:
+    """Fetch a single TAP query page, riding out CDS outages (shared retry budget)."""
+    resp = fetch_with_retry(
+        TAP_URL,
+        method="POST",
+        data={
+            "REQUEST": "doQuery", "LANG": "ADQL",
+            "FORMAT": "csv", "QUERY": adql,
+        },
+        timeout=timeout,
+        label="VizieR",
+    )
     text = resp.text.strip()
-    if text.startswith("<?xml") or text.startswith("<VOTABLE"):
+    if text.startswith(("<?xml", "<VOTABLE")):
         print(f"::error::VizieR returned VOTable error:\n{text[:500]}")
         sys.exit(1)
     return pd.read_csv(io.StringIO(text))

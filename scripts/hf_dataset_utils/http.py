@@ -1,4 +1,4 @@
-"""Retrying HTTP GET for the flaky public sources these pipelines depend on.
+"""Retrying HTTP GET and POST for the flaky public sources we depend on.
 
 Every dataset script carried its own copy of the same retry loop with a
 different budget -- ~7s in update-conjunctions.py, ~210s in update-kuiper.py,
@@ -33,20 +33,26 @@ RETRY_WAITS = (30, 60, 120, 240, 480, 960, 1920)
 RETRY_STATUS = frozenset({403, 408, 425, 429, 500, 502, 503, 504})
 
 
-def fetch_with_retry(url, *, timeout=60, waits=RETRY_WAITS, label=None, **kwargs):
-    """GET ``url`` with backoff, returning the successful ``requests.Response``.
+def fetch_with_retry(url, *, timeout=60, waits=RETRY_WAITS, label=None,
+                     method="GET", **kwargs):
+    """GET (or POST) ``url`` with backoff, returning the ``requests.Response``.
 
     Retries connection errors, timeouts, and ``RETRY_STATUS`` responses. Raises
     the underlying exception (or ``HTTPError``) once ``waits`` is exhausted, and
     raises immediately on a non-retryable status. ``kwargs`` pass through to
-    ``requests.get`` (e.g. ``headers=``).
+    ``requests.get`` or ``requests.post`` (e.g. ``headers=``, ``params=``,
+    ``data=``). ``method`` is ``"GET"`` (default) or ``"POST"``; the TAP
+    endpoints at CDS (VizieR, SIMBAD) take their query as a POST form.
     """
+    if method not in ("GET", "POST"):
+        raise ValueError(f"unsupported method {method!r}; use 'GET' or 'POST'")
     tag = label or url
     attempts = len(waits) + 1
     for i in range(attempts):
         last = i == attempts - 1
         try:
-            resp = requests.get(url, timeout=timeout, **kwargs)
+            send = requests.post if method == "POST" else requests.get
+            resp = send(url, timeout=timeout, **kwargs)
         except requests.RequestException as exc:
             if last:
                 raise
