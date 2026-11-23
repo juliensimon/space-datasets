@@ -5,11 +5,9 @@ import io
 
 import pandas as pd
 from hf_dataset_utils import Pipeline
-from hf_dataset_utils.http import fetch_with_retry
+from hf_dataset_utils.simbad import simbad_query
 
 HF_REPO = "juliensimon/quasar-catalog"
-
-SIMBAD_TAP = "https://simbad.u-strasbg.fr/simbad/sim-tap/sync"
 
 # SIMBAD otypes for AGN: QSO (quasar), AGN (active galactic nucleus),
 # Sy1/Sy2 (Seyfert), BLL (BL Lac), Bla (Blazar), LIN (LINER)
@@ -58,17 +56,7 @@ and building training sets for machine-learning classification of AGN from photo
 def main():
     print("Fetching quasar/AGN catalog from SIMBAD...")
 
-    resp = fetch_with_retry(
-        SIMBAD_TAP,
-        params={
-            "REQUEST": "doQuery",
-            "LANG": "ADQL",
-            "FORMAT": "csv",
-            "QUERY": ADQL,
-        },
-        timeout=300,
-        label="SIMBAD",
-    )
+    resp = simbad_query(ADQL)
 
     df = pd.read_csv(io.StringIO(resp.text))
     print(f"  {len(df)} objects from SIMBAD")
