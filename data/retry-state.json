@@ -1,9 +1,4 @@
 {
-  "black-holes": {
-    "first_failure": "2026-11-04",
-    "last_retry": "2026-11-05",
-    "retries": 2
-  },
   "exomars-tgo": {
     "first_failure": "2026-10-28",
     "last_retry": "2026-10-29",
@@ -12,11 +7,6 @@
   "hii-regions": {
     "first_failure": "2026-11-02",
     "last_retry": "2026-11-03",
-    "retries": 2
-  },
-  "quasars": {
-    "first_failure": "2026-11-04",
-    "last_retry": "2026-11-05",
     "retries": 2
   },
   "wds": {
