@@ -9,6 +9,11 @@
     "last_retry": "2026-11-03",
     "retries": 2
   },
+  "reentry-events": {
+    "first_failure": "2026-11-28",
+    "last_retry": "2026-11-28",
+    "retries": 1
+  },
   "wds": {
     "first_failure": "2026-11-04",
     "last_retry": "2026-11-05",
